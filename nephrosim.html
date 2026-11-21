@@ -1,1 +1,2566 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NephroSim — MedLab Nephron Transport &amp; Acid-Base Simulator</title>
 
+  <!-- Prevent theme flash prior to first paint (syncs medlab-theme & theme keys; defaults to dark) -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#0f0f12',
+            subtleDark: '#141418',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Subtle Minimal Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(113, 113, 122, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(113, 113, 122, 0.45);
+    }
+
+    /* Minimalist Swiss-Precision Range Sliders (Light & Dark aware) */
+    input[type="range"].clinical-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      border-radius: 9999px;
+      background: #e4e4e7;
+      outline: none;
+      cursor: pointer;
+    }
+    .dark input[type="range"].clinical-slider {
+      background: #27272a;
+    }
+
+    input[type="range"].clinical-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+      transition: transform 0.1s ease, background-color 0.15s ease;
+    }
+    .dark input[type="range"].clinical-slider::-webkit-slider-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.14);
+    }
+
+    input[type="range"].clinical-slider.drug-slider::-webkit-slider-thumb {
+      background: #7c3aed;
+    }
+    .dark input[type="range"].clinical-slider.drug-slider::-webkit-slider-thumb {
+      background: #a78bfa;
+    }
+
+    input[type="range"].clinical-slider::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+      transition: transform 0.1s ease, background-color 0.15s ease;
+    }
+    .dark input[type="range"].clinical-slider::-moz-range-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+    input[type="range"].clinical-slider.drug-slider::-moz-range-thumb {
+      background: #7c3aed;
+    }
+    .dark input[type="range"].clinical-slider.drug-slider::-moz-range-thumb {
+      background: #a78bfa;
+    }
+
+    /* Floating Clinical Tooltip */
+    #clinical-tooltip {
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+      z-index: 9999;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-canvasLight text-zinc-900 dark:bg-obsidian dark:text-zinc-100 transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
+
+  <!-- ==================== FLOATING CLINICAL TOOLTIP ==================== -->
+  <div id="clinical-tooltip" class="fixed opacity-0 max-w-xs px-3 py-2 rounded-lg bg-zinc-900/95 text-zinc-100 border border-zinc-800 shadow-lg text-xs leading-relaxed backdrop-blur-sm"></div>
+
+  <!-- ==================== 1. STICKY MINIMAL HEADER ==================== -->
+  <header class="sticky top-0 z-40 w-full border-b border-zinc-200 dark:border-zinc-800/90 bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 min-h-[52px] py-1.5 flex flex-wrap items-center justify-between gap-2.5">
+
+      <!-- Left: MedLab Breadcrumb + NephroSim + Active Preset + AUTO COMP Badge -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="flex items-center gap-2 group focus:outline-none shrink-0">
+          <span class="w-7 h-7 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-surfaceDark group-hover:border-tealLight/50 dark:group-hover:border-tealDark/50 transition-colors">
+            <svg class="w-4 h-4 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2.5 13h4l2.1-6.2 3.5 11.2 2.3-5h7.1" />
+            </svg>
+          </span>
+          <span class="text-[14px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">MedLab</span>
+        </a>
+
+        <span class="text-zinc-300 dark:text-zinc-700 text-sm font-light select-none">/</span>
+
+        <span class="text-[14px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 shrink-0">NephroSim</span>
+
+        <span class="hidden sm:inline-block h-3.5 w-px bg-zinc-200 dark:bg-zinc-800 mx-0.5"></span>
+
+        <div class="hidden sm:flex items-center gap-2 min-w-0">
+          <span id="active-preset-label" class="text-xs font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[190px] md:max-w-[260px]">Normal Physiology</span>
+          <span id="autocomp-badge" class="font-mono text-[10px] font-medium px-1.5 py-0.5 rounded bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/30 shrink-0" data-tooltip="Automatic Respiratory Compensation enabled: PaCO2 dynamically adjusts via Winter's / Metabolic Alkalosis compensation.">AUTO COMP</span>
+        </div>
+      </div>
+
+      <!-- Right: Pin Snapshot, Clear Drugs, Reset, Theme Toggle -->
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <!-- Pin Snapshot -->
+        <button id="btn-pin-snapshot" type="button" data-tooltip="Pin current acid-base & nephron state as the Ghost Reference on both canvases and baseline for telemetry deltas." class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-subtleDark border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:border-tealLight/50 dark:hover:border-tealDark/50 flex items-center gap-1.5 transition-colors">
+          <svg class="w-3.5 h-3.5 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 17v5" />
+            <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+          </svg>
+          <span id="snapshot-btn-label">Pin Snapshot</span>
+        </button>
+
+        <!-- Clear Drugs -->
+        <button id="btn-clear-drugs-header" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-subtleDark border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:border-violet-500/40 flex items-center gap-1.5 transition-colors">
+          <span>Clear Drugs</span>
+          <span id="header-drug-count" class="hidden font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-violet-500/15 text-violet-700 dark:text-violet-300">0</span>
+        </button>
+
+        <!-- Reset -->
+        <button id="btn-reset-normal" type="button" data-tooltip="Restore Normal Physiology, zero all diuretics, re-enable Auto Comp, and reset Ghost Reference." class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-subtleDark border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+          Reset
+        </button>
+
+        <!-- Dark / Light Mode Toggle -->
+        <button
+          id="theme-toggle"
+          type="button"
+          aria-label="Toggle dark and light theme"
+          title="Switch Bright / Dark mode"
+          class="w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+        >
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. HAIRLINE-DIVIDED TELEMETRY STRIP ==================== -->
+  <section id="telemetry-strip" class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 pt-3 shrink-0">
+    <div class="rounded-xl border border-zinc-200 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark overflow-hidden">
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 divide-x divide-y lg:divide-y-0 divide-zinc-200 dark:divide-zinc-800/90">
+
+        <!-- 1. Arterial pH -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Arterial pH via Henderson-Hasselbalch: pH = 6.10 + log10(HCO3⁻ / (0.0301 × PaCO2)). Normal range: 7.35–7.45.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>pH</span>
+            <span id="delta-ph" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-ph" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">7.40</span>
+          </div>
+        </div>
+
+        <!-- 2. PaCO2 -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Arterial Carbon Dioxide Tension (mmHg). Normal: 35–45 mmHg. Regulated by alveolar ventilation and respiratory compensation.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>PaCO₂</span>
+            <span id="delta-paco2" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-paco2" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">40.0</span>
+            <span class="text-[9.5px] text-zinc-400 dark:text-zinc-500 font-mono">mmHg</span>
+          </div>
+        </div>
+
+        <!-- 3. Plasma HCO3- -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Plasma Bicarbonate concentration (mmol/L). Normal: 22–26 mmol/L. Primary metabolic buffer regulated by PCT reabsorption and distal ammoniagenesis.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>HCO₃⁻</span>
+            <span id="delta-hco3" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-hco3" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">24.0</span>
+            <span class="text-[9.5px] text-zinc-400 dark:text-zinc-500 font-mono">mM</span>
+          </div>
+        </div>
+
+        <!-- 4. Anion Gap (Corrected) + Delta/Delta -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Albumin-Corrected Anion Gap: AG_corr = [Na − (Cl + HCO3)] + 2.5 × (4.0 − Alb). When HAGMA (>14), Δ/Δ = (AG_corr − 12)/(24 − HCO3) screens for hidden mixed disorders.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>Anion Gap</span>
+            <span id="delta-ag" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline justify-between gap-1 mt-1">
+            <div class="flex items-baseline gap-1">
+              <span id="val-ag" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">12.0</span>
+              <span class="text-[9.5px] text-zinc-400 dark:text-zinc-500 font-mono">mM</span>
+            </div>
+            <span id="val-dd" class="hidden font-mono text-[10px] px-1 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 tabular-nums">Δ/Δ 1.0</span>
+          </div>
+        </div>
+
+        <!-- 5. Na+ / K+ -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Serum Sodium (normal 135–145 mmol/L, governed by free water/ADH balance) and Potassium (normal 3.5–5.0 mmol/L, governed by aldosterone, distal flow, and pH).">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>Na⁺ / K⁺</span>
+            <span id="delta-k" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <span id="val-na" class="font-mono text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">140</span>
+            <span class="font-mono text-xs text-zinc-400 dark:text-zinc-600">/</span>
+            <span id="val-k" class="font-mono text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">4.2</span>
+          </div>
+        </div>
+
+        <!-- 6. Urine Osm / Vol -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Final Urine Osmolarity (50–1200 mOsm/kg) and 24-hour Urine Output (L/day), determined by the corticomedullary gradient, ADH/AQP2, and osmotic solute excretion.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>Uosm / Vol</span>
+            <span id="delta-uosm" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <span id="val-uosm" class="font-mono text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">580</span>
+            <span id="val-uvol" class="font-mono text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">· 1.5 L/d</span>
+          </div>
+        </div>
+
+        <!-- 7. FENa / UNa -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Fractional Excretion of Sodium (FENa %, <1% indicates prerenal Na+ avidity) and Spot Urine Sodium concentration (mmol/L).">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>FENa / UNa</span>
+            <span id="delta-fena" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <span id="val-fena" class="font-mono text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">0.7%</span>
+            <span id="val-una-top" class="font-mono text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">· 98 mM</span>
+          </div>
+        </div>
+
+        <!-- 8. Urine pH / GFR -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Final Urine pH (normal 5.0–7.5; fails to drop <5.5 in Distal RTA-1) and Glomerular Filtration Rate (mL/min).">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>UpH / GFR</span>
+            <span id="delta-uph" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <span id="val-uph" class="font-mono text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">6.0</span>
+            <span id="val-gfr" class="font-mono text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">· 110 mL/m</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. MAIN CLINICAL WORKSPACE ==================== -->
+  <main class="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-3.5 grid grid-cols-1 xl:grid-cols-12 gap-3 min-h-0">
+
+    <!-- PANEL A (xl:col-span-5): SEGMENTAL NEPHRON TRANSPORT CANVAS -->
+    <section class="xl:col-span-5 rounded-xl bg-white dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800/90 flex flex-col min-h-[420px] xl:min-h-[545px] overflow-hidden">
+      <!-- Header: Title + View Switcher + Ghost Toggle -->
+      <div class="px-3.5 py-2.5 border-b border-zinc-200 dark:border-zinc-800/90 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <h2 class="text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Nephron Segmental Handling</h2>
+          <!-- Segmented View Toggle -->
+          <div class="inline-flex items-center rounded-md bg-zinc-100 dark:bg-obsidian border border-zinc-200 dark:border-zinc-800 p-0.5 text-[10.5px] font-medium">
+            <button data-nview="osm" type="button" class="nview-btn px-2 py-0.5 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm transition-colors">Osmolarity &amp; Flow</button>
+            <button data-nview="elec" type="button" class="nview-btn px-2 py-0.5 rounded text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors">Electrolytes</button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 text-[10px] font-mono">
+          <span id="nephron-ref-tag" class="text-zinc-400 dark:text-zinc-500 hidden sm:inline">Ref: Normal</span>
+          <button id="btn-nephron-ghost" type="button" class="px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Toggle dashed Ghost Reference curve from Normal baseline or Pinned Snapshot.">Ghost</button>
+        </div>
+      </div>
+
+      <!-- High-DPI Canvas Container -->
+      <div id="nephron-canvas-wrap" class="relative flex-1 w-full min-h-[340px] p-1">
+        <canvas id="nephron-canvas" class="block w-full h-full"></canvas>
+      </div>
+
+      <!-- Compact Footer -->
+      <div class="px-3.5 py-2 border-t border-zinc-200 dark:border-zinc-800/90 bg-zinc-50/70 dark:bg-subtleDark/60 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 shrink-0">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span data-tooltip="Spot Urine Sodium concentration">U-Na <strong id="foot-una" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">98</strong></span>
+          <span data-tooltip="Spot Urine Potassium concentration">U-K <strong id="foot-uk" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">44</strong></span>
+          <span data-tooltip="Urine Anion Gap = (U-Na + U-K) − U-Cl. Negative reflects intact NH4+ excretion; positive indicates impaired distal acidification (RTA-1/4).">UAG <strong id="foot-uag" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">−5</strong></span>
+          <span data-tooltip="Free Water Clearance cH2O = V × (1 − Uosm / Posm). Negative during water conservation; positive in DI or V2R blockade.">cH₂O <strong id="foot-ch2o" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">−1.4 L/d</strong></span>
+        </div>
+        <span data-tooltip="Filtered glucose load vs. urinary glucose excretion (glycosuria)" class="text-[10.5px]">Gluc <strong id="foot-gluc" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">0 g/d</strong></span>
+      </div>
+    </section>
+
+    <!-- PANEL B (xl:col-span-4): INTERACTIVE DAVENPORT ACID-BASE DIAGRAM -->
+    <section class="xl:col-span-4 rounded-xl bg-white dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800/90 flex flex-col min-h-[420px] xl:min-h-[545px] overflow-hidden">
+      <!-- Header: Title + Monochrome Overlay Pills -->
+      <div class="px-3.5 py-2.5 border-b border-zinc-200 dark:border-zinc-800/90 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div class="flex items-baseline gap-2">
+          <h2 class="text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Davenport Diagram</h2>
+          <span id="dav-ref-tag" class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500">Ref: Normal</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-1 text-[10px] font-mono">
+          <button data-overlay="isobars" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Henderson-Hasselbalch PaCO2 isobars (15 to 100 mmHg, with 40 mmHg emphasized).">Isobars</button>
+          <button data-overlay="bands" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Physiological Acute/Chronic Respiratory and Metabolic compensation bands.">Comp Bands</button>
+          <button data-overlay="buffer" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Non-bicarbonate blood buffer line (slope −25 mmol/L per pH unit through 7.40, 24).">Buffer</button>
+          <button data-overlay="ghost" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Ghost Reference operating point and dashed trajectory arrow.">Ghost</button>
+        </div>
+      </div>
+
+      <!-- High-DPI Canvas Container -->
+      <div id="davenport-canvas-wrap" class="relative flex-1 w-full min-h-[340px] p-1">
+        <canvas id="davenport-canvas" class="block w-full h-full"></canvas>
+      </div>
+
+      <!-- Compact Footer: Disorder Classification, Winter's & Delta-Delta -->
+      <div class="px-3.5 py-2 border-t border-zinc-200 dark:border-zinc-800/90 bg-zinc-50/70 dark:bg-subtleDark/60 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 shrink-0">
+        <span id="foot-disorder" class="font-sans font-medium text-zinc-800 dark:text-zinc-200 truncate max-w-[200px]">Normal Acid-Base</span>
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <span id="foot-winters" class="tabular-nums">Exp CO₂ 40</span>
+          <span id="foot-dd" class="hidden text-amber-700 dark:text-amber-300 tabular-nums"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL C (xl:col-span-3): RIGHT CONTROL SIDEBAR (3 TABS) -->
+    <aside class="xl:col-span-3 rounded-xl bg-white dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800/90 flex flex-col min-h-[450px] xl:min-h-0 xl:max-h-[calc(100vh-202px)] overflow-hidden">
+      <!-- 3-Tab Segmented Switcher -->
+      <div class="p-2 border-b border-zinc-200 dark:border-zinc-800/90 shrink-0">
+        <div class="grid grid-cols-3 rounded-lg bg-zinc-100/90 dark:bg-obsidian p-0.5 gap-0.5 border border-zinc-200/70 dark:border-zinc-800/90">
+          <button data-tab="pathologies" type="button" class="tab-btn py-1.5 rounded-md text-xs font-medium bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm transition-colors">
+            Pathologies
+          </button>
+          <button data-tab="physiology" type="button" class="tab-btn py-1.5 rounded-md text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors">
+            Physiology
+          </button>
+          <button data-tab="diuretics" type="button" class="tab-btn py-1.5 rounded-md text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors flex items-center justify-center gap-1.5">
+            <span>Diuretics</span>
+            <span id="tab-drug-count" class="hidden font-mono text-[10px] px-1.5 rounded-full bg-violet-500/15 text-violet-700 dark:text-violet-300">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Tab Content Area -->
+      <div class="flex-1 overflow-y-auto p-3">
+
+        <!-- TAB 1: PATHOLOGIES (11 Presets) -->
+        <div id="tab-pathologies" class="space-y-1.5"></div>
+
+        <!-- TAB 2: PHYSIOLOGY (Auto Resp Comp + 9 Grouped Sliders) -->
+        <div id="tab-physiology" class="hidden space-y-4">
+          <!-- Auto Respiratory Comp Toggle -->
+          <div class="p-3 rounded-lg bg-zinc-50 dark:bg-subtleDark border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3" data-tooltip="Automatically sets PaCO2 via Winter's formula (1.5 × HCO3 + 8) in metabolic acidosis or 40 + 0.7 × (HCO3 − 24) in metabolic alkalosis. Dragging PaCO2 manually turns this OFF.">
+            <div>
+              <div class="text-xs font-medium text-zinc-900 dark:text-zinc-100">Auto Respiratory Comp</div>
+              <div class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">Winter's / Met Alkalosis PaCO₂</div>
+            </div>
+            <button id="toggle-autocomp" type="button" role="switch" aria-checked="true" class="relative w-9 h-5 rounded-full bg-tealLight dark:bg-tealDark transition-colors focus:outline-none shrink-0">
+              <span id="autocomp-knob" class="block w-4 h-4 rounded-full bg-white dark:bg-obsidian shadow-sm transform translate-x-4 transition-transform"></span>
+            </button>
+          </div>
+
+          <!-- Grouped Sliders Container -->
+          <div id="phys-sliders-list" class="space-y-4"></div>
+        </div>
+
+        <!-- TAB 3: DIURETICS (7 Stackable Renal Agents) -->
+        <div id="tab-diuretics" class="hidden space-y-2.5">
+          <div class="flex items-center justify-between gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800/90">
+            <span class="text-[11px] text-zinc-500 dark:text-zinc-400">Site-specific stackable renal agents</span>
+            <button id="btn-clear-drugs-tab" type="button" class="hidden text-[11px] font-medium text-violet-700 dark:text-violet-300 hover:underline focus:outline-none">
+              Clear all
+            </button>
+          </div>
+          <div id="drug-sliders-list" class="space-y-2"></div>
+        </div>
+
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ==================== 4. BOTTOM CLINICAL DIAGNOSTICS BAR ==================== -->
+  <footer class="w-full border-t border-zinc-200 dark:border-zinc-800/90 bg-white/85 dark:bg-obsidian/90 shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <div id="diagnostics-badges" class="flex flex-wrap items-center gap-1.5"></div>
+      <div id="active-drugs-summary" class="text-[11px] font-mono flex flex-wrap items-center gap-1.5">
+        <span class="text-zinc-400 dark:text-zinc-500">No active diuretics</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== SEGMENTAL NEPHRON & ACID-BASE SOLVER + CONTROLLER ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const lerp = (a, b, t) => a + (b - a) * t;
+
+    /* =========================================================================
+       1. PRESETS, PHYSIOLOGY SLIDERS & SITE-SPECIFIC DIURETICS
+       ========================================================================= */
+
+    const NORMAL_PARAMS = {
+      gfr: 110,            // mL/min
+      eav: 100,            // Effective Arterial Volume (%)
+      glucose: 90,         // Plasma Glucose (mg/dL)
+      adh: 42,             // Vasopressin / ADH (%)
+      aldo: 35,            // Aldosterone (%)
+      paco2: 40,           // Arterial PaCO2 (mmHg)
+      agAcid: 0,           // Unmeasured HAGMA Acid Load (mmol/L)
+      nonAgBase: 0,        // Non-AG Acid (-) / Base (+) (mmol/L)
+      albumin: 4.0,        // Serum Albumin (g/dL)
+      autoComp: true,      // Auto Respiratory Compensation
+      rtaType: 0,          // 0 = none, 1 = Distal RTA-1, 2 = Proximal RTA-2, 4 = Hypoaldo RTA-4
+      chronicResp: false,  // Chronic respiratory compensation flag
+      dkaMode: false       // Insulin-deficient DKA K+ shift marker
+    };
+
+    const PATHOLOGIES = [
+      {
+        id: 'normal',
+        name: 'Normal Physiology',
+        tag: 'Baseline',
+        desc: 'Balanced filtration, countercurrent multiplier, normal acid-base & K⁺.',
+        params: { ...NORMAL_PARAMS }
+      },
+      {
+        id: 'dka',
+        name: 'Diabetic Ketoacidosis (DKA)',
+        tag: 'HAGMA · Gluc 480',
+        desc: 'Ketoacid HAGMA, Winter’s compensation, glycosuria & osmotic diuresis.',
+        params: { ...NORMAL_PARAMS, gfr: 95, eav: 74, glucose: 480, adh: 68, aldo: 65, agAcid: 14, nonAgBase: 0, autoComp: true, dkaMode: true }
+      },
+      {
+        id: 'siadh',
+        name: 'SIADH',
+        tag: '↑↑ADH · Na 122',
+        desc: 'Inappropriate ADH: euvolemic hyponatremia, high Uosm (~650), UNa > 40.',
+        params: { ...NORMAL_PARAMS, eav: 110, adh: 95, aldo: 22, autoComp: true }
+      },
+      {
+        id: 'central_di',
+        name: 'Central Diabetes Insipidus',
+        tag: '↓↓ADH · Polyuria',
+        desc: 'Absent ADH: AQP2 failure, massive dilute polyuria (>7 L/d) & hypernatremia.',
+        params: { ...NORMAL_PARAMS, eav: 88, adh: 3, aldo: 45, autoComp: true }
+      },
+      {
+        id: 'rta1',
+        name: 'RTA Type 1 (Distal)',
+        tag: 'NAGMA · UpH >5.8',
+        desc: 'Impaired α-intercalated H⁺-ATPase: non-AG acidosis, +UAG, ↓K⁺, alkaline urine.',
+        params: { ...NORMAL_PARAMS, nonAgBase: -10, aldo: 52, rtaType: 1, autoComp: true }
+      },
+      {
+        id: 'rta2',
+        name: 'RTA Type 2 (Proximal)',
+        tag: 'NAGMA · ↓PCT Tm',
+        desc: 'Lowered PCT HCO₃⁻ threshold: intact distal acidification (UpH <5.5) & ↓K⁺.',
+        params: { ...NORMAL_PARAMS, nonAgBase: -9, aldo: 50, rtaType: 2, autoComp: true }
+      },
+      {
+        id: 'rta4',
+        name: 'RTA Type 4 (Hypoaldo)',
+        tag: 'NAGMA · ↑K⁺',
+        desc: 'Aldosterone deficiency/resistance: hyperkalemia, ↓NH₄⁺ (+UAG), UpH <5.4.',
+        params: { ...NORMAL_PARAMS, gfr: 58, nonAgBase: -7, aldo: 6, rtaType: 4, autoComp: true }
+      },
+      {
+        id: 'conns',
+        name: 'Primary Hyperaldosteronism',
+        tag: 'Conn’s · ↑↑Aldo',
+        desc: 'Autonomous aldosterone: ENaC/ROMK surge, met alkalosis, ↓K⁺, mild ↑Na⁺.',
+        params: { ...NORMAL_PARAMS, eav: 115, aldo: 96, nonAgBase: 1.5, autoComp: true }
+      },
+      {
+        id: 'vomiting',
+        name: 'Severe Vomiting',
+        tag: 'Contraction Alk',
+        desc: 'Gastric HCl loss & volume depletion: met alkalosis, FENa <1%, ↓K⁺.',
+        params: { ...NORMAL_PARAMS, gfr: 86, eav: 68, adh: 68, aldo: 82, nonAgBase: 9.5, autoComp: true }
+      },
+      {
+        id: 'copd',
+        name: 'Chronic COPD',
+        tag: 'Chronic Resp Acid',
+        desc: 'Chronic CO₂ retention (PaCO₂ 62) with renal HCO₃⁻ compensation (~33).',
+        params: { ...NORMAL_PARAMS, paco2: 62, autoComp: false, chronicResp: true }
+      },
+      {
+        id: 'mixed_dka_vomit',
+        name: 'Mixed: DKA + Vomiting',
+        tag: 'Δ/Δ > 2.0 · Hidden',
+        desc: 'HAGMA + hidden met alkalosis: near-normal pH/HCO₃⁻ despite AG ~26.',
+        params: { ...NORMAL_PARAMS, gfr: 90, eav: 68, glucose: 440, adh: 72, aldo: 78, agAcid: 14, nonAgBase: 11.5, autoComp: true, dkaMode: true }
+      }
+    ];
+
+    const PHYS_SLIDERS = [
+      { key: 'gfr', group: 'glom', label: 'GFR', unit: 'mL/min', min: 10, max: 150, step: 1, decimals: 0, tip: 'Glomerular Filtration Rate (normal 90–125 mL/min). Determines filtered load of Na+, K+, HCO3-, and glucose.' },
+      { key: 'eav', group: 'glom', label: 'Eff. Arterial Volume', unit: '%', min: 50, max: 150, step: 2, decimals: 0, tip: 'Effective circulating volume perfusing renal baroreceptors. Low EAV drives PCT Na+ avidity, RAAS, and non-osmotic ADH.' },
+      { key: 'glucose', group: 'glom', label: 'Plasma Glucose', unit: 'mg/dL', min: 70, max: 600, step: 5, decimals: 0, tip: 'Filtered freely; above ~180–200 mg/dL exceeds PCT SGLT2 TmG, causing glycosuria and osmotic diuresis.' },
+
+      { key: 'adh', group: 'horm', label: 'ADH (Vasopressin)', unit: '%', min: 0, max: 100, step: 1, decimals: 0, tip: 'Inserts AQP2 water channels in the Collecting Duct. High ADH concentrates urine (SIADH); absent ADH causes dilute polyuria (DI).' },
+      { key: 'aldo', group: 'horm', label: 'Aldosterone', unit: '%', min: 0, max: 100, step: 1, decimals: 0, tip: 'Upregulates CCD ENaC (Na+ retention), ROMK (K+ secretion), and α-intercalated H+-ATPase (acid excretion / alkalosis).' },
+
+      { key: 'paco2', group: 'ab', label: 'PaCO₂', unit: 'mmHg', min: 15, max: 90, step: 0.5, decimals: 1, tip: 'Arterial CO2 tension. Dragging manually turns off Auto Respiratory Comp to simulate acute/chronic respiratory disorders.' },
+      { key: 'agAcid', group: 'ab', label: 'Unmeasured Acid (HAGMA)', unit: 'mM', min: 0, max: 24, step: 0.5, decimals: 1, tip: 'Organic/unmeasured acid load (lactate, ketones, uremic anions, toxic alcohols) that raises AG and consumes HCO3- 1:1.' },
+      { key: 'nonAgBase', group: 'ab', label: 'Non-AG Acid / Base', unit: 'mM', min: -18, max: 18, step: 0.5, decimals: 1, signed: true, tip: 'Negative = Hyperchloremic NAGMA (diarrhea, RTA, saline); Positive = Metabolic Alkalosis (gastric HCl loss, alkali load).' },
+      { key: 'albumin', group: 'ab', label: 'Serum Albumin', unit: 'g/dL', min: 1.5, max: 5.0, step: 0.1, decimals: 1, tip: 'Weak negatively charged plasma protein. Each 1 g/dL drop below 4.0 lowers measured AG by 2.5 mmol/L (Figge correction).' }
+    ];
+
+    const DIURETICS = [
+      {
+        id: 'acetazolamide', name: 'Acetazolamide', siteTag: 'PCT · CA-IV', badge: 'CA-i', segX: 0.16,
+        maxDose: 500, unit: 'mg', decimals: 0,
+        effects: '↓PCT HCO₃⁻/Na⁺ · Alk Urine · NAGMA'
+      },
+      {
+        id: 'empagliflozin', name: 'Empagliflozin (SGLT2i)', siteTag: 'PCT · SGLT2', badge: 'SGLT2i', segX: 0.24,
+        maxDose: 25, unit: 'mg', decimals: 0,
+        effects: '↓↓TmG · Glycosuria · Osm Diuresis'
+      },
+      {
+        id: 'furosemide', name: 'Furosemide', siteTag: 'TAL · NKCC2', badge: 'NKCC2-i', segX: 0.56,
+        maxDose: 160, unit: 'mg IV', decimals: 0,
+        effects: '↓↓Medulla Gradient · ↑↑FENa · ↓K⁺ · Alk'
+      },
+      {
+        id: 'hctz', name: 'Hydrochlorothiazide', siteTag: 'DCT · NCC', badge: 'NCC-i', segX: 0.72,
+        maxDose: 50, unit: 'mg', decimals: 0,
+        effects: '↓DCT Dilution · ↓Na⁺ · ↓K⁺ · Mild Alk'
+      },
+      {
+        id: 'amiloride', name: 'Amiloride', siteTag: 'CCD · ENaC', badge: 'ENaC-i', segX: 0.85,
+        maxDose: 20, unit: 'mg', decimals: 0,
+        effects: 'Blocks ENaC · K⁺-Sparing · ↑K⁺'
+      },
+      {
+        id: 'spironolactone', name: 'Spironolactone', siteTag: 'CCD · MR', badge: 'MR-antag', segX: 0.90,
+        maxDose: 200, unit: 'mg', decimals: 0,
+        effects: 'Blocks Aldo Receptor · K⁺-Sparing'
+      },
+      {
+        id: 'tolvaptan', name: 'Tolvaptan', siteTag: 'CD · V2R', badge: 'V2R-i', segX: 0.95,
+        maxDose: 60, unit: 'mg', decimals: 0,
+        effects: 'Blocks ADH/AQP2 · Aquaresis · ↑Na⁺'
+      }
+    ];
+
+    /* =========================================================================
+       2. COUPLED SEGMENTAL NEPHRON MASS-BALANCE & ACID-BASE SOLVER
+       ========================================================================= */
+
+    const N_GRID = 100; // Longitudinal resolution along nephron (x = 0..1)
+
+    function solveNephronAndAcidBase(params, drugs) {
+      const dAcet  = drugs.acetazolamide || 0;
+      const dSglt2 = drugs.empagliflozin || 0;
+      const dFuro  = drugs.furosemide || 0;
+      const dHctz  = drugs.hctz || 0;
+      const dAmil  = drugs.amiloride || 0;
+      const dSpiro = drugs.spironolactone || 0;
+      const dTolv  = drugs.tolvaptan || 0;
+
+      const gfr = clamp(params.gfr, 10, 150);
+      const eav = clamp(params.eav, 50, 150);
+      const glucose = clamp(params.glucose, 70, 600);
+      const albumin = clamp(params.albumin, 1.5, 5.0);
+      const rtaType = params.rtaType || 0;
+
+      // 1. Effective Hormonal Activities (after EAV baroreceptors & receptor blockers)
+      const eavAldoBoost = (100 - eav) * 0.35;
+      const rawAldo = clamp(params.aldo + eavAldoBoost + 18 * dFuro + 10 * dHctz, 0, 100);
+      let effAldo = clamp(rawAldo * (1 - 0.86 * dSpiro), 0, 100);
+      if (rtaType === 4) effAldo = Math.min(effAldo, 8);
+
+      const eavAdhBoost = Math.max(0, 90 - eav) * 0.40;
+      const rawAdh = clamp(params.adh + eavAdhBoost, 0, 100);
+      const effAdh = clamp(rawAdh * (1 - 0.90 * dTolv), 0, 100);
+
+      // 2. Acid-Base Equilibrium (Exact Henderson-Hasselbalch + Winter's + Delta-Delta)
+      // Low GFR (<30) contributes modest uremic unmeasured acid
+      const uremicAg = gfr < 32 ? (32 - gfr) * 0.22 : 0;
+      const effAgAcid = clamp(params.agAcid + uremicAg, 0, 28);
+
+      // Non-AG acid/base net offset (diuretics + aldosterone excess/deficiency)
+      const aldoMetShift = (effAldo - 35) * 0.105; // +6.4 at Conn's 96%, 0 at Normal 35%
+      const drugMetShift = -5.5 * dAcet + 4.4 * dFuro + 2.6 * dHctz - 1.6 * dAmil - 1.2 * dSpiro;
+      const effNonAg = params.nonAgBase + aldoMetShift + drugMetShift;
+
+      // Provisional metabolic HCO3- before respiratory PaCO2 determination
+      const hco3MetProv = clamp(24.0 - effAgAcid + effNonAg, 4.5, 44.0);
+
+      let effPaCO2 = clamp(params.paco2, 15, 90);
+      if (params.autoComp) {
+        if (hco3MetProv < 22.0) {
+          // Exact Winter's Formula: 1.5 * HCO3 + 8
+          effPaCO2 = clamp(1.5 * hco3MetProv + 8.0, 14.0, 42.0);
+        } else if (hco3MetProv > 26.0) {
+          // Metabolic Alkalosis Compensation: 40 + 0.7 * (HCO3 - 24)
+          effPaCO2 = clamp(40.0 + 0.7 * (hco3MetProv - 24.0), 40.0, 58.0);
+        } else {
+          // Smooth continuity around normal (24.0 -> 40.0 exactly)
+          effPaCO2 = 40.0 + 0.75 * (hco3MetProv - 24.0);
+        }
+      }
+
+      // Respiratory buffering / renal compensation onto HCO3- when PaCO2 is manually set (autoComp OFF)
+      let respHco3Shift = 0;
+      if (!params.autoComp) {
+        const dCO2 = effPaCO2 - 40.0;
+        if (dCO2 > 0) {
+          respHco3Shift = (params.chronicResp ? 0.40 : 0.10) * dCO2;
+        } else {
+          respHco3Shift = (params.chronicResp ? 0.45 : 0.20) * dCO2;
+        }
+      }
+
+      const hco3 = clamp(hco3MetProv + respHco3Shift, 4.0, 46.0);
+      const pH = 6.10 + Math.log10(hco3 / (0.0301 * effPaCO2));
+
+      // 3. Plasma Electrolytes (Na+, Cl-, Anion Gap, K+)
+      // Plasma Na+: anchored at 140 at Normal ADH=42, Aldo=35, Glucose=90
+      const adhNaShift = effAdh >= 42
+        ? -(effAdh - 42) * 0.34   // SIADH (adh=95) -> -18.0 -> Na ~122
+        : +(42 - effAdh) * 0.36;  // Central DI (adh=3) -> +14.0 -> Na ~154
+      const aldoNaShift = (effAldo - 35) * 0.055;
+      const hctzNaShift = -4.2 * dHctz;
+      const gluNaShift = -1.6 * Math.max(0, (glucose - 100) / 100);
+      const plasmaNa = clamp(140.0 + adhNaShift + aldoNaShift + hctzNaShift + gluNaShift, 112, 168);
+
+      // Exact Albumin-Corrected & Measured Anion Gap
+      const agCorr = 12.0 + effAgAcid;
+      const agMeas = Math.max(2.0, agCorr - 2.5 * (4.0 - albumin));
+      const plasmaCl = clamp(plasmaNa - hco3 - agMeas, 70, 145);
+
+      // Delta-Delta Ratio (when HAGMA: AG_corr > 14)
+      const isHagma = agCorr > 14.0;
+      const deltaAG = agCorr - 12.0;
+      const deltaHCO3 = 24.0 - hco3;
+      const deltaRatio = isHagma ? deltaAG / Math.max(0.5, deltaHCO3) : null;
+
+      // Expected PaCO2 (Winter's / Met Alk) for clinical comparison
+      let expPaCO2 = 40.0;
+      let expTol = 2.0;
+      if (hco3 < 22.0) {
+        expPaCO2 = 1.5 * hco3 + 8.0;
+        expTol = 2.0;
+      } else if (hco3 > 26.0) {
+        expPaCO2 = 40.0 + 0.7 * (hco3 - 24.0);
+        expTol = 5.0;
+      }
+
+      // Plasma K+ (Normal = 4.2 mmol/L)
+      let kShift = -(effAldo - 35) * 0.019;
+      kShift += -0.85 * dFuro - 0.65 * dHctz - 0.45 * dAcet + 1.05 * dAmil + 0.85 * dSpiro;
+      if (rtaType === 1 || rtaType === 2) {
+        kShift -= 1.05; // Renal K+ wasting in RTA-1 & RTA-2
+      } else if (rtaType === 4) {
+        kShift += 1.05; // Hypoaldo hyperkalemia
+      } else {
+        // Transcellular H+/K+ shift (stronger in mineral acidemia & insulin-deficient DKA)
+        kShift += (7.40 - pH) * 2.4;
+        if (params.dkaMode) kShift += 0.65;
+      }
+      if (params.nonAgBase >= 6.0) kShift -= 0.55; // Gastric + renal K+ depletion in vomiting
+      if (gfr < 30) kShift += (30 - gfr) * 0.055;
+      const plasmaK = clamp(4.2 + kShift, 2.0, 7.8);
+
+      const plasmaOsm = 2 * plasmaNa + glucose / 18.0 + 5.0; // ~290 mOsm/kg at baseline
+
+      /* =======================================================================
+         4. SEGMENTAL NEPHRON MASS-BALANCE (Glom -> PCT -> Loop -> DCT -> CD)
+         ======================================================================= */
+      const gfrLd = gfr * 1.44; // L/day (110 mL/min -> 158.4 L/day)
+
+      // --- A. GLUCOSE HANDLING IN PCT (SGLT2 + Splay) ---
+      // Filtered glucose in mg/min = gfr * (glucose / 100)
+      const filtGluMgMin = gfr * (glucose / 100.0);
+      const filtGluGDay = (filtGluMgMin * 1440.0) / 1000.0; // g/day (~142.6 g/d at normal)
+      const baseTmG = 375.0 * (gfr / 110.0);
+      const effTmG = baseTmG * (1 - 0.78 * dSglt2);
+      const splayStart = 185.0 * (1 - 0.72 * dSglt2); // Plasma threshold drops sharply on SGLT2i
+
+      let gluExcrGDay = 0;
+      if (glucose > splayStart || dSglt2 > 0.02) {
+        const excessPlasma = Math.max(0, glucose - splayStart);
+        // Smooth splay transition into TmG saturation
+        const splayExcess = Math.max(0, filtGluMgMin - effTmG);
+        const splayLeak = 0.24 * gfr * (excessPlasma / 100.0) * (1 - Math.exp(-excessPlasma / 95.0));
+        const excrMgMin = Math.min(filtGluMgMin, Math.max(splayExcess, splayLeak) + (dSglt2 > 0 ? 0.36 * dSglt2 * filtGluMgMin : 0));
+        gluExcrGDay = (excrMgMin * 1440.0) / 1000.0;
+      }
+      const gluRemFrac = filtGluGDay > 0.01 ? clamp(gluExcrGDay / filtGluGDay, 0, 0.85) : 0; // Fraction remaining post-PCT (0..1)
+
+      // --- B. CORTICOMEDULLARY INTERSTITIAL GRADIENT ---
+      // Cortex = ~300 mOsm/kg; Inner Medulla = 1200 mOsm/kg (flattens dramatically with Furosemide!)
+      const gfrGradFactor = gfr < 45 ? (0.65 + 0.35 * (gfr / 45.0)) : 1.0;
+      const medullaPeak = 300.0 + (1200.0 - 300.0) * (1 - 0.82 * dFuro) * gfrGradFactor;
+
+      // --- C. PCT HANDLING (x = 0 -> 0.32) ---
+      // Na+ & H2O iso-osmotic bulk reabsorption (~66% at baseline)
+      const eavPctBoost = (100 - eav) * 0.0022;
+      const osmoticPctPenalty = gluRemFrac * 0.26;
+      const pctNaReab = clamp(0.66 + eavPctBoost - 0.14 * dAcet - 0.045 * dSglt2 - osmoticPctPenalty, 0.34, 0.80);
+      const naEndPCT = 1.0 - pctNaReab;
+      const volEndPCT = clamp(naEndPCT + osmoticPctPenalty * 0.12, 0.18, 0.68);
+      const osmEndPCT = plasmaOsm; // Iso-osmotic
+
+      // HCO3- reabsorption in PCT (~85% normally; blocked by Acetazolamide or RTA-2)
+      let pctHco3Reab = 0.85 - 0.38 * dAcet + (eav < 90 ? 0.05 : 0) + (params.chronicResp ? 0.06 : 0);
+      if (rtaType === 2) pctHco3Reab -= 0.26;
+      pctHco3Reab = clamp(pctHco3Reab, 0.32, 0.94);
+      const hco3EndPCT = 1.0 - pctHco3Reab;
+
+      // K+ reabsorption in PCT (~65% normally)
+      const kEndPCT = clamp(0.35 + 0.06 * dAcet + osmoticPctPenalty * 0.18, 0.22, 0.55);
+
+      // --- D. LOOP OF HENLE (tDL: 0.32->0.48, TAL: 0.48->0.64) ---
+      // tDL: water abstraction equilibrating with medullaPeak
+      const osmHairpin = medullaPeak;
+      const volHairpin = clamp(volEndPCT * (osmEndPCT / osmHairpin), 0.06, volEndPCT);
+
+      // TAL: water-impermeable; NKCC2 pumps Na+, K+, Cl- (blocked up to 78% by Furosemide)
+      const talNaReab = Math.min(naEndPCT * 0.82, 0.255 * (1 - 0.78 * dFuro));
+      const naEndTAL = Math.max(0.03, naEndPCT - talNaReab);
+      const volEndTAL = volHairpin; // Water-impermeable!
+
+      // TAL dilution below plasma osmolarity
+      const osmEndTAL = clamp(108.0 + 165.0 * dFuro + 65.0 * gluRemFrac, 95, 310);
+
+      // TAL HCO3- & K+ reabsorption
+      const hco3EndTAL = Math.max(0.01, hco3EndPCT - Math.min(hco3EndPCT * 0.65, 0.095));
+      const kEndTAL = clamp(kEndPCT - 0.23 * (1 - 0.78 * dFuro), 0.08, 0.48);
+
+      // --- E. DISTAL CONVOLUTED TUBULE (DCT: 0.64->0.80) ---
+      // Water-impermeable cortical diluting segment; NCC blocked by HCTZ
+      const dctNaReab = Math.min(naEndTAL * 0.72, 0.056 * (1 - 0.82 * dHctz));
+      const naEndDCT = Math.max(0.012, naEndTAL - dctNaReab);
+      const volEndDCT = volEndTAL; // Water-impermeable!
+      const osmEndDCT = clamp(osmEndTAL - 38.0 * (1 - 0.86 * dHctz), 65, 310);
+      const hco3EndDCT = Math.max(0.005, hco3EndTAL * 0.82);
+      const kEndDCT = Math.max(0.06, kEndTAL - 0.015);
+
+      // --- F. COLLECTING DUCT (CCD/MCD: 0.80->1.00) ---
+      // ENaC Na+ reabsorption (modulated by effAldo, blocked by Amiloride)
+      const aldoFactor = effAldo / 35.0; // 1.0 at baseline
+      const maxCcdNaCap = clamp(0.0315 * (0.55 + 0.45 * aldoFactor) * (1 - 0.78 * dAmil), 0.004, 0.075);
+      // Prerenal avidity in low EAV further enhances distal Na+ conservation
+      const eavDistalBoost = Math.max(0, 100 - eav) * 0.00045;
+      const ccdNaReab = Math.min(naEndDCT * 0.96, maxCcdNaCap + eavDistalBoost);
+      const feNaFrac = clamp(naEndDCT - ccdNaReab, 0.0012, 0.26); // Normal ~0.007 (0.7%)
+      const feNaPct = feNaFrac * 100.0;
+
+      // Principal Cell K+ Secretion (ticks UP in CCD under high Aldo or high distal Na+/flow!)
+      const distalFlowDelivery = Math.max(0, (naEndDCT - 0.038) * 3.8);
+      const kSecreteDrive = (0.045 * aldoFactor + 0.065 * distalFlowDelivery * (0.45 + 0.55 * aldoFactor)) * (1 - 0.88 * dAmil);
+      const kSecretion = rtaType === 4 ? kSecreteDrive * 0.22 : kSecreteDrive;
+      const feKFrac = clamp(kEndDCT + kSecretion - 0.012, 0.03, 0.65);
+
+      // Distal HCO3- reabsorption & Urinary Acidification
+      let ccdHco3Reab = (0.052 + 0.025 * Math.max(0, aldoFactor - 1)) * (1 - 0.45 * dAmil);
+      if (rtaType === 1) ccdHco3Reab *= 0.28; // Distal H+-ATPase defect
+      const feHco3Frac = clamp(hco3EndDCT - Math.min(hco3EndDCT, ccdHco3Reab), 0, 0.45);
+
+      // Urine pH & Urine Anion Gap (UAG = UNa + UK - UCl)
+      let urinePH = 6.00;
+      let urineAG = -5.0; // Normal slightly negative (-5 mEq/L)
+
+      if (rtaType === 1) {
+        // Distal RTA-1: cannot acidify urine below 5.8 despite acidemia; positive UAG
+        urinePH = clamp(6.45 + (pH - 7.28) * 1.2, 5.95, 7.20);
+        urineAG = +22.0;
+      } else if (rtaType === 4) {
+        // RTA-4: intact H+-ATPase (UpH < 5.4) but impaired NH4+ synthesis (+UAG)
+        urinePH = clamp(5.25 + (pH - 7.30) * 1.1, 4.9, 5.6);
+        urineAG = +15.0;
+      } else if (rtaType === 2) {
+        // RTA-2 steady state: intact distal acidification -> UpH < 5.5, negative UAG
+        urinePH = clamp(5.30 + Math.max(0, hco3 - 15) * 0.18, 5.0, 7.2);
+        urineAG = -12.0;
+      } else {
+        // Normal intact renal acidification response to systemic pH & bicarbonaturia
+        urinePH = 6.00 + (pH - 7.40) * 4.8 + 1.55 * dAcet + feHco3Frac * 4.5 - 0.25 * (aldoFactor - 1);
+        urinePH = clamp(urinePH, 4.80, 7.85);
+        // Acidemia stimulates strong NH4+ excretion -> strongly negative UAG
+        if (pH < 7.36) {
+          urineAG = clamp(-8.0 - (7.36 - pH) * 140.0 + 18 * dAcet, -42, 24);
+        } else if (pH > 7.45) {
+          urineAG = clamp(-2.0 + (pH - 7.45) * 90.0 + 18 * dAcet, -15, 30);
+        } else {
+          urineAG = -5.0 + 20.0 * dAcet;
+        }
+      }
+
+      // --- G. FINAL URINE OSMOLARITY, VOLUME & FREE WATER CLEARANCE ---
+      // Excreted daily osmoles (mOsm/day)
+      const filtNaMmolDay = gfrLd * plasmaNa;          // ~22,176 mmol/d
+      const filtKMmolDay = gfrLd * plasmaK;            // ~665 mmol/d
+      const uNaMmolDay = filtNaMmolDay * feNaFrac;     // ~155 mmol/d at normal
+      const uKMmolDay = filtKMmolDay * feKFrac;        // ~68 mmol/d at normal
+      const uGluMmolDay = (gluExcrGDay * 1000.0) / 180.16;
+      const baseUreaOsmDay = 420.0 * (0.4 + 0.6 * (gfr / 110.0));
+      const totalOsmDay = baseUreaOsmDay + 2.0 * uNaMmolDay + 2.0 * uKMmolDay + uGluMmolDay;
+
+      // ADH/AQP2 water equilibration across Collecting Duct
+      const adhNorm = effAdh / 100.0;
+      const aqp2 = Math.pow(adhNorm, 0.88);
+      // Osmotic diuresis (heavy glucose or massive natriuresis) limits max concentrating power
+      const osmLoadRatio = clamp((totalOsmDay - 950) / 1600, 0, 0.62);
+      const maxAchievableOsm = lerp(medullaPeak, 330.0, osmLoadRatio);
+      const uOsm = clamp(osmEndDCT + (maxAchievableOsm - osmEndDCT) * aqp2, 62, 1200);
+
+      // Final Urine Volume (L/day) via exact solute-to-osmolarity mass balance
+      const uVolLd = clamp(totalOsmDay / uOsm, 0.35, 14.5);
+      const volFinalFrac = clamp(uVolLd / gfrLd, 0.002, 0.35);
+
+      // Spot Urine Concentrations & Free Water Clearance
+      const uNaConc = clamp(uNaMmolDay / uVolLd, 4, 240);
+      const uKConc = clamp(uKMmolDay / uVolLd, 5, 160);
+      const cH2O = uVolLd * (1.0 - uOsm / plasmaOsm); // L/day
+
+      /* =======================================================================
+         5. BUILD SMOOTH LONGITUDINAL CURVE ARRAYS (N_GRID + 1 points, x = 0..1)
+         ======================================================================= */
+      const osmCurve = new Float32Array(N_GRID + 1);
+      const gradCurve = new Float32Array(N_GRID + 1);
+      const volCurve = new Float32Array(N_GRID + 1);
+      const naCurve = new Float32Array(N_GRID + 1);
+      const hco3Curve = new Float32Array(N_GRID + 1);
+      const kCurve = new Float32Array(N_GRID + 1);
+      const gluCurve = new Float32Array(N_GRID + 1);
+
+      const sStep = u => u * u * (3 - 2 * u);
+
+      for (let i = 0; i <= N_GRID; i++) {
+        const x = i / N_GRID;
+
+        // Corticomedullary Interstitial Gradient background (300 cortex -> medullaPeak at hairpin 0.48 & inner MCD 0.97)
+        let ig = 300.0;
+        if (x >= 0.32 && x <= 0.64) {
+          const u = (x - 0.32) / 0.32; // 0..1 across loop, peak at 0.5
+          const bell = Math.pow(Math.sin(Math.PI * u), 1.45);
+          ig = 300.0 + (medullaPeak - 300.0) * bell;
+        } else if (x > 0.82) {
+          const u = (x - 0.82) / 0.18; // Descending into medullary CD
+          ig = 300.0 + (medullaPeak - 300.0) * Math.pow(u, 1.35);
+        }
+        gradCurve[i] = ig;
+
+        if (x <= 0.32) {
+          // PCT (0 -> 0.32)
+          const u = x / 0.32;
+          const e = 1 - Math.pow(1 - u, 1.55); // Faster early PCT reabsorption
+          osmCurve[i] = plasmaOsm;
+          volCurve[i] = lerp(100, volEndPCT * 100, e);
+          naCurve[i] = lerp(100, naEndPCT * 100, e);
+          hco3Curve[i] = lerp(100, hco3EndPCT * 100, 1 - Math.pow(1 - u, 1.8));
+          kCurve[i] = lerp(100, kEndPCT * 100, e);
+          // Glucose is rapidly reabsorbed in early S1/S2 PCT!
+          const gluDrop = 1 - Math.pow(1 - u, 2.8);
+          gluCurve[i] = lerp(100, gluRemFrac * 100, gluDrop);
+        } else if (x <= 0.48) {
+          // Thin Descending Limb (0.32 -> 0.48)
+          const u = (x - 0.32) / 0.16;
+          const s = sStep(u);
+          osmCurve[i] = lerp(osmEndPCT, osmHairpin, s);
+          volCurve[i] = lerp(volEndPCT * 100, volHairpin * 100, s);
+          naCurve[i] = naEndPCT * 100;
+          hco3Curve[i] = hco3EndPCT * 100;
+          kCurve[i] = kEndPCT * 100;
+          gluCurve[i] = gluRemFrac * 100;
+        } else if (x <= 0.64) {
+          // Thick Ascending Limb (0.48 -> 0.64) — water-impermeable!
+          const u = (x - 0.48) / 0.16;
+          const s = sStep(u);
+          osmCurve[i] = lerp(osmHairpin, osmEndTAL, s);
+          volCurve[i] = volEndTAL * 100;
+          naCurve[i] = lerp(naEndPCT * 100, naEndTAL * 100, s);
+          hco3Curve[i] = lerp(hco3EndPCT * 100, hco3EndTAL * 100, s);
+          kCurve[i] = lerp(kEndPCT * 100, kEndTAL * 100, s);
+          gluCurve[i] = gluRemFrac * 100;
+        } else if (x <= 0.80) {
+          // DCT (0.64 -> 0.80) — water-impermeable cortical diluting segment!
+          const u = (x - 0.64) / 0.16;
+          const s = sStep(u);
+          osmCurve[i] = lerp(osmEndTAL, osmEndDCT, s);
+          volCurve[i] = volEndDCT * 100;
+          naCurve[i] = lerp(naEndTAL * 100, naEndDCT * 100, s);
+          hco3Curve[i] = lerp(hco3EndTAL * 100, hco3EndDCT * 100, s);
+          kCurve[i] = lerp(kEndTAL * 100, kEndDCT * 100, s);
+          gluCurve[i] = gluRemFrac * 100;
+        } else {
+          // Collecting Duct (0.80 -> 1.00)
+          const u = (x - 0.80) / 0.20;
+          const s = sStep(u);
+          osmCurve[i] = lerp(osmEndDCT, uOsm, Math.pow(u, 1.25));
+          volCurve[i] = lerp(volEndDCT * 100, volFinalFrac * 100, s);
+          naCurve[i] = lerp(naEndDCT * 100, feNaFrac * 100, s);
+          hco3Curve[i] = lerp(hco3EndDCT * 100, feHco3Frac * 100, s);
+          // Principal cell K+ secretion uptick happens across CCD!
+          kCurve[i] = lerp(kEndDCT * 100, feKFrac * 100, s);
+          gluCurve[i] = gluRemFrac * 100;
+        }
+      }
+
+      /* =======================================================================
+         6. ACID-BASE DISORDER CLASSIFICATION
+         ======================================================================= */
+      let primaryDisorder = 'Normal Acid-Base';
+      let compText = 'Exp CO₂ 40';
+      let ddText = '';
+
+      if (pH < 7.35) {
+        if (hco3 < 22 && effPaCO2 > 45) {
+          primaryDisorder = 'Mixed Resp + Met Acidosis';
+        } else if (hco3 < 22) {
+          primaryDisorder = isHagma ? 'Metabolic Acidosis (HAGMA)' : 'Metabolic Acidosis (NAGMA)';
+        } else if (effPaCO2 > 45) {
+          primaryDisorder = params.chronicResp ? 'Chronic Resp Acidosis' : 'Acute Resp Acidosis';
+        } else {
+          primaryDisorder = 'Mild Acidemia';
+        }
+      } else if (pH > 7.45) {
+        if (hco3 > 26 && effPaCO2 < 35) {
+          primaryDisorder = 'Mixed Resp + Met Alkalosis';
+        } else if (hco3 > 26) {
+          primaryDisorder = 'Metabolic Alkalosis';
+        } else if (effPaCO2 < 35) {
+          primaryDisorder = 'Respiratory Alkalosis';
+        } else {
+          primaryDisorder = 'Mild Alkalemia';
+        }
+      } else {
+        // Near-normal pH: screen for compensated or mixed opposing disorders!
+        if (isHagma && deltaRatio !== null && deltaRatio > 2.0) {
+          primaryDisorder = 'Mixed HAGMA + Met Alkalosis';
+        } else if (effPaCO2 > 46 && hco3 > 27) {
+          primaryDisorder = 'Compensated Resp Acidosis';
+        } else if (effPaCO2 < 34 && hco3 < 21) {
+          primaryDisorder = 'Compensated Acidosis / Alk';
+        }
+      }
+
+      if (hco3 < 22.0) {
+        compText = `Winter’s ${(expPaCO2 - 2).toFixed(0)}–${(expPaCO2 + 2).toFixed(0)}`;
+      } else if (hco3 > 26.0) {
+        compText = `Exp CO₂ ${expPaCO2.toFixed(0)} ±5`;
+      } else {
+        compText = `PaCO₂ ${effPaCO2.toFixed(0)} mmHg`;
+      }
+
+      if (isHagma && deltaRatio !== null) {
+        const drStr = deltaRatio > 5 ? '>5.0' : deltaRatio.toFixed(1);
+        if (deltaRatio < 0.8) ddText = `Δ/Δ ${drStr} (+NAGMA)`;
+        else if (deltaRatio <= 2.0) ddText = `Δ/Δ ${drStr} (Pure HAGMA)`;
+        else ddText = `Δ/Δ ${drStr} (+Met Alk)`;
+      }
+
+      return {
+        metrics: {
+          pH,
+          paCO2: effPaCO2,
+          hco3,
+          agCorr,
+          agMeas,
+          isHagma,
+          deltaRatio,
+          plasmaNa,
+          plasmaK,
+          plasmaCl,
+          plasmaOsm,
+          uOsm,
+          uVolLd,
+          feNaPct,
+          uNaConc,
+          uKConc,
+          urinePH,
+          urineAG,
+          cH2O,
+          gfr,
+          gluExcrGDay,
+          filtGluGDay,
+          expPaCO2,
+          expTol,
+          medullaPeak,
+          effAldo,
+          effAdh,
+          primaryDisorder,
+          compText,
+          ddText
+        },
+        curves: {
+          osm: osmCurve,
+          grad: gradCurve,
+          vol: volCurve,
+          na: naCurve,
+          hco3: hco3Curve,
+          k: kCurve,
+          glu: gluCurve
+        }
+      };
+    }
+
+    /* =========================================================================
+       3. APPLICATION STATE & SMOOTH ANIMATION INTERPOLATION BUFFERS
+       ========================================================================= */
+
+    const state = {
+      activePresetId: 'normal',
+      params: { ...NORMAL_PARAMS },
+      drugs: {},
+      nephronView: 'osm', // 'osm' | 'elec'
+      nephronGhost: true,
+      davOverlays: {
+        isobars: true,
+        bands: true,
+        buffer: true,
+        ghost: true
+      },
+      currentSim: null,
+      referenceSim: null,
+      referenceLabel: 'Normal',
+      // Animated display state (lerped smoothly at 60fps)
+      anim: null
+    };
+
+    for (const d of DIURETICS) state.drugs[d.id] = 0;
+
+    function cloneCurves(c) {
+      return {
+        osm: new Float32Array(c.osm),
+        grad: new Float32Array(c.grad),
+        vol: new Float32Array(c.vol),
+        na: new Float32Array(c.na),
+        hco3: new Float32Array(c.hco3),
+        k: new Float32Array(c.k),
+        glu: new Float32Array(c.glu)
+      };
+    }
+
+    function updateSimulation() {
+      try {
+        state.currentSim = solveNephronAndAcidBase(state.params, state.drugs);
+        if (!state.referenceSim) {
+          state.referenceSim = state.currentSim;
+        }
+        if (!state.anim) {
+          state.anim = {
+            pH: state.currentSim.metrics.pH,
+            hco3: state.currentSim.metrics.hco3,
+            paCO2: state.currentSim.metrics.paCO2,
+            plasmaOsm: state.currentSim.metrics.plasmaOsm,
+            curves: cloneCurves(state.currentSim.curves)
+          };
+        }
+
+        // Sync PaCO2 slider position visually when Auto Comp drives PaCO2
+        if (state.params.autoComp) {
+          const calcCO2 = state.currentSim.metrics.paCO2;
+          state.params.paco2 = calcCO2;
+          const co2Slider = document.getElementById('p-slider-paco2');
+          const co2Val = document.getElementById('p-val-paco2');
+          if (co2Slider) co2Slider.value = calcCO2;
+          if (co2Val) co2Val.textContent = calcCO2.toFixed(1);
+        }
+
+        renderTelemetry();
+        renderDiagnostics();
+        updateHeaderBadges();
+      } catch (err) {
+        console.error('NephroSim error:', err);
+      }
+    }
+
+    /* =========================================================================
+       4. TELEMETRY & CLINICAL DIAGNOSTICS RENDERING
+       ========================================================================= */
+
+    function formatDelta(curr, ref, decimals = 1, invertColor = false) {
+      const diff = curr - ref;
+      const thresh = decimals === 0 ? 0.5 : (decimals === 2 ? 0.006 : 0.08);
+      if (Math.abs(diff) < thresh) return { text: '—', cls: 'text-zinc-300 dark:text-zinc-700' };
+      const sign = diff > 0 ? '+' : '';
+      const text = `${sign}${diff.toFixed(decimals)}`;
+      const isPos = diff > 0;
+      let cls = isPos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+      if (invertColor) cls = isPos ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
+      return { text, cls };
+    }
+
+    function setDelta(id, obj) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = obj.text;
+      el.className = `font-mono text-[10px] tabular-nums ${obj.cls}`;
+    }
+
+    function renderTelemetry() {
+      const m = state.currentSim.metrics;
+      const r = state.referenceSim.metrics;
+      const norm = 'text-zinc-900 dark:text-zinc-100';
+      const muted = 'text-zinc-500 dark:text-zinc-400';
+      const amber = 'text-amber-600 dark:text-amber-400';
+      const rose = 'text-rose-600 dark:text-rose-400';
+
+      // 1. pH
+      const phEl = document.getElementById('val-ph');
+      phEl.textContent = m.pH.toFixed(2);
+      const phTone = (m.pH < 7.25 || m.pH > 7.55) ? rose : ((m.pH < 7.35 || m.pH > 7.45) ? amber : norm);
+      phEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${phTone}`;
+      setDelta('delta-ph', formatDelta(m.pH, r.pH, 2, false));
+
+      // 2. PaCO2
+      const co2El = document.getElementById('val-paco2');
+      co2El.textContent = m.paCO2.toFixed(1);
+      const co2Tone = (m.paCO2 > 55 || m.paCO2 < 24) ? amber : norm;
+      co2El.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${co2Tone}`;
+      setDelta('delta-paco2', formatDelta(m.paCO2, r.paCO2, 1, true));
+
+      // 3. HCO3-
+      const hco3El = document.getElementById('val-hco3');
+      hco3El.textContent = m.hco3.toFixed(1);
+      const hco3Tone = (m.hco3 < 15 || m.hco3 > 34) ? rose : ((m.hco3 < 22 || m.hco3 > 26) ? amber : norm);
+      hco3El.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${hco3Tone}`;
+      setDelta('delta-hco3', formatDelta(m.hco3, r.hco3, 1, false));
+
+      // 4. Anion Gap + Delta/Delta
+      const agEl = document.getElementById('val-ag');
+      agEl.textContent = m.agCorr.toFixed(1);
+      agEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${m.agCorr > 18 ? rose : (m.agCorr > 14 ? amber : norm)}`;
+      setDelta('delta-ag', formatDelta(m.agCorr, r.agCorr, 1, true));
+
+      const ddEl = document.getElementById('val-dd');
+      if (m.isHagma && m.deltaRatio !== null) {
+        ddEl.classList.remove('hidden');
+        ddEl.textContent = `Δ/Δ ${m.deltaRatio > 5 ? '>5' : m.deltaRatio.toFixed(1)}`;
+      } else {
+        ddEl.classList.add('hidden');
+      }
+
+      // 5. Na+ / K+
+      const naEl = document.getElementById('val-na');
+      const kEl = document.getElementById('val-k');
+      naEl.textContent = Math.round(m.plasmaNa);
+      kEl.textContent = m.plasmaK.toFixed(1);
+      naEl.className = `font-mono text-[16px] font-semibold tabular-nums leading-tight ${
+        (m.plasmaNa < 128 || m.plasmaNa > 152) ? rose : ((m.plasmaNa < 135 || m.plasmaNa > 145) ? amber : norm)
+      }`;
+      kEl.className = `font-mono text-[16px] font-semibold tabular-nums leading-tight ${
+        (m.plasmaK < 3.0 || m.plasmaK > 5.8) ? rose : ((m.plasmaK < 3.5 || m.plasmaK > 5.0) ? amber : norm)
+      }`;
+      setDelta('delta-k', formatDelta(m.plasmaK, r.plasmaK, 1, true));
+
+      // 6. Uosm / Vol
+      const uosmEl = document.getElementById('val-uosm');
+      const uvolEl = document.getElementById('val-uvol');
+      uosmEl.textContent = Math.round(m.uOsm);
+      uvolEl.textContent = `· ${m.uVolLd.toFixed(1)} L/d`;
+      uvolEl.className = `font-mono text-[11px] font-medium tabular-nums ${m.uVolLd > 4.0 || m.uVolLd < 0.5 ? amber : muted}`;
+      setDelta('delta-uosm', formatDelta(m.uOsm, r.uOsm, 0, false));
+
+      // 7. FENa / UNa
+      const fenaEl = document.getElementById('val-fena');
+      fenaEl.textContent = `${m.feNaPct.toFixed(1)}%`;
+      fenaEl.className = `font-mono text-[16px] font-semibold tabular-nums leading-tight ${m.feNaPct > 4.0 ? amber : norm}`;
+      document.getElementById('val-una-top').textContent = `· ${Math.round(m.uNaConc)} mM`;
+      setDelta('delta-fena', formatDelta(m.feNaPct, r.feNaPct, 1, true));
+
+      // 8. Urine pH / GFR
+      const uphEl = document.getElementById('val-uph');
+      const gfrEl = document.getElementById('val-gfr');
+      uphEl.textContent = m.urinePH.toFixed(1);
+      gfrEl.textContent = `· ${Math.round(m.gfr)} mL/m`;
+      gfrEl.className = `font-mono text-[11px] font-medium tabular-nums ${m.gfr < 30 ? rose : (m.gfr < 60 ? amber : muted)}`;
+      setDelta('delta-uph', formatDelta(m.urinePH, r.urinePH, 1, false));
+
+      // Panel Footers
+      document.getElementById('foot-una').textContent = `${Math.round(m.uNaConc)} mM`;
+      document.getElementById('foot-uk').textContent = `${Math.round(m.uKConc)} mM`;
+      document.getElementById('foot-uag').textContent = `${m.urineAG >= 0 ? '+' : ''}${Math.round(m.urineAG)}`;
+      document.getElementById('foot-ch2o').textContent = `${m.cH2O >= 0 ? '+' : ''}${m.cH2O.toFixed(1)} L/d`;
+      document.getElementById('foot-gluc').textContent = m.gluExcrGDay >= 0.5
+        ? `${Math.round(m.gluExcrGDay)} g/d (of ${Math.round(m.filtGluGDay)})`
+        : '0 g/d';
+
+      document.getElementById('foot-disorder').textContent = m.primaryDisorder;
+      document.getElementById('foot-winters').textContent = m.compText;
+      const footDD = document.getElementById('foot-dd');
+      if (m.ddText) {
+        footDD.textContent = m.ddText;
+        footDD.classList.remove('hidden');
+      } else {
+        footDD.classList.add('hidden');
+      }
+
+      document.getElementById('nephron-ref-tag').textContent = `Ref: ${state.referenceLabel}`;
+      document.getElementById('dav-ref-tag').textContent = `Ref: ${state.referenceLabel}`;
+    }
+
+    function renderDiagnostics() {
+      const m = state.currentSim.metrics;
+      const badges = [];
+
+      // Acid-base & Winter's / Delta-Delta checks
+      if (m.isHagma) {
+        if (m.deltaRatio !== null && m.deltaRatio > 2.0) {
+          badges.push({ text: `Hidden Met Alkalosis (Δ/Δ ${m.deltaRatio > 5 ? '>5' : m.deltaRatio.toFixed(1)})`, level: 'critical' });
+        } else if (m.deltaRatio !== null && m.deltaRatio < 0.8) {
+          badges.push({ text: `Mixed HAGMA + NAGMA (Δ/Δ ${m.deltaRatio.toFixed(1)})`, level: 'warn' });
+        } else {
+          const wDiff = Math.abs(m.paCO2 - m.expPaCO2);
+          const wNote = wDiff <= 2.5 ? 'Winter’s Appropriately Compensated' : (m.paCO2 > m.expPaCO2 + 2.5 ? '+ Resp Acidosis' : '+ Resp Alkalosis');
+          badges.push({ text: `HAGMA (AG ${m.agCorr.toFixed(0)}) · ${wNote}`, level: m.pH < 7.25 ? 'critical' : 'warn' });
+        }
+      } else if (m.pH < 7.35 && m.hco3 < 22) {
+        if (state.params.rtaType === 1) {
+          badges.push({ text: `Impaired Distal Acidification (RTA-1 · UpH ${m.urinePH.toFixed(1)} · UAG +${Math.round(m.urineAG)})`, level: 'warn' });
+        } else if (state.params.rtaType === 2) {
+          badges.push({ text: `Proximal HCO₃⁻ Wasting (RTA-2 · UpH ${m.urinePH.toFixed(1)})`, level: 'warn' });
+        } else if (state.params.rtaType === 4) {
+          badges.push({ text: `Hypoaldo NAGMA (RTA-4 · K⁺ ${m.plasmaK.toFixed(1)} · UAG +${Math.round(m.urineAG)})`, level: 'warn' });
+        } else {
+          badges.push({ text: `Hyperchloremic NAGMA (pH ${m.pH.toFixed(2)})`, level: 'warn' });
+        }
+      } else if (m.pH > 7.45 && m.hco3 > 26) {
+        badges.push({ text: `Metabolic Alkalosis (pH ${m.pH.toFixed(2)} · HCO₃⁻ ${m.hco3.toFixed(1)})`, level: 'warn' });
+      } else if (m.paCO2 > 48 && state.params.chronicResp) {
+        badges.push({ text: `Chronic Respiratory Acidosis (PaCO₂ ${Math.round(m.paCO2)} · Comp HCO₃⁻ ${m.hco3.toFixed(1)})`, level: 'info' });
+      } else if (m.pH < 7.35 && m.paCO2 > 45) {
+        badges.push({ text: `Acute Respiratory Acidosis (PaCO₂ ${Math.round(m.paCO2)})`, level: 'critical' });
+      } else if (m.pH > 7.45 && m.paCO2 < 35) {
+        badges.push({ text: `Respiratory Alkalosis (PaCO₂ ${Math.round(m.paCO2)})`, level: 'warn' });
+      }
+
+      // Potassium alerts
+      if (m.plasmaK >= 5.5) {
+        badges.push({ text: `Hyperkalemia (${m.plasmaK.toFixed(1)} mmol/L)`, level: m.plasmaK >= 6.0 ? 'critical' : 'warn' });
+      } else if (m.plasmaK < 3.4) {
+        badges.push({ text: `Hypokalemia (${m.plasmaK.toFixed(1)} mmol/L)`, level: m.plasmaK < 2.8 ? 'critical' : 'warn' });
+      }
+
+      // Sodium / Water alerts
+      if (m.plasmaNa < 132) {
+        badges.push({ text: `Hyponatremia (Na⁺ ${Math.round(m.plasmaNa)} · Uosm ${Math.round(m.uOsm)})`, level: m.plasmaNa < 125 ? 'critical' : 'warn' });
+      } else if (m.plasmaNa > 147) {
+        badges.push({ text: `Hypernatremia (Na⁺ ${Math.round(m.plasmaNa)} · cH₂O +${Math.max(0, m.cH2O).toFixed(1)} L/d)`, level: m.plasmaNa > 152 ? 'critical' : 'warn' });
+      }
+
+      // Glycosuria / Osmotic Diuresis
+      if (m.gluExcrGDay > 15) {
+        badges.push({ text: `Osmotic Diuresis · Glycosuria (${Math.round(m.gluExcrGDay)} g/d)`, level: 'info' });
+      }
+
+      // Prerenal avidity
+      if (state.params.eav < 80 && m.feNaPct < 0.8 && badges.length < 4) {
+        badges.push({ text: `Prerenal Na⁺ Avidity (FENa ${m.feNaPct.toFixed(1)}%)`, level: 'info' });
+      }
+
+      if (badges.length === 0) {
+        badges.push({ text: 'Normal Renal Transport · Normal Acid-Base & Electrolyte Balance', level: 'ok' });
+      }
+
+      const styles = {
+        ok: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
+        info: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25',
+        warn: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
+        critical: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30'
+      };
+
+      document.getElementById('diagnostics-badges').innerHTML = badges.slice(0, 4).map(b =>
+        `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[11px] font-medium ${styles[b.level]}">
+          <span class="w-1.5 h-1.5 rounded-full bg-current"></span>${b.text}
+        </span>`
+      ).join('');
+
+      const activeDrugs = DIURETICS.filter(d => (state.drugs[d.id] || 0) > 0.005);
+      const summaryEl = document.getElementById('active-drugs-summary');
+      if (activeDrugs.length === 0) {
+        summaryEl.innerHTML = '<span class="text-zinc-400 dark:text-zinc-500">No active diuretics</span>';
+      } else {
+        summaryEl.innerHTML = activeDrugs.map(d => {
+          const val = (state.drugs[d.id] * d.maxDose).toFixed(d.decimals);
+          return `<span class="px-2 py-0.5 rounded-md bg-violet-500/10 border border-violet-500/25 text-violet-700 dark:text-violet-300">${d.name.split(' ')[0]} ${val} ${d.unit}</span>`;
+        }).join('');
+      }
+    }
+
+    function updateHeaderBadges() {
+      const preset = PATHOLOGIES.find(p => p.id === state.activePresetId);
+      document.getElementById('active-preset-label').textContent = preset ? preset.name : 'Custom Physiology';
+      document.getElementById('autocomp-badge').classList.toggle('hidden', !state.params.autoComp);
+
+      const activeCount = DIURETICS.filter(d => (state.drugs[d.id] || 0) > 0.005).length;
+      const hdrCount = document.getElementById('header-drug-count');
+      const tabCount = document.getElementById('tab-drug-count');
+      const clearTabBtn = document.getElementById('btn-clear-drugs-tab');
+
+      if (activeCount > 0) {
+        hdrCount.textContent = activeCount;
+        hdrCount.classList.remove('hidden');
+        tabCount.textContent = activeCount;
+        tabCount.classList.remove('hidden');
+        clearTabBtn.classList.remove('hidden');
+      } else {
+        hdrCount.classList.add('hidden');
+        tabCount.classList.add('hidden');
+        clearTabBtn.classList.add('hidden');
+      }
+    }
+
+    /* =========================================================================
+       5. HIGH-DPI THEME-AWARE CANVAS RENDERERS
+          - Panel A: Segmental Nephron Handling (Osmolarity & Flow / Electrolytes)
+          - Panel B: Interactive Davenport Acid-Base Diagram
+       ========================================================================= */
+
+    const nephronCanvas = document.getElementById('nephron-canvas');
+    const nephronCtx = nephronCanvas.getContext('2d');
+    const davCanvas = document.getElementById('davenport-canvas');
+    const davCtx = davCanvas.getContext('2d');
+
+    function getCanvasPalette(isDark) {
+      if (isDark) {
+        return {
+          subBoxBg: '#0f0f12',
+          grid: 'rgba(63, 63, 70, 0.34)',
+          gridFaint: 'rgba(63, 63, 70, 0.22)',
+          zoneShade: 'rgba(39, 39, 42, 0.26)',
+          boxBorder: 'rgba(63, 63, 70, 0.65)',
+          tick: '#71717a',
+          label: '#a1a1aa',
+          labelBright: '#e4e4e7',
+          teal: '#2dd4bf',
+          sky: '#38bdf8',
+          amber: '#fbbf24',
+          rose: '#fb7185',
+          violet: '#a78bfa',
+          medullaFill: 'rgba(45, 212, 191, 0.09)',
+          medullaStroke: 'rgba(45, 212, 191, 0.24)',
+          isoLine: 'rgba(161, 161, 170, 0.42)',
+          ghost: 'rgba(161, 161, 170, 0.42)',
+          drugBg: 'rgba(139, 92, 246, 0.18)',
+          drugBorder: 'rgba(167, 139, 250, 0.50)',
+          drugText: '#ddd6fe',
+          isobar: 'rgba(113, 113, 122, 0.36)',
+          isobar40: 'rgba(45, 212, 191, 0.55)',
+          bufferLine: 'rgba(161, 161, 170, 0.50)',
+          bandResp: 'rgba(56, 189, 248, 0.08)',
+          bandMet: 'rgba(251, 191, 36, 0.08)',
+          normalBoxFill: 'rgba(52, 211, 153, 0.12)',
+          normalBoxStroke: 'rgba(52, 211, 153, 0.45)',
+          dotFill: '#ffffff',
+          dotRing: '#2dd4bf',
+          pillBg: 'rgba(24, 24, 27, 0.92)',
+          pillBorder: 'rgba(63, 63, 70, 0.9)'
+        };
+      }
+      return {
+        subBoxBg: '#fafafa',
+        grid: '#e4e4e7',
+        gridFaint: '#f4f4f5',
+        zoneShade: 'rgba(228, 228, 231, 0.32)',
+        boxBorder: '#e4e4e7',
+        tick: '#71717a',
+        label: '#52525b',
+        labelBright: '#18181b',
+        teal: '#0f766e',
+        sky: '#0284c7',
+        amber: '#d97706',
+        rose: '#e11d48',
+        violet: '#7c3aed',
+        medullaFill: 'rgba(15, 118, 110, 0.07)',
+        medullaStroke: 'rgba(15, 118, 110, 0.22)',
+        isoLine: 'rgba(113, 113, 122, 0.48)',
+        ghost: 'rgba(113, 113, 122, 0.44)',
+        drugBg: 'rgba(124, 58, 237, 0.10)',
+        drugBorder: 'rgba(124, 58, 237, 0.40)',
+        drugText: '#6d28d9',
+        isobar: 'rgba(113, 113, 122, 0.28)',
+        isobar40: 'rgba(15, 118, 110, 0.55)',
+        bufferLine: 'rgba(82, 82, 91, 0.48)',
+        bandResp: 'rgba(2, 132, 199, 0.07)',
+        bandMet: 'rgba(217, 119, 6, 0.07)',
+        normalBoxFill: 'rgba(5, 150, 105, 0.11)',
+        normalBoxStroke: 'rgba(5, 150, 105, 0.45)',
+        dotFill: '#ffffff',
+        dotRing: '#0f766e',
+        pillBg: 'rgba(255, 255, 255, 0.94)',
+        pillBorder: '#d4d4d8'
+      };
+    }
+
+    function resizeCanvas(canvas, wrapId) {
+      const wrap = document.getElementById(wrapId);
+      if (!wrap) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const rect = wrap.getBoundingClientRect();
+      const w = Math.max(100, Math.floor(rect.width - 8));
+      const h = Math.max(100, Math.floor(rect.height - 8));
+      if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+      }
+    }
+
+    /**
+     * Panel A: Renders Longitudinal Segmental Nephron Handling
+     * Zones: Glom (0), PCT (0..0.32), Loop tDL/TAL (0.32..0.64), DCT (0.64..0.80), Collecting Duct (0.80..1.00)
+     */
+    function drawNephronCanvas() {
+      if (!state.anim || !state.currentSim) return;
+      const isDark = document.documentElement.classList.contains('dark');
+      const C = getCanvasPalette(isDark);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = nephronCanvas.width / dpr;
+      const H = nephronCanvas.height / dpr;
+
+      nephronCtx.save();
+      nephronCtx.scale(dpr, dpr);
+      nephronCtx.clearRect(0, 0, W, H);
+
+      const isOsm = state.nephronView === 'osm';
+      const padL = 46;
+      const padR = isOsm ? 44 : 18;
+      const padT = 32; // Space for legend & active diuretic pills
+      const padB = 34; // Space for segment labels
+      const plotW = Math.max(80, W - padL - padR);
+      const plotH = Math.max(120, H - padT - padB);
+
+      const xOf = u => padL + u * plotW;
+
+      // 1. Plot Background & Alternating Subtle Segment Bands
+      nephronCtx.fillStyle = C.subBoxBg;
+      nephronCtx.fillRect(padL, padT, plotW, plotH);
+
+      const zones = [
+        { x0: 0.00, x1: 0.32, label: 'PCT', shade: false },
+        { x0: 0.32, x1: 0.64, label: 'Loop (tDL · TAL)', shade: true },
+        { x0: 0.64, x1: 0.80, label: 'DCT', shade: false },
+        { x0: 0.80, x1: 1.00, label: 'Collecting Duct', shade: true }
+      ];
+
+      for (const z of zones) {
+        if (z.shade) {
+          nephronCtx.fillStyle = C.zoneShade;
+          nephronCtx.fillRect(xOf(z.x0), padT, xOf(z.x1) - xOf(z.x0), plotH);
+        }
+        // Vertical segment divider
+        if (z.x0 > 0) {
+          const sx = Math.round(xOf(z.x0)) + 0.5;
+          nephronCtx.strokeStyle = C.grid;
+          nephronCtx.lineWidth = 1;
+          nephronCtx.beginPath();
+          nephronCtx.moveTo(sx, padT);
+          nephronCtx.lineTo(sx, padT + plotH);
+          nephronCtx.stroke();
+        }
+        // Bottom Segment Label
+        nephronCtx.font = '500 9.5px "JetBrains Mono", monospace';
+        nephronCtx.fillStyle = C.label;
+        nephronCtx.textAlign = 'center';
+        nephronCtx.fillText(z.label, xOf(0.5 * (z.x0 + z.x1)), padT + plotH + 16);
+      }
+
+      // Glomerulus anchor tick at x = 0
+      nephronCtx.font = '500 9px "JetBrains Mono", monospace';
+      nephronCtx.fillStyle = C.tick;
+      nephronCtx.textAlign = 'left';
+      nephronCtx.fillText('Glom', padL, padT + plotH + 28);
+      nephronCtx.textAlign = 'right';
+      nephronCtx.fillText('Final Urine', padL + plotW, padT + plotH + 28);
+
+      // Subtle Hairpin Turn vertical guide at x = 0.48
+      nephronCtx.save();
+      nephronCtx.setLineDash([2, 3]);
+      nephronCtx.strokeStyle = C.grid;
+      const hx = Math.round(xOf(0.48)) + 0.5;
+      nephronCtx.beginPath();
+      nephronCtx.moveTo(hx, padT);
+      nephronCtx.lineTo(hx, padT + plotH);
+      nephronCtx.stroke();
+      nephronCtx.restore();
+
+      const curves = state.anim.curves;
+      const refCurves = state.referenceSim ? state.referenceSim.curves : null;
+
+      if (isOsm) {
+        /* =====================================================================
+           MODE 1: OSMOLARITY (Left Y: 0–1300 mOsm/kg) & FLOW (Right Y: 0–100%)
+           ===================================================================== */
+        const maxOsm = 1300;
+        const yOfOsm = o => padT + plotH - (clamp(o, 0, maxOsm) / maxOsm) * plotH;
+        const yOfVol = v => padT + plotH - (clamp(v, 0, 100) / 100) * plotH;
+
+        // Horizontal Grid & Left/Right Axis Ticks
+        nephronCtx.strokeStyle = C.grid;
+        nephronCtx.lineWidth = 1;
+        nephronCtx.font = '9px "JetBrains Mono", monospace';
+
+        for (const ot of [0, 300, 600, 900, 1200]) {
+          const py = Math.round(yOfOsm(ot)) + 0.5;
+          nephronCtx.beginPath();
+          nephronCtx.moveTo(padL, py);
+          nephronCtx.lineTo(padL + plotW, py);
+          nephronCtx.stroke();
+          nephronCtx.fillStyle = C.teal;
+          nephronCtx.textAlign = 'right';
+          nephronCtx.fillText(String(ot), padL - 6, py + 3);
+        }
+
+        // Right Y-axis ticks (% of GFR Volume)
+        for (const vt of [0, 25, 50, 75, 100]) {
+          const py = Math.round(yOfVol(vt)) + 0.5;
+          nephronCtx.fillStyle = C.sky;
+          nephronCtx.textAlign = 'left';
+          nephronCtx.fillText(`${vt}%`, padL + plotW + 6, py + 3);
+        }
+
+        // Top Legend
+        nephronCtx.font = '500 9.5px "JetBrains Mono", monospace';
+        nephronCtx.textAlign = 'left';
+        nephronCtx.fillStyle = C.teal;
+        nephronCtx.fillText('— Osm (mOsm/kg)', padL, 14);
+        nephronCtx.fillStyle = C.sky;
+        nephronCtx.fillText('— Fluid (% GFR)', padL + 112, 14);
+        nephronCtx.fillStyle = C.label;
+        nephronCtx.fillText('▪ Interstitial Gradient', padL + 216, 14);
+
+        // Clip interior
+        nephronCtx.save();
+        nephronCtx.beginPath();
+        nephronCtx.rect(padL, padT, plotW, plotH);
+        nephronCtx.clip();
+
+        // 1. Shaded Corticomedullary Interstitial Gradient
+        nephronCtx.beginPath();
+        nephronCtx.moveTo(xOf(0), yOfOsm(0));
+        for (let i = 0; i <= N_GRID; i++) {
+          nephronCtx.lineTo(xOf(i / N_GRID), yOfOsm(curves.grad[i]));
+        }
+        nephronCtx.lineTo(xOf(1), yOfOsm(0));
+        nephronCtx.closePath();
+        nephronCtx.fillStyle = C.medullaFill;
+        nephronCtx.fill();
+
+        nephronCtx.strokeStyle = C.medullaStroke;
+        nephronCtx.lineWidth = 1;
+        nephronCtx.beginPath();
+        for (let i = 0; i <= N_GRID; i++) {
+          const px = xOf(i / N_GRID);
+          const py = yOfOsm(curves.grad[i]);
+          if (i === 0) nephronCtx.moveTo(px, py);
+          else nephronCtx.lineTo(px, py);
+        }
+        nephronCtx.stroke();
+
+        // 2. Dashed 300 mOsm/kg Plasma Iso-Osmotic Line
+        const yIso = Math.round(yOfOsm(300)) + 0.5;
+        nephronCtx.save();
+        nephronCtx.setLineDash([4, 4]);
+        nephronCtx.strokeStyle = C.isoLine;
+        nephronCtx.lineWidth = 1.1;
+        nephronCtx.beginPath();
+        nephronCtx.moveTo(padL, yIso);
+        nephronCtx.lineTo(padL + plotW, yIso);
+        nephronCtx.stroke();
+        nephronCtx.restore();
+
+        nephronCtx.font = '400 8.5px "JetBrains Mono", monospace';
+        nephronCtx.fillStyle = C.tick;
+        nephronCtx.textAlign = 'left';
+        nephronCtx.fillText('Iso-osmotic (300)', padL + 6, yIso - 4);
+
+        // 3. Ghost Reference Osmolarity Curve
+        if (state.nephronGhost && refCurves) {
+          nephronCtx.save();
+          nephronCtx.setLineDash([4, 4]);
+          nephronCtx.strokeStyle = C.ghost;
+          nephronCtx.lineWidth = 1.4;
+          nephronCtx.beginPath();
+          for (let i = 0; i <= N_GRID; i++) {
+            const px = xOf(i / N_GRID);
+            const py = yOfOsm(refCurves.osm[i]);
+            if (i === 0) nephronCtx.moveTo(px, py);
+            else nephronCtx.lineTo(px, py);
+          }
+          nephronCtx.stroke();
+          nephronCtx.restore();
+        }
+
+        // 4. Fractional Fluid Volume Remaining (% of GFR, Sky Curve)
+        nephronCtx.strokeStyle = C.sky;
+        nephronCtx.lineWidth = 1.75;
+        nephronCtx.lineJoin = 'round';
+        nephronCtx.beginPath();
+        for (let i = 0; i <= N_GRID; i++) {
+          const px = xOf(i / N_GRID);
+          const py = yOfVol(curves.vol[i]);
+          if (i === 0) nephronCtx.moveTo(px, py);
+          else nephronCtx.lineTo(px, py);
+        }
+        nephronCtx.stroke();
+
+        // 5. Tubular Fluid Osmolarity Curve (Primary Teal Curve)
+        nephronCtx.strokeStyle = C.teal;
+        nephronCtx.lineWidth = 2.3;
+        nephronCtx.lineJoin = 'round';
+        nephronCtx.beginPath();
+        for (let i = 0; i <= N_GRID; i++) {
+          const px = xOf(i / N_GRID);
+          const py = yOfOsm(curves.osm[i]);
+          if (i === 0) nephronCtx.moveTo(px, py);
+          else nephronCtx.lineTo(px, py);
+        }
+        nephronCtx.stroke();
+
+        // Final Urine Osmolarity dot & callout at x = 1.0
+        const endOsm = curves.osm[N_GRID];
+        const ey = yOfOsm(endOsm);
+        nephronCtx.beginPath();
+        nephronCtx.arc(xOf(1) - 3, ey, 3.6, 0, Math.PI * 2);
+        nephronCtx.fillStyle = C.dotFill;
+        nephronCtx.fill();
+        nephronCtx.lineWidth = 2;
+        nephronCtx.strokeStyle = C.teal;
+        nephronCtx.stroke();
+
+        nephronCtx.font = '600 9.5px "JetBrains Mono", monospace';
+        nephronCtx.fillStyle = C.teal;
+        nephronCtx.textAlign = 'right';
+        nephronCtx.fillText(`${Math.round(endOsm)}`, xOf(1) - 10, clamp(ey - 5, padT + 14, padT + plotH - 6));
+
+        nephronCtx.restore(); // End clip
+      } else {
+        /* =====================================================================
+           MODE 2: ELECTROLYTES (% Filtered Load Remaining: Na+, HCO3-, K+, Gluc)
+           ===================================================================== */
+        const yOfPct = p => padT + plotH - (clamp(p, 0, 105) / 105) * plotH;
+
+        nephronCtx.strokeStyle = C.grid;
+        nephronCtx.lineWidth = 1;
+        nephronCtx.font = '9px "JetBrains Mono", monospace';
+
+        for (const pt of [0, 20, 40, 60, 80, 100]) {
+          const py = Math.round(yOfPct(pt)) + 0.5;
+          nephronCtx.beginPath();
+          nephronCtx.moveTo(padL, py);
+          nephronCtx.lineTo(padL + plotW, py);
+          nephronCtx.stroke();
+          nephronCtx.fillStyle = C.tick;
+          nephronCtx.textAlign = 'right';
+          nephronCtx.fillText(`${pt}%`, padL - 6, py + 3);
+        }
+
+        // Top Legend
+        nephronCtx.font = '500 9.5px "JetBrains Mono", monospace';
+        nephronCtx.textAlign = 'left';
+        const leg = [
+          { lbl: '— Na⁺', col: C.teal, x: padL },
+          { lbl: '— HCO₃⁻', col: C.amber, x: padL + 52 },
+          { lbl: '— K⁺ (CCD secr.)', col: C.rose, x: padL + 116 },
+          { lbl: '— Glucose', col: C.violet, x: padL + 228 }
+        ];
+        for (const it of leg) {
+          nephronCtx.fillStyle = it.col;
+          nephronCtx.fillText(it.lbl, it.x, 14);
+        }
+
+        nephronCtx.save();
+        nephronCtx.beginPath();
+        nephronCtx.rect(padL, padT, plotW, plotH);
+        nephronCtx.clip();
+
+        // Ghost Reference Na+ & K+ if enabled
+        if (state.nephronGhost && refCurves) {
+          nephronCtx.save();
+          nephronCtx.setLineDash([4, 4]);
+          nephronCtx.strokeStyle = C.ghost;
+          nephronCtx.lineWidth = 1.25;
+          for (const key of ['na', 'k']) {
+            nephronCtx.beginPath();
+            for (let i = 0; i <= N_GRID; i++) {
+              const px = xOf(i / N_GRID);
+              const py = yOfPct(refCurves[key][i]);
+              if (i === 0) nephronCtx.moveTo(px, py);
+              else nephronCtx.lineTo(px, py);
+            }
+            nephronCtx.stroke();
+          }
+          nephronCtx.restore();
+        }
+
+        const drawSeries = (arr, color, lw) => {
+          nephronCtx.strokeStyle = color;
+          nephronCtx.lineWidth = lw;
+          nephronCtx.lineJoin = 'round';
+          nephronCtx.beginPath();
+          for (let i = 0; i <= N_GRID; i++) {
+            const px = xOf(i / N_GRID);
+            const py = yOfPct(arr[i]);
+            if (i === 0) nephronCtx.moveTo(px, py);
+            else nephronCtx.lineTo(px, py);
+          }
+          nephronCtx.stroke();
+        };
+
+        drawSeries(curves.glu, C.violet, 1.85);
+        drawSeries(curves.hco3, C.amber, 1.85);
+        drawSeries(curves.k, C.rose, 2.0);
+        drawSeries(curves.na, C.teal, 2.2);
+
+        // Label CCD K+ secretion uptick when prominent
+        const kDCT = curves.k[80];
+        const kEnd = curves.k[N_GRID];
+        if (kEnd - kDCT > 2.5) {
+          nephronCtx.font = '500 8.5px "JetBrains Mono", monospace';
+          nephronCtx.fillStyle = C.rose;
+          nephronCtx.textAlign = 'right';
+          nephronCtx.fillText(`↑K⁺ ${kEnd.toFixed(0)}%`, xOf(0.99), Math.max(padT + 14, yOfPct(kEnd) - 6));
+        }
+        // Label glycosuria if glucose remains > 2%
+        if (curves.glu[N_GRID] > 2.0) {
+          nephronCtx.font = '500 8.5px "JetBrains Mono", monospace';
+          nephronCtx.fillStyle = C.violet;
+          nephronCtx.textAlign = 'right';
+          nephronCtx.fillText(`Gluc ${curves.glu[N_GRID].toFixed(0)}%`, xOf(0.99), Math.max(padT + 26, yOfPct(curves.glu[N_GRID]) - 6));
+        }
+
+        nephronCtx.restore(); // End clip
+      }
+
+      // Outer Frame Hairline
+      nephronCtx.strokeStyle = C.boxBorder;
+      nephronCtx.lineWidth = 1;
+      nephronCtx.strokeRect(padL + 0.5, padT + 0.5, plotW - 1, plotH - 1);
+
+      // Active Diuretic Site-of-Action Badges directly over their target segment!
+      const activeDiuretics = DIURETICS.filter(d => (state.drugs[d.id] || 0) > 0.005);
+      if (activeDiuretics.length > 0) {
+        nephronCtx.font = '600 8.5px "JetBrains Mono", monospace';
+        let lastPillRight = -999;
+        let rowOffset = 0;
+        for (const d of activeDiuretics) {
+          const textW = nephronCtx.measureText(d.badge).width;
+          const pw = textW + 10;
+          const ph = 15;
+          let cx = xOf(d.segX);
+          let px = clamp(cx - pw / 2, padL + 3, padL + plotW - pw - 3);
+          if (px < lastPillRight + 4) {
+            rowOffset = (rowOffset + 1) % 2;
+          } else {
+            rowOffset = 0;
+          }
+          const py = padT + 6 + rowOffset * 18;
+          lastPillRight = px + pw;
+
+          // Rounded pill
+          nephronCtx.fillStyle = C.drugBg;
+          nephronCtx.strokeStyle = C.drugBorder;
+          nephronCtx.lineWidth = 1;
+          nephronCtx.beginPath();
+          nephronCtx.roundRect(px, py, pw, ph, 4);
+          nephronCtx.fill();
+          nephronCtx.stroke();
+
+          nephronCtx.fillStyle = C.drugText;
+          nephronCtx.textAlign = 'center';
+          nephronCtx.fillText(d.badge, px + pw / 2, py + 10.5);
+        }
+      }
+
+      nephronCtx.restore();
+    }
+
+    /**
+     * Panel B: Renders Interactive Davenport Acid-Base Diagram
+     * X-axis: Arterial pH (6.95 to 7.70)
+     * Y-axis: Plasma HCO3- (0 to 48 mmol/L)
+     */
+    function drawDavenportCanvas() {
+      if (!state.anim || !state.currentSim) return;
+      const isDark = document.documentElement.classList.contains('dark');
+      const C = getCanvasPalette(isDark);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = davCanvas.width / dpr;
+      const H = davCanvas.height / dpr;
+
+      davCtx.save();
+      davCtx.scale(dpr, dpr);
+      davCtx.clearRect(0, 0, W, H);
+
+      const padL = 42, padR = 16, padT = 16, padB = 34;
+      const plotW = Math.max(80, W - padL - padR);
+      const plotH = Math.max(120, H - padT - padB);
+
+      const minPH = 6.95, maxPH = 7.70;
+      const minH = 0, maxH = 48;
+      const xOf = ph => padL + ((ph - minPH) / (maxPH - minPH)) * plotW;
+      const yOf = h => padT + plotH - ((h - minH) / (maxH - minH)) * plotH;
+
+      // 1. Background & Grid
+      davCtx.fillStyle = C.subBoxBg;
+      davCtx.fillRect(padL, padT, plotW, plotH);
+
+      davCtx.strokeStyle = C.grid;
+      davCtx.lineWidth = 1;
+      davCtx.font = '9px "JetBrains Mono", monospace';
+      davCtx.fillStyle = C.tick;
+
+      for (let ph = 7.00; ph <= 7.701; ph += 0.10) {
+        const x = Math.round(xOf(ph)) + 0.5;
+        davCtx.beginPath();
+        davCtx.moveTo(x, padT);
+        davCtx.lineTo(x, padT + plotH);
+        davCtx.stroke();
+        davCtx.textAlign = 'center';
+        davCtx.fillText(ph.toFixed(1), x, padT + plotH + 13);
+      }
+
+      for (let h = 0; h <= 48; h += 8) {
+        const y = Math.round(yOf(h)) + 0.5;
+        davCtx.beginPath();
+        davCtx.moveTo(padL, y);
+        davCtx.lineTo(padL + plotW, y);
+        davCtx.stroke();
+        davCtx.textAlign = 'right';
+        davCtx.fillText(String(h), padL - 6, y + 3);
+      }
+
+      // Axis Titles
+      davCtx.fillStyle = C.label;
+      davCtx.font = '500 9.5px Inter, sans-serif';
+      davCtx.textAlign = 'center';
+      davCtx.fillText('Arterial pH', padL + plotW / 2, H - 6);
+
+      davCtx.save();
+      davCtx.translate(12, padT + plotH / 2);
+      davCtx.rotate(-Math.PI / 2);
+      davCtx.fillText('Plasma HCO₃⁻ (mmol/L)', 0, 0);
+      davCtx.restore();
+
+      // Clip interior curves
+      davCtx.save();
+      davCtx.beginPath();
+      davCtx.rect(padL, padT, plotW, plotH);
+      davCtx.clip();
+
+      // Helper: exact pH from (hco3, paco2)
+      const phFrom = (h, pco2) => 6.10 + Math.log10(h / (0.0301 * pco2));
+
+      // 2. Physiological Compensation Bands
+      if (state.davOverlays.bands) {
+        const drawPoly = (pts, fill) => {
+          davCtx.beginPath();
+          pts.forEach((pt, idx) => {
+            const px = xOf(pt[0]);
+            const py = yOf(pt[1]);
+            if (idx === 0) davCtx.moveTo(px, py);
+            else davCtx.lineTo(px, py);
+          });
+          davCtx.closePath();
+          davCtx.fillStyle = fill;
+          davCtx.fill();
+        };
+
+        // Compensated Metabolic Acidosis band (Winter's: PaCO2 = 1.5*HCO3 + 8 ± 2)
+        const metAcidTop = [], metAcidBot = [];
+        for (let h = 5; h <= 22; h += 1.5) {
+          const pLo = Math.max(10, 1.5 * h + 6);
+          const pHi = 1.5 * h + 10;
+          metAcidTop.push([phFrom(h, pLo), h]);
+          metAcidBot.unshift([phFrom(h, pHi), h]);
+        }
+        drawPoly([...metAcidTop, ...metAcidBot], C.bandMet);
+
+        // Compensated Metabolic Alkalosis band (PaCO2 = 40 + 0.7*(HCO3-24) ± 5)
+        const metAlkTop = [], metAlkBot = [];
+        for (let h = 26; h <= 46; h += 2) {
+          const pLo = 40 + 0.7 * (h - 24) - 4.5;
+          const pHi = 40 + 0.7 * (h - 24) + 4.5;
+          metAlkTop.push([phFrom(h, pLo), h]);
+          metAlkBot.unshift([phFrom(h, pHi), h]);
+        }
+        drawPoly([...metAlkTop, ...metAlkBot], C.bandMet);
+
+        // Acute & Chronic Respiratory Acidosis band (PaCO2 45..95)
+        const respAcidAc = [], respAcidCh = [];
+        for (let p = 45; p <= 95; p += 5) {
+          const hAc = 24 + 0.10 * (p - 40);
+          const hCh = 24 + 0.40 * (p - 40);
+          respAcidAc.push([phFrom(hAc, p), hAc]);
+          respAcidCh.unshift([phFrom(hCh, p), hCh]);
+        }
+        drawPoly([...respAcidAc, ...respAcidCh], C.bandResp);
+
+        // Acute & Chronic Respiratory Alkalosis band (PaCO2 15..35)
+        const respAlkAc = [], respAlkCh = [];
+        for (let p = 15; p <= 35; p += 2.5) {
+          const hAc = 24 - 0.20 * (40 - p);
+          const hCh = 24 - 0.45 * (40 - p);
+          respAlkAc.push([phFrom(hAc, p), hAc]);
+          respAlkCh.unshift([phFrom(hCh, p), hCh]);
+        }
+        drawPoly([...respAlkAc, ...respAlkCh], C.bandResp);
+
+        // Subtle Band Annotations
+        davCtx.font = '500 8px "JetBrains Mono", monospace';
+        davCtx.fillStyle = C.tick;
+        davCtx.textAlign = 'left';
+        davCtx.fillText('Met Acid (Winter’s)', xOf(7.06), yOf(7.5));
+        davCtx.fillText('Resp Acid', xOf(7.08), yOf(31));
+        davCtx.textAlign = 'right';
+        davCtx.fillText('Met Alk', xOf(7.66), yOf(38));
+        davCtx.fillText('Resp Alk', xOf(7.67), yOf(16));
+
+        // Normal Reference Box (pH 7.35–7.45, HCO3 22–26)
+        const nx0 = xOf(7.35), nx1 = xOf(7.45);
+        const ny0 = yOf(26), ny1 = yOf(22);
+        davCtx.fillStyle = C.normalBoxFill;
+        davCtx.fillRect(nx0, ny0, nx1 - nx0, ny1 - ny0);
+        davCtx.strokeStyle = C.normalBoxStroke;
+        davCtx.lineWidth = 1;
+        davCtx.strokeRect(nx0, ny0, nx1 - nx0, ny1 - ny0);
+      }
+
+      // 3. Exact Henderson-Hasselbalch PaCO2 Isobars
+      if (state.davOverlays.isobars) {
+        const isobars = [15, 20, 30, 40, 50, 60, 80, 100];
+        for (const pco2 of isobars) {
+          const is40 = pco2 === 40;
+          davCtx.strokeStyle = is40 ? C.isobar40 : C.isobar;
+          davCtx.lineWidth = is40 ? 1.5 : 1.0;
+          davCtx.beginPath();
+          let started = false;
+          let lblX = 0, lblY = 0;
+
+          for (let ph = minPH; ph <= maxPH + 0.002; ph += 0.006) {
+            const h = 0.0301 * pco2 * Math.pow(10, ph - 6.10);
+            if (h > maxH + 1) break;
+            const px = xOf(ph);
+            const py = yOf(h);
+            if (!started) { davCtx.moveTo(px, py); started = true; }
+            else davCtx.lineTo(px, py);
+            if (h <= maxH - 2.2 && ph <= maxPH - 0.03) {
+              lblX = px;
+              lblY = py;
+            }
+          }
+          davCtx.stroke();
+
+          if (lblX > padL + 8) {
+            davCtx.font = is40 ? '600 8.5px "JetBrains Mono", monospace' : '400 8px "JetBrains Mono", monospace';
+            davCtx.fillStyle = is40 ? C.teal : C.tick;
+            davCtx.textAlign = 'center';
+            davCtx.fillText(`${pco2}`, clamp(lblX, padL + 12, padL + plotW - 12), Math.max(padT + 10, lblY - 3));
+          }
+        }
+      }
+
+      // 4. Non-Bicarbonate Blood Buffer Line (slope -25 mmol/L per pH through 7.40, 24)
+      if (state.davOverlays.buffer) {
+        davCtx.save();
+        davCtx.setLineDash([5, 4]);
+        davCtx.strokeStyle = C.bufferLine;
+        davCtx.lineWidth = 1.25;
+        const hL = 24 - 25 * (minPH - 7.40);
+        const hR = 24 - 25 * (maxPH - 7.40);
+        davCtx.beginPath();
+        davCtx.moveTo(xOf(minPH), yOf(hL));
+        davCtx.lineTo(xOf(maxPH), yOf(hR));
+        davCtx.stroke();
+        davCtx.restore();
+      }
+
+      // 5. Ghost Reference Point & Trajectory Arrow
+      const curPH = clamp(state.anim.pH, minPH, maxPH);
+      const curH = clamp(state.anim.hco3, minH, maxH);
+      const cx = xOf(curPH);
+      const cy = yOf(curH);
+
+      if (state.davOverlays.ghost && state.referenceSim) {
+        const refPH = clamp(state.referenceSim.metrics.pH, minPH, maxPH);
+        const refH = clamp(state.referenceSim.metrics.hco3, minH, maxH);
+        const rx = xOf(refPH);
+        const ry = yOf(refH);
+
+        const dist = Math.hypot(cx - rx, cy - ry);
+        if (dist > 7) {
+          // Dashed trajectory vector
+          davCtx.save();
+          davCtx.setLineDash([3, 3]);
+          davCtx.strokeStyle = C.ghost;
+          davCtx.lineWidth = 1.3;
+          davCtx.beginPath();
+          davCtx.moveTo(rx, ry);
+          davCtx.lineTo(cx, cy);
+          davCtx.stroke();
+          davCtx.restore();
+
+          // Subtle arrowhead near active dot
+          const ang = Math.atan2(cy - ry, cx - rx);
+          const ax = cx - Math.cos(ang) * 9;
+          const ay = cy - Math.sin(ang) * 9;
+          davCtx.fillStyle = C.ghost;
+          davCtx.beginPath();
+          davCtx.moveTo(ax, ay);
+          davCtx.lineTo(ax - Math.cos(ang - 0.45) * 6, ay - Math.sin(ang - 0.45) * 6);
+          davCtx.lineTo(ax - Math.cos(ang + 0.45) * 6, ay - Math.sin(ang + 0.45) * 6);
+          davCtx.closePath();
+          davCtx.fill();
+        }
+
+        // Ghost Ring
+        davCtx.beginPath();
+        davCtx.arc(rx, ry, 4, 0, Math.PI * 2);
+        davCtx.strokeStyle = C.ghost;
+        davCtx.lineWidth = 1.5;
+        davCtx.stroke();
+      }
+
+      // 6. Crosshair Projections to Both Axes
+      davCtx.save();
+      davCtx.setLineDash([2, 3]);
+      davCtx.strokeStyle = C.isobar40;
+      davCtx.lineWidth = 1;
+      davCtx.beginPath();
+      davCtx.moveTo(cx, cy);
+      davCtx.lineTo(cx, padT + plotH);
+      davCtx.moveTo(cx, cy);
+      davCtx.lineTo(padL, cy);
+      davCtx.stroke();
+      davCtx.restore();
+
+      // 7. Active Operating Point Dot
+      davCtx.beginPath();
+      davCtx.arc(cx, cy, 5.5, 0, Math.PI * 2);
+      davCtx.fillStyle = C.dotFill;
+      davCtx.fill();
+      davCtx.lineWidth = 2.4;
+      davCtx.strokeStyle = C.dotRing;
+      davCtx.stroke();
+
+      // Direct Coordinate Readout Pill near dot (auto-clamped inside plot)
+      const pillTxt = `pH ${state.anim.pH.toFixed(2)} · ${state.anim.hco3.toFixed(1)}`;
+      davCtx.font = '600 9.5px "JetBrains Mono", monospace';
+      const tw = davCtx.measureText(pillTxt).width + 12;
+      const th = 18;
+      let bx = cx + 10;
+      if (bx + tw > padL + plotW - 4) bx = cx - tw - 10;
+      let by = cy - th - 6;
+      if (by < padT + 4) by = cy + 10;
+
+      davCtx.fillStyle = C.pillBg;
+      davCtx.strokeStyle = C.pillBorder;
+      davCtx.lineWidth = 1;
+      davCtx.beginPath();
+      davCtx.roundRect(bx, by, tw, th, 4);
+      davCtx.fill();
+      davCtx.stroke();
+
+      davCtx.fillStyle = C.labelBright;
+      davCtx.textAlign = 'center';
+      davCtx.fillText(pillTxt, bx + tw / 2, by + 12);
+
+      davCtx.restore(); // End clip
+
+      // Outer Frame Hairline
+      davCtx.strokeStyle = C.boxBorder;
+      davCtx.lineWidth = 1;
+      davCtx.strokeRect(padL + 0.5, padT + 0.5, plotW - 1, plotH - 1);
+
+      davCtx.restore();
+    }
+
+    /* =========================================================================
+       6. SIDEBAR UI GENERATION (PATHOLOGIES, PHYSIOLOGY, DIURETICS)
+       ========================================================================= */
+
+    function buildPathologiesTab() {
+      const container = document.getElementById('tab-pathologies');
+      container.innerHTML = PATHOLOGIES.map(p => `
+        <button data-preset="${p.id}" type="button" class="preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1">
+          <div class="flex items-center justify-between gap-2 w-full">
+            <span class="text-xs font-medium text-zinc-900 dark:text-zinc-100">${p.name}</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/70 shrink-0">${p.tag}</span>
+          </div>
+          <p class="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug line-clamp-1">${p.desc}</p>
+        </button>
+      `).join('');
+
+      highlightActivePresetCard();
+
+      container.querySelectorAll('.preset-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const preset = PATHOLOGIES.find(p => p.id === btn.dataset.preset);
+          if (!preset) return;
+          state.activePresetId = preset.id;
+          state.params = { ...preset.params };
+          syncPhysSlidersFromState();
+          syncAutoCompUI();
+          highlightActivePresetCard();
+          updateSimulation();
+        });
+      });
+    }
+
+    function highlightActivePresetCard() {
+      document.querySelectorAll('.preset-card').forEach(btn => {
+        const isActive = btn.dataset.preset === state.activePresetId;
+        btn.className = `preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1 ${
+          isActive
+            ? 'border-tealLight/50 dark:border-tealDark/50 bg-teal-500/[0.06] dark:bg-teal-400/[0.08]'
+            : 'border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-subtleDark/60 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-100/60 dark:hover:bg-zinc-900/60'
+        }`;
+      });
+    }
+
+    function buildPhysiologyTab() {
+      const container = document.getElementById('phys-sliders-list');
+      const groups = [
+        { id: 'glom', title: 'Glomerular & Volume' },
+        { id: 'horm', title: 'Hormones' },
+        { id: 'ab', title: 'Acid-Base & Plasma' }
+      ];
+
+      container.innerHTML = groups.map(grp => {
+        const items = PHYS_SLIDERS.filter(c => c.group === grp.id);
+        return `
+          <div class="space-y-3">
+            <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500 pb-1 border-b border-zinc-200/80 dark:border-zinc-800/80">
+              ${grp.title}
+            </div>
+            <div class="space-y-3">
+              ${items.map(cfg => {
+                const val = state.params[cfg.key];
+                const prefix = cfg.signed && val > 0 ? '+' : '';
+                return `
+                  <div class="space-y-1.5" data-tooltip="${cfg.tip}">
+                    <div class="flex items-center justify-between text-[11.5px] gap-2">
+                      <span class="font-medium text-zinc-700 dark:text-zinc-300 truncate">${cfg.label}</span>
+                      <div class="flex items-center gap-1 font-mono tabular-nums shrink-0">
+                        <span id="p-val-${cfg.key}" class="text-zinc-900 dark:text-zinc-100 font-medium">${prefix}${val.toFixed(cfg.decimals)}</span>
+                        <span class="text-[10px] text-zinc-400 dark:text-zinc-500">${cfg.unit}</span>
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      id="p-slider-${cfg.key}"
+                      class="clinical-slider"
+                      min="${cfg.min}"
+                      max="${cfg.max}"
+                      step="${cfg.step}"
+                      value="${val}"
+                    />
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+      }).join('');
+
+      PHYS_SLIDERS.forEach(cfg => {
+        const slider = document.getElementById(`p-slider-${cfg.key}`);
+        slider.addEventListener('input', () => {
+          const val = parseFloat(slider.value);
+          state.params[cfg.key] = val;
+          // Dragging PaCO2 manually turns Auto Respiratory Comp OFF automatically
+          if (cfg.key === 'paco2' && state.params.autoComp) {
+            state.params.autoComp = false;
+            syncAutoCompUI();
+          }
+          // Adjusting core parameters away from preset marks Custom (preserving RTA if active unless acid-base reset)
+          state.activePresetId = 'custom';
+          const prefix = cfg.signed && val > 0 ? '+' : '';
+          document.getElementById(`p-val-${cfg.key}`).textContent = `${prefix}${val.toFixed(cfg.decimals)}`;
+          highlightActivePresetCard();
+          updateSimulation();
+        });
+      });
+    }
+
+    function syncPhysSlidersFromState() {
+      for (const cfg of PHYS_SLIDERS) {
+        const s = document.getElementById(`p-slider-${cfg.key}`);
+        const v = document.getElementById(`p-val-${cfg.key}`);
+        const val = state.params[cfg.key];
+        const prefix = cfg.signed && val > 0 ? '+' : '';
+        if (s) s.value = val;
+        if (v) v.textContent = `${prefix}${val.toFixed(cfg.decimals)}`;
+      }
+    }
+
+    function syncAutoCompUI() {
+      const btn = document.getElementById('toggle-autocomp');
+      const knob = document.getElementById('autocomp-knob');
+      const on = Boolean(state.params.autoComp);
+      btn.setAttribute('aria-checked', String(on));
+      btn.className = `relative w-9 h-5 rounded-full transition-colors focus:outline-none shrink-0 ${
+        on ? 'bg-tealLight dark:bg-tealDark' : 'bg-zinc-300 dark:bg-zinc-700'
+      }`;
+      knob.className = `block w-4 h-4 rounded-full bg-white dark:bg-obsidian shadow-sm transform transition-transform ${
+        on ? 'translate-x-4' : 'translate-x-0.5'
+      }`;
+    }
+
+    function buildDiureticsTab() {
+      const container = document.getElementById('drug-sliders-list');
+      container.innerHTML = DIURETICS.map(d => `
+        <div id="drug-card-${d.id}" class="px-3 py-2.5 rounded-lg bg-zinc-50/50 dark:bg-subtleDark/60 border border-zinc-200/80 dark:border-zinc-800/80 transition-colors">
+          <div class="flex items-center justify-between gap-1.5 mb-1">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate">${d.name}</span>
+              <span class="text-[9.5px] font-mono px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/70 shrink-0">${d.siteTag}</span>
+            </div>
+            <button data-zero-drug="${d.id}" type="button" title="Zero dose" class="zero-drug-btn hidden text-xs font-mono text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 px-1 leading-none">✕</button>
+          </div>
+          <div class="flex items-center justify-between text-[10.5px] mb-2 gap-2">
+            <span class="text-zinc-500 dark:text-zinc-400 font-mono truncate">${d.effects}</span>
+            <span id="drug-val-${d.id}" class="font-mono font-medium text-zinc-400 dark:text-zinc-500 tabular-nums shrink-0">0 ${d.unit}</span>
+          </div>
+          <input
+            type="range"
+            id="drug-slider-${d.id}"
+            class="clinical-slider drug-slider"
+            min="0"
+            max="100"
+            step="1"
+            value="0"
+          />
+        </div>
+      `).join('');
+
+      DIURETICS.forEach(d => {
+        const slider = document.getElementById(`drug-slider-${d.id}`);
+        const zeroBtn = container.querySelector(`[data-zero-drug="${d.id}"]`);
+
+        const setDosePct = pct => {
+          const norm = pct / 100;
+          state.drugs[d.id] = norm;
+          const clinicalVal = (norm * d.maxDose).toFixed(d.decimals);
+          const valEl = document.getElementById(`drug-val-${d.id}`);
+          const cardEl = document.getElementById(`drug-card-${d.id}`);
+
+          valEl.textContent = pct > 0 ? `${clinicalVal} ${d.unit}` : `0 ${d.unit}`;
+          valEl.className = `font-mono font-medium tabular-nums shrink-0 ${
+            pct > 0 ? 'text-violet-700 dark:text-violet-300' : 'text-zinc-400 dark:text-zinc-500'
+          }`;
+
+          cardEl.className = `px-3 py-2.5 rounded-lg border transition-colors ${
+            pct > 0
+              ? 'border-violet-500/40 bg-violet-500/[0.05] dark:bg-violet-500/[0.08]'
+              : 'border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-subtleDark/60'
+          }`;
+
+          zeroBtn.classList.toggle('hidden', pct === 0);
+          updateSimulation();
+        };
+
+        slider.addEventListener('input', () => setDosePct(parseInt(slider.value, 10)));
+        zeroBtn.addEventListener('click', () => {
+          slider.value = 0;
+          setDosePct(0);
+        });
+      });
+    }
+
+    function clearAllDrugs() {
+      for (const d of DIURETICS) {
+        state.drugs[d.id] = 0;
+        const slider = document.getElementById(`drug-slider-${d.id}`);
+        const valEl = document.getElementById(`drug-val-${d.id}`);
+        const cardEl = document.getElementById(`drug-card-${d.id}`);
+        const zeroBtn = document.querySelector(`[data-zero-drug="${d.id}"]`);
+        if (slider) slider.value = 0;
+        if (valEl) {
+          valEl.textContent = `0 ${d.unit}`;
+          valEl.className = 'font-mono font-medium text-zinc-400 dark:text-zinc-500 tabular-nums shrink-0';
+        }
+        if (cardEl) {
+          cardEl.className = 'px-3 py-2.5 rounded-lg border transition-colors border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-subtleDark/60';
+        }
+        if (zeroBtn) zeroBtn.classList.add('hidden');
+      }
+      updateSimulation();
+    }
+
+    /* =========================================================================
+       7. EVENT WIRING, TOOLTIPS & FLUID 60FPS ANIMATION LOOP
+       ========================================================================= */
+
+    function wireControls() {
+      // Theme Toggle (syncs both medlab-theme & theme keys)
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const isDarkNow = document.documentElement.classList.toggle('dark');
+        const val = isDarkNow ? 'dark' : 'light';
+        try {
+          localStorage.setItem('medlab-theme', val);
+          localStorage.setItem('theme', val);
+        } catch (_) {}
+      });
+
+      // Sidebar 3-Tab Switcher
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = btn.dataset.tab;
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            const active = b.dataset.tab === target;
+            b.className = `tab-btn py-1.5 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+              active
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+            }`;
+          });
+          ['pathologies', 'physiology', 'diuretics'].forEach(id => {
+            document.getElementById(`tab-${id}`).classList.toggle('hidden', id !== target);
+          });
+        });
+      });
+
+      // Nephron Panel View Switcher (Osmolarity & Flow vs Electrolytes)
+      document.querySelectorAll('.nview-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.nephronView = btn.dataset.nview;
+          document.querySelectorAll('.nview-btn').forEach(b => {
+            const active = b.dataset.nview === state.nephronView;
+            b.className = `nview-btn px-2 py-0.5 rounded transition-colors ${
+              active
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+            }`;
+          });
+        });
+      });
+
+      // Nephron Ghost Toggle
+      const nGhostBtn = document.getElementById('btn-nephron-ghost');
+      nGhostBtn.addEventListener('click', () => {
+        state.nephronGhost = !state.nephronGhost;
+        const on = state.nephronGhost;
+        nGhostBtn.className = `px-1.5 py-0.5 rounded border transition-colors ${
+          on
+            ? 'border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200'
+            : 'border-zinc-200/70 dark:border-zinc-800/70 bg-transparent text-zinc-400 dark:text-zinc-600 line-through'
+        }`;
+      });
+
+      // Davenport Overlay Toggle Pills
+      document.querySelectorAll('.overlay-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.overlay;
+          state.davOverlays[key] = !state.davOverlays[key];
+          const on = state.davOverlays[key];
+          btn.className = `overlay-btn px-1.5 py-0.5 rounded border transition-colors ${
+            on
+              ? 'border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200'
+              : 'border-zinc-200/70 dark:border-zinc-800/70 bg-transparent text-zinc-400 dark:text-zinc-600 line-through'
+          }`;
+        });
+      });
+
+      // Auto Respiratory Comp Toggle
+      document.getElementById('toggle-autocomp').addEventListener('click', () => {
+        state.params.autoComp = !state.params.autoComp;
+        if (state.params.autoComp) {
+          state.params.chronicResp = false;
+        }
+        syncAutoCompUI();
+        updateSimulation();
+      });
+
+      // Pin Snapshot
+      let pinTimer = null;
+      document.getElementById('btn-pin-snapshot').addEventListener('click', () => {
+        if (!state.currentSim) return;
+        state.referenceSim = state.currentSim;
+        const preset = PATHOLOGIES.find(p => p.id === state.activePresetId);
+        state.referenceLabel = preset ? preset.name.split(' ')[0] + ' Pin' : 'Pinned';
+        const lbl = document.getElementById('snapshot-btn-label');
+        lbl.textContent = 'Pinned ✓';
+        clearTimeout(pinTimer);
+        pinTimer = setTimeout(() => { lbl.textContent = 'Pin Snapshot'; }, 1400);
+        renderTelemetry();
+      });
+
+      // Clear Drugs (Header & Tab buttons)
+      document.getElementById('btn-clear-drugs-header').addEventListener('click', clearAllDrugs);
+      document.getElementById('btn-clear-drugs-tab').addEventListener('click', clearAllDrugs);
+
+      // Reset Normal
+      document.getElementById('btn-reset-normal').addEventListener('click', () => {
+        state.activePresetId = 'normal';
+        state.params = { ...NORMAL_PARAMS };
+        syncPhysSlidersFromState();
+        syncAutoCompUI();
+        highlightActivePresetCard();
+        clearAllDrugs();
+        state.referenceSim = state.currentSim;
+        state.referenceLabel = 'Normal';
+        renderTelemetry();
+      });
+
+      // Floating Clinical Tooltip Delegation
+      const tipEl = document.getElementById('clinical-tooltip');
+      document.addEventListener('mouseover', e => {
+        const target = e.target.closest('[data-tooltip]');
+        if (!target) return;
+        tipEl.textContent = target.dataset.tooltip;
+        tipEl.classList.remove('opacity-0');
+        tipEl.classList.add('opacity-100');
+      });
+      document.addEventListener('mousemove', e => {
+        if (tipEl.classList.contains('opacity-0')) return;
+        const pad = 14;
+        const rect = tipEl.getBoundingClientRect();
+        let x = e.clientX + pad;
+        let y = e.clientY + pad;
+        if (x + rect.width > window.innerWidth - 10) x = e.clientX - rect.width - pad;
+        if (y + rect.height > window.innerHeight - 10) y = e.clientY - rect.height - pad;
+        tipEl.style.left = `${Math.max(8, x)}px`;
+        tipEl.style.top = `${Math.max(8, y)}px`;
+      });
+      document.addEventListener('mouseout', e => {
+        const target = e.target.closest('[data-tooltip]');
+        if (!target) return;
+        tipEl.classList.add('opacity-0');
+        tipEl.classList.remove('opacity-100');
+      });
+
+      // High-DPI ResizeObservers
+      const ro = new ResizeObserver(() => {
+        resizeCanvas(nephronCanvas, 'nephron-canvas-wrap');
+        resizeCanvas(davCanvas, 'davenport-canvas-wrap');
+      });
+      ro.observe(document.getElementById('nephron-canvas-wrap'));
+      ro.observe(document.getElementById('davenport-canvas-wrap'));
+      window.addEventListener('resize', () => {
+        resizeCanvas(nephronCanvas, 'nephron-canvas-wrap');
+        resizeCanvas(davCanvas, 'davenport-canvas-wrap');
+      });
+    }
+
+    // Smooth 60 FPS Lerp Animation Loop (fluid curve & Davenport point transitions)
+    function animate() {
+      if (state.currentSim && state.anim) {
+        const targetM = state.currentSim.metrics;
+        const targetC = state.currentSim.curves;
+        const k = 0.16;
+
+        state.anim.pH = lerp(state.anim.pH, targetM.pH, k);
+        state.anim.hco3 = lerp(state.anim.hco3, targetM.hco3, k);
+        state.anim.paCO2 = lerp(state.anim.paCO2, targetM.paCO2, k);
+        state.anim.plasmaOsm = lerp(state.anim.plasmaOsm, targetM.plasmaOsm, k);
+
+        for (const key of ['osm', 'grad', 'vol', 'na', 'hco3', 'k', 'glu']) {
+          const dst = state.anim.curves[key];
+          const src = targetC[key];
+          for (let i = 0; i <= N_GRID; i++) {
+            dst[i] = lerp(dst[i], src[i], k);
+          }
+        }
+
+        drawNephronCanvas();
+        drawDavenportCanvas();
+      }
+      requestAnimationFrame(animate);
+    }
+
+    // Boot Application
+    window.addEventListener('load', () => {
+      buildPathologiesTab();
+      buildPhysiologyTab();
+      buildDiureticsTab();
+      syncAutoCompUI();
+      wireControls();
+
+      resizeCanvas(nephronCanvas, 'nephron-canvas-wrap');
+      resizeCanvas(davCanvas, 'davenport-canvas-wrap');
+
+      updateSimulation();
+      requestAnimationFrame(animate);
+    });
+  })();
+  </script>
+</body>
+</html>
