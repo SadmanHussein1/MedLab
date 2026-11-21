@@ -1,1 +1,2844 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ElectroSim — MedLab Cardiac Electrophysiology Simulator</title>
 
+  <!-- Prevent theme flash prior to first paint (syncs medlab-theme & theme keys; defaults to dark) -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#0f0f12',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Subtle Minimal Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(113, 113, 122, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(113, 113, 122, 0.45);
+    }
+
+    /* Minimalist Swiss-Precision Range Sliders (Light & Dark aware) */
+    input[type="range"].clinical-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      border-radius: 9999px;
+      background: #e4e4e7;
+      outline: none;
+      cursor: pointer;
+    }
+    .dark input[type="range"].clinical-slider {
+      background: #27272a;
+    }
+
+    input[type="range"].clinical-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+      transition: transform 0.1s ease, background-color 0.15s ease;
+    }
+    .dark input[type="range"].clinical-slider::-webkit-slider-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.14);
+    }
+
+    input[type="range"].clinical-slider.drug-slider::-webkit-slider-thumb {
+      background: #7c3aed;
+    }
+    .dark input[type="range"].clinical-slider.drug-slider::-webkit-slider-thumb {
+      background: #a78bfa;
+    }
+
+    input[type="range"].clinical-slider::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+      transition: transform 0.1s ease, background-color 0.15s ease;
+    }
+    .dark input[type="range"].clinical-slider::-moz-range-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+    input[type="range"].clinical-slider.drug-slider::-moz-range-thumb {
+      background: #7c3aed;
+    }
+    .dark input[type="range"].clinical-slider.drug-slider::-moz-range-thumb {
+      background: #a78bfa;
+    }
+
+    /* Floating Clinical Tooltip */
+    #clinical-tooltip {
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+      z-index: 9999;
+    }
+
+    /* Calm Live Status Pulse */
+    @keyframes monitorPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .pulse-live {
+      animation: monitorPulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-zinc-50 text-zinc-900 dark:bg-obsidian dark:text-zinc-100 transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
+
+  <!-- ==================== FLOATING CLINICAL TOOLTIP ==================== -->
+  <div id="clinical-tooltip" class="fixed opacity-0 max-w-xs px-3 py-2 rounded-lg bg-zinc-900/95 text-zinc-100 border border-zinc-800 shadow-lg text-xs leading-relaxed backdrop-blur-sm"></div>
+
+  <!-- ==================== 1. MINIMAL STICKY HEADER ==================== -->
+  <header class="sticky top-0 z-40 w-full border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/90 dark:bg-obsidian/90 backdrop-blur-md shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+
+      <!-- Left: MedLab Breadcrumb + ElectroSim + Active Rhythm -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="flex items-center gap-2 group focus:outline-none shrink-0">
+          <span class="w-7 h-7 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-surfaceDark group-hover:border-tealLight/50 dark:group-hover:border-tealDark/50 transition-colors">
+            <svg class="w-4 h-4 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2.5 13h4l2.1-6.2 3.5 11.2 2.3-5h7.1" />
+            </svg>
+          </span>
+          <span class="text-[14px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">MedLab</span>
+        </a>
+
+        <span class="text-zinc-300 dark:text-zinc-700 text-sm font-light select-none">/</span>
+
+        <span class="text-[14px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 shrink-0">ElectroSim</span>
+
+        <span class="hidden sm:inline-block h-3.5 w-px bg-zinc-200 dark:bg-zinc-800 mx-0.5"></span>
+
+        <div class="hidden sm:flex items-center gap-1.5 min-w-0">
+          <span id="live-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 pulse-live shrink-0"></span>
+          <span id="active-preset-label" class="text-xs font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[190px] md:max-w-[260px]">Normal Sinus Rhythm</span>
+          <span id="kent-badge" class="hidden font-mono text-[10px] font-medium px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/30 shrink-0">WPW</span>
+        </div>
+      </div>
+
+      <!-- Right: Uncluttered Control Group -->
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <!-- Play / Pause -->
+        <button id="btn-play-pause" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5 transition-colors" title="Play / Pause Simulation">
+          <svg id="icon-pause" class="w-3.5 h-3.5 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+            <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+          </svg>
+          <svg id="icon-play" class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 hidden" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5,3 20,12 5,21"></polygon>
+          </svg>
+          <span id="play-pause-text" class="hidden sm:inline">Pause</span>
+        </button>
+
+        <!-- Compact Segmented Speed Control -->
+        <div class="inline-flex items-center h-8 rounded-lg bg-zinc-100/80 dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800 p-0.5 text-[11px] font-mono">
+          <button data-speed="0.25" type="button" class="speed-btn px-2 h-full rounded-md text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">0.25×</button>
+          <button data-speed="0.5" type="button" class="speed-btn px-2 h-full rounded-md text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">0.5×</button>
+          <button data-speed="1" type="button" class="speed-btn px-2 h-full rounded-md bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm transition-colors">1×</button>
+        </div>
+
+        <!-- Deliver PVC / Extra-Stimulus -->
+        <button id="btn-deliver-pvc" type="button" data-tooltip="Deliver a single premature ventricular contraction (PVC) right after the next T-wave to inspect retrograde AV conduction, compensatory pause, or TdP induction in Long QT." class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:border-amber-500/50 flex items-center gap-1.5 transition-colors">
+          <svg class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+          </svg>
+          <span id="pvc-btn-label">PVC</span>
+        </button>
+
+        <!-- Pin Reference AP Snapshot -->
+        <button id="btn-pin-snapshot" type="button" data-tooltip="Pin the current cellular Action Potential & intervals as the Ghost Reference baseline for direct before/after comparison." class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:border-tealLight/50 dark:hover:border-tealDark/50 flex items-center gap-1.5 transition-colors">
+          <svg class="w-3.5 h-3.5 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 17v5" />
+            <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+          </svg>
+          <span id="snapshot-btn-label">Pin</span>
+        </button>
+
+        <!-- Reset Normal -->
+        <button id="btn-reset-normal" type="button" data-tooltip="Restore Normal Sinus Rhythm, baseline electrolytes, clear all antiarrhythmics, and reset Ghost Reference." class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+          Reset
+        </button>
+
+        <!-- Dark / Light Mode Toggle -->
+        <button
+          id="theme-toggle"
+          type="button"
+          aria-label="Toggle dark and light theme"
+          title="Switch Bright / Dark mode"
+          class="w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+        >
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ==================== 2. CALM HAIRLINE ELECTROPHYSIOLOGY TELEMETRY BAR ==================== -->
+  <section id="telemetry-strip" class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 pt-3.5 shrink-0">
+    <div class="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 overflow-hidden">
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
+
+        <!-- 1. Ventricular Rate (HR) -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-b lg:border-b-0 border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="Ventricular Heart Rate (bpm). Determined by SA node automaticity, AV conduction ratio, or ectopic/re-entrant focus.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>VENT HR</span>
+            <span id="delta-hr" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-hr" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">72</span>
+            <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">bpm</span>
+          </div>
+        </div>
+
+        <!-- 2. PR Interval -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-b lg:border-b-0 sm:border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="PR Interval (normal 120–200 ms). Reflects atrial depolarization and AV nodal conduction delay; short (<120 ms) in WPW pre-excitation.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>PR INT</span>
+            <span id="delta-pr" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-pr" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">160</span>
+            <span id="unit-pr" class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">ms</span>
+          </div>
+        </div>
+
+        <!-- 3. QRS Duration -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-b lg:border-b-0 border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="QRS Duration (normal <110 ms). Widens with slowed Phase 0 Na⁺ upstroke (hyperkalemia, Class IA/IC drugs), WPW delta wave, or ventricular origin.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>QRS</span>
+            <span id="delta-qrs" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-qrs" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">86</span>
+            <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">ms</span>
+          </div>
+        </div>
+
+        <!-- 4. QT / QTc (Fridericia) -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="Measured QT and Fridericia rate-corrected QTc = QT / RR^(1/3). QTc ≥ 500 ms carries high risk of EAD-triggered Torsades de Pointes.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>QT / QTc</span>
+            <span id="delta-qtc" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1 flex-wrap">
+            <span id="val-qtc" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">414</span>
+            <span id="val-qt" class="font-mono text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">(390)</span>
+          </div>
+        </div>
+
+        <!-- 5. Ventricular RMP -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-b sm:border-b-0 border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="Ventricular Resting Membrane Potential (normal ~−86 mV). Primarily governed by extracellular K⁺ via Nernst equilibrium EK.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>RMP (Vm)</span>
+            <span id="delta-rmp" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-rmp" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">−86</span>
+            <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">mV</span>
+          </div>
+        </div>
+
+        <!-- 6. APD90 -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-b sm:border-b-0 sm:border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="Action Potential Duration at 90% repolarization (APD90). Prolonged by Class IA/III drugs, hypokalemia, and hypocalcemia; shortened by ischemia, hyperkalemia, and Class IB.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>APD90</span>
+            <span id="delta-apd" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-apd" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">282</span>
+            <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">ms</span>
+          </div>
+        </div>
+
+        <!-- 7. dV/dt max (Phase 0) -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="Maximum Phase 0 upstroke velocity (V/s). Direct index of fast Na⁺ channel (INa) availability and ventricular conduction velocity.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>dV/dt MAX</span>
+            <span id="delta-dvdt" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-dvdt" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">258</span>
+            <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">V/s</span>
+          </div>
+        </div>
+
+        <!-- 8. ERP / [K+]o -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between" data-tooltip="Effective Refractory Period (ERP, ms) and extracellular potassium [K⁺]o. Prolonged ERP suppresses re-entrant circuits.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>ERP · K⁺</span>
+            <span id="delta-erp" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <span id="val-erp" class="font-mono text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">252</span>
+            <span id="val-k-chip" class="font-mono text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">4.2 mM</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. SPACIOUS MAIN WORKSPACE ==================== -->
+  <main class="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-4 grid grid-cols-1 xl:grid-cols-12 gap-4 min-h-0">
+
+    <!-- LEFT (xl:col-span-5): SINGLE-CELL ACTION POTENTIAL & ION CURRENTS -->
+    <section class="xl:col-span-5 rounded-xl bg-white dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800/80 flex flex-col min-h-[410px] xl:min-h-[545px] overflow-hidden">
+      <!-- Clean Header + Cell Mode Switcher & Overlays -->
+      <div class="px-4 py-3 border-b border-zinc-200/80 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <h2 class="text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Action Potential</h2>
+          <!-- Cell Type Switcher: Ventricular vs SA Node -->
+          <div class="inline-flex items-center rounded-md bg-zinc-100/90 dark:bg-obsidian border border-zinc-200/80 dark:border-zinc-800 p-0.5 text-[10.5px] font-medium">
+            <button data-cell="vent" type="button" class="cell-btn px-2 py-0.5 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm transition-colors">Ventricular</button>
+            <button data-cell="sa" type="button" class="cell-btn px-2 py-0.5 rounded text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors">SA Node</button>
+          </div>
+          <span id="ap-ref-tag" class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500">Ref: Normal</span>
+        </div>
+
+        <!-- Monochrome Overlay Pills -->
+        <div class="flex flex-wrap items-center gap-1 text-[10px] font-mono">
+          <button data-overlay="phases" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Toggle Action Potential Phase 0–4 markers.">Phases</button>
+          <button data-overlay="ghost" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Toggle dashed Ghost Reference Action Potential (Normal or Pinned Snapshot).">Ghost</button>
+          <button data-overlay="currents" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Toggle synchronized transmembrane ion channel currents (INa, ICa,L, IKr, If).">Currents</button>
+        </div>
+      </div>
+
+      <!-- High-DPI Canvas Container -->
+      <div id="ap-canvas-wrap" class="relative flex-1 w-full min-h-[330px] p-1">
+        <canvas id="ap-canvas" class="block w-full h-full"></canvas>
+      </div>
+
+      <!-- Quiet Single-Line Footer -->
+      <div class="px-4 py-2 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-950/40 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 shrink-0">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span data-tooltip="Potassium Nernst Equilibrium Potential EK = 26.7 × ln([K+]o / 140)">E<sub>K</sub> <strong id="foot-ek" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">−93.6 mV</strong></span>
+          <span data-tooltip="Peak Phase 0 overshoot voltage">V<sub>peak</sub> <strong id="foot-vpeak" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">+31 mV</strong></span>
+          <span data-tooltip="Steady-state Na⁺ channel availability h∞ at resting potential">h<sub>∞</sub> <strong id="foot-hinf" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">92%</strong></span>
+        </div>
+        <span id="foot-ap-phase" class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/90 text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700/70">Phase 4 Rest</span>
+      </div>
+    </section>
+
+    <!-- CENTER (xl:col-span-4): SYNCHRONIZED LEAD II ECG & LEWIS LADDER -->
+    <section class="xl:col-span-4 rounded-xl bg-white dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800/80 flex flex-col min-h-[410px] xl:min-h-[545px] overflow-hidden">
+      <!-- Clean Header + Compact Legend -->
+      <div class="px-4 py-3 border-b border-zinc-200/80 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div class="flex items-baseline gap-2">
+          <h2 class="text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Lead II ECG &amp; Ladder</h2>
+          <span class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500">25 mm/s</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5 text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-teal-600 dark:bg-teal-400 inline-block"></span>Antegrade</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-amber-600 dark:bg-amber-400 inline-block"></span>Retro/Ectopic</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-rose-600 dark:bg-rose-400 inline-block"></span>Block</span>
+        </div>
+      </div>
+
+      <!-- High-DPI Canvas Container -->
+      <div id="ecg-canvas-wrap" class="relative flex-1 w-full min-h-[330px] p-1">
+        <canvas id="ecg-canvas" class="block w-full h-full"></canvas>
+      </div>
+
+      <!-- Quiet Single-Line Footer -->
+      <div class="px-4 py-2 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-950/40 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 shrink-0">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span>Conduction <strong id="foot-conduction" class="font-medium text-zinc-800 dark:text-zinc-200">1:1 AV</strong></span>
+          <span>ST Dev <strong id="foot-st" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">0.0 mV</strong></span>
+        </div>
+        <span id="foot-rhythm-tag" class="text-[10.5px] font-sans text-zinc-600 dark:text-zinc-400 font-medium truncate max-w-[200px]">Sinus Rhythm</span>
+      </div>
+    </section>
+
+    <!-- RIGHT (xl:col-span-3): CALM 3-TAB CONTROL SIDEBAR -->
+    <aside class="xl:col-span-3 rounded-xl bg-white dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800/80 flex flex-col min-h-[440px] xl:min-h-0 xl:max-h-[calc(100vh-208px)] overflow-hidden">
+      <!-- 3-Tab Segmented Switcher -->
+      <div class="p-2 border-b border-zinc-200/80 dark:border-zinc-800/80 shrink-0">
+        <div class="grid grid-cols-3 rounded-lg bg-zinc-100/90 dark:bg-obsidian p-0.5 gap-0.5 border border-zinc-200/70 dark:border-zinc-800/80">
+          <button data-tab="rhythms" type="button" class="tab-btn py-1.5 rounded-md text-xs font-medium bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm transition-colors">
+            Rhythms
+          </button>
+          <button data-tab="channels" type="button" class="tab-btn py-1.5 rounded-md text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors">
+            Channels
+          </button>
+          <button data-tab="drugs" type="button" class="tab-btn py-1.5 rounded-md text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors flex items-center justify-center gap-1.5">
+            <span>Drugs</span>
+            <span id="tab-drug-count" class="hidden font-mono text-[10px] px-1.5 rounded-full bg-violet-500/15 text-violet-700 dark:text-violet-300">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Tab Content Area -->
+      <div class="flex-1 overflow-y-auto p-3">
+
+        <!-- TAB 1: RHYTHMS & PATHOLOGIES (11 Presets) -->
+        <div id="tab-rhythms" class="space-y-1.5"></div>
+
+        <!-- TAB 2: ELECTROLYTES, ION CHANNELS & SUBSTRATE -->
+        <div id="tab-channels" class="hidden space-y-4">
+          <!-- Accessory Pathway (WPW / Bundle of Kent) Toggle -->
+          <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/90 dark:border-zinc-800/80 flex items-center justify-between gap-3" data-tooltip="Accessory AV bypass tract (Bundle of Kent): conducts directly from atria to ventricles without AV nodal delay, producing short PR (<120 ms) and slurred Delta wave.">
+            <div>
+              <div class="text-xs font-medium text-zinc-900 dark:text-zinc-100">Accessory Tract (WPW)</div>
+              <div class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">Kent bypass · Short PR &amp; Delta wave</div>
+            </div>
+            <button id="toggle-kent" type="button" role="switch" aria-checked="false" class="relative w-9 h-5 rounded-full bg-zinc-300 dark:bg-zinc-700 transition-colors focus:outline-none shrink-0">
+              <span id="kent-knob" class="block w-4 h-4 rounded-full bg-white shadow-sm transform translate-x-0.5 transition-transform"></span>
+            </button>
+          </div>
+
+          <!-- Grouped Sliders Container -->
+          <div id="channel-sliders-list" class="space-y-4"></div>
+        </div>
+
+        <!-- TAB 3: VAUGHAN WILLIAMS ANTIARRHYTHMICS -->
+        <div id="tab-drugs" class="hidden space-y-2.5">
+          <div class="flex items-center justify-between gap-2 pb-2 border-b border-zinc-200/80 dark:border-zinc-800/80">
+            <span class="text-[11px] text-zinc-500 dark:text-zinc-400">Vaughan Williams Classes I–IV &amp; Rescue</span>
+            <button id="btn-clear-drugs" type="button" class="hidden text-[11px] font-medium text-violet-700 dark:text-violet-300 hover:underline focus:outline-none">
+              Clear all
+            </button>
+          </div>
+          <div id="drug-sliders-list" class="space-y-2"></div>
+        </div>
+
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ==================== 4. MINIMAL BOTTOM CLINICAL STATUS BAR ==================== -->
+  <footer class="w-full border-t border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-obsidian/90 shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <div id="diagnostics-badges" class="flex flex-wrap items-center gap-1.5"></div>
+      <div id="active-drugs-summary" class="text-[11px] font-mono flex flex-wrap items-center gap-1.5">
+        <span class="text-zinc-400 dark:text-zinc-500">No active antiarrhythmics</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== BIOPHYSICAL ELECTROPHYSIOLOGY ENGINE & CONTROLLER ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    /* =========================================================================
+       1. BASELINE PARAMETERS, RHYTHM PRESETS, SLIDERS & ANTIARRHYTHMICS
+       ========================================================================= */
+
+    const NORMAL_PARAMS = {
+      rhythmMode: 'sinus', // 'sinus' | 'mobitz1' | 'chb' | 'afib' | 'avnrt' | 'vt' | 'tdp'
+      ko: 4.2,             // Extracellular K+ (mmol/L)
+      cao: 2.4,            // Extracellular Ca2+ (mmol/L)
+      mgo: 0.9,            // Extracellular Mg2+ (mmol/L)
+      autonomic: 0,        // Autonomic tone (-100 vagal .. +100 sympathetic)
+      gNa: 100,            // Fast Na+ conductance (% normal)
+      gCaL: 100,           // L-type Ca2+ conductance (% normal)
+      gKr: 100,            // Delayed rectifier K+ conductance (% normal)
+      ischemia: 0,         // Transmural ischemia / IK,ATP activation (0–100%)
+      avDelay: 1.0,        // AV nodal conduction delay multiplier (0.6–2.6x)
+      kent: false          // Accessory AV bypass tract (WPW)
+    };
+
+    const RHYTHM_PRESETS = [
+      {
+        id: 'normal',
+        name: 'Normal Sinus Rhythm',
+        tag: 'Baseline',
+        desc: 'Balanced Na⁺, Ca²⁺, and K⁺ conductances with 1:1 AV conduction.',
+        params: { ...NORMAL_PARAMS }
+      },
+      {
+        id: 'hyperk',
+        name: 'Hyperkalemia',
+        tag: 'K⁺ 6.9 mM',
+        desc: 'Depolarized RMP, inactivated INa, peaked T waves & widening QRS.',
+        params: { ...NORMAL_PARAMS, ko: 6.9, avDelay: 1.25 }
+      },
+      {
+        id: 'hypok',
+        name: 'Hypokalemia',
+        tag: 'K⁺ 2.3 mM',
+        desc: 'Reduced IKr, prolonged APD/QT, flattened T with prominent U-wave.',
+        params: { ...NORMAL_PARAMS, ko: 2.3, mgo: 0.65 }
+      },
+      {
+        id: 'ischemia',
+        name: 'Acute Ischemia (STEMI)',
+        tag: '↑ IK,ATP',
+        desc: 'Depolarized RMP, shortened APD, and systolic/diastolic ST elevation.',
+        params: { ...NORMAL_PARAMS, ischemia: 82, ko: 5.5, autonomic: 35 }
+      },
+      {
+        id: 'lqt_tdp',
+        name: 'Long QT / Torsades',
+        tag: '↓↓ IKr · EAD',
+        desc: 'Marked QT prolongation (>520 ms), Phase 2/3 EADs & polymorphic TdP.',
+        params: { ...NORMAL_PARAMS, rhythmMode: 'tdp', gKr: 28, ko: 3.1, mgo: 0.55 }
+      },
+      {
+        id: 'mobitz1',
+        name: 'Mobitz I (Wenckebach)',
+        tag: '2° AVB',
+        desc: 'Progressive AV nodal fatigue: lengthening PR until a dropped QRS.',
+        params: { ...NORMAL_PARAMS, rhythmMode: 'mobitz1', avDelay: 1.55, autonomic: -20 }
+      },
+      {
+        id: 'chb',
+        name: 'Complete Heart Block',
+        tag: '3° AVB',
+        desc: 'Complete AV dissociation with independent wide ventricular escape.',
+        params: { ...NORMAL_PARAMS, rhythmMode: 'chb', avDelay: 2.4 }
+      },
+      {
+        id: 'afib',
+        name: 'Atrial Fibrillation',
+        tag: 'Irreg-Irreg',
+        desc: 'Chaotic atrial micro-reentry, absent P waves, irregular ventricular RR.',
+        params: { ...NORMAL_PARAMS, rhythmMode: 'afib', autonomic: 25 }
+      },
+      {
+        id: 'avnrt',
+        name: 'AVNRT (Dual Pathway)',
+        tag: 'Re-entry',
+        desc: 'Slow-fast AV nodal re-entry (~174 bpm). Try Adenosine to terminate.',
+        params: { ...NORMAL_PARAMS, rhythmMode: 'avnrt', autonomic: 30 }
+      },
+      {
+        id: 'wpw',
+        name: 'WPW Syndrome',
+        tag: 'Delta Wave',
+        desc: 'Bundle of Kent bypasses AV node: short PR (<120 ms) & slurred QRS.',
+        params: { ...NORMAL_PARAMS, kent: true }
+      },
+      {
+        id: 'vt',
+        name: 'Monomorphic VT',
+        tag: 'Wide QRS',
+        desc: 'Rapid ventricular re-entry (~168 bpm) with wide QRS & AV dissociation.',
+        params: { ...NORMAL_PARAMS, rhythmMode: 'vt', ischemia: 30, autonomic: 40 }
+      }
+    ];
+
+    const CHANNEL_SLIDERS = [
+      { key: 'ko', group: 'ions', label: 'Extracellular K⁺', unit: 'mM', min: 2.0, max: 8.5, step: 0.1, decimals: 1, tip: 'Primary determinant of Nernst EK & resting potential. High K⁺ inactivates INa (wide QRS, peaked T); low K⁺ slows IKr (prolonged QT, U-wave).' },
+      { key: 'cao', group: 'ions', label: 'Extracellular Ca²⁺', unit: 'mM', min: 1.4, max: 3.6, step: 0.1, decimals: 1, tip: 'Low Ca²⁺ prolongs Phase 2 plateau & ST/QT segment; high Ca²⁺ accelerates Ca-dependent inactivation and shortens QT.' },
+      { key: 'mgo', group: 'ions', label: 'Extracellular Mg²⁺', unit: 'mM', min: 0.4, max: 2.2, step: 0.05, decimals: 2, tip: 'Membrane stabilizer that inhibits L-type Ca²⁺ window reactivation and suppresses EAD-triggered Torsades.' },
+
+      { key: 'autonomic', group: 'channels', label: 'Autonomic Tone', unit: '%', min: -100, max: 100, step: 5, decimals: 0, signed: true, tip: 'Negative = Vagal/Parasympathetic (↓SA slope, ↑AV delay); Positive = Sympathetic (↑If/HR, ↑ICaL, ↓AV delay).' },
+      { key: 'gNa', group: 'channels', label: 'Fast Na⁺ (gNa)', unit: '%', min: 20, max: 120, step: 2, decimals: 0, tip: 'Drives Phase 0 ventricular upstroke (dV/dt max) and His-Purkinje conduction velocity. Blocked by Class I antiarrhythmics.' },
+      { key: 'gCaL', group: 'channels', label: 'L-Type Ca²⁺ (gCa,L)', unit: '%', min: 25, max: 140, step: 2, decimals: 0, tip: 'Sustains ventricular Phase 2 plateau and drives SA/AV nodal Phase 0 depolarization. Blocked by Class IV agents.' },
+      { key: 'gKr', group: 'channels', label: 'Delayed Rectifier (gKr)', unit: '%', min: 15, max: 130, step: 2, decimals: 0, tip: 'Primary Phase 3 repolarizing K⁺ current (hERG). Reduced in LQT2 & Class III blockade, prolonging APD90 & QTc.' },
+      { key: 'ischemia', group: 'channels', label: 'Ischemia / IK,ATP', unit: '%', min: 0, max: 100, step: 2, decimals: 0, tip: 'ATP depletion opens IK,ATP channels and raises local K⁺: depolarizes RMP, shortens APD, and produces ST-segment elevation.' },
+      { key: 'avDelay', group: 'channels', label: 'AV Nodal Delay', unit: '×', min: 0.6, max: 2.6, step: 0.05, decimals: 2, tip: 'Modulates AV nodal conduction velocity and refractoriness (PR interval and ventricular rate control in AFib).' }
+    ];
+
+    const DRUG_CONFIGS = [
+      {
+        id: 'procainamide', name: 'Procainamide', cls: 'Class IA',
+        effects: '↓gNa · ↓gKr · ↑QRS · ↑QT',
+        maxDose: 50, unit: 'mg/min', decimals: 0,
+        apply: (eff, d) => {
+          eff.gNa *= (1 - 0.34 * d);
+          eff.gKr *= (1 - 0.36 * d);
+          eff.avDelay *= (1 - 0.06 * d); // Mild vagolytic effect
+        }
+      },
+      {
+        id: 'lidocaine', name: 'Lidocaine', cls: 'Class IB',
+        effects: '↓gNa (ischemic) · ↓APD/QT',
+        maxDose: 4, unit: 'mg/min', decimals: 1,
+        apply: (eff, d) => {
+          const ischBoost = 1 + 0.55 * (eff.ischemia / 100);
+          eff.gNa *= (1 - 0.16 * d * ischBoost);
+          eff.lateNaBlock += 0.65 * d; // Shortens Phase 2/3 APD
+        }
+      },
+      {
+        id: 'flecainide', name: 'Flecainide', cls: 'Class IC',
+        effects: '↓↓↓gNa · ↑↑QRS · ↔QT',
+        maxDose: 200, unit: 'mg', decimals: 0,
+        apply: (eff, d) => {
+          eff.gNa *= (1 - 0.58 * d);
+          eff.avDelay *= (1 + 0.12 * d);
+          eff.kentBlock += 0.85 * d; // Slows accessory pathway
+        }
+      },
+      {
+        id: 'metoprolol', name: 'Metoprolol', cls: 'Class II',
+        effects: '↓SA Phase 4 · ↑↑AV Delay',
+        maxDose: 15, unit: 'mg IV', decimals: 1,
+        apply: (eff, d) => {
+          eff.autonomic -= 62 * d;
+          eff.avDelay *= (1 + 0.42 * d);
+          eff.gCaL *= (1 - 0.14 * d);
+        }
+      },
+      {
+        id: 'amiodarone', name: 'Amiodarone / Sotalol', cls: 'Class III',
+        effects: '↓↓↓gKr · ↑↑APD/ERP/QT',
+        maxDose: 300, unit: 'mg IV', decimals: 0,
+        apply: (eff, d) => {
+          eff.gKr *= (1 - 0.54 * d);
+          eff.gNa *= (1 - 0.14 * d);
+          eff.gCaL *= (1 - 0.15 * d);
+          eff.autonomic -= 22 * d;
+          eff.avDelay *= (1 + 0.28 * d);
+        }
+      },
+      {
+        id: 'verapamil', name: 'Verapamil', cls: 'Class IV',
+        effects: '↓↓gCa,L · ↑↑↑AV Delay · ↓SA',
+        maxDose: 10, unit: 'mg IV', decimals: 1,
+        apply: (eff, d) => {
+          eff.gCaL *= (1 - 0.48 * d);
+          eff.avDelay *= (1 + 0.58 * d);
+          eff.saSlow += 0.24 * d;
+        }
+      },
+      {
+        id: 'adenosine', name: 'Adenosine Bolus', cls: 'IK,Ado',
+        effects: 'Transient AV Block · Breaks AVNRT',
+        maxDose: 12, unit: 'mg IV', decimals: 0,
+        apply: (eff, d) => {
+          eff.adenosine += d;
+          eff.avDelay *= (1 + 1.35 * d);
+          eff.saSlow += 0.30 * d;
+        }
+      },
+      {
+        id: 'magnesium', name: 'IV Magnesium Sulfate', cls: 'EAD Block',
+        effects: 'Stabilizes ICa,L · Stops Torsades',
+        maxDose: 2, unit: 'g IV', decimals: 1,
+        apply: (eff, d) => {
+          eff.mgo += 1.25 * d;
+          eff.eadSuppress += d;
+        }
+      }
+    ];
+
+    /* =========================================================================
+       2. BIOPHYSICAL SINGLE-CELL ACTION POTENTIAL ODE ENGINE
+          - Ventricular Myocyte (INa, Ito, ICa,L, IKr, IK1, IK,ATP, EAD window)
+          - SA Nodal Pacemaker (If, ICa,L, IKr, IK,Ado)
+       ========================================================================= */
+
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+    function computeEffectiveParams(baseParams, drugDoses) {
+      const eff = {
+        ...baseParams,
+        lateNaBlock: 0,
+        kentBlock: 0,
+        saSlow: 0,
+        adenosine: 0,
+        eadSuppress: 0
+      };
+      for (const drug of DRUG_CONFIGS) {
+        const d = drugDoses[drug.id] || 0;
+        if (d > 0.001) drug.apply(eff, d);
+      }
+      eff.ko = clamp(eff.ko, 1.8, 9.2);
+      eff.cao = clamp(eff.cao, 1.2, 4.0);
+      eff.mgo = clamp(eff.mgo, 0.35, 3.2);
+      eff.autonomic = clamp(eff.autonomic, -100, 100);
+      eff.gNa = clamp(eff.gNa, 15, 130);
+      eff.gCaL = clamp(eff.gCaL, 20, 150);
+      eff.gKr = clamp(eff.gKr, 10, 140);
+      eff.ischemia = clamp(eff.ischemia, 0, 100);
+      eff.avDelay = clamp(eff.avDelay, 0.55, 4.0);
+      return eff;
+    }
+
+    /**
+     * Solves a biophysically calibrated Ventricular Myocyte Action Potential
+     * across 550 ms (dt = 0.25 ms) returning Vm(t), individual ion currents,
+     * RMP, dV/dt max, APD50, APD90, ERP, EK, hInf, and EAD detection.
+     */
+    function solveVentricularAP(eff) {
+      const dt = 0.25; // ms
+      const totalMs = 600;
+      const nSteps = Math.round(totalMs / dt);
+      const stimStart = 28; // ms
+
+      // Nernst Potassium equilibrium potential (RT/F = 26.73 mV at 37C)
+      const eK = 26.73 * Math.log(eff.ko / 140.0);
+      const isch = eff.ischemia / 100.0;
+
+      // Resting membrane potential tracks EK + background Na leak + ischemic depolarization
+      const vRest = clamp(eK + 7.4 + 11.5 * isch, -96, -54);
+
+      // Steady-state Na+ inactivation h_inf(V_rest): drops sharply as K+ rises!
+      const hInfRest = 1.0 / (1.0 + Math.exp((vRest + 71.5) / 5.4));
+      const gNaScale = (eff.gNa / 100.0);
+      const gCaScale = (eff.gCaL / 100.0) * (1.0 + 0.14 * (eff.autonomic / 100.0));
+      // IKr scales physiologically with sqrt([K+]o / 4.2) -> low K+ reduces IKr!
+      const kModKr = Math.pow(eff.ko / 4.2, 0.45);
+      const gKrScale = (eff.gKr / 100.0) * kModKr * (1.0 + 0.16 * Math.max(0, eff.autonomic / 100.0));
+      // Ca2+ modulates Phase 2 inactivation rate (hypocalcemia prolongs plateau, hypercalcemia shortens it)
+      const caInactMod = clamp(eff.cao / 2.4, 0.55, 1.55);
+
+      // State variables
+      let V = vRest;
+      let m = 0.002;
+      let h = hInfRest;
+      let dCa = 0.0;
+      let fCa = 1.0;
+      let xKr = 0.01;
+      let rTo = 0.0;
+      let sTo = 1.0;
+
+      const tArr = [];
+      const vArr = [];
+      const iNaArr = [];
+      const iCaArr = [];
+      const iKrArr = [];
+
+      let vPeak = vRest;
+      let peakIdx = 0;
+      let maxDvDt = 0;
+      let eadTriggered = false;
+
+      // EAD propensity: low IKr + low Mg2+ + normal/high ICaL + non-ischemic
+      const eadDrive = Math.max(0, (0.58 - gKrScale) * 2.2) *
+                       clamp(1.15 - 0.52 * (eff.mgo - 0.45), 0, 1.25) *
+                       clamp(1 - eff.eadSuppress * 0.92, 0.05, 1) *
+                       clamp(1 - isch * 1.1, 0, 1) *
+                       clamp(gCaScale, 0.3, 1.4);
+
+      const stride = 4; // Record every 1.0 ms (600 points)
+
+      for (let i = 0; i <= nSteps; i++) {
+        const t = i * dt;
+
+        // Brief depolarizing stimulus current (2.0 ms)
+        const iStim = (t >= stimStart && t < stimStart + 2.2) ? -38.0 : 0.0;
+
+        // 1. Fast Sodium Current (INa)
+        const mInf = 1.0 / (1.0 + Math.exp(-(V + 42.0) / 5.5));
+        const hInf = 1.0 / (1.0 + Math.exp((V + 71.5) / 5.4));
+        const tauM = 0.18;
+        const tauH = V > -45 ? 1.15 : 6.5;
+        m += (mInf - m) * (dt / tauM);
+        h += (hInf - h) * (dt / tauH);
+        const iNa = 17.5 * gNaScale * (m * m * m) * h * (V - 52.0);
+
+        // Late Na+ current (blocked by Lidocaine Class IB)
+        const lateNaFactor = clamp(1.0 - 0.85 * eff.lateNaBlock, 0.1, 1.0);
+        const iNaL = (V > -55 ? 0.045 * gNaScale * lateNaFactor * (V - 52.0) / (1 + Math.exp(-(V + 35) / 8)) : 0);
+
+        // 2. Transient Outward Current (Ito — Phase 1 notch)
+        const rInf = 1.0 / (1.0 + Math.exp(-(V - 6.0) / 8.0));
+        const sInf = 1.0 / (1.0 + Math.exp((V + 25.0) / 7.0));
+        rTo += (rInf - rTo) * (dt / 1.4);
+        sTo += (sInf - sTo) * (dt / 12.0);
+        const iTo = 0.22 * rTo * sTo * (V - eK);
+
+        // 3. L-Type Calcium Current (ICa,L — Phase 2 plateau + EAD window reactivation)
+        const dInf = 1.0 / (1.0 + Math.exp(-(V + 14.0) / 6.2));
+        const fInf = 1.0 / (1.0 + Math.exp((V + 27.0) / 6.5));
+        const tauD = 1.6;
+        const tauF = (78.0 / caInactMod) * (1.0 + 0.25 * (1 - clamp(eff.mgo, 0.5, 1.8) * 0.35));
+        dCa += (dInf - dCa) * (dt / tauD);
+        fCa += (fInf - fCa) * (dt / tauF);
+        // Window current boost for EADs during prolonged repolarization
+        let iCaWindow = 0;
+        if (eadDrive > 0.26 && t > stimStart + 185 && t < stimStart + 435 && V > -46 && V < 4) {
+          const osc = 0.55 + 0.45 * Math.sin(2 * Math.PI * (t - (stimStart + 185)) / 78.0);
+          iCaWindow = -0.34 * eadDrive * osc * (1 - (V + 10) / 65);
+          if (eadDrive > 0.38) eadTriggered = true;
+        }
+        const iCaL = 0.072 * gCaScale * dCa * (0.14 + 0.86 * fCa) * (V - 55.0) + iCaWindow;
+
+        // 4. Delayed Rectifier K+ Current (IKr / IKs — Phase 3 repolarization)
+        const xInf = 1.0 / (1.0 + Math.exp(-(V + 12.0) / 9.0));
+        const tauX = V > -35 ? (158.0 / Math.max(0.35, 0.72 + 0.28 * caInactMod)) : 32.0;
+        xKr += (xInf - xKr) * (dt / tauX);
+        const rectKr = 1.0 / (1.0 + Math.exp((V - 18.0) / 26.0));
+        const iKr = 0.095 * gKrScale * (xKr * xKr) * rectKr * (V - eK);
+
+        // 5. Inward Rectifier IK1 (anchors Phase 4 resting potential)
+        const k1Rect = 1.0 / (1.0 + Math.exp((V - (vRest + 18.0)) / 9.5));
+        const iK1 = 0.26 * (0.75 + 0.25 * (eff.ko / 4.2)) * k1Rect * (V - vRest);
+
+        // 6. Ischemic ATP-Sensitive K+ Current (IK,ATP — shortens APD & lowers plateau)
+        const iKATP = isch > 0.01 ? (0.048 * isch * (V - eK) / (1.0 + Math.exp(-(V + 65) / 18))) : 0;
+
+        const iTotal = iNa + iNaL + iTo + iCaL + iKr + iK1 + iKATP + iStim;
+        const dvdt = -iTotal; // mV/ms == V/s
+
+        if (t >= stimStart && t < stimStart + 25 && dvdt > maxDvDt) {
+          maxDvDt = dvdt;
+        }
+
+        V = clamp(V + dvdt * dt, -105, 55);
+
+        if (i % stride === 0) {
+          const idx = tArr.length;
+          tArr.push(t);
+          vArr.push(V);
+          iNaArr.push(clamp(iNa / 140, -1.6, 0.2));     // Normalized display units
+          iCaArr.push(clamp(iCaL / 4.2, -1.2, 0.2));
+          iKrArr.push(clamp((iKr + iTo * 0.25 + iKATP) / 4.0, -0.2, 1.3));
+          if (V > vPeak && t > stimStart && t < stimStart + 45) {
+            vPeak = V;
+            peakIdx = idx;
+          }
+        }
+      }
+
+      // Compute APD50 & APD90 from upstroke crossing
+      const amp = Math.max(10, vPeak - vRest);
+      const v50 = vPeak - 0.50 * amp;
+      const v90 = vPeak - 0.90 * amp;
+      let tUp = stimStart + 1.5;
+      for (let i = 0; i < peakIdx; i++) {
+        if (vArr[i] >= vRest + 0.5 * amp) { tUp = tArr[i]; break; }
+      }
+      let apd50 = 200, apd90 = 282;
+      for (let i = peakIdx; i < vArr.length; i++) {
+        if (vArr[i] <= v50) { apd50 = tArr[i] - tUp; break; }
+      }
+      let found90 = false;
+      for (let i = peakIdx; i < vArr.length; i++) {
+        if (vArr[i] <= v90) { apd90 = tArr[i] - tUp; found90 = true; break; }
+      }
+      if (!found90) apd90 = totalMs - tUp;
+
+      // Effective Refractory Period (ERP): tracks APD90 + post-repolarization refractoriness
+      const prr = Math.max(0, (0.85 - hInfRest) * 95) + 42 * isch + (1 - gNaScale) * 40;
+      const erp = clamp(apd90 * 0.88 + prr, 140, 560);
+
+      // Scale dV/dt max to realistic textbook V/s (~258 V/s at normal baseline)
+      const dvdtPhys = clamp(maxDvDt * 1.08, 22, 340);
+
+      return {
+        t: tArr,
+        v: vArr,
+        iNa: iNaArr,
+        iCa: iCaArr,
+        iKr: iKrArr,
+        eK,
+        vRest,
+        vPeak,
+        hInfRest,
+        dvdtMax: dvdtPhys,
+        apd50,
+        apd90,
+        erp,
+        eadTriggered,
+        eadDrive,
+        stimStart
+      };
+    }
+
+    /**
+     * Solves a biophysically calibrated SA Nodal Pacemaker Action Potential
+     * across 1100 ms: Phase 4 spontaneous If slope -> Phase 0 ICa,L -> Phase 3 IKr.
+     */
+    function solveSANodalAP(eff) {
+      const symp = eff.autonomic / 100.0;
+      const gCaScale = eff.gCaL / 100.0;
+      const gKrScale = (eff.gKr / 100.0) * Math.pow(eff.ko / 4.2, 0.35);
+
+      // Intrinsic sinus rate modulated by autonomic tone, Verapamil, Adenosine, and K+
+      let saRate = 72 * (1 + 0.52 * symp) * (1 - 0.30 * eff.saSlow) * (0.88 + 0.12 * gCaScale);
+      if (eff.ko > 6.8) saRate *= (1 - 0.12 * (eff.ko - 6.8));
+      saRate = clamp(saRate, 32, 155);
+
+      const cycleMs = 60000 / saRate;
+      const mdp = clamp(-60 - 7.5 * eff.adenosine - 4.0 * Math.max(0, -symp) + 2.8 * (eff.ko - 4.2), -74, -48);
+      const vThresh = -40;
+      const vPeak = clamp(12 * (0.7 + 0.3 * gCaScale), -2, 22);
+
+      // Pacemaker phase durations within 1 cycle
+      const tPhase0 = clamp(42 / Math.max(0.4, gCaScale), 26, 85);
+      const tPhase3 = clamp(125 / Math.max(0.45, gKrScale), 80, 230);
+      const tAP = Math.min(cycleMs * 0.65, tPhase0 + tPhase3);
+      const tPhase4 = Math.max(120, cycleMs - tAP);
+
+      const totalMs = Math.max(900, Math.min(1400, cycleMs * 1.15));
+      const nPts = 420;
+      const tArr = [], vArr = [], iFArr = [], iCaArr = [], iKrArr = [];
+
+      for (let i = 0; i <= nPts; i++) {
+        const t = (i / nPts) * totalMs;
+        const tc = (t + tPhase4 * 0.25) % cycleMs; // Start nicely in mid-diastole
+        let v = mdp, iF = 0, iCa = 0, iKr = 0;
+
+        if (tc < tPhase4) {
+          // Phase 4: Spontaneous funny current (If) diastolic depolarization
+          const u = tc / tPhase4;
+          const ease = 0.65 * u + 0.35 * u * u;
+          v = mdp + (vThresh - mdp) * ease;
+          iF = -(0.55 + 0.45 * (1 - u)) * (1 + 0.35 * symp) * (1 - 0.4 * eff.adenosine);
+          iCa = -0.15 * Math.pow(u, 3) * gCaScale;
+          iKr = 0.25 * Math.exp(-3.5 * u) * gKrScale;
+        } else if (tc < tPhase4 + tPhase0) {
+          // Phase 0: Slow L-type Ca2+ depolarization (no fast INa!)
+          const u = (tc - tPhase4) / tPhase0;
+          const s = 0.5 * (1 - Math.cos(Math.PI * u));
+          v = vThresh + (vPeak - vThresh) * s;
+          iCa = -1.15 * Math.sin(Math.PI * u) * gCaScale;
+          iKr = 0.15 * u * gKrScale;
+        } else {
+          // Phase 3: Delayed rectifier K+ repolarization back to MDP
+          const u = (tc - tPhase4 - tPhase0) / Math.max(20, cycleMs - tPhase4 - tPhase0);
+          const s = 0.5 * (1 + Math.cos(Math.PI * u));
+          v = mdp + (vPeak - mdp) * s;
+          iCa = -0.15 * Math.exp(-4 * u) * gCaScale;
+          iKr = 1.1 * Math.sin(Math.PI * Math.pow(u, 0.75)) * gKrScale;
+        }
+
+        tArr.push(t);
+        vArr.push(v);
+        iFArr.push(iF);
+        iCaArr.push(iCa);
+        iKrArr.push(iKr);
+      }
+
+      return { t: tArr, v: vArr, iF: iFArr, iCa: iCaArr, iKr: iKrArr, saRate, mdp, vThresh, vPeak, cycleMs, tPhase4 };
+    }
+
+    /**
+     * Computes derived ECG intervals and clinical parameters coupling single-cell AP to surface ECG
+     */
+    function computeClinicalMetrics(eff, ventAP, saAP) {
+      const mode = eff.rhythmMode;
+      const isAdenosineActive = eff.adenosine >= 0.35;
+
+      // Determine effective rhythm after pharmacology (e.g., Adenosine breaks AVNRT, Mg stops TdP)
+      let effectiveMode = mode;
+      if (mode === 'avnrt' && isAdenosineActive) {
+        effectiveMode = 'sinus';
+      }
+      if (mode === 'tdp' && (eff.eadSuppress >= 0.35 || eff.mgo >= 1.4)) {
+        effectiveMode = 'sinus'; // Stabilized back to Long-QT sinus rhythm
+      }
+      // Spontaneous TdP induction if QTc extreme + EADs active even outside preset
+      const qrsBase = 84 * Math.pow(258 / Math.max(55, ventAP.dvdtMax), 0.58) + (eff.kent && eff.kentBlock < 0.5 ? 28 : 0);
+      let qrsMs = clamp(qrsBase, 72, 210);
+      if (effectiveMode === 'vt' || effectiveMode === 'chb') qrsMs = clamp(qrsBase + 66, 138, 225);
+
+      // Base PR interval (atrial + AV nodal delay)
+      let avNodeMs = 95 * eff.avDelay * (1 - 0.16 * (eff.autonomic / 100.0)) * (1 + Math.max(0, eff.ko - 5.5) * 0.14);
+      let prMs = clamp(65 + avNodeMs, 108, 360);
+      if (eff.kent && eff.kentBlock < 0.55 && (effectiveMode === 'sinus' || effectiveMode === 'mobitz1')) {
+        prMs = clamp(98 + 25 * eff.kentBlock, 88, 130);
+      }
+
+      // Effective ventricular rate & conduction label
+      let atrialRate = saAP.saRate;
+      let ventRate = saAP.saRate;
+      let prDisplay = prMs;
+      let conductionLabel = '1:1 AV';
+      let rhythmLabel = 'Sinus Rhythm';
+
+      if (effectiveMode === 'sinus') {
+        if (isAdenosineActive && mode !== 'avnrt') {
+          ventRate = saAP.saRate * 0.5;
+          conductionLabel = '2:1 AV (Ado)';
+          rhythmLabel = 'Transient AV Block';
+        } else if (eff.kent && eff.kentBlock < 0.55) {
+          conductionLabel = 'Kent Pre-Exc';
+          rhythmLabel = 'WPW Pre-Excitation';
+        } else if (prMs > 200) {
+          conductionLabel = '1° AV Block';
+          rhythmLabel = '1° AV Block';
+        } else if (ventRate < 60) {
+          rhythmLabel = 'Sinus Bradycardia';
+        } else if (ventRate > 100) {
+          rhythmLabel = 'Sinus Tachycardia';
+        }
+      } else if (effectiveMode === 'mobitz1') {
+        ventRate = saAP.saRate * (3 / 4); // 4:3 Wenckebach average
+        conductionLabel = '4:3 Wenckebach';
+        rhythmLabel = 'Mobitz I (2° AVB)';
+      } else if (effectiveMode === 'chb') {
+        ventRate = clamp(38 + 6 * (eff.autonomic / 100.0), 28, 48);
+        prDisplay = null;
+        conductionLabel = 'AV Dissociation';
+        rhythmLabel = '3° Complete Block';
+      } else if (effectiveMode === 'afib') {
+        atrialRate = 380;
+        ventRate = clamp((118 + 38 * (eff.autonomic / 100.0)) / Math.pow(eff.avDelay, 0.72), 48, 175);
+        prDisplay = null;
+        conductionLabel = 'Variable AV';
+        rhythmLabel = 'Atrial Fibrillation';
+      } else if (effectiveMode === 'avnrt') {
+        ventRate = clamp(176 / Math.pow(eff.avDelay, 0.25) + 12 * (eff.autonomic / 100.0), 135, 210);
+        atrialRate = ventRate;
+        prDisplay = null;
+        conductionLabel = 'Slow-Fast Loop';
+        rhythmLabel = 'AVNRT (SVT)';
+      } else if (effectiveMode === 'vt') {
+        ventRate = clamp(168 * (0.85 + 0.15 * (eff.gNa / 100.0)) + 14 * (eff.autonomic / 100.0), 125, 220);
+        prDisplay = null;
+        conductionLabel = 'AV Dissociation';
+        rhythmLabel = 'Monomorphic VT';
+      } else if (effectiveMode === 'tdp') {
+        ventRate = clamp(210, 180, 240);
+        prDisplay = null;
+        conductionLabel = 'EAD Triggered';
+        rhythmLabel = 'Torsades de Pointes';
+      }
+
+      // QT & Fridericia QTc derived directly from cellular APD90 + QRS + transmural dispersion
+      const qtMs = clamp(ventAP.apd90 + 0.45 * qrsMs + 68, 260, 690);
+      const rrSec = 60.0 / Math.max(30, ventRate);
+      const qtcMs = qtMs / Math.cbrt(rrSec);
+
+      // ST deviation driven by transmural ischemia injury current (in mV)
+      const stDevMv = (eff.ischemia / 100.0) * 0.42 - Math.max(0, (3.2 - eff.ko) * 0.08);
+
+      return {
+        effectiveMode,
+        atrialRate,
+        ventRate,
+        prMs,
+        prDisplay,
+        qrsMs,
+        qtMs,
+        qtcMs,
+        stDevMv,
+        conductionLabel,
+        rhythmLabel,
+        rmp: ventAP.vRest,
+        apd90: ventAP.apd90,
+        dvdtMax: ventAP.dvdtMax,
+        erp: ventAP.erp,
+        eadTriggered: ventAP.eadTriggered,
+        ko: eff.ko
+      };
+    }
+
+    /* =========================================================================
+       3. REAL-TIME CONTINUOUS SWEEP ECG & LEWIS LADDER ENGINE (ZERO FLICKER)
+       ========================================================================= */
+
+    const SWEEP_SEC = 3.2;       // 3.2 s monitor sweep window (~25 mm/s)
+    const SAMPLES = 1600;        // 500 Hz fixed-rate ring buffer (dt = 2.0 ms -> crisp R-peaks)
+    const DT_SAMPLE = SWEEP_SEC / SAMPLES;
+    const ERASE_GAP = Math.floor(SAMPLES * 0.055);
+    const VISIBLE_SAMPLES = SAMPLES - ERASE_GAP - 1;
+    const ALPHA_BANDS = 16;
+
+    const ecgBuffer = new Float32Array(SAMPLES).fill(0);
+
+    // Real-time electrophysiology event scheduler state
+    const rhythmEngine = {
+      simTime: 0,
+      sampleClock: 0,
+      writeIdx: 0,
+      nextAtrialTime: 0.15,
+      nextVentTime: 0.30,
+      wenckebachStep: 0,
+      pvcQueued: false,
+      lastVentFireTime: -1.0,
+      // Active waveform pulses & Lewis ladder segments stored in absolute simTime
+      beats: [],      // { type: 'P'|'QRS'|'PVC'|'TDP', t: sec, qrsMs, qtMs, stDev, ko, kent, polarity, amp }
+      ladders: []     // { kind: 'atrial'|'av'|'vent'|'retro'|'kent'|'block'|'reentry', t0, t1 }
+    };
+
+    function resetRhythmSchedule() {
+      const t = rhythmEngine.simTime;
+      rhythmEngine.beats = [];
+      rhythmEngine.ladders = [];
+      rhythmEngine.wenckebachStep = 0;
+      rhythmEngine.nextAtrialTime = t + 0.08;
+      rhythmEngine.nextVentTime = t + 0.24;
+      rhythmEngine.lastVentFireTime = t - 0.8;
+    }
+
+    function pruneOldEvents(nowT) {
+      const cutoff = nowT - (SWEEP_SEC + 1.2);
+      while (rhythmEngine.beats.length > 0 && rhythmEngine.beats[0].t < cutoff) {
+        rhythmEngine.beats.shift();
+      }
+      while (rhythmEngine.ladders.length > 0 && rhythmEngine.ladders[0].t1 < cutoff) {
+        rhythmEngine.ladders.shift();
+      }
+    }
+
+    /**
+     * Generates upcoming atrial/AV/ventricular beats and Lewis Ladder segments
+     * up to targetT based on the live effective biophysical metrics.
+     */
+    function scheduleEventsUpTo(targetT, eff, m) {
+      const mode = m.effectiveMode;
+      const atrialRR = 60.0 / Math.max(25, m.atrialRate);
+      const ventRR = 60.0 / Math.max(25, m.ventRate);
+      const prSec = m.prMs / 1000.0;
+      const isKent = eff.kent && eff.kentBlock < 0.55;
+
+      // Handle interactive user-queued PVC safely after current T-wave
+      if (rhythmEngine.pvcQueued && targetT >= rhythmEngine.lastVentFireTime + Math.min(0.42, (m.qtMs / 1000) * 0.92)) {
+        rhythmEngine.pvcQueued = false;
+        const tPVC = targetT;
+        rhythmEngine.lastVentFireTime = tPVC;
+
+        // If severe Long QT / EADs present, PVC triggers a short 6-beat Torsades burst!
+        if (m.qtcMs >= 500 && eff.eadSuppress < 0.35 && eff.mgo < 1.35) {
+          for (let k = 0; k < 7; k++) {
+            const tk = tPVC + k * 0.275;
+            rhythmEngine.beats.push({
+              type: 'TDP', t: tk, qrsMs: 145, qtMs: 250,
+              twistPhase: k * 0.85, amp: 0.72 + 0.38 * Math.sin(k * 0.9)
+            });
+            rhythmEngine.ladders.push({ kind: 'retro', t0: tk, t1: tk + 0.08 });
+            rhythmEngine.lastVentFireTime = tk;
+          }
+          rhythmEngine.nextAtrialTime = Math.max(rhythmEngine.nextAtrialTime, tPVC + 2.25);
+        } else {
+          // Classic wide bizarre PVC + retrograde concealed AV conduction + full compensatory pause
+          rhythmEngine.beats.push({
+            type: 'PVC', t: tPVC, qrsMs: 158, qtMs: Math.min(440, m.qtMs * 1.05),
+            stDev: 0, ko: eff.ko
+          });
+          rhythmEngine.ladders.push({ kind: 'vent', t0: tPVC, t1: tPVC + 0.085, ectopic: true });
+          rhythmEngine.ladders.push({ kind: 'retro', t0: tPVC + 0.02, t1: tPVC + 0.12 });
+          rhythmEngine.ladders.push({ kind: 'block', t0: tPVC + 0.12, t1: tPVC + 0.12 });
+          // Compensatory pause delays next conducted beat slightly
+          rhythmEngine.nextAtrialTime = Math.max(rhythmEngine.nextAtrialTime, tPVC + atrialRR * 0.95);
+        }
+      }
+
+      // 1. SINUS / WPW / 1° AVB / ADENOSINE 2:1
+      if (mode === 'sinus') {
+        while (rhythmEngine.nextAtrialTime <= targetT + 0.2) {
+          const tA = rhythmEngine.nextAtrialTime;
+          rhythmEngine.nextAtrialTime += atrialRR;
+
+          // Atrial P wave & atrial ladder segment
+          rhythmEngine.beats.push({ type: 'P', t: tA, ko: eff.ko });
+          rhythmEngine.ladders.push({ kind: 'atrial', t0: tA, t1: tA + 0.06 });
+
+          // Transient 2:1 block if Adenosine bolus pushed during normal sinus
+          const blockedByAdo = (eff.adenosine >= 0.35 && (Math.round(tA / atrialRR) % 2 === 1));
+          if (blockedByAdo) {
+            rhythmEngine.ladders.push({ kind: 'av', t0: tA + 0.06, t1: tA + 0.15 });
+            rhythmEngine.ladders.push({ kind: 'block', t0: tA + 0.15, t1: tA + 0.15 });
+          } else {
+            const tV = tA + prSec;
+            if (isKent) {
+              // Fast Kent bypass shortcut + normal slower AV node
+              rhythmEngine.ladders.push({ kind: 'kent', t0: tA + 0.055, t1: tV });
+              rhythmEngine.ladders.push({ kind: 'av', t0: tA + 0.06, t1: tA + 0.165, faint: true });
+            } else {
+              rhythmEngine.ladders.push({ kind: 'av', t0: tA + 0.06, t1: tV });
+            }
+            rhythmEngine.ladders.push({ kind: 'vent', t0: tV, t1: tV + m.qrsMs / 1000.0 });
+            rhythmEngine.beats.push({
+              type: 'QRS', t: tV, qrsMs: m.qrsMs, qtMs: m.qtMs,
+              stDev: m.stDevMv, ko: eff.ko, kent: isKent
+            });
+            rhythmEngine.lastVentFireTime = tV;
+          }
+        }
+      }
+
+      // 2. MOBITZ I (WENCKEBACH) — 4:3 progressive PR prolongation then dropped beat
+      else if (mode === 'mobitz1') {
+        while (rhythmEngine.nextAtrialTime <= targetT + 0.2) {
+          const tA = rhythmEngine.nextAtrialTime;
+          rhythmEngine.nextAtrialTime += atrialRR;
+          const step = rhythmEngine.wenckebachStep % 4;
+          rhythmEngine.wenckebachStep++;
+
+          rhythmEngine.beats.push({ type: 'P', t: tA, ko: eff.ko });
+          rhythmEngine.ladders.push({ kind: 'atrial', t0: tA, t1: tA + 0.06 });
+
+          if (step === 3) {
+            // Dropped beat: impulse stops inside AV node
+            rhythmEngine.ladders.push({ kind: 'av', t0: tA + 0.06, t1: tA + 0.19 });
+            rhythmEngine.ladders.push({ kind: 'block', t0: tA + 0.19, t1: tA + 0.19 });
+          } else {
+            const wPR = 0.17 + step * 0.075; // 170 -> 245 -> 320 ms
+            const tV = tA + wPR;
+            rhythmEngine.ladders.push({ kind: 'av', t0: tA + 0.06, t1: tV });
+            rhythmEngine.ladders.push({ kind: 'vent', t0: tV, t1: tV + m.qrsMs / 1000.0 });
+            rhythmEngine.beats.push({
+              type: 'QRS', t: tV, qrsMs: m.qrsMs, qtMs: m.qtMs,
+              stDev: m.stDevMv, ko: eff.ko, kent: false
+            });
+            rhythmEngine.lastVentFireTime = tV;
+          }
+        }
+      }
+
+      // 3. 3rd DEGREE COMPLETE HEART BLOCK (AV Dissociation)
+      else if (mode === 'chb') {
+        while (rhythmEngine.nextAtrialTime <= targetT + 0.2) {
+          const tA = rhythmEngine.nextAtrialTime;
+          rhythmEngine.nextAtrialTime += atrialRR;
+          rhythmEngine.beats.push({ type: 'P', t: tA, ko: eff.ko });
+          rhythmEngine.ladders.push({ kind: 'atrial', t0: tA, t1: tA + 0.06 });
+          rhythmEngine.ladders.push({ kind: 'av', t0: tA + 0.06, t1: tA + 0.14 });
+          rhythmEngine.ladders.push({ kind: 'block', t0: tA + 0.14, t1: tA + 0.14 });
+        }
+        while (rhythmEngine.nextVentTime <= targetT + 0.2) {
+          const tV = rhythmEngine.nextVentTime;
+          rhythmEngine.nextVentTime += ventRR;
+          rhythmEngine.ladders.push({ kind: 'vent', t0: tV, t1: tV + m.qrsMs / 1000.0, ectopic: true });
+          rhythmEngine.beats.push({
+            type: 'PVC', t: tV, qrsMs: m.qrsMs, qtMs: m.qtMs,
+            stDev: m.stDevMv, ko: eff.ko
+          });
+          rhythmEngine.lastVentFireTime = tV;
+        }
+      }
+
+      // 4. ATRIAL FIBRILLATION (Irregularly irregular RR, no P waves)
+      else if (mode === 'afib') {
+        while (rhythmEngine.nextVentTime <= targetT + 0.2) {
+          const tV = rhythmEngine.nextVentTime;
+          // Deterministic pseudo-random irregular RR variability (+/- 32%)
+          const hash = Math.sin(tV * 19.73 + 1.3) * 0.55 + Math.cos(tV * 31.17) * 0.45;
+          const irregRR = clamp(ventRR * (1 + 0.34 * hash), 0.31, 1.45);
+          rhythmEngine.nextVentTime += irregRR;
+
+          rhythmEngine.ladders.push({ kind: 'av', t0: tV - 0.09, t1: tV });
+          rhythmEngine.ladders.push({ kind: 'vent', t0: tV, t1: tV + m.qrsMs / 1000.0 });
+          rhythmEngine.beats.push({
+            type: 'QRS', t: tV, qrsMs: m.qrsMs, qtMs: Math.min(m.qtMs, irregRR * 780),
+            stDev: m.stDevMv, ko: eff.ko, kent: isKent
+          });
+          rhythmEngine.lastVentFireTime = tV;
+        }
+      }
+
+      // 5. AVNRT (Dual AV Nodal Slow-Fast Re-entry)
+      else if (mode === 'avnrt') {
+        while (rhythmEngine.nextVentTime <= targetT + 0.2) {
+          const tV = rhythmEngine.nextVentTime;
+          rhythmEngine.nextVentTime += ventRR;
+
+          // Re-entrant loop inside AV node -> simultaneous antegrade QRS + retrograde P
+          rhythmEngine.ladders.push({ kind: 'reentry', t0: tV - ventRR * 0.65, t1: tV });
+          rhythmEngine.ladders.push({ kind: 'vent', t0: tV, t1: tV + m.qrsMs / 1000.0 });
+          rhythmEngine.ladders.push({ kind: 'retro', t0: tV - 0.03, t1: tV + 0.045 });
+          rhythmEngine.beats.push({
+            type: 'QRS', t: tV, qrsMs: m.qrsMs, qtMs: Math.min(m.qtMs, ventRR * 740),
+            stDev: m.stDevMv, ko: eff.ko, retroP: true
+          });
+          rhythmEngine.lastVentFireTime = tV;
+        }
+      }
+
+      // 6. MONOMORPHIC VENTRICULAR TACHYCARDIA (Wide QRS, AV Dissociation)
+      else if (mode === 'vt') {
+        while (rhythmEngine.nextAtrialTime <= targetT + 0.2) {
+          const tA = rhythmEngine.nextAtrialTime;
+          rhythmEngine.nextAtrialTime += atrialRR;
+          rhythmEngine.beats.push({ type: 'P', t: tA, ko: eff.ko, subtle: true });
+          rhythmEngine.ladders.push({ kind: 'atrial', t0: tA, t1: tA + 0.055 });
+        }
+        while (rhythmEngine.nextVentTime <= targetT + 0.2) {
+          const tV = rhythmEngine.nextVentTime;
+          rhythmEngine.nextVentTime += ventRR;
+          rhythmEngine.ladders.push({ kind: 'vent', t0: tV, t1: tV + m.qrsMs / 1000.0, ectopic: true });
+          rhythmEngine.beats.push({
+            type: 'PVC', t: tV, qrsMs: m.qrsMs, qtMs: Math.min(m.qtMs, ventRR * 820),
+            stDev: 0, ko: eff.ko
+          });
+          rhythmEngine.lastVentFireTime = tV;
+        }
+      }
+
+      // 7. LONG QT / TORSADES DE POINTES (Polymorphic twisting amplitude)
+      else if (mode === 'tdp') {
+        while (rhythmEngine.nextVentTime <= targetT + 0.2) {
+          const tV = rhythmEngine.nextVentTime;
+          const stepRR = 0.275 + 0.025 * Math.sin(tV * 5.2);
+          rhythmEngine.nextVentTime += stepRR;
+          rhythmEngine.ladders.push({ kind: 'retro', t0: tV, t1: tV + 0.09 });
+          rhythmEngine.beats.push({
+            type: 'TDP', t: tV, qrsMs: 148, qtMs: 245,
+            twistPhase: tV * 2.1, amp: 0.45 + 0.65 * Math.abs(Math.sin(tV * 1.45))
+          });
+          rhythmEngine.lastVentFireTime = tV;
+        }
+      }
+    }
+
+    function gauss(d, s) {
+      const z = d / s;
+      return Math.exp(-0.5 * z * z);
+    }
+
+    function asymGauss(d, sL, sR) {
+      const s = d < 0 ? sL : sR;
+      const z = d / s;
+      return Math.exp(-0.5 * z * z);
+    }
+
+    /**
+     * Evaluates instantaneous surface Lead II ECG voltage (mV) at time t
+     * by summing scheduled physiological beats + baseline fibrillatory/wander activity.
+     */
+    function evalECGAt(t, eff, m) {
+      let v = 0.008 * Math.sin(2 * Math.PI * 0.22 * t); // Ultra-subtle respiratory baseline
+
+      // Fine fibrillatory f-waves in Atrial Fibrillation
+      if (m.effectiveMode === 'afib') {
+        v += 0.045 * Math.sin(2 * Math.PI * 6.3 * t) +
+             0.032 * Math.sin(2 * Math.PI * 8.9 * t + 1.2) +
+             0.022 * Math.cos(2 * Math.PI * 11.4 * t + 2.4);
+      }
+
+      const beats = rhythmEngine.beats;
+      for (let i = 0; i < beats.length; i++) {
+        const b = beats[i];
+        const dt = t - b.t;
+        if (dt < -0.09 || dt > 0.72) continue;
+
+        if (b.type === 'P') {
+          // Hyperkalemia progressively flattens P-wave amplitude above 6.5 mM
+          const pAmp = (b.subtle ? 0.09 : 0.14) * clamp(1 - Math.max(0, b.ko - 6.2) * 0.35, 0.08, 1.0);
+          v += pAmp * asymGauss(dt - 0.035, 0.024, 0.020);
+        }
+        else if (b.type === 'QRS') {
+          const w = b.qrsMs / 86.0; // Width scale relative to 86 ms baseline
+          const qtSec = b.qtMs / 1000.0;
+
+          // WPW slurred Delta wave upstroke preceding R peak
+          if (b.kent) {
+            v += 0.34 * asymGauss(dt - 0.012, 0.024, 0.012);
+          }
+
+          // Q, R, S complex scaled by conduction velocity (qrsMs)
+          const q = -0.11 * gauss(dt - 0.010 * w, 0.0065 * w);
+          const r = 1.08 * gauss(dt - 0.028 * w, 0.0095 * w);
+          const s = -0.24 * gauss(dt - 0.048 * w, 0.0095 * w);
+          v += q + r + s;
+
+          // Retrograde inverted pseudo-S P-wave in AVNRT
+          if (b.retroP) {
+            v -= 0.13 * gauss(dt - 0.068, 0.014);
+          }
+
+          // ST-segment elevation (ischemia) or depression (hypokalemia)
+          if (Math.abs(b.stDev) > 0.01) {
+            const stCenter = 0.055 * w + (qtSec - 0.055 * w) * 0.36;
+            const stWidth = Math.max(0.035, (qtSec - 0.055 * w) * 0.32);
+            v += b.stDev * asymGauss(dt - stCenter, stWidth * 0.55, stWidth * 0.9);
+          }
+
+          // T-wave morphology modulated by [K+]o (peaked tented in HyperK, flattened + U-wave in HypoK)
+          const tPeak = qtSec * 0.78;
+          const hyperK = Math.max(0, b.ko - 5.2);
+          const hypoK = Math.max(0, 3.5 - b.ko);
+          const tAmp = clamp(0.28 + 0.17 * hyperK - 0.14 * hypoK, 0.06, 0.88);
+          const tWidthL = Math.max(0.020, 0.048 - 0.009 * hyperK);
+          const tWidthR = Math.max(0.016, 0.032 - 0.006 * hyperK);
+          v += tAmp * asymGauss(dt - tPeak, tWidthL, tWidthR);
+
+          // Prominent U-wave in Hypokalemia (<3.4 mM)
+          if (hypoK > 0.1) {
+            v += (0.14 * hypoK) * gauss(dt - (qtSec + 0.065), 0.038);
+          }
+        }
+        else if (b.type === 'PVC') {
+          // Wide bizarre ventricular beat with discordant T-wave
+          const w = b.qrsMs / 150.0;
+          const qrs = 0.94 * asymGauss(dt - 0.042 * w, 0.020 * w, 0.026 * w) -
+                      0.56 * asymGauss(dt - 0.098 * w, 0.022 * w, 0.028 * w);
+          const tDisc = -0.34 * asymGauss(dt - (b.qtMs / 1000) * 0.76, 0.052, 0.038);
+          v += qrs + tDisc;
+        }
+        else if (b.type === 'TDP') {
+          // Polymorphic sinusoidal twisting QRS complex around isoelectric axis
+          const pol = Math.cos(b.twistPhase) >= 0 ? 1 : -1;
+          const amp = b.amp * pol;
+          v += amp * (0.95 * gauss(dt - 0.055, 0.026) - 0.55 * gauss(dt - 0.115, 0.030));
+        }
+      }
+      return v;
+    }
+
+    /* =========================================================================
+       4. APPLICATION STATE
+       ========================================================================= */
+
+    const state = {
+      activePresetId: 'normal',
+      params: { ...NORMAL_PARAMS },
+      drugs: {},
+      cellView: 'vent', // 'vent' | 'sa'
+      playing: true,
+      speed: 1.0,
+      overlays: {
+        phases: true,
+        ghost: true,
+        currents: true
+      },
+      eff: null,
+      ventAP: null,
+      saAP: null,
+      metrics: null,
+      refVentAP: null,
+      refSAAP: null,
+      refMetrics: null,
+      refLabel: 'Normal'
+    };
+
+    for (const d of DRUG_CONFIGS) state.drugs[d.id] = 0;
+
+    /* =========================================================================
+       5. SIMULATION RECOMPUTE & CALM TELEMETRY / DIAGNOSTICS BINDING
+       ========================================================================= */
+
+    function updateSimulation(resetSchedule = false) {
+      try {
+        const prevMode = state.metrics ? state.metrics.effectiveMode : null;
+        state.eff = computeEffectiveParams(state.params, state.drugs);
+        state.ventAP = solveVentricularAP(state.eff);
+        state.saAP = solveSANodalAP(state.eff);
+        state.metrics = computeClinicalMetrics(state.eff, state.ventAP, state.saAP);
+
+        if (!state.refVentAP) {
+          state.refVentAP = state.ventAP;
+          state.refSAAP = state.saAP;
+          state.refMetrics = state.metrics;
+        }
+
+        if (resetSchedule || (prevMode && prevMode !== state.metrics.effectiveMode)) {
+          resetRhythmSchedule();
+          prefillMonitorSweep();
+        }
+
+        renderTelemetry();
+        renderDiagnostics();
+        updateHeaderBadges();
+        updateEffectiveSliderBadges();
+      } catch (err) {
+        console.error('ElectroSim compute error:', err);
+      }
+    }
+
+    function prefillMonitorSweep() {
+      if (!state.eff || !state.metrics) return;
+      rhythmEngine.simTime = 0;
+      rhythmEngine.sampleClock = 0;
+      rhythmEngine.writeIdx = Math.floor(SAMPLES * 0.72);
+      resetRhythmSchedule();
+
+      // Advance 1 full sweep window so ECG & Lewis Ladder start gracefully populated
+      const totalSteps = SAMPLES;
+      for (let s = 0; s < totalSteps; s++) {
+        rhythmEngine.sampleClock += DT_SAMPLE;
+        rhythmEngine.simTime = rhythmEngine.sampleClock;
+        scheduleEventsUpTo(rhythmEngine.simTime, state.eff, state.metrics);
+        const idx = (rhythmEngine.writeIdx + 1 + s) % SAMPLES;
+        ecgBuffer[idx] = evalECGAt(rhythmEngine.simTime, state.eff, state.metrics);
+      }
+      rhythmEngine.writeIdx = (rhythmEngine.writeIdx + totalSteps) % SAMPLES;
+      pruneOldEvents(rhythmEngine.simTime);
+    }
+
+    function formatDelta(curr, ref, decimals = 0, invertColor = false) {
+      if (curr === null || ref === null || !Number.isFinite(curr) || !Number.isFinite(ref)) {
+        return { text: '—', cls: 'text-zinc-300 dark:text-zinc-700' };
+      }
+      const diff = curr - ref;
+      const thresh = decimals === 0 ? 0.5 : 0.05;
+      if (Math.abs(diff) < thresh) return { text: '—', cls: 'text-zinc-300 dark:text-zinc-700' };
+      const sign = diff > 0 ? '+' : '';
+      const text = `${sign}${diff.toFixed(decimals)}`;
+      const isPositive = diff > 0;
+      let cls = isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+      if (invertColor) cls = isPositive ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
+      return { text, cls };
+    }
+
+    function setDeltaEl(id, deltaObj) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = deltaObj.text;
+      el.className = `font-mono text-[10px] tabular-nums ${deltaObj.cls}`;
+    }
+
+    function renderTelemetry() {
+      const m = state.metrics;
+      const r = state.refMetrics;
+      const baseNumCls = 'text-zinc-900 dark:text-zinc-100';
+      const roseCls = 'text-rose-600 dark:text-rose-400';
+      const amberCls = 'text-amber-600 dark:text-amber-400';
+
+      // 1. Ventricular HR
+      const hrEl = document.getElementById('val-hr');
+      hrEl.textContent = Math.round(m.ventRate);
+      hrEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${
+        m.ventRate >= 150 || m.ventRate < 45 ? roseCls : (m.ventRate > 105 || m.ventRate < 55 ? amberCls : baseNumCls)
+      }`;
+      setDeltaEl('delta-hr', formatDelta(m.ventRate, r.ventRate, 0, true));
+
+      // 2. PR Interval
+      const prEl = document.getElementById('val-pr');
+      const prUnit = document.getElementById('unit-pr');
+      if (m.prDisplay === null) {
+        prEl.textContent = '—';
+        prUnit.textContent = '';
+        prEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${amberCls}`;
+        setDeltaEl('delta-pr', { text: '—', cls: 'text-zinc-300 dark:text-zinc-700' });
+      } else {
+        prEl.textContent = Math.round(m.prDisplay);
+        prUnit.textContent = 'ms';
+        prEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${
+          m.prDisplay > 200 || m.prDisplay < 120 ? amberCls : baseNumCls
+        }`;
+        setDeltaEl('delta-pr', formatDelta(m.prDisplay, r.prDisplay, 0, true));
+      }
+
+      // 3. QRS Duration
+      const qrsEl = document.getElementById('val-qrs');
+      qrsEl.textContent = Math.round(m.qrsMs);
+      qrsEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${
+        m.qrsMs >= 130 ? roseCls : (m.qrsMs >= 115 ? amberCls : baseNumCls)
+      }`;
+      setDeltaEl('delta-qrs', formatDelta(m.qrsMs, r.qrsMs, 0, true));
+
+      // 4. QTc / QT
+      const qtcEl = document.getElementById('val-qtc');
+      const qtEl = document.getElementById('val-qt');
+      qtcEl.textContent = Math.round(m.qtcMs);
+      qtEl.textContent = `(${Math.round(m.qtMs)})`;
+      qtcEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${
+        m.qtcMs >= 500 ? roseCls : (m.qtcMs > 460 || m.qtcMs < 350 ? amberCls : baseNumCls)
+      }`;
+      setDeltaEl('delta-qtc', formatDelta(m.qtcMs, r.qtcMs, 0, true));
+
+      // 5. RMP
+      const rmpEl = document.getElementById('val-rmp');
+      rmpEl.textContent = `−${Math.abs(Math.round(m.rmp))}`;
+      rmpEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${
+        m.rmp > -74 ? roseCls : (m.rmp > -80 ? amberCls : baseNumCls)
+      }`;
+      setDeltaEl('delta-rmp', formatDelta(m.rmp, r.rmp, 0, true));
+
+      // 6. APD90
+      const apdEl = document.getElementById('val-apd');
+      apdEl.textContent = Math.round(m.apd90);
+      apdEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${
+        m.apd90 > 380 ? roseCls : (m.apd90 > 330 || m.apd90 < 210 ? amberCls : baseNumCls)
+      }`;
+      setDeltaEl('delta-apd', formatDelta(m.apd90, r.apd90, 0, true));
+
+      // 7. dV/dt max
+      const dvdtEl = document.getElementById('val-dvdt');
+      dvdtEl.textContent = Math.round(m.dvdtMax);
+      dvdtEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${
+        m.dvdtMax < 120 ? roseCls : (m.dvdtMax < 180 ? amberCls : baseNumCls)
+      }`;
+      setDeltaEl('delta-dvdt', formatDelta(m.dvdtMax, r.dvdtMax, 0, false));
+
+      // 8. ERP & [K+]o
+      document.getElementById('val-erp').textContent = Math.round(m.erp);
+      const kChip = document.getElementById('val-k-chip');
+      kChip.textContent = `${m.ko.toFixed(1)} mM`;
+      kChip.className = `font-mono text-[11px] font-medium tabular-nums ${
+        m.ko >= 6.0 || m.ko < 3.0 ? roseCls : (m.ko > 5.2 || m.ko < 3.5 ? amberCls : 'text-zinc-500 dark:text-zinc-400')
+      }`;
+      setDeltaEl('delta-erp', formatDelta(m.erp, r.erp, 0, false));
+
+      // Panel Footers
+      document.getElementById('foot-ek').textContent = `${state.ventAP.eK.toFixed(1)} mV`;
+      document.getElementById('foot-vpeak').textContent = `+${Math.round(state.ventAP.vPeak)} mV`;
+      document.getElementById('foot-hinf').textContent = `${Math.round(state.ventAP.hInfRest * 100)}%`;
+      document.getElementById('ap-ref-tag').textContent = `Ref: ${state.refLabel}`;
+      document.getElementById('foot-conduction').textContent = m.conductionLabel;
+      document.getElementById('foot-st').textContent = `${m.stDevMv >= 0 ? '+' : ''}${m.stDevMv.toFixed(2)} mV`;
+      document.getElementById('foot-rhythm-tag').textContent = m.rhythmLabel;
+    }
+
+    function renderDiagnostics() {
+      const m = state.metrics;
+      const eff = state.eff;
+      const badges = [];
+
+      if (m.effectiveMode === 'tdp') {
+        badges.push({ text: 'Torsades de Pointes — Give IV Magnesium Sulfate', level: 'critical' });
+      } else if (m.effectiveMode === 'vt') {
+        badges.push({ text: `Monomorphic VT (${Math.round(m.ventRate)} bpm · Wide QRS)`, level: 'critical' });
+      } else if (m.effectiveMode === 'chb') {
+        badges.push({ text: `3° Complete Heart Block · Escape ${Math.round(m.ventRate)} bpm`, level: 'critical' });
+      } else if (m.effectiveMode === 'avnrt') {
+        badges.push({ text: `AVNRT Re-entry (${Math.round(m.ventRate)} bpm) — Adenosine Sensitive`, level: 'warn' });
+      } else if (m.effectiveMode === 'afib') {
+        badges.push({ text: `Atrial Fibrillation · Ventricular Rate ${Math.round(m.ventRate)} bpm`, level: 'warn' });
+      } else if (m.effectiveMode === 'mobitz1') {
+        badges.push({ text: 'Mobitz I (Wenckebach) — Progressive AV Nodal Delay', level: 'warn' });
+      }
+
+      if (m.ko >= 6.5) {
+        badges.push({ text: `Severe Hyperkalemia (${m.ko.toFixed(1)} mM) — INa Inactivation`, level: 'critical' });
+      } else if (m.ko >= 5.5) {
+        badges.push({ text: `Hyperkalemia (${m.ko.toFixed(1)} mM) — Peaked T Waves`, level: 'warn' });
+      } else if (m.ko < 3.0) {
+        badges.push({ text: `Hypokalemia (${m.ko.toFixed(1)} mM) — U-Waves & EAD Risk`, level: 'warn' });
+      }
+
+      if (m.qtcMs >= 500 && m.effectiveMode !== 'tdp') {
+        badges.push({ text: `Critical QTc ${Math.round(m.qtcMs)} ms${m.eadTriggered ? ' · Active EADs' : ''}`, level: 'critical' });
+      } else if (m.qtcMs > 460 && m.effectiveMode !== 'tdp') {
+        badges.push({ text: `Prolonged QTc (${Math.round(m.qtcMs)} ms)`, level: 'warn' });
+      }
+
+      if (eff.ischemia >= 45) {
+        badges.push({ text: `Transmural Ischemia — ST Elevation (+${m.stDevMv.toFixed(2)} mV)`, level: 'critical' });
+      }
+
+      if (eff.kent && eff.kentBlock < 0.55) {
+        badges.push({ text: 'WPW Pre-Excitation — Short PR & Delta Wave', level: 'info' });
+      }
+
+      if (state.params.rhythmMode === 'avnrt' && m.effectiveMode === 'sinus') {
+        badges.push({ text: 'AVNRT Terminated by Adenosine → Sinus Rhythm', level: 'ok' });
+      }
+      if (state.params.rhythmMode === 'tdp' && m.effectiveMode === 'sinus') {
+        badges.push({ text: 'EADs / Torsades Suppressed by Mg²⁺ (Baseline QTc Unchanged)', level: 'ok' });
+      }
+
+      if (badges.length === 0) {
+        badges.push({ text: 'Normal Sinus Rhythm · Normal Cellular Excitability', level: 'ok' });
+      }
+
+      const levelStyles = {
+        ok: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
+        info: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25',
+        warn: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
+        critical: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30'
+      };
+
+      document.getElementById('diagnostics-badges').innerHTML = badges.slice(0, 4).map(b =>
+        `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[11px] font-medium ${levelStyles[b.level]}">
+          <span class="w-1.5 h-1.5 rounded-full bg-current"></span>${b.text}
+        </span>`
+      ).join('');
+
+      const activeDrugs = DRUG_CONFIGS.filter(d => (state.drugs[d.id] || 0) > 0.005);
+      const summaryEl = document.getElementById('active-drugs-summary');
+      if (activeDrugs.length === 0) {
+        summaryEl.innerHTML = '<span class="text-zinc-400 dark:text-zinc-500">No active antiarrhythmics</span>';
+      } else {
+        summaryEl.innerHTML = activeDrugs.map(d => {
+          const val = (state.drugs[d.id] * d.maxDose).toFixed(d.decimals);
+          return `<span class="px-2 py-0.5 rounded-md bg-violet-500/10 border border-violet-500/25 text-violet-700 dark:text-violet-300">${d.name.split(' ')[0]} ${val} ${d.unit}</span>`;
+        }).join('');
+      }
+    }
+
+    function updateHeaderBadges() {
+      const preset = RHYTHM_PRESETS.find(p => p.id === state.activePresetId);
+      document.getElementById('active-preset-label').textContent = preset ? preset.name : 'Custom Electrophysiology';
+
+      const kentBadge = document.getElementById('kent-badge');
+      kentBadge.classList.toggle('hidden', !state.params.kent);
+
+      const activeCount = DRUG_CONFIGS.filter(d => (state.drugs[d.id] || 0) > 0.005).length;
+      const tabCountEl = document.getElementById('tab-drug-count');
+      const clearBtn = document.getElementById('btn-clear-drugs');
+      if (activeCount > 0) {
+        tabCountEl.textContent = activeCount;
+        tabCountEl.classList.remove('hidden');
+        clearBtn.classList.remove('hidden');
+      } else {
+        tabCountEl.classList.add('hidden');
+        clearBtn.classList.add('hidden');
+      }
+    }
+
+    function updateEffectiveSliderBadges() {
+      if (!state.eff) return;
+      for (const cfg of CHANNEL_SLIDERS) {
+        const effEl = document.getElementById(`c-eff-${cfg.key}`);
+        if (!effEl) continue;
+        const baseVal = state.params[cfg.key];
+        const effVal = state.eff[cfg.key];
+        const diff = Math.abs(effVal - baseVal);
+        const tol = cfg.decimals === 0 ? 1.5 : 0.04;
+        if (diff > tol) {
+          const prefix = cfg.signed && effVal > 0 ? '+' : '';
+          effEl.textContent = `→${prefix}${effVal.toFixed(cfg.decimals)}`;
+          effEl.classList.remove('hidden');
+        } else {
+          effEl.classList.add('hidden');
+        }
+      }
+    }
+
+    /* =========================================================================
+       6. HIGH-DPI THEME-AWARE CANVAS RENDERERS
+          - Left: Single-Cell Action Potential + Synchronized Ion Currents
+          - Center: Zero-Flicker Lead II ECG + Time-Aligned Lewis Ladder
+       ========================================================================= */
+
+    const apCanvas = document.getElementById('ap-canvas');
+    const apCtx = apCanvas.getContext('2d');
+    const ecgCanvas = document.getElementById('ecg-canvas');
+    const ecgCtx = ecgCanvas.getContext('2d');
+
+    function getCanvasPalette(isDark) {
+      if (isDark) {
+        return {
+          plotBg: '#09090b',
+          subBoxBg: '#0f0f12',
+          grid: 'rgba(63, 63, 70, 0.35)',
+          gridMinor: 'rgba(63, 63, 70, 0.16)',
+          gridMajor: 'rgba(45, 212, 191, 0.09)',
+          axis: '#3f3f46',
+          boxBorder: 'rgba(63, 63, 70, 0.65)',
+          tick: '#71717a',
+          label: '#a1a1aa',
+          apLine: '#2dd4bf',
+          ghost: 'rgba(161, 161, 170, 0.38)',
+          refLine: 'rgba(113, 113, 122, 0.32)',
+          iNa: '#fb7185',
+          iCa: '#fbbf24',
+          iKr: '#60a5fa',
+          iF: '#a78bfa',
+          ecgRGB: '45, 212, 191',
+          ecgCore: '#f0fdfa',
+          ladderAnte: '#2dd4bf',
+          ladderAV: '#60a5fa',
+          ladderRetro: '#fbbf24',
+          ladderBlock: '#fb7185',
+          ladderKent: '#34d399',
+          playhead: 'rgba(244, 244, 245, 0.72)',
+          playheadTrail: 'rgba(45, 212, 191, 0.10)',
+          beadFill: '#ffffff',
+          beadRing: '#2dd4bf'
+        };
+      }
+      return {
+        plotBg: '#ffffff',
+        subBoxBg: '#fafafa',
+        grid: '#e4e4e7',
+        gridMinor: 'rgba(228, 228, 231, 0.65)',
+        gridMajor: 'rgba(15, 118, 110, 0.11)',
+        axis: '#a1a1aa',
+        boxBorder: '#e4e4e7',
+        tick: '#71717a',
+        label: '#52525b',
+        apLine: '#0f766e',
+        ghost: 'rgba(113, 113, 122, 0.42)',
+        refLine: 'rgba(113, 113, 122, 0.35)',
+        iNa: '#e11d48',
+        iCa: '#d97706',
+        iKr: '#2563eb',
+        iF: '#7c3aed',
+        ecgRGB: '15, 118, 110',
+        ecgCore: '#0f766e',
+        ladderAnte: '#0f766e',
+        ladderAV: '#2563eb',
+        ladderRetro: '#d97706',
+        ladderBlock: '#e11d48',
+        ladderKent: '#059669',
+        playhead: 'rgba(24, 24, 27, 0.68)',
+        playheadTrail: 'rgba(15, 118, 110, 0.08)',
+        beadFill: '#ffffff',
+        beadRing: '#0f766e'
+      };
+    }
+
+    function resizeCanvas(canvas, wrapId) {
+      const wrap = document.getElementById(wrapId);
+      if (!wrap) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const rect = wrap.getBoundingClientRect();
+      const w = Math.max(100, Math.floor(rect.width - 8));
+      const h = Math.max(100, Math.floor(rect.height - 8));
+      if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+      }
+    }
+
+    /**
+     * Renders the Single-Cell Action Potential (Ventricular or SA Node)
+     * plus synchronized transmembrane Ion Channel Currents below.
+     */
+    function drawActionPotential() {
+      if (!state.ventAP || !state.saAP) return;
+      const isDark = document.documentElement.classList.contains('dark');
+      const C = getCanvasPalette(isDark);
+      const isVent = state.cellView === 'vent';
+      const ap = isVent ? state.ventAP : state.saAP;
+      const refAp = isVent ? state.refVentAP : state.refSAAP;
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = apCanvas.width / dpr;
+      const H = apCanvas.height / dpr;
+
+      apCtx.save();
+      apCtx.scale(dpr, dpr);
+      apCtx.clearRect(0, 0, W, H);
+
+      const padL = 44, padR = 14, padT = 12, padB = 22;
+      const showCurrents = state.overlays.currents;
+      const gap = showCurrents ? 14 : 0;
+      const usableH = Math.max(120, H - padT - padB - gap);
+      const hAP = showCurrents ? usableH * 0.63 : usableH;
+      const hCur = showCurrents ? usableH * 0.37 : 0;
+      const yAP = padT;
+      const yCur = yAP + hAP + gap;
+      const plotW = Math.max(60, W - padL - padR);
+
+      const maxT = ap.t[ap.t.length - 1];
+      const minV = isVent ? -105 : -82;
+      const maxV = isVent ? 50 : 32;
+      const xOf = t => padL + (t / maxT) * plotW;
+      const yOfV = v => yAP + hAP - ((v - minV) / (maxV - minV)) * hAP;
+
+      // 1. AP Panel Box & Voltage Grid
+      apCtx.fillStyle = C.subBoxBg;
+      apCtx.fillRect(padL, yAP, plotW, hAP);
+
+      apCtx.strokeStyle = C.grid;
+      apCtx.lineWidth = 1;
+      apCtx.font = '9.5px "JetBrains Mono", monospace';
+      apCtx.fillStyle = C.tick;
+      apCtx.textAlign = 'right';
+
+      const vTicks = isVent ? [-90, -60, -30, 0, 30] : [-70, -50, -30, -10, 10];
+      for (const vt of vTicks) {
+        const py = Math.round(yOfV(vt)) + 0.5;
+        apCtx.beginPath();
+        apCtx.moveTo(padL, py);
+        apCtx.lineTo(padL + plotW, py);
+        apCtx.stroke();
+        apCtx.fillText(`${vt}`, padL - 6, py + 3);
+      }
+
+      // 0 mV dashed reference line
+      apCtx.save();
+      apCtx.setLineDash([3, 3]);
+      apCtx.strokeStyle = C.refLine;
+      const y0 = Math.round(yOfV(0)) + 0.5;
+      apCtx.beginPath();
+      apCtx.moveTo(padL, y0);
+      apCtx.lineTo(padL + plotW, y0);
+      apCtx.stroke();
+
+      // SA Nodal Threshold line (-40 mV)
+      if (!isVent) {
+        const yTh = Math.round(yOfV(-40)) + 0.5;
+        apCtx.beginPath();
+        apCtx.moveTo(padL, yTh);
+        apCtx.lineTo(padL + plotW, yTh);
+        apCtx.stroke();
+        apCtx.fillStyle = C.tick;
+        apCtx.textAlign = 'right';
+        apCtx.fillText('Thresh −40', padL + plotW - 6, yTh - 4);
+      }
+      apCtx.restore();
+
+      // Time ticks
+      const tStep = maxT > 800 ? 200 : 100;
+      apCtx.strokeStyle = C.gridMinor;
+      apCtx.fillStyle = C.tick;
+      apCtx.textAlign = 'center';
+      for (let tt = 0; tt <= maxT; tt += tStep) {
+        const gx = Math.round(xOf(tt)) + 0.5;
+        apCtx.beginPath();
+        apCtx.moveTo(gx, yAP);
+        apCtx.lineTo(gx, showCurrents ? yCur + hCur : yAP + hAP);
+        apCtx.stroke();
+        apCtx.fillText(`${Math.round(tt)}ms`, gx, H - 6);
+      }
+
+      apCtx.strokeStyle = C.boxBorder;
+      apCtx.strokeRect(padL + 0.5, yAP + 0.5, plotW - 1, hAP - 1);
+
+      // Corner Title
+      apCtx.fillStyle = C.label;
+      apCtx.font = '500 9px "JetBrains Mono", monospace';
+      apCtx.textAlign = 'left';
+      apCtx.fillText(isVent ? 'VENTRICULAR MYOCYTE · Vm (mV)' : 'SA NODAL PACEMAKER · Vm (mV)', padL + 7, yAP + 12);
+
+      // Clip AP traces
+      apCtx.save();
+      apCtx.beginPath();
+      apCtx.rect(padL, yAP, plotW, hAP);
+      apCtx.clip();
+
+      // 2. Ghost Reference AP Curve
+      if (state.overlays.ghost && refAp) {
+        apCtx.save();
+        apCtx.setLineDash([4, 4]);
+        apCtx.strokeStyle = C.ghost;
+        apCtx.lineWidth = 1.4;
+        apCtx.beginPath();
+        for (let i = 0; i < refAp.t.length; i++) {
+          const px = xOf(refAp.t[i]);
+          const py = yOfV(refAp.v[i]);
+          if (i === 0) apCtx.moveTo(px, py);
+          else apCtx.lineTo(px, py);
+        }
+        apCtx.stroke();
+        apCtx.restore();
+      }
+
+      // 3. Active Action Potential Trace
+      apCtx.strokeStyle = C.apLine;
+      apCtx.lineWidth = 2.2;
+      apCtx.lineJoin = 'round';
+      apCtx.beginPath();
+      for (let i = 0; i < ap.t.length; i++) {
+        const px = xOf(ap.t[i]);
+        const py = yOfV(ap.v[i]);
+        if (i === 0) apCtx.moveTo(px, py);
+        else apCtx.lineTo(px, py);
+      }
+      apCtx.stroke();
+
+      // 4. Phase 0–4 Markers
+      if (state.overlays.phases) {
+        apCtx.font = '600 9.5px "JetBrains Mono", monospace';
+        apCtx.fillStyle = C.label;
+        apCtx.textAlign = 'center';
+        if (isVent) {
+          const st = ap.stimStart;
+          apCtx.fillText('0', xOf(st - 7), yOfV(-22));
+          apCtx.fillText('1', xOf(st + 18), yOfV(ap.vPeak + 8));
+          apCtx.fillText('2', xOf(st + ap.apd50 * 0.50), yOfV(20));
+          apCtx.fillText('3', xOf(st + ap.apd90 * 0.88) + 12, yOfV(-32));
+          apCtx.fillText('4', xOf(Math.min(maxT - 35, st + ap.apd90 + 75)), yOfV(ap.vRest + 10));
+          if (ap.eadTriggered) {
+            apCtx.fillStyle = C.ladderBlock;
+            apCtx.fillText('EAD', xOf(st + 255), yOfV(8));
+          }
+        } else {
+          apCtx.fillText('4 (If)', xOf(ap.tPhase4 * 0.35), yOfV(-54));
+          apCtx.fillText('0 (Ca)', xOf(ap.tPhase4 * 0.78), yOfV(-12));
+          apCtx.fillText('3 (K)', xOf(ap.tPhase4 * 0.96 + 90), yOfV(-16));
+        }
+      }
+
+      // 5. Synchronized Cellular Beat Cursor locked to latest ECG ventricular depolarization
+      let cursorT = 0;
+      if (isVent) {
+        const sinceLastV = (rhythmEngine.simTime - rhythmEngine.lastVentFireTime) * 1000;
+        if (sinceLastV >= 0 && sinceLastV < maxT - ap.stimStart) {
+          cursorT = ap.stimStart + sinceLastV;
+        } else {
+          cursorT = maxT - 12;
+        }
+      } else {
+        cursorT = ((rhythmEngine.simTime * 1000) % ap.cycleMs);
+      }
+
+      // Sample Vm at cursorT
+      const fracIdx = clamp((cursorT / maxT) * (ap.t.length - 1), 0, ap.t.length - 1);
+      const i0 = Math.floor(fracIdx);
+      const i1 = Math.min(ap.t.length - 1, i0 + 1);
+      const f = fracIdx - i0;
+      const curV = ap.v[i0] + (ap.v[i1] - ap.v[i0]) * f;
+      const cx = xOf(cursorT);
+      const cy = yOfV(curV);
+
+      // Subtle vertical cursor guide
+      apCtx.strokeStyle = C.refLine;
+      apCtx.lineWidth = 1;
+      apCtx.beginPath();
+      apCtx.moveTo(cx, yAP);
+      apCtx.lineTo(cx, yAP + hAP);
+      apCtx.stroke();
+
+      // Active dot
+      apCtx.beginPath();
+      apCtx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+      apCtx.fillStyle = C.beadFill;
+      apCtx.fill();
+      apCtx.lineWidth = 2.2;
+      apCtx.strokeStyle = C.beadRing;
+      apCtx.stroke();
+
+      apCtx.restore(); // End AP clip
+
+      // Update cellular phase pill in footer
+      const phaseEl = document.getElementById('foot-ap-phase');
+      if (phaseEl) {
+        if (isVent) {
+          const dtBeat = cursorT - ap.stimStart;
+          let txt = 'Phase 4 Rest';
+          if (dtBeat >= 0 && dtBeat < 10) txt = 'Phase 0 · INa Upstroke';
+          else if (dtBeat >= 10 && dtBeat < 32) txt = 'Phase 1 · Ito Notch';
+          else if (dtBeat >= 32 && dtBeat < ap.apd50) txt = 'Phase 2 · ICa,L Plateau';
+          else if (dtBeat >= ap.apd50 && dtBeat < ap.apd90 + 15) txt = 'Phase 3 · IKr Repolarization';
+          phaseEl.textContent = txt;
+        } else {
+          phaseEl.textContent = curV < -40 ? 'Phase 4 · If Depolarization' : (curV > -15 ? 'Phase 0 · ICa,L Peak' : 'Phase 3 · IKr');
+        }
+      }
+
+      // 6. ION CHANNEL CURRENTS SUB-PANEL
+      if (showCurrents && hCur > 30) {
+        apCtx.fillStyle = C.subBoxBg;
+        apCtx.fillRect(padL, yCur, plotW, hCur);
+        apCtx.strokeStyle = C.boxBorder;
+        apCtx.strokeRect(padL + 0.5, yCur + 0.5, plotW - 1, hCur - 1);
+
+        // Zero current line
+        const zeroY = Math.round(yCur + hCur * 0.52) + 0.5;
+        apCtx.strokeStyle = C.grid;
+        apCtx.beginPath();
+        apCtx.moveTo(padL, zeroY);
+        apCtx.lineTo(padL + plotW, zeroY);
+        apCtx.stroke();
+
+        // Outward (+) / Inward (-) labels
+        apCtx.font = '9px "JetBrains Mono", monospace';
+        apCtx.fillStyle = C.tick;
+        apCtx.textAlign = 'right';
+        apCtx.fillText('+out', padL - 5, yCur + 14);
+        apCtx.fillText('0', padL - 5, zeroY + 3);
+        apCtx.fillText('−in', padL - 5, yCur + hCur - 5);
+
+        // Inline current legend
+        apCtx.font = '500 9px "JetBrains Mono", monospace';
+        apCtx.textAlign = 'left';
+        const items = isVent
+          ? [{ lbl: 'INa', col: C.iNa }, { lbl: 'ICa,L', col: C.iCa }, { lbl: 'IKr', col: C.iKr }]
+          : [{ lbl: 'If', col: C.iF }, { lbl: 'ICa,L', col: C.iCa }, { lbl: 'IKr', col: C.iKr }];
+        let lx = padL + 7;
+        for (const it of items) {
+          apCtx.fillStyle = it.col;
+          apCtx.fillText(it.lbl, lx, yCur + 12);
+          lx += 36;
+        }
+
+        const scaleI = hCur * 0.34;
+        const drawCur = (arr, color, lw) => {
+          apCtx.strokeStyle = color;
+          apCtx.lineWidth = lw;
+          apCtx.lineJoin = 'round';
+          apCtx.beginPath();
+          for (let i = 0; i < arr.length; i++) {
+            const px = xOf(ap.t[i]);
+            const py = clamp(zeroY - arr[i] * scaleI, yCur + 2, yCur + hCur - 2);
+            if (i === 0) apCtx.moveTo(px, py);
+            else apCtx.lineTo(px, py);
+          }
+          apCtx.stroke();
+        };
+
+        if (isVent) {
+          drawCur(ap.iNa, C.iNa, 1.5);
+          drawCur(ap.iCa, C.iCa, 1.6);
+          drawCur(ap.iKr, C.iKr, 1.6);
+        } else {
+          drawCur(ap.iF, C.iF, 1.6);
+          drawCur(ap.iCa, C.iCa, 1.6);
+          drawCur(ap.iKr, C.iKr, 1.6);
+        }
+
+        // Synchronized cursor bar in currents panel
+        apCtx.strokeStyle = C.refLine;
+        apCtx.lineWidth = 1;
+        apCtx.beginPath();
+        apCtx.moveTo(cx, yCur);
+        apCtx.lineTo(cx, yCur + hCur);
+        apCtx.stroke();
+      }
+
+      apCtx.restore();
+    }
+
+    /**
+     * Renders the Zero-Flicker Lead II Surface ECG (top 54%)
+     * and Pixel-Aligned Lewis Conduction Ladder (bottom 46%).
+     */
+    function drawECGAndLadder() {
+      if (!state.metrics) return;
+      const isDark = document.documentElement.classList.contains('dark');
+      const C = getCanvasPalette(isDark);
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = ecgCanvas.width / dpr;
+      const H = ecgCanvas.height / dpr;
+
+      ecgCtx.save();
+      ecgCtx.scale(dpr, dpr);
+      ecgCtx.clearRect(0, 0, W, H);
+
+      const padL = 38, padR = 12, padT = 12, padB = 18;
+      const gap = 14;
+      const usableH = Math.max(140, H - padT - padB - gap);
+      const hECG = usableH * 0.54;
+      const hLad = usableH * 0.46;
+      const yECG = padT;
+      const yLad = yECG + hECG + gap;
+      const plotW = Math.max(60, W - padL - padR);
+
+      // 1. ECG Monitor Box + Calibrated 1mm / 5mm Grid
+      ecgCtx.fillStyle = C.subBoxBg;
+      ecgCtx.fillRect(padL, yECG, plotW, hECG);
+
+      const smallSec = 0.04; // 40 ms = 1 mm at 25 mm/s
+      const smallPx = (smallSec / SWEEP_SEC) * plotW;
+      if (smallPx >= 3.5) {
+        ecgCtx.lineWidth = 1;
+        for (let k = 0; k * smallSec <= SWEEP_SEC + 0.001; k++) {
+          const x = Math.round(padL + k * smallPx) + 0.5;
+          ecgCtx.strokeStyle = (k % 5 === 0) ? C.gridMajor : C.gridMinor;
+          ecgCtx.beginPath();
+          ecgCtx.moveTo(x, yECG);
+          ecgCtx.lineTo(x, yECG + hECG);
+          ecgCtx.stroke();
+        }
+        const yStep = Math.max(6, smallPx * 1.1);
+        const midEcgY = Math.round(yECG + hECG * 0.62);
+        for (let dy = -hECG; dy <= hECG; dy += yStep) {
+          const y = Math.round(midEcgY + dy) + 0.5;
+          if (y <= yECG || y >= yECG + hECG) continue;
+          const idx = Math.round(Math.abs(dy) / yStep);
+          ecgCtx.strokeStyle = (idx % 5 === 0) ? C.gridMajor : C.gridMinor;
+          ecgCtx.beginPath();
+          ecgCtx.moveTo(padL, y);
+          ecgCtx.lineTo(padL + plotW, y);
+          ecgCtx.stroke();
+        }
+      }
+
+      ecgCtx.strokeStyle = C.boxBorder;
+      ecgCtx.strokeRect(padL + 0.5, yECG + 0.5, plotW - 1, hECG - 1);
+
+      ecgCtx.font = '600 9.5px "JetBrains Mono", monospace';
+      ecgCtx.fillStyle = `rgb(${C.ecgRGB})`;
+      ecgCtx.textAlign = 'left';
+      ecgCtx.fillText('LEAD II', padL + 7, yECG + 13);
+
+      // Batched Zero-Flicker Polyline Ring-Buffer Sweep
+      const baseY = yECG + hECG * 0.62;
+      const scaleY = hECG * 0.36;
+      const dx = plotW / (SAMPLES - 1);
+      const bandSize = Math.ceil(VISIBLE_SAMPLES / ALPHA_BANDS);
+      const writeIdx = rhythmEngine.writeIdx;
+
+      ecgCtx.save();
+      ecgCtx.beginPath();
+      ecgCtx.rect(padL, yECG, plotW, hECG);
+      ecgCtx.clip();
+
+      ecgCtx.lineWidth = 1.7;
+      ecgCtx.lineJoin = 'round';
+      ecgCtx.lineCap = 'round';
+
+      for (let b = ALPHA_BANDS - 1; b >= 0; b--) {
+        const ageEnd = Math.min(VISIBLE_SAMPLES, (b + 1) * bandSize);
+        const ageStart = b * bandSize;
+        if (ageStart >= VISIBLE_SAMPLES) continue;
+
+        const midAge = 0.5 * (ageStart + ageEnd);
+        const freshness = 1 - midAge / VISIBLE_SAMPLES;
+        const alpha = 0.18 + Math.pow(freshness, 1.45) * 0.82;
+
+        ecgCtx.strokeStyle = `rgba(${C.ecgRGB}, ${alpha.toFixed(3)})`;
+        ecgCtx.beginPath();
+
+        let prevIdx = -1;
+        for (let age = ageEnd; age >= ageStart; age--) {
+          const idx = (writeIdx - age + SAMPLES) % SAMPLES;
+          const px = padL + idx * dx;
+          const py = baseY - ecgBuffer[idx] * scaleY;
+          if (prevIdx === -1 || idx < prevIdx) {
+            ecgCtx.moveTo(px, py);
+          } else {
+            ecgCtx.lineTo(px, py);
+          }
+          prevIdx = idx;
+        }
+        ecgCtx.stroke();
+      }
+
+      // Active Phosphor Sweep Head Dot
+      const headX = padL + writeIdx * dx;
+      const headY = baseY - ecgBuffer[writeIdx] * scaleY;
+      ecgCtx.beginPath();
+      ecgCtx.arc(headX, headY, 2.8, 0, Math.PI * 2);
+      ecgCtx.fillStyle = C.ecgCore;
+      ecgCtx.fill();
+      ecgCtx.restore();
+
+      // 2. SYNCHRONIZED LEWIS LADDER DIAGRAM (Atria -> AV Node -> Ventricles)
+      ecgCtx.fillStyle = C.subBoxBg;
+      ecgCtx.fillRect(padL, yLad, plotW, hLad);
+      ecgCtx.strokeStyle = C.boxBorder;
+      ecgCtx.strokeRect(padL + 0.5, yLad + 0.5, plotW - 1, hLad - 1);
+
+      // 3 Horizontal Conduction Tiers
+      const tierH = hLad / 3;
+      const yA_top = yLad;
+      const yAV_top = yLad + tierH;
+      const yV_top = yLad + tierH * 2;
+      const yV_bot = yLad + hLad;
+
+      ecgCtx.strokeStyle = C.grid;
+      ecgCtx.lineWidth = 1;
+      for (const ty of [yAV_top, yV_top]) {
+        const ly = Math.round(ty) + 0.5;
+        ecgCtx.beginPath();
+        ecgCtx.moveTo(padL, ly);
+        ecgCtx.lineTo(padL + plotW, ly);
+        ecgCtx.stroke();
+      }
+
+      // Left Tier Labels (A, AV, V)
+      ecgCtx.font = '600 9.5px "JetBrains Mono", monospace';
+      ecgCtx.fillStyle = C.tick;
+      ecgCtx.textAlign = 'right';
+      ecgCtx.fillText('A', padL - 7, yA_top + tierH * 0.56);
+      ecgCtx.fillText('AV', padL - 7, yAV_top + tierH * 0.56);
+      ecgCtx.fillText('V', padL - 7, yV_top + tierH * 0.56);
+
+      // Helper to map absolute simTime -> exact pixel X aligned with ECG ring buffer!
+      const nowT = rhythmEngine.simTime;
+      const visibleTimeSpan = VISIBLE_SAMPLES * DT_SAMPLE;
+      const xOfEventTime = tEvent => {
+        const ageSec = nowT - tEvent;
+        if (ageSec < 0 || ageSec > visibleTimeSpan) return null;
+        const ageSamples = ageSec / DT_SAMPLE;
+        const bufIdx = ((writeIdx - ageSamples) % SAMPLES + SAMPLES) % SAMPLES;
+        return padL + bufIdx * dx;
+      };
+
+      // Draw Lewis Ladder Conduction Segments
+      ecgCtx.save();
+      ecgCtx.beginPath();
+      ecgCtx.rect(padL, yLad, plotW, hLad);
+      ecgCtx.clip();
+
+      // Subtle chaotic atrial f-wave micro-arcs in AFib
+      if (state.metrics.effectiveMode === 'afib') {
+        ecgCtx.strokeStyle = `rgba(${C.ecgRGB}, 0.25)`;
+        ecgCtx.lineWidth = 1;
+        ecgCtx.beginPath();
+        for (let x = padL; x <= padL + plotW; x += 6) {
+          const y = yA_top + tierH * 0.5 + Math.sin(x * 0.25 + nowT * 14) * (tierH * 0.26);
+          if (x === padL) ecgCtx.moveTo(x, y);
+          else ecgCtx.lineTo(x, y);
+        }
+        ecgCtx.stroke();
+      }
+
+      for (const seg of rhythmEngine.ladders) {
+        const x0 = xOfEventTime(seg.t0);
+        const x1 = xOfEventTime(seg.t1);
+        if (x0 === null || x1 === null) continue;
+        // Skip wrap-around jump
+        if (x1 < x0 - 4) continue;
+
+        const ageFade = clamp(1 - (nowT - seg.t1) / visibleTimeSpan, 0.2, 1.0);
+        ecgCtx.globalAlpha = seg.faint ? ageFade * 0.35 : ageFade;
+
+        if (seg.kind === 'atrial') {
+          ecgCtx.strokeStyle = C.ladderAnte;
+          ecgCtx.lineWidth = 1.6;
+          ecgCtx.beginPath();
+          ecgCtx.moveTo(x0, yA_top + 4);
+          ecgCtx.lineTo(x1, yAV_top);
+          ecgCtx.stroke();
+        } else if (seg.kind === 'av') {
+          ecgCtx.strokeStyle = C.ladderAV;
+          ecgCtx.lineWidth = 1.6;
+          ecgCtx.beginPath();
+          ecgCtx.moveTo(x0, yAV_top);
+          ecgCtx.lineTo(x1, yV_top);
+          ecgCtx.stroke();
+        } else if (seg.kind === 'kent') {
+          // Fast dashed WPW bypass shortcut across AV band
+          ecgCtx.save();
+          ecgCtx.setLineDash([3, 2]);
+          ecgCtx.strokeStyle = C.ladderKent;
+          ecgCtx.lineWidth = 1.8;
+          ecgCtx.beginPath();
+          ecgCtx.moveTo(x0, yAV_top);
+          ecgCtx.lineTo(x1, yV_top);
+          ecgCtx.stroke();
+          ecgCtx.restore();
+        } else if (seg.kind === 'vent') {
+          ecgCtx.strokeStyle = seg.ectopic ? C.ladderRetro : C.ladderAnte;
+          ecgCtx.lineWidth = 1.9;
+          ecgCtx.beginPath();
+          ecgCtx.moveTo(x0, yV_top);
+          ecgCtx.lineTo(x1, yV_bot - 4);
+          ecgCtx.stroke();
+        } else if (seg.kind === 'retro') {
+          // Retrograde conduction upward from Ventricle/AV into Atria
+          ecgCtx.strokeStyle = C.ladderRetro;
+          ecgCtx.lineWidth = 1.6;
+          ecgCtx.beginPath();
+          ecgCtx.moveTo(x0, yV_top);
+          ecgCtx.lineTo(x1, yA_top + tierH * 0.25);
+          ecgCtx.stroke();
+        } else if (seg.kind === 'reentry') {
+          // AVNRT Slow-Fast re-entrant loop inside AV Node tier
+          const midX = 0.5 * (x0 + x1);
+          const midY = yAV_top + tierH * 0.5;
+          const rx = Math.max(4, (x1 - x0) * 0.45);
+          const ry = tierH * 0.34;
+          ecgCtx.strokeStyle = C.ladderRetro;
+          ecgCtx.lineWidth = 1.5;
+          ecgCtx.beginPath();
+          ecgCtx.ellipse(midX, midY, rx, ry, 0, 0, Math.PI * 2);
+          ecgCtx.stroke();
+        } else if (seg.kind === 'block') {
+          // Crisp T-bar block symbol inside AV Node tier
+          const by = yAV_top + tierH * 0.58;
+          ecgCtx.strokeStyle = C.ladderBlock;
+          ecgCtx.lineWidth = 2.0;
+          ecgCtx.beginPath();
+          ecgCtx.moveTo(x0 - 4, by);
+          ecgCtx.lineTo(x0 + 4, by);
+          ecgCtx.stroke();
+        }
+      }
+      ecgCtx.globalAlpha = 1;
+      ecgCtx.restore();
+
+      // Synchronized Vertical Playhead across ECG & Lewis Ladder
+      const grad = ecgCtx.createLinearGradient(headX - 16, 0, headX, 0);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, C.playheadTrail);
+      ecgCtx.fillStyle = grad;
+      ecgCtx.fillRect(Math.max(padL, headX - 16), yECG, Math.min(16, headX - padL), hECG);
+      ecgCtx.fillRect(Math.max(padL, headX - 16), yLad, Math.min(16, headX - padL), hLad);
+
+      ecgCtx.strokeStyle = C.playhead;
+      ecgCtx.lineWidth = 1.15;
+      ecgCtx.beginPath();
+      ecgCtx.moveTo(headX, yECG);
+      ecgCtx.lineTo(headX, yECG + hECG);
+      ecgCtx.moveTo(headX, yLad);
+      ecgCtx.lineTo(headX, yLad + hLad);
+      ecgCtx.stroke();
+
+      // Bottom time scale label
+      ecgCtx.font = '9px "JetBrains Mono", monospace';
+      ecgCtx.fillStyle = C.tick;
+      ecgCtx.textAlign = 'right';
+      ecgCtx.fillText(`${SWEEP_SEC.toFixed(1)}s sweep · 10 mm/mV`, padL + plotW, H - 4);
+
+      ecgCtx.restore();
+    }
+
+    /* =========================================================================
+       7. CALM SIDEBAR UI GENERATION (RHYTHMS, CHANNELS, ANTIARRHYTHMICS)
+       ========================================================================= */
+
+    function buildRhythmsTab() {
+      const container = document.getElementById('tab-rhythms');
+      container.innerHTML = RHYTHM_PRESETS.map(p => `
+        <button data-preset="${p.id}" type="button" class="preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1">
+          <div class="flex items-center justify-between gap-2 w-full">
+            <span class="text-xs font-medium text-zinc-900 dark:text-zinc-100">${p.name}</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/70 shrink-0">${p.tag}</span>
+          </div>
+          <p class="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug line-clamp-1">${p.desc}</p>
+        </button>
+      `).join('');
+
+      highlightActivePresetCard();
+
+      container.querySelectorAll('.preset-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const preset = RHYTHM_PRESETS.find(p => p.id === btn.dataset.preset);
+          if (!preset) return;
+          state.activePresetId = preset.id;
+          state.params = { ...preset.params };
+          syncChannelSlidersFromState();
+          syncKentToggleUI();
+          highlightActivePresetCard();
+          updateSimulation(true);
+        });
+      });
+    }
+
+    function highlightActivePresetCard() {
+      document.querySelectorAll('.preset-card').forEach(btn => {
+        const isActive = btn.dataset.preset === state.activePresetId;
+        btn.className = `preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1 ${
+          isActive
+            ? 'border-tealLight/50 dark:border-tealDark/50 bg-teal-500/[0.06] dark:bg-teal-400/[0.08]'
+            : 'border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-100/60 dark:hover:bg-zinc-900/60'
+        }`;
+      });
+    }
+
+    function buildChannelsTab() {
+      const container = document.getElementById('channel-sliders-list');
+      const groups = [
+        { id: 'ions', title: 'Extracellular Electrolytes' },
+        { id: 'channels', title: 'Ion Channels & Conduction' }
+      ];
+
+      container.innerHTML = groups.map(grp => {
+        const items = CHANNEL_SLIDERS.filter(c => c.group === grp.id);
+        return `
+          <div class="space-y-3">
+            <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500 pb-1 border-b border-zinc-200/70 dark:border-zinc-800/70">
+              ${grp.title}
+            </div>
+            <div class="space-y-3">
+              ${items.map(cfg => {
+                const val = state.params[cfg.key];
+                const prefix = cfg.signed && val > 0 ? '+' : '';
+                return `
+                  <div class="space-y-1.5" data-tooltip="${cfg.tip}">
+                    <div class="flex items-center justify-between text-[11.5px] gap-2">
+                      <span class="font-medium text-zinc-700 dark:text-zinc-300 truncate">${cfg.label}</span>
+                      <div class="flex items-center gap-1 font-mono tabular-nums shrink-0">
+                        <span id="c-val-${cfg.key}" class="text-zinc-900 dark:text-zinc-100 font-medium">${prefix}${val.toFixed(cfg.decimals)}</span>
+                        <span id="c-eff-${cfg.key}" class="hidden text-[10px] text-tealLight dark:text-tealDark font-medium"></span>
+                        <span class="text-[10px] text-zinc-400 dark:text-zinc-500">${cfg.unit}</span>
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      id="c-slider-${cfg.key}"
+                      class="clinical-slider"
+                      min="${cfg.min}"
+                      max="${cfg.max}"
+                      step="${cfg.step}"
+                      value="${val}"
+                    />
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+      }).join('');
+
+      CHANNEL_SLIDERS.forEach(cfg => {
+        const slider = document.getElementById(`c-slider-${cfg.key}`);
+        slider.addEventListener('input', () => {
+          const val = parseFloat(slider.value);
+          state.params[cfg.key] = val;
+          state.activePresetId = 'custom';
+          const prefix = cfg.signed && val > 0 ? '+' : '';
+          document.getElementById(`c-val-${cfg.key}`).textContent = `${prefix}${val.toFixed(cfg.decimals)}`;
+          highlightActivePresetCard();
+          updateSimulation(false);
+        });
+      });
+    }
+
+    function syncChannelSlidersFromState() {
+      for (const cfg of CHANNEL_SLIDERS) {
+        const slider = document.getElementById(`c-slider-${cfg.key}`);
+        const valEl = document.getElementById(`c-val-${cfg.key}`);
+        const val = state.params[cfg.key];
+        const prefix = cfg.signed && val > 0 ? '+' : '';
+        if (slider) slider.value = val;
+        if (valEl) valEl.textContent = `${prefix}${val.toFixed(cfg.decimals)}`;
+      }
+    }
+
+    function syncKentToggleUI() {
+      const btn = document.getElementById('toggle-kent');
+      const knob = document.getElementById('kent-knob');
+      const on = Boolean(state.params.kent);
+      btn.setAttribute('aria-checked', String(on));
+      btn.className = `relative w-9 h-5 rounded-full transition-colors focus:outline-none shrink-0 ${
+        on ? 'bg-tealLight dark:bg-tealDark' : 'bg-zinc-300 dark:bg-zinc-700'
+      }`;
+      knob.className = `block w-4 h-4 rounded-full bg-white dark:bg-obsidian shadow-sm transform transition-transform ${
+        on ? 'translate-x-4' : 'translate-x-0.5'
+      }`;
+    }
+
+    function buildDrugsTab() {
+      const container = document.getElementById('drug-sliders-list');
+      container.innerHTML = DRUG_CONFIGS.map(d => `
+        <div id="drug-card-${d.id}" class="px-3 py-2.5 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-200/80 dark:border-zinc-800/80 transition-colors">
+          <div class="flex items-center justify-between gap-1.5 mb-1">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate">${d.name}</span>
+              <span class="text-[9.5px] font-mono px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/70 shrink-0">${d.cls}</span>
+            </div>
+            <button data-zero-drug="${d.id}" type="button" title="Stop agent" class="zero-drug-btn hidden text-xs font-mono text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 px-1 leading-none">×</button>
+          </div>
+          <div class="flex items-center justify-between text-[10.5px] mb-2 gap-2">
+            <span class="text-zinc-500 dark:text-zinc-400 font-mono truncate">${d.effects}</span>
+            <span id="drug-val-${d.id}" class="font-mono font-medium text-zinc-400 dark:text-zinc-500 tabular-nums shrink-0">0 ${d.unit}</span>
+          </div>
+          <input
+            type="range"
+            id="drug-slider-${d.id}"
+            class="clinical-slider drug-slider"
+            min="0"
+            max="100"
+            step="1"
+            value="0"
+          />
+        </div>
+      `).join('');
+
+      DRUG_CONFIGS.forEach(d => {
+        const slider = document.getElementById(`drug-slider-${d.id}`);
+        const zeroBtn = container.querySelector(`[data-zero-drug="${d.id}"]`);
+
+        const setDosePct = pct => {
+          const norm = pct / 100;
+          state.drugs[d.id] = norm;
+          const clinicalVal = (norm * d.maxDose).toFixed(d.decimals);
+          const valEl = document.getElementById(`drug-val-${d.id}`);
+          const cardEl = document.getElementById(`drug-card-${d.id}`);
+
+          valEl.textContent = pct > 0 ? `${clinicalVal} ${d.unit}` : `0 ${d.unit}`;
+          valEl.className = `font-mono font-medium tabular-nums shrink-0 ${
+            pct > 0 ? 'text-violet-700 dark:text-violet-300' : 'text-zinc-400 dark:text-zinc-500'
+          }`;
+
+          cardEl.className = `px-3 py-2.5 rounded-lg border transition-colors ${
+            pct > 0
+              ? 'border-violet-500/40 bg-violet-500/[0.05] dark:bg-violet-500/[0.08]'
+              : 'border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30'
+          }`;
+
+          zeroBtn.classList.toggle('hidden', pct === 0);
+          updateSimulation(false);
+        };
+
+        slider.addEventListener('input', () => setDosePct(parseInt(slider.value, 10)));
+        zeroBtn.addEventListener('click', () => {
+          slider.value = 0;
+          setDosePct(0);
+        });
+      });
+    }
+
+    function clearAllDrugs() {
+      for (const d of DRUG_CONFIGS) {
+        state.drugs[d.id] = 0;
+        const slider = document.getElementById(`drug-slider-${d.id}`);
+        const valEl = document.getElementById(`drug-val-${d.id}`);
+        const cardEl = document.getElementById(`drug-card-${d.id}`);
+        const zeroBtn = document.querySelector(`[data-zero-drug="${d.id}"]`);
+        if (slider) slider.value = 0;
+        if (valEl) {
+          valEl.textContent = `0 ${d.unit}`;
+          valEl.className = 'font-mono font-medium text-zinc-400 dark:text-zinc-500 tabular-nums shrink-0';
+        }
+        if (cardEl) {
+          cardEl.className = 'px-3 py-2.5 rounded-lg border transition-colors border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30';
+        }
+        if (zeroBtn) zeroBtn.classList.add('hidden');
+      }
+      updateSimulation(false);
+    }
+
+    /* =========================================================================
+       8. EVENT WIRING, TOOLTIPS & ZERO-FLICKER 60FPS ANIMATION LOOP
+       ========================================================================= */
+
+    function wireControls() {
+      // Theme Toggle
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const isDarkNow = document.documentElement.classList.toggle('dark');
+        const val = isDarkNow ? 'dark' : 'light';
+        try {
+          localStorage.setItem('medlab-theme', val);
+          localStorage.setItem('theme', val);
+        } catch (_) {}
+      });
+
+      // Sidebar 3-Tab Switcher
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = btn.dataset.tab;
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            const active = b.dataset.tab === target;
+            b.className = `tab-btn py-1.5 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+              active
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+            }`;
+          });
+          ['rhythms', 'channels', 'drugs'].forEach(id => {
+            document.getElementById(`tab-${id}`).classList.toggle('hidden', id !== target);
+          });
+        });
+      });
+
+      // Cell Type Switcher (Ventricular vs SA Node)
+      document.querySelectorAll('.cell-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.cellView = btn.dataset.cell;
+          document.querySelectorAll('.cell-btn').forEach(b => {
+            const active = b.dataset.cell === state.cellView;
+            b.className = `cell-btn px-2 py-0.5 rounded transition-colors ${
+              active
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+            }`;
+          });
+        });
+      });
+
+      // Play / Pause
+      document.getElementById('btn-play-pause').addEventListener('click', () => {
+        state.playing = !state.playing;
+        document.getElementById('icon-pause').classList.toggle('hidden', !state.playing);
+        document.getElementById('icon-play').classList.toggle('hidden', state.playing);
+        document.getElementById('play-pause-text').textContent = state.playing ? 'Pause' : 'Play';
+        const dot = document.getElementById('live-dot');
+        dot.classList.toggle('pulse-live', state.playing);
+        dot.classList.toggle('bg-emerald-500', state.playing);
+        dot.classList.toggle('dark:bg-emerald-400', state.playing);
+        dot.classList.toggle('bg-amber-500', !state.playing);
+        dot.classList.toggle('dark:bg-amber-400', !state.playing);
+      });
+
+      // Speed Selector
+      document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.speed = parseFloat(btn.dataset.speed);
+          document.querySelectorAll('.speed-btn').forEach(b => {
+            const active = b === btn;
+            b.className = `speed-btn px-2 h-full rounded-md transition-colors ${
+              active
+                ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+            }`;
+          });
+        });
+      });
+
+      // Deliver PVC
+      let pvcTimer = null;
+      document.getElementById('btn-deliver-pvc').addEventListener('click', () => {
+        rhythmEngine.pvcQueued = true;
+        const lbl = document.getElementById('pvc-btn-label');
+        lbl.textContent = 'Queued';
+        clearTimeout(pvcTimer);
+        pvcTimer = setTimeout(() => { lbl.textContent = 'PVC'; }, 900);
+      });
+
+      // Pin Snapshot
+      let pinTimer = null;
+      document.getElementById('btn-pin-snapshot').addEventListener('click', () => {
+        if (!state.ventAP) return;
+        state.refVentAP = state.ventAP;
+        state.refSAAP = state.saAP;
+        state.refMetrics = state.metrics;
+        const preset = RHYTHM_PRESETS.find(p => p.id === state.activePresetId);
+        state.refLabel = preset ? preset.name.split(' ')[0] + ' Pin' : 'Pinned';
+        const lbl = document.getElementById('snapshot-btn-label');
+        lbl.textContent = 'Pinned ✓';
+        clearTimeout(pinTimer);
+        pinTimer = setTimeout(() => { lbl.textContent = 'Pin'; }, 1400);
+        renderTelemetry();
+      });
+
+      // Clear Drugs
+      document.getElementById('btn-clear-drugs').addEventListener('click', clearAllDrugs);
+
+      // Reset Normal
+      document.getElementById('btn-reset-normal').addEventListener('click', () => {
+        state.activePresetId = 'normal';
+        state.params = { ...NORMAL_PARAMS };
+        syncChannelSlidersFromState();
+        syncKentToggleUI();
+        highlightActivePresetCard();
+        clearAllDrugs();
+        updateSimulation(true);
+        state.refVentAP = state.ventAP;
+        state.refSAAP = state.saAP;
+        state.refMetrics = state.metrics;
+        state.refLabel = 'Normal';
+        renderTelemetry();
+      });
+
+      // Kent Bypass Toggle
+      document.getElementById('toggle-kent').addEventListener('click', () => {
+        state.params.kent = !state.params.kent;
+        state.activePresetId = state.params.kent ? 'wpw' : 'custom';
+        syncKentToggleUI();
+        highlightActivePresetCard();
+        updateSimulation(false);
+      });
+
+      // AP Overlay Toggle Pills
+      document.querySelectorAll('.overlay-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.overlay;
+          state.overlays[key] = !state.overlays[key];
+          const on = state.overlays[key];
+          btn.className = `overlay-btn px-1.5 py-0.5 rounded border transition-colors ${
+            on
+              ? 'border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200'
+              : 'border-zinc-200/70 dark:border-zinc-800/70 bg-transparent text-zinc-400 dark:text-zinc-600 line-through'
+          }`;
+        });
+      });
+
+      // Clinical Tooltip Delegation
+      const tipEl = document.getElementById('clinical-tooltip');
+      document.addEventListener('mouseover', e => {
+        const target = e.target.closest('[data-tooltip]');
+        if (!target) return;
+        tipEl.textContent = target.dataset.tooltip;
+        tipEl.classList.remove('opacity-0');
+        tipEl.classList.add('opacity-100');
+      });
+      document.addEventListener('mousemove', e => {
+        if (tipEl.classList.contains('opacity-0')) return;
+        const pad = 14;
+        const rect = tipEl.getBoundingClientRect();
+        let x = e.clientX + pad;
+        let y = e.clientY + pad;
+        if (x + rect.width > window.innerWidth - 10) x = e.clientX - rect.width - pad;
+        if (y + rect.height > window.innerHeight - 10) y = e.clientY - rect.height - pad;
+        tipEl.style.left = `${Math.max(8, x)}px`;
+        tipEl.style.top = `${Math.max(8, y)}px`;
+      });
+      document.addEventListener('mouseout', e => {
+        const target = e.target.closest('[data-tooltip]');
+        if (!target) return;
+        tipEl.classList.add('opacity-0');
+        tipEl.classList.remove('opacity-100');
+      });
+
+      // Responsive ResizeObservers
+      const ro = new ResizeObserver(() => {
+        resizeCanvas(apCanvas, 'ap-canvas-wrap');
+        resizeCanvas(ecgCanvas, 'ecg-canvas-wrap');
+      });
+      ro.observe(document.getElementById('ap-canvas-wrap'));
+      ro.observe(document.getElementById('ecg-canvas-wrap'));
+      window.addEventListener('resize', () => {
+        resizeCanvas(apCanvas, 'ap-canvas-wrap');
+        resizeCanvas(ecgCanvas, 'ecg-canvas-wrap');
+      });
+    }
+
+    // Fixed-Rate 500 Hz Ring-Buffer Animation Loop (Zero-Flicker across 60Hz/120Hz)
+    let lastTimestamp = 0;
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) lastTimestamp = performance.now();
+    });
+
+    function animate(now) {
+      if (!lastTimestamp) lastTimestamp = now;
+      const dt = Math.min(0.05, Math.max(0, (now - lastTimestamp) / 1000));
+      lastTimestamp = now;
+
+      if (state.playing && state.eff && state.metrics) {
+        rhythmEngine.simTime += dt * state.speed;
+        scheduleEventsUpTo(rhythmEngine.simTime, state.eff, state.metrics);
+
+        let steps = 0;
+        while (rhythmEngine.sampleClock + DT_SAMPLE <= rhythmEngine.simTime && steps < 60) {
+          rhythmEngine.sampleClock += DT_SAMPLE;
+          rhythmEngine.writeIdx = (rhythmEngine.writeIdx + 1) % SAMPLES;
+          ecgBuffer[rhythmEngine.writeIdx] = evalECGAt(rhythmEngine.sampleClock, state.eff, state.metrics);
+          steps++;
+        }
+        pruneOldEvents(rhythmEngine.simTime);
+      }
+
+      drawActionPotential();
+      drawECGAndLadder();
+      requestAnimationFrame(animate);
+    }
+
+    // Boot Application
+    window.addEventListener('load', () => {
+      buildRhythmsTab();
+      buildChannelsTab();
+      buildDrugsTab();
+      syncKentToggleUI();
+      wireControls();
+
+      resizeCanvas(apCanvas, 'ap-canvas-wrap');
+      resizeCanvas(ecgCanvas, 'ecg-canvas-wrap');
+
+      updateSimulation(true);
+      requestAnimationFrame(animate);
+    });
+  })();
+  </script>
+</body>
+</html>
