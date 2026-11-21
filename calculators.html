@@ -1,1 +1,2795 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedLab — Clinical Calculators</title>
 
+  <!-- Prevent theme flash prior to first paint (syncs both medlab-theme & theme keys; defaults to obsidian dark) -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter (UI) & JetBrains Mono (Values, Formulas, Telemetry) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#111113',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      overflow-x: hidden;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Hide native number spinners for clean clinical precision */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
+    /* Minimal thin scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(113, 113, 122, 0.28);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(113, 113, 122, 0.48);
+    }
+
+    /* Subtle workspace transition */
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .calc-enter {
+      animation: fadeSlide 0.16s ease-out;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-canvasLight text-zinc-900 dark:bg-obsidian dark:text-zinc-100 transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
+
+  <!-- ==================== 1. STICKY HAIRLINE HEADER ==================== -->
+  <header class="sticky top-0 z-40 h-14 w-full border-b border-zinc-200/80 dark:border-zinc-800/80 bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md">
+    <div class="max-w-[1440px] mx-auto h-full px-3 sm:px-6 flex items-center justify-between gap-2.5 sm:gap-4">
+
+      <!-- Left: Mobile Drawer Trigger + MedLab Back Link + Breadcrumb -->
+      <div class="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        <button
+          id="mobile-menu-btn"
+          type="button"
+          aria-label="Open calculator menu"
+          class="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark text-zinc-600 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+
+        <a href="index.html" class="flex items-center gap-2.5 group focus:outline-none">
+          <span class="w-7 h-7 rounded-lg flex items-center justify-center border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark group-hover:border-tealLight/50 dark:group-hover:border-tealDark/50 transition-colors">
+            <svg class="w-4 h-4 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2.5 13h4l2.1-6.2 3.5 11.2 2.3-5h7.1" />
+            </svg>
+          </span>
+          <span class="text-[15px] font-semibold tracking-tight text-zinc-950 dark:text-zinc-100">MedLab</span>
+        </a>
+
+        <span class="hidden sm:inline text-zinc-300 dark:text-zinc-700 text-sm font-light select-none">/</span>
+        <span class="hidden sm:inline text-[13px] font-medium text-zinc-500 dark:text-zinc-400">Calculators</span>
+      </div>
+
+      <!-- Center: Instant Search Bar (/, Cmd/Ctrl+K, ArrowUp/Down, Enter, Esc) -->
+      <div class="flex-1 max-w-md mx-1 sm:mx-4">
+        <div class="relative flex items-center">
+          <svg class="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 absolute left-3 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input
+            id="calc-search"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Search 26 calculators…"
+            aria-label="Search 26 calculators"
+            class="w-full h-8 pl-8 pr-12 rounded-lg text-[13px] bg-white dark:bg-surfaceDark border border-zinc-200/90 dark:border-zinc-800/90 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-tealLight/60 dark:focus:border-tealDark/60 transition-colors"
+          />
+          <kbd class="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono text-zinc-400 dark:text-zinc-500 border border-zinc-200 dark:border-zinc-800 absolute right-2 pointer-events-none select-none">/</kbd>
+        </div>
+      </div>
+
+      <!-- Right: Global SI/US Unit System Toggle + Theme Toggle -->
+      <div class="flex items-center gap-2 shrink-0">
+        <div
+          role="group"
+          aria-label="Unit system"
+          class="inline-flex items-center p-0.5 rounded-lg border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark font-mono text-[11px]"
+        >
+          <button
+            id="unit-btn-si"
+            type="button"
+            data-unit="SI"
+            class="unit-sys-btn px-2 py-1 rounded-md font-medium transition-colors"
+          >SI</button>
+          <button
+            id="unit-btn-us"
+            type="button"
+            data-unit="US"
+            class="unit-sys-btn px-2 py-1 rounded-md font-medium transition-colors"
+          >US</button>
+        </div>
+
+        <button
+          id="theme-toggle"
+          type="button"
+          aria-label="Toggle dark and light theme"
+          title="Switch Dark / Light theme"
+          class="w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+        >
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. TWO-PANE WORKSTATION ==================== -->
+  <div class="flex-1 w-full max-w-[1440px] mx-auto flex relative min-h-0">
+
+    <!-- Mobile Backdrop -->
+    <div id="mobile-backdrop" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] hidden lg:hidden"></div>
+
+    <!-- LEFT SIDEBAR (Desktop persistent w-72, Mobile slide-over drawer) -->
+    <aside
+      id="calc-sidebar"
+      class="fixed lg:sticky top-0 lg:top-14 left-0 z-50 lg:z-20 h-screen lg:h-[calc(100vh-3.5rem)] w-72 shrink-0 flex flex-col border-r border-zinc-200/80 dark:border-zinc-800/80 bg-canvasLight dark:bg-obsidian transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-out"
+    >
+      <!-- Mobile Drawer Header -->
+      <div class="lg:hidden h-14 px-4 flex items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800/80 shrink-0">
+        <span class="font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Calculators (26)</span>
+        <button id="mobile-close-btn" type="button" aria-label="Close calculator menu" class="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-white">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Compact Category Filter Tabs -->
+      <div class="p-3 border-b border-zinc-200/80 dark:border-zinc-800/80 shrink-0">
+        <div id="category-tabs" class="flex flex-wrap gap-1">
+          <button type="button" data-cat="all" class="cat-tab px-2 py-1 rounded-md text-[11px] font-medium transition-colors">All</button>
+          <button type="button" data-cat="acid-base" class="cat-tab px-2 py-1 rounded-md text-[11px] font-medium transition-colors">Acid-Base</button>
+          <button type="button" data-cat="cardio" class="cat-tab px-2 py-1 rounded-md text-[11px] font-medium transition-colors">Cardio</button>
+          <button type="button" data-cat="renal" class="cat-tab px-2 py-1 rounded-md text-[11px] font-medium transition-colors">Renal</button>
+          <button type="button" data-cat="critical" class="cat-tab px-2 py-1 rounded-md text-[11px] font-medium transition-colors">Critical</button>
+        </div>
+      </div>
+
+      <!-- Grouped Calculator List -->
+      <nav id="sidebar-list" aria-label="Clinical calculators" class="flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
+        <!-- Populated dynamically -->
+      </nav>
+
+      <!-- Subtle Sidebar Footer -->
+      <div class="px-3.5 py-2.5 border-t border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between text-[11px] font-mono text-zinc-400 dark:text-zinc-500 shrink-0">
+        <span id="sidebar-count">26 calculators</span>
+        <span id="sidebar-unit-indicator">SI units</span>
+      </div>
+    </aside>
+
+    <!-- RIGHT MAIN WORKSPACE -->
+    <main id="workspace-scroll" class="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div id="workspace-inner" class="max-w-5xl mx-auto space-y-6">
+
+        <!-- Workspace Header: Category Tag, Title, Description, Copy & Reset -->
+        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5 border-b border-zinc-200/80 dark:border-zinc-800/80">
+          <div class="space-y-1.5 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span id="ws-category" class="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-tealLight dark:text-tealDark"></span>
+              <span class="text-zinc-300 dark:text-zinc-700 text-xs">·</span>
+              <span id="ws-id-tag" class="font-mono text-[10px] text-zinc-400 dark:text-zinc-500"></span>
+            </div>
+            <h1 id="ws-title" class="text-2xl sm:text-[26px] font-semibold tracking-[-0.025em] text-zinc-950 dark:text-white leading-tight"></h1>
+            <p id="ws-desc" class="text-[13.5px] text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-2xl"></p>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0 pt-0.5">
+            <button
+              id="btn-copy-summary"
+              type="button"
+              class="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark text-zinc-700 dark:text-zinc-200 hover:border-tealLight/50 dark:hover:border-tealDark/50 hover:text-zinc-950 dark:hover:text-white transition-colors"
+            >
+              <svg class="w-3.5 h-3.5 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              <span>Copy Summary</span>
+            </button>
+            <button
+              id="btn-clear-inputs"
+              type="button"
+              title="Clear numeric fields"
+              class="inline-flex items-center h-8 px-2.5 rounded-lg text-xs font-medium border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+            >
+              Clear
+            </button>
+            <button
+              id="btn-reset-defaults"
+              type="button"
+              title="Reset to default clinical values"
+              class="inline-flex items-center h-8 px-2.5 rounded-lg text-xs font-medium border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+
+        <!-- Reactive 2-Column Body -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+
+          <!-- Left: Inputs Card (xl:col-span-7) -->
+          <section class="xl:col-span-7 rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-5 sm:p-6 space-y-5">
+            <!-- Optional Sub-Mode Switcher (Wells PE/DVT, FENa/FEUrea, SOFA/qSOFA) -->
+            <div id="ws-mode-wrap" class="hidden pb-4 border-b border-zinc-200/70 dark:border-zinc-800/70"></div>
+            <!-- Dynamic Inputs Container -->
+            <div id="ws-inputs" class="space-y-4"></div>
+          </section>
+
+          <!-- Right: Sticky Output & Interpretation Card (xl:col-span-5) -->
+          <section class="xl:col-span-5 xl:sticky xl:top-20 space-y-4">
+            <div id="ws-output-card" class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-5 sm:p-6 space-y-5">
+              <!-- Populated reactively on every keystroke/click -->
+            </div>
+          </section>
+
+        </div>
+
+        <!-- Bottom Hairline Formula & Evidence Strip -->
+        <details id="ws-formula-details" open class="group rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark overflow-hidden">
+          <summary class="px-5 py-3.5 flex items-center justify-between cursor-pointer select-none list-none hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40 transition-colors">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">Formula &amp; Primary Evidence</span>
+            </div>
+            <svg class="w-4 h-4 text-zinc-400 transition-transform duration-150 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </summary>
+          <div class="px-5 pb-4 pt-1 border-t border-zinc-200/70 dark:border-zinc-800/70 space-y-2.5">
+            <pre id="ws-formula" class="font-mono text-[12px] leading-relaxed text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap break-words bg-zinc-50 dark:bg-obsidian/80 border border-zinc-200/70 dark:border-zinc-800/70 rounded-lg p-3"></pre>
+            <p id="ws-citation" class="text-[12px] text-zinc-500 dark:text-zinc-400 leading-relaxed"></p>
+          </div>
+        </details>
+
+        <!-- Minimal Educational Disclaimer Footer -->
+        <footer class="pt-4 pb-6 border-t border-zinc-200/70 dark:border-zinc-800/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11.5px] text-zinc-400 dark:text-zinc-500">
+          <span>MedLab · Clinical Calculators · Client-side deterministic computation</span>
+          <span>Educational &amp; clinical reference only — verify decisions with local protocols</span>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast Notification -->
+  <div
+    id="toast"
+    role="status"
+    aria-live="polite"
+    class="fixed bottom-5 right-5 z-50 pointer-events-none opacity-0 translate-y-2 transition-all duration-200 px-3.5 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-950 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-950 text-xs font-medium shadow-xl flex items-center gap-2"
+  >
+    <svg class="w-3.5 h-3.5 text-tealDark dark:text-tealLight shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+    <span id="toast-msg">Summary copied to clipboard</span>
+  </div>
+
+  <!-- ==================== CALCULATOR ENGINE & UI CONTROLLER ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    /* =========================================================================
+       1. CATEGORIES & UNIT CONVERSION HELPERS
+       ========================================================================= */
+    const CATEGORIES = [
+      { id: 'acid-base', label: 'Acid-Base & Electrolytes', short: 'Acid-Base' },
+      { id: 'cardio',    label: 'Cardiology & Hemodynamics', short: 'Cardio' },
+      { id: 'renal',     label: 'Renal & Dosing', short: 'Renal' },
+      { id: 'critical',  label: 'Critical Care & Risk', short: 'Critical' },
+    ];
+
+    const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
+
+    // Exact clinical unit converters
+    const CONV = {
+      gluToUS: v => v * 18,
+      gluToSI: v => v / 18,
+      ureaToUS: v => v * 2.8,      // Urea mmol/L -> BUN mg/dL
+      ureaToSI: v => v / 2.8,
+      etohToUS: v => v * 4.6,      // Ethanol mmol/L -> mg/dL
+      etohToSI: v => v / 4.6,
+      albToUS: v => v / 10,        // g/L -> g/dL
+      albToSI: v => v * 10,
+      caToUS: v => v * 4.0,        // mmol/L -> mg/dL
+      caToSI: v => v / 4.0,
+      crToUS: v => v / 88.4,       // umol/L -> mg/dL
+      crToSI: v => v * 88.4,
+      ucrToUS: v => v * 11.312,    // mmol/L -> mg/dL
+      ucrToSI: v => v / 11.312,
+      biliToUS: v => v / 17.1,     // umol/L -> mg/dL
+      biliToSI: v => v * 17.1,
+      kgToLb: v => v * 2.20462,
+      lbToKg: v => v / 2.20462,
+      cmToIn: v => v / 2.54,
+      inToCm: v => v * 2.54,
+    };
+
+    const isNum = v => typeof v === 'number' && Number.isFinite(v);
+    const numVal = v => {
+      if (v === '' || v === null || v === undefined) return NaN;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : NaN;
+    };
+    const fmt = (v, d = 1) => (isNum(v) ? v.toFixed(d) : '—');
+    const roundNice = (v, d = 1) => {
+      if (!isNum(v)) return '';
+      const factor = Math.pow(10, d);
+      return Math.round(v * factor) / factor;
+    };
+
+    // Helper for SI/US aware value extraction (returns value in target system)
+    function getGluMgdl(raw, u) { return u === 'SI' ? raw * 18 : raw; }
+    function getGluMmol(raw, u) { return u === 'SI' ? raw : raw / 18; }
+    function getAlbGL(raw, u)   { return u === 'SI' ? raw : raw * 10; }
+    function getAlbGdl(raw, u)  { return u === 'SI' ? raw / 10 : raw; }
+    function getCrMgdl(raw, u)  { return u === 'SI' ? raw / 88.4 : raw; }
+    function getBiliMgdl(raw, u){ return u === 'SI' ? raw / 17.1 : raw; }
+    function getKg(raw, u)      { return u === 'SI' ? raw : raw / 2.20462; }
+    function getCm(raw, u)      { return u === 'SI' ? raw : raw * 2.54; }
+
+    /* =========================================================================
+       2. COMPLETE REGISTRY OF ALL 26 CLINICAL CALCULATORS
+       ========================================================================= */
+    const CALCULATORS = [
+      /* -----------------------------------------------------------------------
+         CATEGORY 1: ACID-BASE & ELECTROLYTES (1–6)
+         ----------------------------------------------------------------------- */
+      {
+        id: 'anion-gap',
+        aliases: ['ag', 'delta-delta', 'delta-gap', 'delta-ratio', 'hagma', 'nagma'],
+        category: 'acid-base',
+        title: 'Anion Gap & Delta-Delta',
+        shortTitle: 'Anion Gap & Delta-Delta',
+        desc: 'Evaluates metabolic acidosis with Figge albumin correction and delta-ratio analysis for mixed disorders.',
+        inputs: [
+          { key: 'na', label: 'Sodium (Na⁺)', type: 'number', siUnit: 'mmol/L', usUnit: 'mEq/L', siDefault: 140, usDefault: 140, step: 1, min: 90, max: 200 },
+          { key: 'cl', label: 'Chloride (Cl⁻)', type: 'number', siUnit: 'mmol/L', usUnit: 'mEq/L', siDefault: 100, usDefault: 100, step: 1, min: 60, max: 160 },
+          { key: 'hco3', label: 'Bicarbonate (HCO₃⁻)', type: 'number', siUnit: 'mmol/L', usUnit: 'mEq/L', siDefault: 16, usDefault: 16, step: 0.5, min: 2, max: 60 },
+          { key: 'alb', label: 'Serum Albumin', type: 'number', siUnit: 'g/L', usUnit: 'g/dL', siDefault: 32, usDefault: 3.2, toUS: CONV.albToUS, toSI: CONV.albToSI, decimalsSI: 0, decimalsUS: 1, stepSI: 1, stepUS: 0.1, min: 0.5, max: 80 },
+        ],
+        compute(v, u) {
+          const na = numVal(v.na), cl = numVal(v.cl), hco3 = numVal(v.hco3), albRaw = numVal(v.alb);
+          if (!isNum(na) || !isNum(cl) || !isNum(hco3)) return { incomplete: true };
+          const ag = na - (cl + hco3);
+          const hasAlb = isNum(albRaw);
+          const albGL = hasAlb ? getAlbGL(albRaw, u) : 40;
+          const agCorr = ag + 0.25 * (40 - albGL);
+          const deltaAG = agCorr - 12;
+          const deltaHCO3 = 24 - hco3;
+
+          let deltaRatioStr = 'N/A';
+          let deltaNote = 'No HAGMA or HCO₃⁻ ≥ 24';
+          if (agCorr > 12 && deltaHCO3 > 0) {
+            const dr = deltaAG / deltaHCO3;
+            deltaRatioStr = fmt(dr, 2);
+            if (dr < 0.4) deltaNote = 'Hyperchloremic NAGMA predominant';
+            else if (dr < 0.8) deltaNote = 'Mixed HAGMA + NAGMA';
+            else if (dr <= 2.0) deltaNote = 'Pure uncomplicated HAGMA';
+            else deltaNote = 'HAGMA + metabolic alkalosis / chronic resp. acidosis';
+          } else if (agCorr > 12 && deltaHCO3 <= 0) {
+            deltaRatioStr = '> 2.0';
+            deltaNote = 'HAGMA + concurrent metabolic alkalosis';
+          }
+
+          let badge = { text: 'Normal Anion Gap', tone: 'emerald' };
+          if (agCorr > 16) badge = { text: 'High Anion Gap Acidosis', tone: 'rose' };
+          else if (agCorr > 12) badge = { text: 'Borderline Elevated AG', tone: 'amber' };
+
+          const unitLbl = u === 'SI' ? 'mmol/L' : 'mEq/L';
+          return {
+            primary: { label: hasAlb ? 'Albumin-Corrected AG' : 'Uncorrected Anion Gap', value: fmt(agCorr, 1), unit: unitLbl, badge },
+            secondary: [
+              { label: 'Uncorrected AG', value: `${fmt(ag, 1)} ${unitLbl}` },
+              { label: 'Excess AG (ΔAG)', value: `${deltaAG >= 0 ? '+' : ''}${fmt(deltaAG, 1)} ${unitLbl}` },
+              { label: 'Delta Ratio (ΔAG / ΔHCO₃⁻)', value: deltaRatioStr },
+              { label: 'Mixed Disorder Screen', value: deltaNote },
+            ],
+            notes: [
+              'Every 10 g/L (1.0 g/dL) drop in albumin below 40 g/L lowers measured AG by ~2.5 mmol/L, masking HAGMA in ICU/cirrhosis patients.',
+              'HAGMA mnemonic (GOLD MARK): Glycols, Oxoproline, L-lactate, D-lactate, Methanol, Aspirin, Renal failure, Ketoacidosis.',
+              'Normal AG range depends on analyzer (typically 8–12 mmol/L with modern ion-selective electrodes).',
+            ],
+          };
+        },
+        formula: (u) => u === 'SI'
+          ? 'AG = Na − (Cl + HCO₃)\nAG_corrected = AG + 0.25 × (40 − Albumin [g/L])\nDelta Ratio = (AG_corrected − 12) / (24 − HCO₃)'
+          : 'AG = Na − (Cl + HCO₃)\nAG_corrected = AG + 2.5 × (4.0 − Albumin [g/dL])\nDelta Ratio = (AG_corrected − 12) / (24 − HCO₃)',
+        citation: 'Figge J, Jabor A, Kazda A, Fencl V. Anion gap and hypoalbuminemia. Crit Care Med. 1998;26(11):1807-1810.',
+      },
+
+      {
+        id: 'winters',
+        aliases: ['winters-formula', 'winter', 'respiratory-compensation', 'metabolic-acidosis-compensation'],
+        category: 'acid-base',
+        title: "Winter's Formula",
+        shortTitle: "Winter's Formula",
+        desc: 'Predicts expected respiratory PaCO₂ compensation in primary metabolic acidosis.',
+        inputs: [
+          { key: 'hco3', label: 'Measured HCO₃⁻', type: 'number', siUnit: 'mmol/L', usUnit: 'mEq/L', siDefault: 14, usDefault: 14, step: 0.5, min: 2, max: 45 },
+          { key: 'paco2', label: 'Measured PaCO₂ (optional)', type: 'number', siUnit: 'mmHg', usUnit: 'mmHg', siDefault: 29, usDefault: 29, step: 1, min: 8, max: 120, optional: true },
+        ],
+        compute(v) {
+          const hco3 = numVal(v.hco3), paco2 = numVal(v.paco2);
+          if (!isNum(hco3)) return { incomplete: true };
+          const exp = 1.5 * hco3 + 8;
+          const lo = exp - 2, hi = exp + 2;
+
+          let badge = { text: 'Expected Compensation Window', tone: 'emerald' };
+          let compStatus = 'Enter measured PaCO₂ to evaluate';
+          if (isNum(paco2)) {
+            if (paco2 < lo) {
+              badge = { text: 'Concurrent Respiratory Alkalosis', tone: 'amber' };
+              compStatus = `PaCO₂ ${fmt(paco2, 0)} < ${fmt(lo, 1)} mmHg (excessive hyperventilation)`;
+            } else if (paco2 > hi) {
+              badge = { text: 'Concurrent Respiratory Acidosis', tone: 'rose' };
+              compStatus = `PaCO₂ ${fmt(paco2, 0)} > ${fmt(hi, 1)} mmHg (inadequate ventilatory compensation)`;
+            } else {
+              badge = { text: 'Appropriate Compensation', tone: 'emerald' };
+              compStatus = `PaCO₂ ${fmt(paco2, 0)} mmHg lies within expected range`;
+            }
+          }
+
+          return {
+            primary: { label: 'Expected PaCO₂', value: `${fmt(exp, 1)} ± 2`, unit: 'mmHg', badge },
+            secondary: [
+              { label: 'Expected Range', value: `${fmt(lo, 1)} – ${fmt(hi, 1)} mmHg` },
+              { label: 'Measured PaCO₂', value: isNum(paco2) ? `${fmt(paco2, 1)} mmHg` : 'Not entered' },
+              { label: 'Assessment', value: compStatus },
+            ],
+            notes: [
+              'Valid specifically for primary metabolic acidosis; full respiratory compensation takes 12–24 hours to reach steady state.',
+              'A PaCO₂ higher than predicted signals impending respiratory muscle fatigue or a superimposed primary respiratory acidosis.',
+              'Physiological limit of maximal hyperventilation is roughly PaCO₂ 10–12 mmHg.',
+            ],
+          };
+        },
+        formula: () => 'Expected PaCO₂ (mmHg) = (1.5 × HCO₃⁻) + 8 ± 2',
+        citation: 'Albert MS, Dell RB, Winters RW. Quantitative displacement of acid-base equilibrium in metabolic acidosis. Ann Intern Med. 1967;66(2):312-322.',
+      },
+
+      {
+        id: 'corrected-sodium',
+        aliases: ['corrected-na', 'hyperglycemia-sodium', 'katz', 'hillier', 'pseudohyponatremia'],
+        category: 'acid-base',
+        title: 'Corrected Sodium in Hyperglycemia',
+        shortTitle: 'Corrected Sodium',
+        desc: 'Adjusts measured serum sodium for osmotic free-water shift in DKA and HHS.',
+        inputs: [
+          { key: 'na', label: 'Measured Sodium (Na⁺)', type: 'number', siUnit: 'mmol/L', usUnit: 'mEq/L', siDefault: 128, usDefault: 128, step: 1, min: 90, max: 190 },
+          { key: 'glu', label: 'Serum Glucose', type: 'number', siUnit: 'mmol/L', usUnit: 'mg/dL', siDefault: 28.0, usDefault: 504, toUS: CONV.gluToUS, toSI: CONV.gluToSI, decimalsSI: 1, decimalsUS: 0, stepSI: 0.5, stepUS: 10, min: 1, max: 2000 },
+        ],
+        compute(v, u) {
+          const na = numVal(v.na), gluRaw = numVal(v.glu);
+          if (!isNum(na) || !isNum(gluRaw)) return { incomplete: true };
+          const gluMgdl = getGluMgdl(gluRaw, u);
+          const excess100 = Math.max(0, (gluMgdl - 100) / 100);
+          const katz = na + 1.6 * excess100;
+          const hillier = na + 2.4 * excess100;
+          const severeGlu = gluMgdl > 400;
+          const primaryVal = severeGlu ? hillier : katz;
+
+          let badge = { text: 'Normal Corrected Na⁺', tone: 'emerald' };
+          if (primaryVal > 145) badge = { text: 'True Hypernatremia', tone: 'rose' };
+          else if (primaryVal < 135) badge = { text: 'True Hyponatremia', tone: 'amber' };
+
+          const unitLbl = u === 'SI' ? 'mmol/L' : 'mEq/L';
+          return {
+            primary: {
+              label: severeGlu ? 'Corrected Na⁺ (Hillier 2.4 — Glu >400)' : 'Corrected Na⁺ (Katz 1.6)',
+              value: fmt(primaryVal, 1),
+              unit: unitLbl,
+              badge,
+            },
+            secondary: [
+              { label: 'Katz Formula (1.6 factor)', value: `${fmt(katz, 1)} ${unitLbl}` },
+              { label: 'Hillier Formula (2.4 factor)', value: `${fmt(hillier, 1)} ${unitLbl}` },
+              { label: 'Glucose Threshold', value: severeGlu ? '> 22.2 mmol/L (400 mg/dL) — Hillier preferred' : '≤ 22.2 mmol/L (400 mg/dL) — Katz standard' },
+            ],
+            notes: [
+              'Katz (1.6 per 100 mg/dL above 100) is standard for mild-to-moderate hyperglycemia; Hillier (2.4) is more accurate when glucose exceeds 22.2 mmol/L (400 mg/dL).',
+              'In DKA/HHS, guide maintenance fluid tonicity (0.9% vs 0.45% NaCl) using corrected Na⁺ rather than measured Na⁺.',
+              'Expect measured Na⁺ to rise as insulin drives glucose and water back intracellularly.',
+            ],
+          };
+        },
+        formula: (u) => u === 'SI'
+          ? 'Katz:    Na_corr = Na + 1.6 × ((Glucose [mmol/L] × 18 − 100) / 100)\nHillier: Na_corr = Na + 2.4 × ((Glucose [mmol/L] × 18 − 100) / 100)'
+          : 'Katz:    Na_corr = Na + 1.6 × ((Glucose [mg/dL] − 100) / 100)\nHillier: Na_corr = Na + 2.4 × ((Glucose [mg/dL] − 100) / 100)',
+        citation: 'Katz MA. Hyperglycemia-induced hyponatremia. N Engl J Med. 1973;289:843-844; Hillier TA et al. Am J Med. 1999;106(4):399-403.',
+      },
+
+      {
+        id: 'free-water-deficit',
+        aliases: ['water-deficit', 'hypernatremia', 'fwd', 'tbw'],
+        category: 'acid-base',
+        title: 'Free Water Deficit',
+        shortTitle: 'Free Water Deficit',
+        desc: 'Estimates total body water deficit and safe 24-hour replacement rate in hypernatremia.',
+        inputs: [
+          {
+            key: 'demo', label: 'Patient Group (TBW Factor)', type: 'segmented', default: '0.6',
+            options: [
+              { value: '0.6', label: 'Adult M (0.6)' },
+              { value: '0.5', label: 'Adult F / Eld M (0.5)' },
+              { value: '0.45', label: 'Elderly F (0.45)' },
+            ],
+          },
+          { key: 'weight', label: 'Body Weight', type: 'number', siUnit: 'kg', usUnit: 'lb', siDefault: 75, usDefault: 165, toUS: CONV.kgToLb, toSI: CONV.lbToKg, decimalsSI: 1, decimalsUS: 0, stepSI: 1, stepUS: 1, min: 10, max: 500 },
+          { key: 'currNa', label: 'Current Sodium', type: 'number', siUnit: 'mmol/L', usUnit: 'mEq/L', siDefault: 156, usDefault: 156, step: 1, min: 135, max: 210 },
+          { key: 'targetNa', label: 'Target Sodium', type: 'number', siUnit: 'mmol/L', usUnit: 'mEq/L', siDefault: 140, usDefault: 140, step: 1, min: 130, max: 160 },
+        ],
+        compute(v, u) {
+          const factor = numVal(v.demo), wtRaw = numVal(v.weight), currNa = numVal(v.currNa), targNa = numVal(v.targetNa);
+          if (!isNum(factor) || !isNum(wtRaw) || !isNum(currNa) || !isNum(targNa) || targNa <= 0) return { incomplete: true };
+          const kg = getKg(wtRaw, u);
+          const tbw = factor * kg;
+          const deficit = Math.max(0, tbw * ((currNa / targNa) - 1));
+          const deltaNa = currNa - targNa;
+
+          // Safe 24h reduction max 8-10 mmol/L/24h for chronic hypernatremia
+          const safeTarget24 = Math.max(targNa, currNa - 10);
+          const safeVol24L = Math.max(0, tbw * ((currNa / safeTarget24) - 1));
+          const safeRateMlHr = (safeVol24L * 1000) / 24;
+          const conservativeTarget24 = Math.max(targNa, currNa - 8);
+          const conservativeRate = (Math.max(0, tbw * ((currNa / conservativeTarget24) - 1)) * 1000) / 24;
+
+          let badge = { text: 'No Free Water Deficit', tone: 'emerald' };
+          if (currNa >= 160) badge = { text: 'Severe Hypernatremia', tone: 'rose' };
+          else if (currNa > 145) badge = { text: 'Hypernatremia', tone: 'amber' };
+
+          return {
+            primary: { label: 'Total Free Water Deficit', value: fmt(deficit, 2), unit: 'L', badge },
+            secondary: [
+              { label: 'Estimated Total Body Water', value: `${fmt(tbw, 1)} L` },
+              { label: 'Safe 24h Volume (≤10 mmol/L drop)', value: `${fmt(safeVol24L, 2)} L` },
+              { label: 'Safe D5W Rate (8–10 mmol/L/24h)', value: `${fmt(conservativeRate, 0)} – ${fmt(safeRateMlHr, 0)} mL/hr` },
+              { label: 'Estimated Correction Duration', value: deltaNa > 0 ? `~${fmt(Math.max(1, deltaNa / 10), 1)} days` : '0 days' },
+            ],
+            notes: [
+              'Limit chronic (>48h) hypernatremia correction to ≤8–10 mmol/L per 24 hours (≤0.5 mmol/L/hr) to prevent cerebral edema.',
+              'Calculated deficit excludes ongoing insensible (~700–1000 mL/day) and urinary free-water losses, which must be replaced concurrently.',
+              'Recheck serum Na⁺ every 4–6 hours during active D5W or enteral free-water repletion.',
+            ],
+          };
+        },
+        formula: () => 'TBW (L) = Factor × Weight (kg)\nFree Water Deficit (L) = TBW × ((Current Na / Target Na) − 1)',
+        citation: 'Adrogué HJ, Madias NE. Hypernatremia. N Engl J Med. 2000;342(20):1493-1499.',
+      },
+
+      {
+        id: 'corrected-calcium',
+        aliases: ['corrected-ca', 'payne', 'calcium', 'albumin-calcium'],
+        category: 'acid-base',
+        title: 'Corrected Calcium (Payne)',
+        shortTitle: 'Corrected Calcium',
+        desc: 'Adjusts total serum calcium for hypoalbuminemia when ionized calcium is unavailable.',
+        inputs: [
+          { key: 'ca', label: 'Total Serum Calcium', type: 'number', siUnit: 'mmol/L', usUnit: 'mg/dL', siDefault: 1.95, usDefault: 7.8, toUS: CONV.caToUS, toSI: CONV.caToSI, decimalsSI: 2, decimalsUS: 1, stepSI: 0.05, stepUS: 0.1, min: 0.5, max: 25 },
+          { key: 'alb', label: 'Serum Albumin', type: 'number', siUnit: 'g/L', usUnit: 'g/dL', siDefault: 25, usDefault: 2.5, toUS: CONV.albToUS, toSI: CONV.albToSI, decimalsSI: 0, decimalsUS: 1, stepSI: 1, stepUS: 0.1, min: 0.5, max: 80 },
+        ],
+        compute(v, u) {
+          const caRaw = numVal(v.ca), albRaw = numVal(v.alb);
+          if (!isNum(caRaw) || !isNum(albRaw)) return { incomplete: true };
+          const caSI = u === 'SI' ? caRaw : caRaw / 4.0;
+          const albGL = getAlbGL(albRaw, u);
+          const corrSI = caSI + 0.02 * (40 - albGL);
+          const corrUS = corrSI * 4.0;
+
+          let badge = { text: 'Normocalcemia', tone: 'emerald' };
+          if (corrSI < 2.12) badge = { text: 'Hypocalcemia', tone: 'amber' };
+          else if (corrSI > 3.0) badge = { text: 'Moderate–Severe Hypercalcemia', tone: 'rose' };
+          else if (corrSI > 2.60) badge = { text: 'Hypercalcemia', tone: 'amber' };
+
+          return {
+            primary: {
+              label: 'Corrected Calcium',
+              value: u === 'SI' ? fmt(corrSI, 2) : fmt(corrUS, 1),
+              unit: u === 'SI' ? 'mmol/L' : 'mg/dL',
+              badge,
+            },
+            secondary: [
+              { label: 'Alternate Unit', value: u === 'SI' ? `${fmt(corrUS, 1)} mg/dL` : `${fmt(corrSI, 2)} mmol/L` },
+              { label: 'Reference Range', value: u === 'SI' ? '2.12 – 2.60 mmol/L' : '8.5 – 10.4 mg/dL' },
+              { label: 'Albumin Adjustment', value: `${(40 - albGL) >= 0 ? '+' : ''}${u === 'SI' ? fmt(0.02 * (40 - albGL), 2) + ' mmol/L' : fmt(0.08 * (40 - albGL), 1) + ' mg/dL'}` },
+            ],
+            notes: [
+              'Directly measure ionized Ca²⁺ (normal 1.15–1.30 mmol/L) in critically ill, acidemic/alkalemic, CKD, or hyperparathyroid patients—Payne adjustment correlates poorly in ICU cohorts.',
+              'Acidemia decreases calcium-albumin binding (raising ionized Ca²⁺), whereas alkalemia increases binding (lowering ionized Ca²⁺).',
+            ],
+          };
+        },
+        formula: (u) => u === 'SI'
+          ? 'Corrected Ca (mmol/L) = Measured Ca + 0.02 × (40 − Albumin [g/L])'
+          : 'Corrected Ca (mg/dL) = Measured Ca + 0.8 × (4.0 − Albumin [g/dL])',
+        citation: 'Payne RB, Little AJ, Williams RB, Milner JR. Interpretation of serum calcium in patients with abnormal serum proteins. Br Med J. 1973;4(5893):643-646.',
+      },
+
+      {
+        id: 'osmolar-gap',
+        aliases: ['osmolal-gap', 'osmolality', 'serum-osmolality', 'osm-gap', 'toxic-alcohol'],
+        category: 'acid-base',
+        title: 'Serum Osmolality & Osmolar Gap',
+        shortTitle: 'Osmolar Gap',
+        desc: 'Calculates serum osmolality and screens for unmeasured osmolytes such as toxic alcohols.',
+        inputs: [
+          { key: 'na', label: 'Sodium (Na⁺)', type: 'number', siUnit: 'mmol/L', usUnit: 'mEq/L', siDefault: 140, usDefault: 140, step: 1, min: 90, max: 200 },
+          { key: 'glu', label: 'Glucose', type: 'number', siUnit: 'mmol/L', usUnit: 'mg/dL', siDefault: 5.5, usDefault: 99, toUS: CONV.gluToUS, toSI: CONV.gluToSI, decimalsSI: 1, decimalsUS: 0, stepSI: 0.5, stepUS: 5, min: 0.5, max: 2000 },
+          { key: 'urea', label: 'Urea / BUN', labelSI: 'Urea', labelUS: 'BUN', type: 'number', siUnit: 'mmol/L', usUnit: 'mg/dL', siDefault: 6.0, usDefault: 17, toUS: CONV.ureaToUS, toSI: CONV.ureaToSI, decimalsSI: 1, decimalsUS: 0, stepSI: 0.5, stepUS: 1, min: 0, max: 300 },
+          { key: 'etoh', label: 'Ethanol (optional)', type: 'number', siUnit: 'mmol/L', usUnit: 'mg/dL', siDefault: 0, usDefault: 0, toUS: CONV.etohToUS, toSI: CONV.etohToSI, decimalsSI: 1, decimalsUS: 0, stepSI: 1, stepUS: 10, min: 0, max: 1000, optional: true },
+          { key: 'measOsm', label: 'Measured Osmolality', type: 'number', siUnit: 'mOsm/kg', usUnit: 'mOsm/kg', siDefault: 312, usDefault: 312, step: 1, min: 180, max: 500, optional: true },
+        ],
+        compute(v, u) {
+          const na = numVal(v.na), gluRaw = numVal(v.glu), ureaRaw = numVal(v.urea);
+          if (!isNum(na) || !isNum(gluRaw) || !isNum(ureaRaw)) return { incomplete: true };
+          const gluMmol = getGluMmol(gluRaw, u);
+          const ureaMmol = u === 'SI' ? ureaRaw : ureaRaw / 2.8;
+          const etohRaw = numVal(v.etoh);
+          const etohMmol = isNum(etohRaw) && etohRaw > 0 ? (u === 'SI' ? etohRaw : etohRaw / 4.6) : 0;
+
+          const calcOsm = 2 * na + gluMmol + ureaMmol + etohMmol;
+          const meas = numVal(v.measOsm);
+          const hasMeas = isNum(meas);
+          const gap = hasMeas ? meas - calcOsm : NaN;
+
+          let badge = { text: 'Calculated Osmolality', tone: 'emerald' };
+          if (hasMeas) {
+            if (gap > 20) badge = { text: 'Markedly Elevated Gap (>20)', tone: 'rose' };
+            else if (gap > 10) badge = { text: 'Elevated Osmolar Gap (>10)', tone: 'amber' };
+            else badge = { text: 'Normal Osmolar Gap (≤10)', tone: 'emerald' };
+          }
+
+          return {
+            primary: hasMeas
+              ? { label: 'Osmolar Gap', value: fmt(gap, 1), unit: 'mOsm/kg', badge }
+              : { label: 'Calculated Osmolality', value: fmt(calcOsm, 1), unit: 'mOsm/kg', badge },
+            secondary: [
+              { label: 'Calculated Osmolality', value: `${fmt(calcOsm, 1)} mOsm/kg` },
+              { label: 'Measured Osmolality', value: hasMeas ? `${fmt(meas, 1)} mOsm/kg` : 'Not entered' },
+              { label: 'Ethanol Contribution', value: `${fmt(etohMmol, 1)} mOsm/kg` },
+              { label: 'Normal Serum Osmolality', value: '275 – 295 mOsm/kg' },
+            ],
+            notes: [
+              'Osmolar gap >10 mOsm/kg suggests unmeasured osmolytes: methanol, ethylene glycol, isopropanol, propylene glycol, mannitol, or severe ketoacidosis.',
+              'A normal osmolar gap does NOT exclude late-presenting toxic alcohol ingestion once parent alcohol has been metabolized to organic acids (raising AG instead).',
+            ],
+          };
+        },
+        formula: (u) => u === 'SI'
+          ? 'Calc Osm = 2 × Na + Glucose [mmol/L] + Urea [mmol/L] (+ Ethanol [mmol/L])\nOsmolar Gap = Measured Osmolality − Calculated Osmolality'
+          : 'Calc Osm = 2 × Na + Glucose/18 + BUN/2.8 (+ Ethanol/4.6)\nOsmolar Gap = Measured Osmolality − Calculated Osmolality',
+        citation: 'Purssell RA, Pudek M, Brubacher J, Abu-Laban RB. Derivation and validation of a formula to calculate the contribution of ethanol to the osmolal gap. Ann Emerg Med. 2001;38(6):653-659.',
+      },
+
+      /* -----------------------------------------------------------------------
+         CATEGORY 2: CARDIOLOGY & HEMODYNAMICS (7–13)
+         ----------------------------------------------------------------------- */
+      {
+        id: 'map',
+        aliases: ['mean-arterial-pressure', 'bp', 'pulse-pressure', 'perfusion'],
+        category: 'cardio',
+        title: 'Mean Arterial Pressure (MAP)',
+        shortTitle: 'Mean Arterial Pressure',
+        desc: 'Computes systemic perfusion pressure, pulse pressure, and proportional pulse pressure.',
+        inputs: [
+          { key: 'sbp', label: 'Systolic BP (SBP)', type: 'number', siUnit: 'mmHg', usUnit: 'mmHg', siDefault: 118, usDefault: 118, step: 1, min: 30, max: 300 },
+          { key: 'dbp', label: 'Diastolic BP (DBP)', type: 'number', siUnit: 'mmHg', usUnit: 'mmHg', siDefault: 72, usDefault: 72, step: 1, min: 15, max: 200 },
+        ],
+        compute(v) {
+          const sbp = numVal(v.sbp), dbp = numVal(v.dbp);
+          if (!isNum(sbp) || !isNum(dbp)) return { incomplete: true };
+          const map = (sbp + 2 * dbp) / 3;
+          const pp = sbp - dbp;
+          const propPP = sbp > 0 ? (pp / sbp) * 100 : NaN;
+
+          let badge = { text: 'Adequate Perfusion (≥65)', tone: 'emerald' };
+          if (map < 65) badge = { text: 'Hypotension (MAP <65)', tone: 'rose' };
+          else if (map > 110) badge = { text: 'Hypertensive Range', tone: 'amber' };
+
+          return {
+            primary: { label: 'Mean Arterial Pressure', value: fmt(map, 1), unit: 'mmHg', badge },
+            secondary: [
+              { label: 'Pulse Pressure (SBP − DBP)', value: `${fmt(pp, 0)} mmHg` },
+              { label: 'Proportional PP (PP / SBP)', value: `${fmt(propPP, 1)}%` },
+              { label: 'Narrow PP Screen (<25%)', value: propPP < 25 ? 'Low — suggests low CI (<2.2 L/min/m²)' : 'Normal (≥25%)' },
+            ],
+            notes: [
+              'Surviving Sepsis Campaign recommends an initial MAP target ≥65 mmHg for end-organ autoregulation.',
+              'Proportional pulse pressure <25% in heart failure strongly correlates with depressed cardiac index (<2.2 L/min/m²).',
+              'Standard 1/3 formula assumes resting heart rate; during severe tachycardia, arterial-line integrated MAP is more accurate.',
+            ],
+          };
+        },
+        formula: () => 'MAP = (SBP + 2 × DBP) / 3\nPulse Pressure = SBP − DBP\nProportional PP = (PP / SBP) × 100%',
+        citation: 'Stevenson LW, Perloff JK. The limited reliability of physical signs for estimating hemodynamics in chronic heart failure. JAMA. 1989;261(6):884-888.',
+      },
+
+      {
+        id: 'qtc',
+        aliases: ['qtc-interval', 'bazett', 'fridericia', 'framingham', 'hodges', 'qt'],
+        category: 'cardio',
+        title: 'QTc Interval (Fridericia / Bazett)',
+        shortTitle: 'QTc Interval',
+        desc: 'Rate-corrected QT interval with Fridericia primary output and multi-formula comparison.',
+        inputs: [
+          { key: 'qt', label: 'Measured QT Interval', type: 'number', siUnit: 'ms', usUnit: 'ms', siDefault: 410, usDefault: 410, step: 5, min: 200, max: 800 },
+          { key: 'hr', label: 'Heart Rate', type: 'number', siUnit: 'bpm', usUnit: 'bpm', siDefault: 82, usDefault: 82, step: 1, min: 25, max: 240 },
+          {
+            key: 'sex', label: 'Sex', type: 'segmented', default: 'male',
+            options: [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }],
+          },
+        ],
+        compute(v) {
+          const qt = numVal(v.qt), hr = numVal(v.hr);
+          if (!isNum(qt) || !isNum(hr) || hr <= 0) return { incomplete: true };
+          const rr = 60 / hr;
+          const frid = qt / Math.cbrt(rr);
+          const baz = qt / Math.sqrt(rr);
+          const fram = qt + 154 * (1 - rr);
+          const hodg = qt + 1.75 * (hr - 60);
+          const upperNorm = v.sex === 'female' ? 460 : 450;
+
+          let badge = { text: 'Normal QTc', tone: 'emerald' };
+          if (frid >= 500) badge = { text: 'Critical ≥500 ms (TdP Risk)', tone: 'rose' };
+          else if (frid > upperNorm) badge = { text: `Prolonged (>${upperNorm} ms)`, tone: 'amber' };
+
+          return {
+            primary: { label: 'QTc (Fridericia — Recommended)', value: fmt(frid, 0), unit: 'ms', badge },
+            secondary: [
+              { label: 'Bazett (QT / √RR)', value: `${fmt(baz, 0)} ms` },
+              { label: 'Framingham (Linear)', value: `${fmt(fram, 0)} ms` },
+              { label: 'Hodges', value: `${fmt(hodg, 0)} ms` },
+              { label: 'RR Interval', value: `${fmt(rr * 1000, 0)} ms (${fmt(rr, 2)} s)` },
+            ],
+            notes: [
+              'Fridericia is preferred over Bazett across tachycardia (>90 bpm) and bradycardia (<60 bpm), where Bazett markedly over- or under-corrects.',
+              'QTc ≥500 ms or ΔQTc ≥60 ms from baseline carries significantly increased risk of Torsades de Pointes; replete K⁺ (>4.0) and Mg²⁺ (>0.85 mmol/L / 2.0 mg/dL).',
+              'If QRS >120 ms (bundle branch block or pacing), apply Bogossian correction (QT_mod = QT − 0.485 × QRS) or assess JT interval.',
+            ],
+          };
+        },
+        formula: () => 'RR (s) = 60 / HR\nFridericia: QTc = QT / RR^(1/3)\nBazett:     QTc = QT / √RR\nFramingham: QTc = QT + 154 × (1 − RR)\nHodges:     QTc = QT + 1.75 × (HR − 60)',
+        citation: 'Vandenberk B et al. Which QT Correction Formulae to Use for QT Monitoring? J Am Heart Assoc. 2016;5(6):e003264.',
+      },
+
+      {
+        id: 'cha2ds2-vasc',
+        aliases: ['chadsvasc', 'chads2vasc', 'cha2ds2-va', 'afib-stroke', 'stroke-risk'],
+        category: 'cardio',
+        title: 'CHA₂DS₂-VASc & CHA₂DS₂-VA',
+        shortTitle: 'CHA₂DS₂-VASc / VA',
+        desc: 'Atrial fibrillation stroke risk stratification comparing classic CHA₂DS₂-VASc and ESC 2024 CHA₂DS₂-VA.',
+        inputs: [
+          { key: 'c', label: 'Congestive Heart Failure / LV Dysfunction', type: 'toggle', points: '+1', default: false },
+          { key: 'h', label: 'Hypertension', type: 'toggle', points: '+1', default: true },
+          {
+            key: 'age', label: 'Age Bracket', type: 'segmented', default: '1',
+            options: [
+              { value: '0', label: '< 65 (0)' },
+              { value: '1', label: '65–74 (+1)' },
+              { value: '2', label: '≥ 75 (+2)' },
+            ],
+          },
+          { key: 'd', label: 'Diabetes Mellitus', type: 'toggle', points: '+1', default: false },
+          { key: 's2', label: 'Prior Stroke / TIA / Thromboembolism', type: 'toggle', points: '+2', default: false },
+          { key: 'v', label: 'Vascular Disease (Prior MI, PAD, Aortic Plaque)', type: 'toggle', points: '+1', default: false },
+          { key: 'sc', label: 'Female Sex (Sex Category — VASc only)', type: 'toggle', points: '+1', default: false },
+        ],
+        compute(v) {
+          const va = (v.c ? 1 : 0) + (v.h ? 1 : 0) + Number(v.age || 0) + (v.d ? 1 : 0) + (v.s2 ? 2 : 0) + (v.v ? 1 : 0);
+          const vasc = va + (v.sc ? 1 : 0);
+          const strokeRates = ['0.2%', '0.6%', '2.2%', '3.2%', '4.8%', '7.2%', '9.7%', '11.2%', '10.8%', '12.2%'];
+          const riskPct = strokeRates[Math.min(9, vasc)];
+
+          let badge = { text: 'Low Risk — OAC Generally Not Indicated', tone: 'emerald' };
+          let rec = 'No anticoagulation recommended (reassess periodically).';
+          if (va >= 2) {
+            badge = { text: 'High Risk — OAC Recommended (Class I)', tone: 'rose' };
+            rec = 'Oral anticoagulation (DOAC preferred over VKA) recommended.';
+          } else if (va === 1) {
+            badge = { text: 'Intermediate — Consider OAC (Class IIa)', tone: 'amber' };
+            rec = 'Consider OAC based on net clinical benefit & patient preference.';
+          }
+
+          return {
+            primary: { label: 'CHA₂DS₂-VASc Score', value: `${vasc}`, unit: '/ 9 pts', badge },
+            secondary: [
+              { label: 'ESC 2024 CHA₂DS₂-VA (Sex-Neutral)', value: `${va} / 8 pts` },
+              { label: 'Estimated Annual Stroke Risk', value: `${riskPct} / yr` },
+              { label: 'Anticoagulation Guidance', value: rec },
+            ],
+            notes: [
+              'ESC 2024 AF Guidelines adopted sex-neutral CHA₂DS₂-VA (removing Sc): ≥2 recommends OAC (Class I), 1 considers OAC (Class IIa).',
+              'Female sex acts as an age-dependent stroke risk modifier rather than an independent indication for anticoagulation.',
+              'Not applicable to moderate–severe mitral stenosis or mechanical heart valves (warfarin required regardless of score).',
+            ],
+          };
+        },
+        formula: () => 'CHA₂DS₂-VA  = CHF(1) + HTN(1) + Age 65–74(1) or ≥75(2) + DM(1) + Stroke/TIA(2) + Vascular(1)\nCHA₂DS₂-VASc = CHA₂DS₂-VA + Female Sex(1)',
+        citation: 'Lip GYH et al. Chest. 2010;137(2):263-272; Van Gelder IC et al. 2024 ESC Guidelines for Atrial Fibrillation. Eur Heart J. 2024.',
+      },
+
+      {
+        id: 'has-bled',
+        aliases: ['hasbled', 'bleeding-risk', 'oac-bleeding'],
+        category: 'cardio',
+        title: 'HAS-BLED Bleeding Risk',
+        shortTitle: 'HAS-BLED',
+        desc: 'Identifies modifiable major bleeding risk factors in patients receiving anticoagulation.',
+        inputs: [
+          { key: 'h', label: 'Hypertension (Uncontrolled, SBP >160 mmHg)', type: 'toggle', points: '+1', default: true },
+          { key: 'r', label: 'Abnormal Renal Function (Dialysis, Transplant, Cr >200 µmol/L / 2.26 mg/dL)', type: 'toggle', points: '+1', default: false },
+          { key: 'l', label: 'Abnormal Liver Function (Cirrhosis or Bili >2× + AST/ALT/ALP >3×)', type: 'toggle', points: '+1', default: false },
+          { key: 's', label: 'Stroke History (Especially Lacunar)', type: 'toggle', points: '+1', default: false },
+          { key: 'b', label: 'Prior Major Bleeding or Predisposition', type: 'toggle', points: '+1', default: false },
+          { key: 'li', label: 'Labile INR (TTR <60% on VKA)', type: 'toggle', points: '+1', default: false },
+          { key: 'e', label: 'Elderly (Age >65 years)', type: 'toggle', points: '+1', default: true },
+          { key: 'd', label: 'Drugs (Concomitant Antiplatelets or NSAIDs)', type: 'toggle', points: '+1', default: false },
+          { key: 'a', label: 'Alcohol Excess (≥8 drinks/week)', type: 'toggle', points: '+1', default: false },
+        ],
+        compute(v) {
+          const score = ['h', 'r', 'l', 's', 'b', 'li', 'e', 'd', 'a'].reduce((acc, k) => acc + (v[k] ? 1 : 0), 0);
+          const bleeds = ['1.13', '1.02', '1.88', '3.74', '8.70', '12.5+'];
+          const rate = bleeds[Math.min(5, score)];
+
+          let badge = { text: 'Low Bleeding Risk', tone: 'emerald' };
+          if (score >= 3) badge = { text: 'High Risk (≥3) — Address Modifiable Factors', tone: 'rose' };
+          else if (score === 2) badge = { text: 'Moderate Bleeding Risk', tone: 'amber' };
+
+          return {
+            primary: { label: 'HAS-BLED Score', value: `${score}`, unit: '/ 9 pts', badge },
+            secondary: [
+              { label: 'Major Bleeding Rate', value: `~${rate} per 100 patient-yrs` },
+              { label: 'Clinical Action', value: score >= 3 ? 'Closer follow-up & mitigate BP/NSAIDs/EtOH' : 'Routine anticoagulation monitoring' },
+            ],
+            notes: [
+              'A HAS-BLED score ≥3 is NOT a contraindication to oral anticoagulation; its purpose is to flag modifiable bleeding risks and prompt earlier clinical review.',
+              'Modifiable targets: optimize SBP <140 mmHg, discontinue unnecessary aspirin/NSAIDs, switch labile VKA to DOAC, address alcohol use.',
+            ],
+          };
+        },
+        formula: () => 'HAS-BLED = HTN + Renal + Liver + Stroke + Bleeding + Labile INR + Elderly(>65) + Drugs + Alcohol (1 pt each)',
+        citation: 'Pisters R et al. A novel user-friendly score (HAS-BLED) to assess 1-year risk of major bleeding in patients with atrial fibrillation. Chest. 2010;138(5):1093-1100.',
+      },
+
+      {
+        id: 'wells-pe',
+        aliases: ['wells', 'wells-dvt', 'pe', 'dvt', 'vte', 'pulmonary-embolism'],
+        category: 'cardio',
+        title: 'Wells Criteria — PE / DVT',
+        shortTitle: 'Wells Criteria (PE / DVT)',
+        desc: 'Pre-test probability estimation for Pulmonary Embolism and Deep Vein Thrombosis.',
+        modes: [
+          { id: 'pe', label: 'Pulmonary Embolism (PE)' },
+          { id: 'dvt', label: 'Deep Vein Thrombosis (DVT)' },
+        ],
+        defaultMode: 'pe',
+        getInputs(mode) {
+          if (mode === 'dvt') {
+            return [
+              { key: 'cancer', label: 'Active cancer (treatment within 6 mo or palliative)', type: 'toggle', points: '+1', default: false },
+              { key: 'paralysis', label: 'Paralysis, paresis, or recent plaster immobilization of lower extremity', type: 'toggle', points: '+1', default: false },
+              { key: 'bedridden', label: 'Recently bedridden ≥3 days or major surgery within 12 weeks', type: 'toggle', points: '+1', default: false },
+              { key: 'tender', label: 'Localized tenderness along deep venous system', type: 'toggle', points: '+1', default: true },
+              { key: 'entireLeg', label: 'Entire leg swollen', type: 'toggle', points: '+1', default: false },
+              { key: 'calf', label: 'Calf swelling >3 cm compared to asymptomatic leg', type: 'toggle', points: '+1', default: true },
+              { key: 'pitting', label: 'Pitting edema confined to symptomatic leg', type: 'toggle', points: '+1', default: false },
+              { key: 'collateral', label: 'Collateral superficial veins (non-varicose)', type: 'toggle', points: '+1', default: false },
+              { key: 'prevDvt', label: 'Previously documented DVT', type: 'toggle', points: '+1', default: false },
+              { key: 'altDx', label: 'Alternative diagnosis at least as likely as DVT', type: 'toggle', points: '−2', default: false },
+            ];
+          }
+          return [
+            { key: 'dvtSigns', label: 'Clinical signs and symptoms of DVT', type: 'toggle', points: '+3', default: false },
+            { key: 'altLessLikely', label: 'PE is #1 diagnosis OR equally likely', type: 'toggle', points: '+3', default: true },
+            { key: 'hr100', label: 'Heart rate > 100 bpm', type: 'toggle', points: '+1.5', default: true },
+            { key: 'immob', label: 'Immobilization ≥3 days or surgery in past 4 weeks', type: 'toggle', points: '+1.5', default: false },
+            { key: 'prevVte', label: 'Previous objectively diagnosed PE or DVT', type: 'toggle', points: '+1.5', default: false },
+            { key: 'hemoptysis', label: 'Hemoptysis', type: 'toggle', points: '+1', default: false },
+            { key: 'malignancy', label: 'Malignancy (treatment within 6 mo or palliative)', type: 'toggle', points: '+1', default: false },
+          ];
+        },
+        compute(v, u, mode) {
+          if (mode === 'dvt') {
+            const pos = ['cancer', 'paralysis', 'bedridden', 'tender', 'entireLeg', 'calf', 'pitting', 'collateral', 'prevDvt']
+              .reduce((a, k) => a + (v[k] ? 1 : 0), 0);
+            const score = pos - (v.altDx ? 2 : 0);
+            const twoTier = score >= 2 ? 'DVT Likely (≥2)' : 'DVT Unlikely (<2)';
+            let threeTier = 'Low (≤0)', badge = { text: 'Low Probability', tone: 'emerald' }, nextStep = 'Check high-sensitivity D-dimer; if negative, DVT excluded.';
+            if (score >= 3) {
+              threeTier = 'High (≥3)';
+              badge = { text: 'High Probability — Compression US', tone: 'rose' };
+              nextStep = 'Proceed directly to proximal compression ultrasonography.';
+            } else if (score >= 1) {
+              threeTier = 'Moderate (1–2)';
+              badge = { text: 'Moderate Probability', tone: 'amber' };
+              nextStep = score >= 2 ? 'DVT Likely (2-tier): perform compression US (or D-dimer + US).' : 'Check high-sensitivity D-dimer; US if positive.';
+            }
+            return {
+              primary: { label: 'Wells DVT Score', value: `${score}`, unit: 'pts', badge },
+              secondary: [
+                { label: 'Two-Tier Model', value: twoTier },
+                { label: 'Three-Tier Model', value: threeTier },
+                { label: 'Recommended Next Step', value: nextStep },
+              ],
+              notes: [
+                'Two-tier Wells DVT (<2 unlikely vs ≥2 likely) paired with high-sensitivity D-dimer safely excludes DVT without ultrasound in outpatients.',
+                'Apply age-adjusted D-dimer cutoff (Age × 10 µg/L FEU for patients >50 years) where validated.',
+              ],
+            };
+          }
+
+          const score = (v.dvtSigns ? 3 : 0) + (v.altLessLikely ? 3 : 0) + (v.hr100 ? 1.5 : 0) +
+            (v.immob ? 1.5 : 0) + (v.prevVte ? 1.5 : 0) + (v.hemoptysis ? 1 : 0) + (v.malignancy ? 1 : 0);
+          const twoTier = score > 4 ? 'PE Likely (>4)' : 'PE Unlikely (≤4)';
+          let threeTier = 'Low (<2)', badge = { text: 'Low Risk — PERC / D-dimer', tone: 'emerald' }, nextStep = 'Consider PERC rule; if PERC-positive, obtain D-dimer.';
+          if (score > 6) {
+            threeTier = 'High (>6)';
+            badge = { text: 'High Risk — CTPA Recommended', tone: 'rose' };
+            nextStep = 'Proceed directly to CT pulmonary angiography (skip D-dimer).';
+          } else if (score >= 2) {
+            threeTier = 'Moderate (2–6)';
+            badge = { text: score > 4 ? 'PE Likely (>4) — CTPA' : 'Moderate — D-dimer', tone: score > 4 ? 'rose' : 'amber' };
+            nextStep = score > 4 ? 'PE Likely (2-tier): proceed directly to CTPA.' : 'Obtain high-sensitivity (or age-adjusted) D-dimer; CTPA if elevated.';
+          }
+
+          return {
+            primary: { label: 'Wells PE Score', value: fmt(score, 1), unit: 'pts', badge },
+            secondary: [
+              { label: 'Two-Tier Model', value: twoTier },
+              { label: 'Three-Tier Model', value: threeTier },
+              { label: 'Recommended Workup', value: nextStep },
+            ],
+            notes: [
+              'Two-tier threshold: ≤4.0 = PE Unlikely (D-dimer safe to rule out); >4.0 = PE Likely (proceed directly to CTPA).',
+              'In hemodynamically unstable patients with suspected massive PE, perform bedside echo / urgent CTPA without delay.',
+            ],
+          };
+        },
+        formula: (u, mode) => mode === 'dvt'
+          ? 'Wells DVT = Sum of 9 clinical risk items (+1 each) − 2 (if alternative diagnosis equally/more likely)\n2-Tier: <2 Unlikely | ≥2 Likely'
+          : 'Wells PE = DVT signs(3) + PE #1(3) + HR>100(1.5) + Immob/Surg(1.5) + Prior VTE(1.5) + Hemoptysis(1) + Cancer(1)\n2-Tier: ≤4.0 Unlikely | >4.0 Likely',
+        citation: 'Wells PS et al. Thromb Haemost. 2000;83(3):416-420 (PE); Wells PS et al. N Engl J Med. 2003;349(13):1227-1235 (DVT).',
+      },
+
+      {
+        id: 'heart-score',
+        aliases: ['heart', 'chest-pain', 'mace', 'acs'],
+        category: 'cardio',
+        title: 'HEART Score (Major Cardiac Events)',
+        shortTitle: 'HEART Score',
+        desc: '6-week MACE risk stratification for emergency department patients with undifferentiated chest pain.',
+        inputs: [
+          {
+            key: 'h', label: 'History', type: 'segmented', default: '1',
+            options: [{ value: '0', label: 'Slightly susp. (0)' }, { value: '1', label: 'Mod. susp. (1)' }, { value: '2', label: 'Highly susp. (2)' }],
+          },
+          {
+            key: 'e', label: 'ECG', type: 'segmented', default: '0',
+            options: [{ value: '0', label: 'Normal (0)' }, { value: '1', label: 'Non-spec repol (1)' }, { value: '2', label: 'ST deviation (2)' }],
+          },
+          {
+            key: 'a', label: 'Age', type: 'segmented', default: '1',
+            options: [{ value: '0', label: '< 45 yrs (0)' }, { value: '1', label: '45–64 yrs (1)' }, { value: '2', label: '≥ 65 yrs (2)' }],
+          },
+          {
+            key: 'r', label: 'Risk Factors (HTN, DM, Smoking, Lipids, Obesity, FH)', type: 'segmented', default: '1',
+            options: [{ value: '0', label: 'None (0)' }, { value: '1', label: '1–2 factors (1)' }, { value: '2', label: '≥3 or CAD/PAD (2)' }],
+          },
+          {
+            key: 't', label: 'Initial Troponin', type: 'segmented', default: '0',
+            options: [{ value: '0', label: '≤ Normal (0)' }, { value: '1', label: '1–3× ULN (1)' }, { value: '2', label: '> 3× ULN (2)' }],
+          },
+        ],
+        compute(v) {
+          const score = Number(v.h) + Number(v.e) + Number(v.a) + Number(v.r) + Number(v.t);
+          let badge = { text: 'Low Risk (0–3) — Early Discharge', tone: 'emerald' };
+          let mace = '0.9% – 1.7%', disp = 'Consider early discharge with outpatient follow-up (with serial negative hs-Tn).';
+          if (score >= 7) {
+            badge = { text: 'High Risk (7–10) — Early Invasive', tone: 'rose' };
+            mace = '50% – 65%';
+            disp = 'Admit for urgent cardiology consultation & early invasive strategy.';
+          } else if (score >= 4) {
+            badge = { text: 'Moderate Risk (4–6) — Observe', tone: 'amber' };
+            mace = '12% – 16.6%';
+            disp = 'Admit/observation unit for serial troponins and noninvasive risk testing.';
+          }
+          return {
+            primary: { label: 'HEART Score', value: `${score}`, unit: '/ 10 pts', badge },
+            secondary: [
+              { label: '6-Week MACE Risk', value: mace },
+              { label: 'Suggested Disposition', value: disp },
+            ],
+            notes: [
+              'HEART Pathway adds a repeat 0/1h or 0/3h troponin to reduce miss rate of 30-day MACE to <1% in low-risk patients.',
+              'Do NOT use HEART score in STEMI or clearly unstable acute coronary syndromes—activate cath lab immediately.',
+            ],
+          };
+        },
+        formula: () => 'HEART = History (0–2) + ECG (0–2) + Age (0–2) + Risk Factors (0–2) + Troponin (0–2)',
+        citation: 'Six AJ, Backus BE, Kelder JC. Chest pain in the emergency room: value of the HEART score. Neth Heart J. 2008;16(6):191-196.',
+      },
+
+      {
+        id: 'svr',
+        aliases: ['hemodynamics', 'fick', 'cpo', 'cardiac-index', 'svri', 'cardiac-power'],
+        category: 'cardio',
+        title: 'Hemodynamics: SVR, CI & CPO',
+        shortTitle: 'Hemodynamics (SVR / CPO)',
+        desc: 'Derives systemic vascular resistance, indexed afterload, cardiac index, and cardiac power output.',
+        inputs: [
+          { key: 'map', label: 'Mean Arterial Pressure (MAP)', type: 'number', siUnit: 'mmHg', usUnit: 'mmHg', siDefault: 72, usDefault: 72, step: 1, min: 20, max: 200 },
+          { key: 'cvp', label: 'Central Venous Pressure (CVP)', type: 'number', siUnit: 'mmHg', usUnit: 'mmHg', siDefault: 10, usDefault: 10, step: 1, min: 0, max: 40 },
+          { key: 'co', label: 'Cardiac Output (CO)', type: 'number', siUnit: 'L/min', usUnit: 'L/min', siDefault: 4.5, usDefault: 4.5, step: 0.1, min: 0.5, max: 20 },
+          { key: 'bsa', label: 'Body Surface Area (BSA)', type: 'number', siUnit: 'm²', usUnit: 'm²', siDefault: 1.90, usDefault: 1.90, step: 0.05, min: 0.5, max: 3.5 },
+        ],
+        compute(v) {
+          const map = numVal(v.map), cvp = numVal(v.cvp), co = numVal(v.co), bsa = numVal(v.bsa);
+          if (!isNum(map) || !isNum(cvp) || !isNum(co) || co <= 0 || !isNum(bsa) || bsa <= 0) return { incomplete: true };
+          const svr = (80 * (map - cvp)) / co;
+          const ci = co / bsa;
+          const svri = svr * bsa;
+          const cpo = (map * co) / 451;
+
+          let badge = { text: 'Normal SVR (800–1200)', tone: 'emerald' };
+          if (cpo < 0.6) badge = { text: 'Low CPO (<0.6 W) — Cardiogenic Shock', tone: 'rose' };
+          else if (svr < 800) badge = { text: 'Vasodilatory / Low SVR', tone: 'amber' };
+          else if (svr > 1200) badge = { text: 'Vasoconstricted / High SVR', tone: 'amber' };
+
+          return {
+            primary: { label: 'Systemic Vascular Resistance', value: fmt(svr, 0), unit: 'dyn·s/cm⁵', badge },
+            secondary: [
+              { label: 'SVR Index (SVRI)', value: `${fmt(svri, 0)} dyn·s·m²/cm⁵` },
+              { label: 'Cardiac Index (CI)', value: `${fmt(ci, 2)} L/min/m² (norm 2.5–4.0)` },
+              { label: 'Cardiac Power Output (CPO)', value: `${fmt(cpo, 2)} W (shock <0.6 W)` },
+              { label: 'Perfusion Pressure (MAP−CVP)', value: `${fmt(map - cvp, 0)} mmHg` },
+            ],
+            notes: [
+              'CPO <0.6 W is the strongest independent hemodynamic predictor of in-hospital mortality in cardiogenic shock (SHOCK trial).',
+              'Normal ranges: SVR 800–1200 dyn·s/cm⁵, SVRI 1970–2390 dyn·s·m²/cm⁵, CI 2.5–4.0 L/min/m².',
+              'High SVR + Low CI + High CVP/PCWP defines classic cardiogenic shock; Low SVR + High CI defines distributive shock.',
+            ],
+          };
+        },
+        formula: () => 'SVR = 80 × (MAP − CVP) / CO\nSVRI = SVR × BSA  |  CI = CO / BSA\nCPO (W) = (MAP × CO) / 451',
+        citation: 'Fincke R et al. Cardiac power is the strongest hemodynamic correlate of mortality in cardiogenic shock (SHOCK Trial). J Am Coll Cardiol. 2004;44(2):340-348.',
+      },
+
+      /* -----------------------------------------------------------------------
+         CATEGORY 3: RENAL & DOSING (14–19)
+         ----------------------------------------------------------------------- */
+      {
+        id: 'egfr',
+        aliases: ['ckd-epi', 'ckd-epi-2021', 'gfr', 'kidney', 'ckd'],
+        category: 'renal',
+        title: 'eGFR — CKD-EPI 2021 (Race-Free)',
+        shortTitle: 'CKD-EPI 2021 eGFR',
+        desc: 'Race-free 2021 CKD-EPI creatinine equation with KDIGO chronic kidney disease staging.',
+        inputs: [
+          { key: 'age', label: 'Age', type: 'number', siUnit: 'years', usUnit: 'years', siDefault: 62, usDefault: 62, step: 1, min: 18, max: 115 },
+          {
+            key: 'sex', label: 'Sex', type: 'segmented', default: 'female',
+            options: [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }],
+          },
+          { key: 'cr', label: 'Serum Creatinine', type: 'number', siUnit: 'µmol/L', usUnit: 'mg/dL', siDefault: 115, usDefault: 1.30, toUS: CONV.crToUS, toSI: CONV.crToSI, decimalsSI: 0, decimalsUS: 2, stepSI: 5, stepUS: 0.05, min: 0.1, max: 2500 },
+        ],
+        compute(v, u) {
+          const age = numVal(v.age), crRaw = numVal(v.cr);
+          if (!isNum(age) || !isNum(crRaw) || crRaw <= 0) return { incomplete: true };
+          const scr = getCrMgdl(crRaw, u);
+          const isF = v.sex === 'female';
+          const kappa = isF ? 0.7 : 0.9;
+          const alpha = isF ? -0.241 : -0.302;
+          const mult = isF ? 1.012 : 1.0;
+
+          const egfr = 142 * Math.pow(Math.min(scr / kappa, 1), alpha) *
+            Math.pow(Math.max(scr / kappa, 1), -1.200) * Math.pow(0.9938, age) * mult;
+
+          let stage = 'G1 — Normal or High', badge = { text: 'KDIGO G1 (≥90)', tone: 'emerald' };
+          if (egfr < 15) { stage = 'G5 — Kidney Failure'; badge = { text: 'KDIGO G5 (<15)', tone: 'rose' }; }
+          else if (egfr < 30) { stage = 'G4 — Severely Decreased'; badge = { text: 'KDIGO G4 (15–29)', tone: 'rose' }; }
+          else if (egfr < 45) { stage = 'G3b — Mod–Severely Decreased'; badge = { text: 'KDIGO G3b (30–44)', tone: 'amber' }; }
+          else if (egfr < 60) { stage = 'G3a — Mild–Mod Decreased'; badge = { text: 'KDIGO G3a (45–59)', tone: 'amber' }; }
+          else if (egfr < 90) { stage = 'G2 — Mildly Decreased'; badge = { text: 'KDIGO G2 (60–89)', tone: 'emerald' }; }
+
+          return {
+            primary: { label: 'Estimated GFR (2021)', value: fmt(egfr, 1), unit: 'mL/min/1.73m²', badge },
+            secondary: [
+              { label: 'KDIGO Category', value: stage },
+              { label: 'Creatinine Equivalent', value: u === 'SI' ? `${fmt(scr, 2)} mg/dL` : `${fmt(scr * 88.4, 0)} µmol/L` },
+            ],
+            notes: [
+              'Valid only at steady-state serum creatinine; unreliable during rapidly changing acute kidney injury (AKI).',
+              'Add cystatin C (CKD-EPI Cr-Cys) when muscle mass is extreme, in amputees, or when eGFR 45–59 needs confirmation.',
+              'For drug dosing in patients with extreme BSA, de-index eGFR by multiplying by (Patient BSA / 1.73).',
+            ],
+          };
+        },
+        formula: () => 'eGFR = 142 × min(Scr/κ, 1)^α × max(Scr/κ, 1)^(−1.200) × 0.9938^Age × [1.012 if Female]\nκ = 0.7 (F) / 0.9 (M)  |  α = −0.241 (F) / −0.302 (M)  |  Scr in mg/dL',
+        citation: 'Inker LA et al. New Creatinine- and Cystatin C-Based Equations to Estimate GFR without Race. N Engl J Med. 2021;385(19):1737-1749.',
+      },
+
+      {
+        id: 'cockcroft-gault',
+        aliases: ['crcl', 'creatinine-clearance', 'cg', 'renal-dosing'],
+        category: 'renal',
+        title: 'Creatinine Clearance (Cockcroft-Gault)',
+        shortTitle: 'Cockcroft-Gault CrCl',
+        desc: 'Estimates creatinine clearance across actual, ideal, and adjusted body weights for drug dosing.',
+        inputs: [
+          { key: 'age', label: 'Age', type: 'number', siUnit: 'years', usUnit: 'years', siDefault: 68, usDefault: 68, step: 1, min: 18, max: 115 },
+          {
+            key: 'sex', label: 'Sex', type: 'segmented', default: 'male',
+            options: [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }],
+          },
+          { key: 'cr', label: 'Serum Creatinine', type: 'number', siUnit: 'µmol/L', usUnit: 'mg/dL', siDefault: 124, usDefault: 1.40, toUS: CONV.crToUS, toSI: CONV.crToSI, decimalsSI: 0, decimalsUS: 2, stepSI: 5, stepUS: 0.05, min: 0.1, max: 2500 },
+          { key: 'weight', label: 'Actual Body Weight', type: 'number', siUnit: 'kg', usUnit: 'lb', siDefault: 92, usDefault: 203, toUS: CONV.kgToLb, toSI: CONV.lbToKg, decimalsSI: 1, decimalsUS: 0, stepSI: 1, stepUS: 1, min: 20, max: 500 },
+          { key: 'height', label: 'Height', type: 'number', siUnit: 'cm', usUnit: 'in', siDefault: 175, usDefault: 69, toUS: CONV.cmToIn, toSI: CONV.inToCm, decimalsSI: 0, decimalsUS: 1, stepSI: 1, stepUS: 0.5, min: 40, max: 240 },
+        ],
+        compute(v, u) {
+          const age = numVal(v.age), crRaw = numVal(v.cr), wtRaw = numVal(v.weight), htRaw = numVal(v.height);
+          if (!isNum(age) || !isNum(crRaw) || crRaw <= 0 || !isNum(wtRaw) || !isNum(htRaw)) return { incomplete: true };
+          const scr = getCrMgdl(crRaw, u);
+          const abw = getKg(wtRaw, u);
+          const htIn = getCm(htRaw, u) / 2.54;
+          const isF = v.sex === 'female';
+          const sexMult = isF ? 0.85 : 1.0;
+
+          const ibw = Math.max(30, (isF ? 45.5 : 50) + 2.3 * (htIn - 60));
+          const adjbw = ibw + 0.4 * (abw - ibw);
+
+          const calc = wt => ((140 - age) * wt) / (72 * scr) * sexMult;
+          const crclABW = calc(abw);
+          const crclIBW = calc(ibw);
+          const crclAdj = calc(adjbw);
+
+          // Recommended weight basis per clinical pharmacy convention
+          let recVal = crclIBW, recBasis = 'Ideal BW (ABW within 100–120% IBW)';
+          if (abw < ibw) { recVal = crclABW; recBasis = 'Actual BW (ABW < IBW)'; }
+          else if (abw > 1.2 * ibw) { recVal = crclAdj; recBasis = 'Adjusted BW (ABW > 120% IBW)'; }
+
+          let badge = { text: 'Normal Clearance (≥60)', tone: 'emerald' };
+          if (recVal < 30) badge = { text: 'Severe Impairment (<30)', tone: 'rose' };
+          else if (recVal < 60) badge = { text: 'Dose Adjustment Likely', tone: 'amber' };
+
+          return {
+            primary: { label: 'Recommended CrCl', value: fmt(recVal, 1), unit: 'mL/min', badge },
+            secondary: [
+              { label: 'Recommended Basis', value: recBasis },
+              { label: `CrCl (Actual BW · ${fmt(abw, 1)} kg)`, value: `${fmt(crclABW, 1)} mL/min` },
+              { label: `CrCl (Ideal BW · ${fmt(ibw, 1)} kg)`, value: `${fmt(crclIBW, 1)} mL/min` },
+              { label: `CrCl (Adjusted BW · ${fmt(adjbw, 1)} kg)`, value: `${fmt(crclAdj, 1)} mL/min` },
+            ],
+            notes: [
+              'Many legacy FDA drug labels (e.g., DOACs, vancomycin, aminoglycosides, carboplatin) remain anchored to Cockcroft-Gault CrCl.',
+              'Use Actual BW if ABW < IBW, Ideal BW for normal habitus, and Adjusted BW (IBW + 0.4×[ABW−IBW]) when ABW > 120% IBW.',
+            ],
+          };
+        },
+        formula: () => 'CrCl = ((140 − Age) × Weight [kg]) / (72 × Scr [mg/dL]) × [0.85 if Female]\nIBW (Devine) = 50 (M) or 45.5 (F) + 2.3 × (Height [in] − 60)\nAdjBW = IBW + 0.4 × (ABW − IBW)',
+        citation: 'Cockcroft DW, Gault MH. Prediction of creatinine clearance from serum creatinine. Nephron. 1976;16(1):31-41.',
+      },
+
+      {
+        id: 'fena',
+        aliases: ['feurea', 'aki', 'prerenal', 'atn', 'fractional-excretion'],
+        category: 'renal',
+        title: 'FENa & FEUrea (AKI Differentiation)',
+        shortTitle: 'FENa & FEUrea',
+        desc: 'Distinguishes prerenal azotemia from intrinsic acute tubular necrosis (use FEUrea on diuretics).',
+        modes: [
+          { id: 'fena', label: 'FENa (Sodium)' },
+          { id: 'feurea', label: 'FEUrea (On Diuretics)' },
+        ],
+        defaultMode: 'fena',
+        getInputs(mode) {
+          if (mode === 'feurea') {
+            return [
+              { key: 'uUrea', label: 'Urine Urea / UUN', labelSI: 'Urine Urea', labelUS: 'Urine Urea Nitrogen', type: 'number', siUnit: 'mmol/L', usUnit: 'mg/dL', siDefault: 140, usDefault: 392, toUS: CONV.ureaToUS, toSI: CONV.ureaToSI, decimalsSI: 0, decimalsUS: 0, stepSI: 5, stepUS: 10, min: 0, max: 3000 },
+              { key: 'sUrea', label: 'Serum Urea / BUN', labelSI: 'Serum Urea', labelUS: 'Serum BUN', type: 'number', siUnit: 'mmol/L', usUnit: 'mg/dL', siDefault: 12.0, usDefault: 34, toUS: CONV.ureaToUS, toSI: CONV.ureaToSI, decimalsSI: 1, decimalsUS: 0, stepSI: 0.5, stepUS: 1, min: 0.5, max: 300 },
+              { key: 'sCr', label: 'Serum Creatinine', type: 'number', siUnit: 'µmol/L', usUnit: 'mg/dL', siDefault: 177, usDefault: 2.0, toUS: CONV.crToUS, toSI: CONV.crToSI, decimalsSI: 0, decimalsUS: 2, stepSI: 5, stepUS: 0.05, min: 0.1, max: 2500 },
+              { key: 'uCr', label: 'Urine Creatinine', type: 'number', siUnit: 'mmol/L', usUnit: 'mg/dL', siDefault: 8.84, usDefault: 100, toUS: CONV.ucrToUS, toSI: CONV.ucrToSI, decimalsSI: 2, decimalsUS: 0, stepSI: 0.5, stepUS: 5, min: 0.1, max: 1000 },
+            ];
+          }
+          return [
+            { key: 'uNa', label: 'Urine Sodium (U_Na)', type: 'number', siUnit: 'mmol/L', usUnit: 'mEq/L', siDefault: 18, usDefault: 18, step: 1, min: 0, max: 400 },
+            { key: 'sNa', label: 'Serum Sodium (S_Na)', type: 'number', siUnit: 'mmol/L', usUnit: 'mEq/L', siDefault: 138, usDefault: 138, step: 1, min: 90, max: 200 },
+            { key: 'sCr', label: 'Serum Creatinine (S_Cr)', type: 'number', siUnit: 'µmol/L', usUnit: 'mg/dL', siDefault: 177, usDefault: 2.0, toUS: CONV.crToUS, toSI: CONV.crToSI, decimalsSI: 0, decimalsUS: 2, stepSI: 5, stepUS: 0.05, min: 0.1, max: 2500 },
+            { key: 'uCr', label: 'Urine Creatinine (U_Cr)', type: 'number', siUnit: 'mmol/L', usUnit: 'mg/dL', siDefault: 8.84, usDefault: 100, toUS: CONV.ucrToUS, toSI: CONV.ucrToSI, decimalsSI: 2, decimalsUS: 0, stepSI: 0.5, stepUS: 5, min: 0.1, max: 1000 },
+          ];
+        },
+        compute(v, u, mode) {
+          const sCr = numVal(v.sCr), uCr = numVal(v.uCr);
+          if (!isNum(sCr) || !isNum(uCr) || uCr <= 0) return { incomplete: true };
+          // SI converts S_Cr [umol/L] / (U_Cr [mmol/L] * 1000) to dimensionless ratio
+          const crRatio = u === 'SI' ? sCr / (uCr * 1000) : sCr / uCr;
+
+          if (mode === 'feurea') {
+            const uUrea = numVal(v.uUrea), sUrea = numVal(v.sUrea);
+            if (!isNum(uUrea) || !isNum(sUrea) || sUrea <= 0) return { incomplete: true };
+            const feurea = (uUrea / sUrea) * crRatio * 100;
+            let badge = { text: 'Prerenal Azotemia (≤35%)', tone: 'emerald' };
+            if (feurea > 50) badge = { text: 'Intrinsic / ATN (>50%)', tone: 'rose' };
+            else if (feurea > 35) badge = { text: 'Indeterminate (35–50%)', tone: 'amber' };
+            return {
+              primary: { label: 'Fractional Excretion of Urea', value: fmt(feurea, 1), unit: '%', badge },
+              secondary: [
+                { label: 'Prerenal Cutoff', value: '≤ 35%' },
+                { label: 'Intrinsic ATN Cutoff', value: '> 50%' },
+                { label: 'U/P Creatinine Ratio', value: fmt(1 / crRatio, 1) },
+              ],
+              notes: [
+                'FEUrea is preferred over FENa when loop or thiazide diuretics have been administered, because proximal tubular urea reabsorption is relatively preserved.',
+                'False positives/negatives occur with acetazolamide, osmotic diuresis (mannitol/glucosuria), or sepsis.',
+              ],
+            };
+          }
+
+          const uNa = numVal(v.uNa), sNa = numVal(v.sNa);
+          if (!isNum(uNa) || !isNum(sNa) || sNa <= 0) return { incomplete: true };
+          const fena = (uNa / sNa) * crRatio * 100;
+          let badge = { text: 'Prerenal Physiology (<1%)', tone: 'emerald' };
+          if (fena > 2) badge = { text: 'Intrinsic / ATN (>2%)', tone: 'rose' };
+          else if (fena >= 1) badge = { text: 'Indeterminate (1–2%)', tone: 'amber' };
+
+          return {
+            primary: { label: 'Fractional Excretion of Sodium', value: fmt(fena, 2), unit: '%', badge },
+            secondary: [
+              { label: 'Prerenal Cutoff', value: '< 1.0%' },
+              { label: 'Intrinsic ATN Cutoff', value: '> 2.0%' },
+              { label: 'U/P Creatinine Ratio', value: fmt(1 / crRatio, 1) },
+            ],
+            notes: [
+              'Validated primarily in oliguric AKI; switch to FEUrea if patient recently received loop/thiazide diuretics.',
+              'Low FENa (<1%) can also occur in contrast nephropathy, rhabdomyolysis, acute glomerulonephritis, hepatorenal syndrome, and early obstruction.',
+              'SI note: Serum Cr (µmol/L) and Urine Cr (mmol/L) differ by 1000×—automatically normalized here.',
+            ],
+          };
+        },
+        formula: (u, mode) => mode === 'feurea'
+          ? (u === 'SI'
+            ? 'FEUrea (%) = (U_Urea [mmol/L] × S_Cr [µmol/L]) / (S_Urea [mmol/L] × U_Cr [mmol/L] × 1000) × 100'
+            : 'FEUrea (%) = (U_Urea [mg/dL] × S_Cr [mg/dL]) / (S_BUN [mg/dL] × U_Cr [mg/dL]) × 100')
+          : (u === 'SI'
+            ? 'FENa (%) = (U_Na [mmol/L] × S_Cr [µmol/L]) / (S_Na [mmol/L] × U_Cr [mmol/L] × 1000) × 100'
+            : 'FENa (%) = (U_Na [mEq/L] × S_Cr [mg/dL]) / (S_Na [mEq/L] × U_Cr [mg/dL]) × 100'),
+        citation: 'Espinel CH. The FENa test. JAMA. 1976;236(6):579-581; Carvounis CP et al. Significance of the fractional excretion of urea. Kidney Int. 2002;62(6):2223-2229.',
+      },
+
+      {
+        id: 'bsa',
+        aliases: ['ibw', 'bmi', 'bmi-bsa', 'ardsnet', 'tidal-volume', 'mosteller', 'dubois'],
+        category: 'renal',
+        title: 'BMI, BSA, IBW & ARDSnet Tidal Volume',
+        shortTitle: 'BMI, BSA, IBW & ARDSnet',
+        desc: 'Anthropometrics for chemotherapy BSA dosing, weight-based kinetics, and lung-protective ventilation.',
+        inputs: [
+          {
+            key: 'sex', label: 'Sex', type: 'segmented', default: 'male',
+            options: [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }],
+          },
+          { key: 'height', label: 'Height', type: 'number', siUnit: 'cm', usUnit: 'in', siDefault: 178, usDefault: 70, toUS: CONV.cmToIn, toSI: CONV.inToCm, decimalsSI: 0, decimalsUS: 1, stepSI: 1, stepUS: 0.5, min: 40, max: 240 },
+          { key: 'weight', label: 'Actual Body Weight', type: 'number', siUnit: 'kg', usUnit: 'lb', siDefault: 82, usDefault: 181, toUS: CONV.kgToLb, toSI: CONV.lbToKg, decimalsSI: 1, decimalsUS: 0, stepSI: 1, stepUS: 1, min: 15, max: 500 },
+        ],
+        compute(v, u) {
+          const cm = getCm(numVal(v.height), u), kg = getKg(numVal(v.weight), u);
+          if (!isNum(cm) || cm <= 0 || !isNum(kg) || kg <= 0) return { incomplete: true };
+          const m = cm / 100;
+          const bmi = kg / (m * m);
+          const mosteller = Math.sqrt((cm * kg) / 3600);
+          const dubois = 0.007184 * Math.pow(kg, 0.425) * Math.pow(cm, 0.725);
+          const htIn = cm / 2.54;
+          const ibw = Math.max(25, (v.sex === 'female' ? 45.5 : 50.0) + 2.3 * (htIn - 60));
+          const adjbw = ibw + 0.4 * (kg - ibw);
+          const tv6 = ibw * 6;
+          const tv4 = ibw * 4, tv8 = ibw * 8;
+
+          let badge = { text: 'Normal BMI (18.5–24.9)', tone: 'emerald' };
+          if (bmi < 18.5) badge = { text: 'Underweight (<18.5)', tone: 'amber' };
+          else if (bmi >= 30) badge = { text: 'Obesity (≥30)', tone: 'rose' };
+          else if (bmi >= 25) badge = { text: 'Overweight (25–29.9)', tone: 'amber' };
+
+          return {
+            primary: { label: 'BSA (Mosteller)', value: fmt(mosteller, 2), unit: 'm²', badge },
+            secondary: [
+              { label: 'BMI', value: `${fmt(bmi, 1)} kg/m²` },
+              { label: 'DuBois BSA', value: `${fmt(dubois, 2)} m²` },
+              { label: 'Ideal Body Weight (PBW)', value: `${fmt(ibw, 1)} kg (${fmt(CONV.kgToLb(ibw), 0)} lb)` },
+              { label: 'Adjusted Body Weight', value: `${fmt(adjbw, 1)} kg` },
+              { label: 'ARDSnet Tidal Volume (6 mL/kg)', value: `${fmt(tv6, 0)} mL (range ${fmt(tv4, 0)}–${fmt(tv8, 0)})` },
+            ],
+            notes: [
+              'Always set mechanical ventilator tidal volume by Predicted/Ideal Body Weight (height & sex), never actual body weight—lung size does not scale with adiposity.',
+              'Mosteller and DuBois BSA typically agree within 1–2% and are standard for cytotoxic chemotherapy and cardiac index calculations.',
+            ],
+          };
+        },
+        formula: () => 'BMI = Weight [kg] / (Height [m])²\nBSA (Mosteller) = √((Height [cm] × Weight [kg]) / 3600)\nPBW / IBW = 50 (M) or 45.5 (F) + 2.3 × (Height [in] − 60)\nARDSnet TV = 6 mL/kg × PBW (4–8 mL/kg)',
+        citation: 'Mosteller RD. N Engl J Med. 1987;317(17):1098; ARDSNet. N Engl J Med. 2000;342(18):1301-1308.',
+      },
+
+      {
+        id: 'holliday-segar',
+        aliases: ['maintenance-fluids', '4-2-1', 'iv-fluids', 'pediatric-fluids'],
+        category: 'renal',
+        title: 'Maintenance Fluids (Holliday-Segar 4-2-1)',
+        shortTitle: 'Maintenance Fluids 4-2-1',
+        desc: 'Weight-based hourly and 24-hour isotonic maintenance fluid rate for pediatrics and adults.',
+        inputs: [
+          { key: 'weight', label: 'Body Weight', type: 'number', siUnit: 'kg', usUnit: 'lb', siDefault: 28, usDefault: 62, toUS: CONV.kgToLb, toSI: CONV.lbToKg, decimalsSI: 1, decimalsUS: 0, stepSI: 1, stepUS: 1, min: 1, max: 350 },
+        ],
+        compute(v, u) {
+          const wtRaw = numVal(v.weight);
+          if (!isNum(wtRaw) || wtRaw <= 0) return { incomplete: true };
+          const kg = getKg(wtRaw, u);
+          let hrRate = 0, dayTotal = 0;
+          if (kg <= 10) {
+            hrRate = kg * 4;
+            dayTotal = kg * 100;
+          } else if (kg <= 20) {
+            hrRate = 40 + (kg - 10) * 2;
+            dayTotal = 1000 + (kg - 10) * 50;
+          } else {
+            hrRate = 60 + (kg - 20) * 1;
+            dayTotal = 1500 + (kg - 20) * 20;
+          }
+
+          return {
+            primary: { label: 'Hourly Maintenance Rate', value: fmt(hrRate, 0), unit: 'mL/hr', badge: { text: '4-2-1 Rule', tone: 'emerald' } },
+            secondary: [
+              { label: '24-Hour Total (100-50-20)', value: `${fmt(dayTotal, 0)} mL/day (${fmt(dayTotal / 1000, 2)} L)` },
+              { label: '24-Hour Total (Hourly × 24)', value: `${fmt(hrRate * 24, 0)} mL/day` },
+              { label: 'Weight Used', value: `${fmt(kg, 1)} kg` },
+            ],
+            notes: [
+              'AAP guidelines recommend isotonic maintenance fluids (e.g., 0.9% NaCl or balanced crystalloid with appropriate KCl/dextrose) to prevent hospital-acquired hyponatremia.',
+              'In adults >65–70 kg, routine maintenance rarely needs to exceed 100–125 mL/hr (~2.4–3.0 L/day) unless replacing active losses.',
+            ],
+          };
+        },
+        formula: () => 'Hourly (4-2-1): 4 mL/kg (first 10 kg) + 2 mL/kg (next 10 kg) + 1 mL/kg (>20 kg)\nDaily (100-50-20): 100 mL/kg (first 10 kg) + 50 mL/kg (next 10 kg) + 20 mL/kg (>20 kg)',
+        citation: 'Holliday MA, Segar WE. The maintenance need for water in parenteral fluid therapy. Pediatrics. 1957;19(5):823-832.',
+      },
+
+      {
+        id: 'steroid-conversion',
+        aliases: ['corticosteroids', 'steroids', 'prednisone', 'dexamethasone', 'hydrocortisone', 'methylprednisolone'],
+        category: 'renal',
+        title: 'Corticosteroid Dose Conversion',
+        shortTitle: 'Corticosteroid Conversion',
+        desc: 'Live anti-inflammatory glucocorticoid potency equivalents with mineralocorticoid activity and half-life.',
+        inputs: [
+          {
+            key: 'drug', label: 'Source Corticosteroid', type: 'select', default: 'prednisone',
+            options: [
+              { value: 'hydrocortisone', label: 'Hydrocortisone (Eq 20 mg)' },
+              { value: 'prednisone', label: 'Prednisone / Prednisolone (Eq 5 mg)' },
+              { value: 'methylpred', label: 'Methylprednisolone (Eq 4 mg)' },
+              { value: 'triamcinolone', label: 'Triamcinolone (Eq 4 mg)' },
+              { value: 'dexamethasone', label: 'Dexamethasone (Eq 0.75 mg)' },
+              { value: 'betamethasone', label: 'Betamethasone (Eq 0.6 mg)' },
+            ],
+          },
+          { key: 'dose', label: 'Source Dose', type: 'number', siUnit: 'mg', usUnit: 'mg', siDefault: 40, usDefault: 40, step: 1, min: 0.1, max: 5000 },
+        ],
+        compute(v) {
+          const dose = numVal(v.dose);
+          if (!isNum(dose) || dose < 0) return { incomplete: true };
+          const drugs = [
+            { id: 'hydrocortisone', name: 'Hydrocortisone', eq: 20, mc: '1.0 (High)', hl: '8–12 h' },
+            { id: 'prednisone', name: 'Prednisone / Prednisolone', eq: 5, mc: '0.8 (Mod)', hl: '12–36 h' },
+            { id: 'methylpred', name: 'Methylprednisolone', eq: 4, mc: '0.5 (Low)', hl: '12–36 h' },
+            { id: 'triamcinolone', name: 'Triamcinolone', eq: 4, mc: '0 (None)', hl: '12–36 h' },
+            { id: 'dexamethasone', name: 'Dexamethasone', eq: 0.75, mc: '0 (None)', hl: '36–72 h' },
+            { id: 'betamethasone', name: 'Betamethasone', eq: 0.6, mc: '0 (None)', hl: '36–72 h' },
+          ];
+          const src = drugs.find(d => d.id === v.drug) || drugs[1];
+          const units = dose / src.eq;
+          const predEq = units * 5;
+
+          const tableRows = drugs.map(d => ({
+            name: d.name,
+            dose: `${fmt(units * d.eq, d.eq < 1 ? 2 : 1)} mg`,
+            mc: d.mc,
+            hl: d.hl,
+            active: d.id === src.id,
+          }));
+
+          return {
+            primary: {
+              label: 'Prednisone Equivalent',
+              value: fmt(predEq, 1),
+              unit: 'mg',
+              badge: { text: `${src.name.split(' ')[0]} · t½ ${src.hl}`, tone: 'emerald' },
+            },
+            steroidTable: tableRows,
+            secondary: [],
+            notes: [
+              'Equivalencies reflect systemic anti-inflammatory (glucocorticoid) potency only; mineralocorticoid activity varies markedly.',
+              'Dexamethasone has zero mineralocorticoid activity (preferred in cerebral edema, but requires fludrocortisone or hydrocortisone in primary adrenal insufficiency).',
+              'Doses ≥20 mg/day prednisone equivalent for >2–3 weeks risk HPA axis suppression.',
+            ],
+          };
+        },
+        formula: () => 'Equivalent Dose = Source Dose × (Target Ref Dose / Source Ref Dose)\nRef: Hydrocortisone 20 = Prednisone 5 = Methylprednisolone 4 = Triamcinolone 4 = Dexamethasone 0.75 = Betamethasone 0.6 mg',
+        citation: 'Liu D et al. A practical guide to the monitoring and management of the complications of systemic corticosteroid therapy. Allergy Asthma Clin Immunol. 2013;9(1):30.',
+      },
+
+      /* -----------------------------------------------------------------------
+         CATEGORY 4: CRITICAL CARE & RISK (20–26)
+         ----------------------------------------------------------------------- */
+      {
+        id: 'aa-gradient',
+        aliases: ['a-a-gradient', 'pf-ratio', 'pao2-fio2', 'alveolar-gas', 'ards', 'hypoxemia'],
+        category: 'critical',
+        title: 'A-a Gradient & PaO₂/FiO₂ Ratio',
+        shortTitle: 'A-a Gradient & P/F Ratio',
+        desc: 'Evaluates hypoxemia mechanism via the alveolar gas equation and grades Berlin ARDS oxygenation severity.',
+        inputs: [
+          { key: 'age', label: 'Age', type: 'number', siUnit: 'years', usUnit: 'years', siDefault: 56, usDefault: 56, step: 1, min: 1, max: 115 },
+          { key: 'fio2', label: 'FiO₂', type: 'number', siUnit: '%', usUnit: '%', siDefault: 40, usDefault: 40, step: 1, min: 21, max: 100 },
+          { key: 'pao2', label: 'Arterial PaO₂', type: 'number', siUnit: 'mmHg', usUnit: 'mmHg', siDefault: 76, usDefault: 76, step: 1, min: 20, max: 650 },
+          { key: 'paco2', label: 'Arterial PaCO₂', type: 'number', siUnit: 'mmHg', usUnit: 'mmHg', siDefault: 38, usDefault: 38, step: 1, min: 10, max: 140 },
+          { key: 'patm', label: 'Atmospheric Pressure (Sea level 760)', type: 'number', siUnit: 'mmHg', usUnit: 'mmHg', siDefault: 760, usDefault: 760, step: 5, min: 450, max: 800 },
+          { key: 'rq', label: 'Respiratory Quotient (RQ)', type: 'number', siUnit: 'ratio', usUnit: 'ratio', siDefault: 0.8, usDefault: 0.8, step: 0.05, min: 0.6, max: 1.1 },
+        ],
+        compute(v) {
+          const age = numVal(v.age), fio2Pct = numVal(v.fio2), pao2 = numVal(v.pao2), paco2 = numVal(v.paco2), patm = numVal(v.patm), rq = numVal(v.rq);
+          if (!isNum(age) || !isNum(fio2Pct) || fio2Pct <= 0 || !isNum(pao2) || !isNum(paco2) || !isNum(patm) || !isNum(rq) || rq <= 0) return { incomplete: true };
+          const fio2 = fio2Pct / 100;
+          const pAO2 = fio2 * (patm - 47) - (paco2 / rq);
+          const aa = pAO2 - pao2;
+          const expAa = age / 4 + 4;
+          const pf = pao2 / fio2;
+
+          let ards = 'Normal (>300)';
+          if (pf <= 100) ards = 'Severe ARDS (≤100)';
+          else if (pf <= 200) ards = 'Moderate ARDS (101–200)';
+          else if (pf <= 300) ards = 'Mild ARDS (201–300)';
+
+          let badge = { text: 'Normal A-a Gradient', tone: 'emerald' };
+          if (pf <= 200) badge = { text: `Elevated A-a · ${ards}`, tone: 'rose' };
+          else if (aa > expAa) badge = { text: 'Elevated A-a (V/Q Mismatch / Shunt)', tone: 'amber' };
+
+          return {
+            primary: { label: 'A-a Oxygen Gradient', value: fmt(aa, 1), unit: 'mmHg', badge },
+            secondary: [
+              { label: 'Expected Normal A-a (Age/4 + 4)', value: `≤ ${fmt(expAa, 1)} mmHg (room air)` },
+              { label: 'Alveolar PAO₂', value: `${fmt(pAO2, 1)} mmHg` },
+              { label: 'PaO₂ / FiO₂ (P/F) Ratio', value: `${fmt(pf, 0)} mmHg` },
+              { label: 'Berlin Oxygenation Tier', value: ards },
+            ],
+            notes: [
+              'Normal A-a gradient with hypoxemia indicates pure hypoventilation or low inspired FiO₂ (high altitude).',
+              'Elevated A-a gradient points to V/Q mismatch, right-to-left shunt, or diffusion impairment; note expected A-a rises ~5–7 mmHg per +10% FiO₂.',
+              'Berlin ARDS classification requires acute onset, bilateral opacities, non-cardiogenic edema, and PEEP/CPAP ≥5 cmH₂O.',
+            ],
+          };
+        },
+        formula: () => 'PAO₂ = FiO₂ × (P_atm − 47) − (PaCO₂ / RQ)\nA-a Gradient = PAO₂ − PaO₂  |  Expected Normal = (Age / 4) + 4\nP/F Ratio = PaO₂ / FiO₂ (decimal)',
+        citation: 'ARDS Definition Task Force. Acute respiratory distress syndrome: the Berlin Definition. JAMA. 2012;307(23):2526-2533.',
+      },
+
+      {
+        id: 'sofa',
+        aliases: ['qsofa', 'sepsis', 'sepsis-3', 'organ-failure'],
+        category: 'critical',
+        title: 'SOFA & qSOFA Score (Sepsis-3)',
+        shortTitle: 'SOFA & qSOFA',
+        desc: 'Sequential Organ Failure Assessment across 6 organ systems and rapid bedside qSOFA screen.',
+        modes: [
+          { id: 'sofa', label: 'Full SOFA (6 Organs)' },
+          { id: 'qsofa', label: 'qSOFA (Bedside Screen)' },
+        ],
+        defaultMode: 'sofa',
+        getInputs(mode, u) {
+          if (mode === 'qsofa') {
+            return [
+              { key: 'rr', label: 'Respiratory Rate ≥ 22 breaths/min', type: 'toggle', points: '+1', default: true },
+              { key: 'ams', label: 'Altered Mentation (GCS < 15)', type: 'toggle', points: '+1', default: false },
+              { key: 'sbp', label: 'Systolic Blood Pressure ≤ 100 mmHg', type: 'toggle', points: '+1', default: true },
+            ];
+          }
+          const biliOpts = u === 'SI'
+            ? ['<20 (0)', '20–32 (1)', '33–101 (2)', '102–204 (3)', '>204 (4)']
+            : ['<1.2 (0)', '1.2–1.9 (1)', '2.0–5.9 (2)', '6.0–11.9 (3)', '≥12.0 (4)'];
+          const crOpts = u === 'SI'
+            ? ['<110 (0)', '110–170 (1)', '171–299 (2)', '300–440 / <500mL (3)', '>440 / <200mL (4)']
+            : ['<1.2 (0)', '1.2–1.9 (1)', '2.0–3.4 (2)', '3.5–4.9 / <500mL (3)', '≥5.0 / <200mL (4)'];
+          return [
+            {
+              key: 'resp', label: 'Respiration — PaO₂/FiO₂ (mmHg)', type: 'segmented', default: '1',
+              options: [{ value: '0', label: '≥400 (0)' }, { value: '1', label: '<400 (1)' }, { value: '2', label: '<300 (2)' }, { value: '3', label: '<200* (3)' }, { value: '4', label: '<100* (4)' }],
+            },
+            {
+              key: 'coag', label: 'Coagulation — Platelets (×10³/µL)', type: 'segmented', default: '1',
+              options: [{ value: '0', label: '≥150 (0)' }, { value: '1', label: '<150 (1)' }, { value: '2', label: '<100 (2)' }, { value: '3', label: '<50 (3)' }, { value: '4', label: '<20 (4)' }],
+            },
+            {
+              key: 'liver', label: `Liver — Bilirubin (${u === 'SI' ? 'µmol/L' : 'mg/dL'})`, type: 'segmented', default: '0',
+              options: biliOpts.map((label, i) => ({ value: String(i), label })),
+            },
+            {
+              key: 'cv', label: 'Cardiovascular — MAP / Vasopressors (µg/kg/min)', type: 'select', default: '1',
+              options: [
+                { value: '0', label: '0 — MAP ≥ 70 mmHg' },
+                { value: '1', label: '1 — MAP < 70 mmHg' },
+                { value: '2', label: '2 — Dopamine ≤5 or Dobutamine (any)' },
+                { value: '3', label: '3 — Dopamine >5 or Epi/Norepi ≤0.1' },
+                { value: '4', label: '4 — Dopamine >15 or Epi/Norepi >0.1' },
+              ],
+            },
+            {
+              key: 'cns', label: 'Central Nervous System — GCS', type: 'segmented', default: '0',
+              options: [{ value: '0', label: '15 (0)' }, { value: '1', label: '13–14 (1)' }, { value: '2', label: '10–12 (2)' }, { value: '3', label: '6–9 (3)' }, { value: '4', label: '<6 (4)' }],
+            },
+            {
+              key: 'renal', label: `Renal — Creatinine (${u === 'SI' ? 'µmol/L' : 'mg/dL'}) / Urine Output`, type: 'select', default: '1',
+              options: crOpts.map((label, i) => ({ value: String(i), label: `${i} — ${label.replace(/\s*\(\d\)$/, '')}` })),
+            },
+          ];
+        },
+        compute(v, u, mode) {
+          if (mode === 'qsofa') {
+            const q = (v.rr ? 1 : 0) + (v.ams ? 1 : 0) + (v.sbp ? 1 : 0);
+            const badge = q >= 2
+              ? { text: 'High Risk (qSOFA ≥2)', tone: 'rose' }
+              : { text: 'Low qSOFA (<2)', tone: 'emerald' };
+            return {
+              primary: { label: 'qSOFA Score', value: `${q}`, unit: '/ 3 pts', badge },
+              secondary: [
+                { label: 'Interpretation', value: q >= 2 ? '3–14× higher in-hospital mortality; assess for full SOFA & lactate' : 'Does not exclude sepsis if clinical suspicion persists' },
+              ],
+              notes: [
+                'Surviving Sepsis Campaign 2021 recommends against using qSOFA as a single screening tool compared with SIRS/NEWS/MEWS due to lower sensitivity.',
+                'A positive qSOFA (≥2) should prompt rapid full SOFA calculation, lactate measurement, and sepsis bundle evaluation.',
+              ],
+            };
+          }
+
+          const score = ['resp', 'coag', 'liver', 'cv', 'cns', 'renal'].reduce((a, k) => a + Number(v[k] || 0), 0);
+          let mort = '<10%', badge = { text: 'Low Organ Dysfunction', tone: 'emerald' };
+          if (score >= 15) { mort = '>80%'; badge = { text: 'Critical Multi-Organ Failure', tone: 'rose' }; }
+          else if (score >= 12) { mort = '~50–80%'; badge = { text: 'Severe Organ Failure', tone: 'rose' }; }
+          else if (score >= 7) { mort = '~20–40%'; badge = { text: 'Moderate–Severe Dysfunction', tone: 'rose' }; }
+          else if (score >= 2) { mort = '~10–20%'; badge = { text: 'Sepsis-3 Threshold (ΔSOFA ≥2)', tone: 'amber' }; }
+
+          return {
+            primary: { label: 'Total SOFA Score', value: `${score}`, unit: '/ 24 pts', badge },
+            secondary: [
+              { label: 'Estimated ICU Mortality', value: mort },
+              { label: 'Sepsis-3 Definition', value: score >= 2 ? 'Meets acute ΔSOFA ≥2 if infection suspected' : 'Below ΔSOFA ≥2 threshold' },
+            ],
+            notes: [
+              'Sepsis-3 defines sepsis as suspected/confirmed infection plus an acute increase in SOFA score ≥2 points from baseline.',
+              '*Respiration scores 3 and 4 require respiratory support (invasive or noninvasive ventilation).',
+              'Trend SOFA serially every 48 hours—rising SOFA predicts >50% mortality regardless of initial score.',
+            ],
+          };
+        },
+        formula: (u, mode) => mode === 'qsofa'
+          ? 'qSOFA = (RR ≥22) + (GCS <15) + (SBP ≤100 mmHg)  [0–3 pts]'
+          : 'SOFA = Resp(0–4) + Coag(0–4) + Liver(0–4) + CV(0–4) + CNS(0–4) + Renal(0–4)  [0–24 pts]',
+        citation: 'Vincent JL et al. Intensive Care Med. 1996;22(7):707-710; Singer M et al. Sepsis-3 Consensus. JAMA. 2016;315(8):801-810.',
+      },
+
+      {
+        id: 'gcs',
+        aliases: ['glasgow-coma-scale', 'coma', 'tbi', 'neuro'],
+        category: 'critical',
+        title: 'Glasgow Coma Scale (GCS)',
+        shortTitle: 'Glasgow Coma Scale',
+        desc: 'Standardized neurological assessment of eye, verbal, and motor responsiveness.',
+        inputs: [
+          {
+            key: 'e', label: 'Eye Opening (E)', type: 'segmented', default: '4',
+            options: [
+              { value: '1', label: '1 None' },
+              { value: '2', label: '2 Pain' },
+              { value: '3', label: '3 Speech' },
+              { value: '4', label: '4 Spont.' },
+            ],
+          },
+          {
+            key: 'v', label: 'Verbal Response (V)', type: 'select', default: '5',
+            options: [
+              { value: '5', label: '5 — Oriented' },
+              { value: '4', label: '4 — Confused conversation' },
+              { value: '3', label: '3 — Inappropriate words' },
+              { value: '2', label: '2 — Incomprehensible sounds' },
+              { value: '1', label: '1 — None' },
+            ],
+          },
+          {
+            key: 'm', label: 'Motor Response (M)', type: 'select', default: '6',
+            options: [
+              { value: '6', label: '6 — Obeys commands' },
+              { value: '5', label: '5 — Localizes pain' },
+              { value: '4', label: '4 — Normal flexion (withdrawal)' },
+              { value: '3', label: '3 — Abnormal flexion (decorticate)' },
+              { value: '2', label: '2 — Extension (decerebrate)' },
+              { value: '1', label: '1 — None' },
+            ],
+          },
+          { key: 'intub', label: 'Patient Intubated / Tracheostomy (Verbal = T)', type: 'toggle', points: 'T', default: false },
+        ],
+        compute(v) {
+          const e = Number(v.e), m = Number(v.m), verbal = v.intub ? 1 : Number(v.v);
+          const total = e + verbal + m;
+          const breakdown = `E${e} V${v.intub ? 'T' : verbal} M${m}`;
+          const displayVal = v.intub ? `${total}T` : `${total}`;
+
+          let sev = 'Mild Impairment (13–15)', badge = { text: 'Mild / Normal (13–15)', tone: 'emerald' };
+          if (total <= 8) { sev = 'Severe Brain Injury / Coma (≤8)'; badge = { text: 'Severe (≤8) — Airway Protection', tone: 'rose' }; }
+          else if (total <= 12) { sev = 'Moderate Impairment (9–12)'; badge = { text: 'Moderate (9–12)', tone: 'amber' }; }
+
+          return {
+            primary: { label: 'GCS Total', value: displayVal, unit: '/ 15', badge },
+            secondary: [
+              { label: 'Component Subscores', value: breakdown },
+              { label: 'TBI Severity Class', value: sev },
+            ],
+            notes: [
+              'Always communicate component scores (E_ V_ M_) alongside total score; motor subscore carries the strongest prognostic value.',
+              'GCS ≤8 in acute trauma/neurologic injury traditionally prompts consideration of definitive airway protection.',
+              'Score the BEST motor response observed in any limb after excluding sedation, paralysis, and metabolic confounders.',
+            ],
+          };
+        },
+        formula: () => 'GCS = Eye (1–4) + Verbal (1–5 or T=1) + Motor (1–6)  [Range 3–15]',
+        citation: 'Teasdale G, Jennett B. Assessment of coma and impaired consciousness. A practical scale. Lancet. 1974;2(7872):81-84.',
+      },
+
+      {
+        id: 'curb-65',
+        aliases: ['curb65', 'pneumonia', 'cap'],
+        category: 'critical',
+        title: 'CURB-65 Pneumonia Severity',
+        shortTitle: 'CURB-65',
+        desc: 'Predicts 30-day mortality and guides site-of-care decisions in community-acquired pneumonia.',
+        getInputs(mode, u) {
+          return [
+            { key: 'c', label: 'Confusion (New disorientation or AMT ≤8)', type: 'toggle', points: '+1', default: false },
+            { key: 'u', label: u === 'SI' ? 'Urea > 7.0 mmol/L' : 'BUN > 19 mg/dL', type: 'toggle', points: '+1', default: true },
+            { key: 'r', label: 'Respiratory Rate ≥ 30 breaths/min', type: 'toggle', points: '+1', default: false },
+            { key: 'b', label: 'Blood Pressure (SBP < 90 or DBP ≤ 60 mmHg)', type: 'toggle', points: '+1', default: false },
+            { key: 'a', label: 'Age ≥ 65 years', type: 'toggle', points: '+1', default: true },
+          ];
+        },
+        compute(v) {
+          const score = ['c', 'u', 'r', 'b', 'a'].reduce((acc, k) => acc + (v[k] ? 1 : 0), 0);
+          const mortMap = ['0.6%', '2.7%', '6.8%', '14.0%', '27.8%', '27.8%+'];
+          let badge = { text: 'Low Risk (0–1) — Outpatient', tone: 'emerald' };
+          let setting = 'Outpatient oral therapy if clinically and socially appropriate.';
+          if (score >= 3) {
+            badge = { text: 'High Risk (3–5) — Inpatient / ICU Eval', tone: 'rose' };
+            setting = score >= 4 ? 'Hospital admission — strongly evaluate for ICU care.' : 'Hospital admission — assess for severe CAP / ICU criteria.';
+          } else if (score === 2) {
+            badge = { text: 'Moderate Risk (2) — Short Inpatient', tone: 'amber' };
+            setting = 'Consider short inpatient admission or closely supervised outpatient care.';
+          }
+
+          return {
+            primary: { label: 'CURB-65 Score', value: `${score}`, unit: '/ 5 pts', badge },
+            secondary: [
+              { label: '30-Day Mortality Risk', value: mortMap[score] },
+              { label: 'Recommended Care Setting', value: setting },
+            ],
+            notes: [
+              'Always integrate clinical judgment: hypoxia (SpO₂ <90%), multilobar infiltrates, inability to tolerate PO, or social instability override a low CURB-65.',
+              'For ICU triage specifically, IDSA/ATS severe CAP major/minor criteria outperform CURB-65.',
+            ],
+          };
+        },
+        formula: (u) => `CURB-65 = Confusion + (${u === 'SI' ? 'Urea >7 mmol/L' : 'BUN >19 mg/dL'}) + (RR ≥30) + (SBP <90 or DBP ≤60) + (Age ≥65)`,
+        citation: 'Lim WS et al. Defining community acquired pneumonia severity on presentation to hospital: an international derivation and validation study. Thorax. 2003;58(5):377-382.',
+      },
+
+      {
+        id: 'meld-na',
+        aliases: ['meld', 'meld-3', 'meld3', 'meld-3.0', 'cirrhosis-meld', 'liver-transplant'],
+        category: 'critical',
+        title: 'MELD 3.0 & MELD-Na Score',
+        shortTitle: 'MELD 3.0 & MELD-Na',
+        desc: 'End-stage liver disease 90-day mortality estimation using OPTN MELD 3.0 and UNOS 2016 MELD-Na.',
+        inputs: [
+          {
+            key: 'sex', label: 'Sex (MELD 3.0)', type: 'segmented', default: 'female',
+            options: [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female (+1.33)' }],
+          },
+          { key: 'bili', label: 'Total Bilirubin', type: 'number', siUnit: 'µmol/L', usUnit: 'mg/dL', siDefault: 51, usDefault: 3.0, toUS: CONV.biliToUS, toSI: CONV.biliToSI, decimalsSI: 0, decimalsUS: 1, stepSI: 2, stepUS: 0.2, min: 0.1, max: 1200 },
+          { key: 'inr', label: 'INR', type: 'number', siUnit: 'ratio', usUnit: 'ratio', siDefault: 1.8, usDefault: 1.8, step: 0.1, min: 0.5, max: 15 },
+          { key: 'cr', label: 'Serum Creatinine', type: 'number', siUnit: 'µmol/L', usUnit: 'mg/dL', siDefault: 141, usDefault: 1.6, toUS: CONV.crToUS, toSI: CONV.crToSI, decimalsSI: 0, decimalsUS: 2, stepSI: 5, stepUS: 0.1, min: 0.1, max: 2000 },
+          { key: 'na', label: 'Serum Sodium', type: 'number', siUnit: 'mmol/L', usUnit: 'mEq/L', siDefault: 131, usDefault: 131, step: 1, min: 100, max: 170 },
+          { key: 'alb', label: 'Serum Albumin (MELD 3.0)', type: 'number', siUnit: 'g/L', usUnit: 'g/dL', siDefault: 28, usDefault: 2.8, toUS: CONV.albToUS, toSI: CONV.albToSI, decimalsSI: 0, decimalsUS: 1, stepSI: 1, stepUS: 0.1, min: 0.5, max: 70 },
+          { key: 'dialysis', label: 'Dialysis ≥2× in past week (or 24h CVVHD)', type: 'toggle', points: 'Cap Cr', default: false },
+        ],
+        compute(v, u) {
+          const biliRaw = numVal(v.bili), inrRaw = numVal(v.inr), crRaw = numVal(v.cr), naRaw = numVal(v.na), albRaw = numVal(v.alb);
+          if (!isNum(biliRaw) || !isNum(inrRaw) || !isNum(crRaw) || !isNum(naRaw) || !isNum(albRaw)) return { incomplete: true };
+
+          const bili = Math.max(1.0, getBiliMgdl(biliRaw, u));
+          const inr = Math.max(1.0, inrRaw);
+          const na = Math.min(137, Math.max(125, naRaw));
+          const alb = Math.min(3.5, Math.max(1.5, getAlbGdl(albRaw, u)));
+
+          // MELD-Na (UNOS 2016): Cr capped at 4.0 mg/dL
+          const crNa = v.dialysis ? 4.0 : Math.min(4.0, Math.max(1.0, getCrMgdl(crRaw, u)));
+          const meldI = 0.957 * Math.log(crNa) + 0.378 * Math.log(bili) + 1.120 * Math.log(inr) + 0.643;
+          const meldBase = Math.round(meldI * 10);
+          let meldNa = meldBase;
+          if (meldBase > 11) {
+            meldNa = meldBase + 1.32 * (137 - na) - 0.033 * meldBase * (137 - na);
+          }
+          meldNa = Math.min(40, Math.max(6, Math.round(meldNa)));
+
+          // MELD 3.0 (Kim et al. 2021 / OPTN 2023): Cr capped at 3.0 mg/dL
+          const cr3 = v.dialysis ? 3.0 : Math.min(3.0, Math.max(1.0, getCrMgdl(crRaw, u)));
+          const fem = v.sex === 'female' ? 1.33 : 0;
+          const meld3Raw = fem + 4.56 * Math.log(bili) + 0.82 * (137 - na) -
+            0.24 * (137 - na) * Math.log(bili) + 9.09 * Math.log(inr) +
+            11.14 * Math.log(cr3) + 1.85 * (3.5 - alb) -
+            1.83 * (3.5 - alb) * Math.log(cr3) + 6;
+          const meld3 = Math.min(40, Math.max(6, Math.round(meld3Raw)));
+
+          let mort = '1.9%', badge = { text: 'Low 90-Day Mortality', tone: 'emerald' };
+          if (meld3 >= 40) { mort = '71.3%'; badge = { text: 'Critical (40)', tone: 'rose' }; }
+          else if (meld3 >= 30) { mort = '52.6%'; badge = { text: 'Very High Risk (30–39)', tone: 'rose' }; }
+          else if (meld3 >= 20) { mort = '19.6%'; badge = { text: 'High Risk (20–29)', tone: 'rose' }; }
+          else if (meld3 >= 10) { mort = '6.0%'; badge = { text: 'Moderate Risk (10–19)', tone: 'amber' }; }
+
+          return {
+            primary: { label: 'MELD 3.0 Score (OPTN)', value: `${meld3}`, unit: 'pts', badge },
+            secondary: [
+              { label: 'MELD-Na (UNOS 2016)', value: `${meldNa} pts` },
+              { label: 'Original MELD (No Na)', value: `${Math.min(40, Math.max(6, meldBase))} pts` },
+              { label: 'Est. 90-Day Mortality', value: mort },
+            ],
+            notes: [
+              'MELD 3.0 (adopted by OPTN in 2023) adds female sex (+1.33) and albumin (1.5–3.5 g/dL), lowers the creatinine ceiling to 3.0 mg/dL, and addresses sex disparity in liver allocation.',
+              'MELD ≥15 generally indicates net survival benefit from liver transplantation.',
+              'Values <1.0 (Bili/INR/Cr) are clamped to 1.0; Na is clamped to 125–137 mmol/L.',
+            ],
+          };
+        },
+        formula: () => 'MELD 3.0 = 1.33(F) + 4.56·ln(Bili) + 0.82·(137−Na) − 0.24·(137−Na)·ln(Bili) + 9.09·ln(INR) + 11.14·ln(Cr) + 1.85·(3.5−Alb) − 1.83·(3.5−Alb)·ln(Cr) + 6\nMELD-Na  = MELD + 1.32·(137−Na) − 0.033·MELD·(137−Na)  [if MELD > 11]',
+        citation: 'Kim WR et al. MELD 3.0: The Model for End-Stage Liver Disease Updated for the Modern Era. Gastroenterology. 2021;161(6):1887-1895.',
+      },
+
+      {
+        id: 'child-pugh',
+        aliases: ['childpugh', 'child-turcotte-pugh', 'ctp', 'cirrhosis'],
+        category: 'critical',
+        title: 'Child-Pugh Cirrhosis Score',
+        shortTitle: 'Child-Pugh Score',
+        desc: 'Assesses severity of chronic liver disease, surgical risk, and 1- to 2-year survival.',
+        getInputs(mode, u) {
+          return [
+            {
+              key: 'bili', label: `Total Bilirubin (${u === 'SI' ? 'µmol/L' : 'mg/dL'})`, type: 'segmented', default: '2',
+              options: u === 'SI'
+                ? [{ value: '1', label: '<34 (1)' }, { value: '2', label: '34–50 (2)' }, { value: '3', label: '>50 (3)' }]
+                : [{ value: '1', label: '<2.0 (1)' }, { value: '2', label: '2.0–3.0 (2)' }, { value: '3', label: '>3.0 (3)' }],
+            },
+            {
+              key: 'alb', label: `Serum Albumin (${u === 'SI' ? 'g/L' : 'g/dL'})`, type: 'segmented', default: '2',
+              options: u === 'SI'
+                ? [{ value: '1', label: '>35 (1)' }, { value: '2', label: '28–35 (2)' }, { value: '3', label: '<28 (3)' }]
+                : [{ value: '1', label: '>3.5 (1)' }, { value: '2', label: '2.8–3.5 (2)' }, { value: '3', label: '<2.8 (3)' }],
+            },
+            {
+              key: 'inr', label: 'INR', type: 'segmented', default: '1',
+              options: [{ value: '1', label: '<1.7 (1)' }, { value: '2', label: '1.7–2.2 (2)' }, { value: '3', label: '>2.2 (3)' }],
+            },
+            {
+              key: 'ascites', label: 'Ascites', type: 'segmented', default: '2',
+              options: [{ value: '1', label: 'None (1)' }, { value: '2', label: 'Mild / Diuretic (2)' }, { value: '3', label: 'Mod–Severe (3)' }],
+            },
+            {
+              key: 'enceph', label: 'Hepatic Encephalopathy', type: 'segmented', default: '1',
+              options: [{ value: '1', label: 'None (1)' }, { value: '2', label: 'Grade 1–2 (2)' }, { value: '3', label: 'Grade 3–4 (3)' }],
+            },
+          ];
+        },
+        compute(v) {
+          const pts = Number(v.bili) + Number(v.alb) + Number(v.inr) + Number(v.ascites) + Number(v.enceph);
+          let cls = 'Class A', s1 = '100%', s2 = '85%', surg = '~10% abdominal surgery mortality';
+          let badge = { text: 'Class A — Well-Compensated', tone: 'emerald' };
+          if (pts >= 10) {
+            cls = 'Class C'; s1 = '45%'; s2 = '35%'; surg = '~75–82% abdominal surgery mortality';
+            badge = { text: 'Class C — Decompensated', tone: 'rose' };
+          } else if (pts >= 7) {
+            cls = 'Class B'; s1 = '80%'; s2 = '60%'; surg = '~30% abdominal surgery mortality';
+            badge = { text: 'Class B — Functional Compromise', tone: 'amber' };
+          }
+
+          return {
+            primary: { label: 'Child-Pugh Classification', value: `${cls} (${pts})`, unit: '/ 15 pts', badge },
+            secondary: [
+              { label: '1-Year Survival', value: s1 },
+              { label: '2-Year Survival', value: s2 },
+              { label: 'Perioperative Risk', value: surg },
+            ],
+            notes: [
+              'Widely used for hepatic drug-dosing labels (FDA categories) and perioperative risk counseling.',
+              'In primary biliary cholangitis / primary sclerosing cholangitis, modified bilirubin cutoffs (<68 / 68–170 / >170 µmol/L) are sometimes used.',
+            ],
+          };
+        },
+        formula: () => 'Child-Pugh = Bilirubin (1–3) + Albumin (1–3) + INR (1–3) + Ascites (1–3) + Encephalopathy (1–3)\nClass A: 5–6 pts  |  Class B: 7–9 pts  |  Class C: 10–15 pts',
+        citation: 'Pugh RN et al. Transection of the oesophagus for bleeding oesophageal varices. Br J Surg. 1973;60(8):646-649.',
+      },
+
+      {
+        id: 'parkland',
+        aliases: ['burn', 'burn-resuscitation', 'modified-brooke', 'tbsa', 'aba'],
+        category: 'critical',
+        title: 'Burn Resuscitation (Parkland / Modified Brooke)',
+        shortTitle: 'Parkland Burn Formula',
+        desc: 'Calculates 24-hour crystalloid resuscitation and dynamic first-8h / next-16h infusion rates.',
+        inputs: [
+          { key: 'weight', label: 'Body Weight', type: 'number', siUnit: 'kg', usUnit: 'lb', siDefault: 80, usDefault: 176, toUS: CONV.kgToLb, toSI: CONV.lbToKg, decimalsSI: 1, decimalsUS: 0, stepSI: 1, stepUS: 1, min: 5, max: 400 },
+          { key: 'tbsa', label: 'Burn Area (%TBSA, 2nd & 3rd degree)', type: 'number', siUnit: '%', usUnit: '%', siDefault: 30, usDefault: 30, step: 1, min: 1, max: 100 },
+          { key: 'elapsed', label: 'Hours Elapsed Since Burn Injury', type: 'number', siUnit: 'hours', usUnit: 'hours', siDefault: 0, usDefault: 0, step: 0.5, min: 0, max: 23.5 },
+        ],
+        compute(v, u) {
+          const wtRaw = numVal(v.weight), tbsa = numVal(v.tbsa), elapsed = numVal(v.elapsed);
+          if (!isNum(wtRaw) || wtRaw <= 0 || !isNum(tbsa) || tbsa <= 0) return { incomplete: true };
+          const kg = getKg(wtRaw, u);
+          const hrs = isNum(elapsed) && elapsed >= 0 ? elapsed : 0;
+
+          const parkTotal = 4 * kg * tbsa;
+          const brookeTotal = 2 * kg * tbsa;
+          const parkFirst8 = parkTotal / 2;
+          const parkNext16 = parkTotal / 2;
+          const brookeFirst8 = brookeTotal / 2;
+
+          const rem8 = Math.max(0, 8 - hrs);
+          const parkRate8 = rem8 >= 0.5 ? parkFirst8 / rem8 : NaN;
+          const brookeRate8 = rem8 >= 0.5 ? brookeFirst8 / rem8 : NaN;
+          const parkRate16 = parkNext16 / 16;
+          const brookeRate16 = (brookeTotal / 2) / 16;
+
+          let badge = { text: 'Major Burn Resuscitation', tone: 'amber' };
+          if (tbsa >= 40) badge = { text: 'Critical Burn (≥40% TBSA)', tone: 'rose' };
+          else if (tbsa < 20) badge = { text: '<20% TBSA (Routine Formula Optional)', tone: 'emerald' };
+
+          return {
+            primary: { label: 'Parkland 24h Total (LR)', value: `${fmt(parkTotal / 1000, 2)}`, unit: 'L (4 mL/kg/%)', badge },
+            secondary: [
+              { label: 'Parkland First 8h Volume', value: `${fmt(parkFirst8, 0)} mL (${rem8 >= 0.5 ? fmt(parkRate8, 0) + ' mL/hr over ' + fmt(rem8, 1) + 'h' : 'First 8h elapsed'})` },
+              { label: 'Parkland Next 16h Rate', value: `${fmt(parkRate16, 0)} mL/hr (${fmt(parkNext16, 0)} mL)` },
+              { label: 'Modified Brooke 24h (2 mL/kg/%)', value: `${fmt(brookeTotal / 1000, 2)} L (${rem8 >= 0.5 ? fmt(brookeRate8, 0) + ' mL/hr 1st 8h' : fmt(brookeRate16, 0) + ' mL/hr'})` },
+              { label: 'Target Urine Output (Adult)', value: `${fmt(0.5 * kg, 0)} – ${fmt(1.0 * kg, 0)} mL/hr (0.5–1 mL/kg/hr)` },
+            ],
+            notes: [
+              'ABA guidelines favor initiating at 2 mL/kg/%TBSA (Modified Brooke) for adult thermal burns to avoid fluid creep, titrating strictly to UOP 0.5–1 mL/kg/hr.',
+              'Always calculate the first 8-hour window from TIME OF INJURY (not ED arrival) and subtract prehospital crystalloid already infused.',
+              'Exclude superficial (1st-degree/erythematous) burns from %TBSA; use Lactated Ringer’s as preferred isotonic crystalloid.',
+            ],
+          };
+        },
+        formula: () => 'Parkland:        Total 24h LR = 4 × Weight [kg] × %TBSA\nModified Brooke: Total 24h LR = 2 × Weight [kg] × %TBSA\nGive 50% in first 8h from time of burn, remaining 50% over next 16h',
+        citation: 'Baxter CR, Shires T. Ann N Y Acad Sci. 1968;150(3):874-894; American Burn Association Practice Guidelines (J Burn Care Res. 2018).',
+      },
+    ];
+
+    /* =========================================================================
+       3. APPLICATION STATE & RESILIENT DEEP-LINK ROUTER
+       ========================================================================= */
+    const state = {
+      unitSystem: 'SI',            // 'SI' | 'US'
+      activeCat: 'all',
+      searchQuery: '',
+      highlightedIdx: -1,
+      activeCalcId: CALCULATORS[0].id,
+      calcModes: {},               // { [calcId]: modeId }
+      calcValues: {},              // { [calcId]: { [fieldKey]: value } }
+    };
+
+    // Initialize default modes and realistic pre-filled clinical values for all 26 calculators
+    function getInputsFor(calc, modeOverride, unitOverride) {
+      const m = modeOverride || state.calcModes[calc.id] || calc.defaultMode || null;
+      const u = unitOverride || state.unitSystem;
+      return typeof calc.getInputs === 'function' ? calc.getInputs(m, u) : (calc.inputs || []);
+    }
+
+    function initCalcDefaults(calc, modeOverride) {
+      const m = modeOverride || calc.defaultMode || null;
+      if (m) state.calcModes[calc.id] = m;
+      if (!state.calcValues[calc.id]) state.calcValues[calc.id] = {};
+      const fields = getInputsFor(calc, m, state.unitSystem);
+      for (const f of fields) {
+        if (f.type === 'number') {
+          state.calcValues[calc.id][f.key] = state.unitSystem === 'SI' ? f.siDefault : f.usDefault;
+        } else {
+          state.calcValues[calc.id][f.key] = f.default;
+        }
+      }
+    }
+
+    CALCULATORS.forEach(c => initCalcDefaults(c));
+
+    // Special alias -> sub-mode hints (e.g., #wells-dvt opens Wells in DVT mode, #feurea opens FEUrea, #qsofa opens qSOFA)
+    const MODE_HINTS = {
+      'wells-dvt': { id: 'wells-pe', mode: 'dvt' },
+      'dvt':       { id: 'wells-pe', mode: 'dvt' },
+      'wells-pe':  { id: 'wells-pe', mode: 'pe' },
+      'feurea':    { id: 'fena',     mode: 'feurea' },
+      'qsofa':     { id: 'sofa',     mode: 'qsofa' },
+    };
+
+    const normToken = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    /**
+     * Resolves any URL hash or ?calc= query slug to a calculator + optional sub-mode
+     * using exact id, exact alias, normalized token match, and fuzzy token fallback.
+     */
+    function resolveSlug(rawSlug) {
+      if (!rawSlug) return null;
+      const clean = decodeURIComponent(String(rawSlug).trim().toLowerCase());
+      if (!clean) return null;
+
+      // 1. Direct mode hint check
+      if (MODE_HINTS[clean]) {
+        const calc = CALCULATORS.find(c => c.id === MODE_HINTS[clean].id);
+        if (calc) return { calc, mode: MODE_HINTS[clean].mode };
+      }
+
+      // 2. Exact id or alias match
+      for (const c of CALCULATORS) {
+        if (c.id === clean || (c.aliases && c.aliases.includes(clean))) {
+          return { calc: c, mode: null };
+        }
+      }
+
+      // 3. Normalized alphanumeric match against id, aliases, or title
+      const norm = normToken(clean);
+      for (const c of CALCULATORS) {
+        if (normToken(c.id) === norm || normToken(c.title) === norm) return { calc: c, mode: null };
+        if (c.aliases && c.aliases.some(a => normToken(a) === norm)) return { calc: c, mode: null };
+      }
+
+      // 4. Fuzzy substring / token overlap fallback
+      const tokens = clean.split(/[-_\s]+/).filter(Boolean);
+      let best = null, bestScore = 0;
+      for (const c of CALCULATORS) {
+        const hay = [c.id, c.title, ...(c.aliases || [])].join(' ').toLowerCase();
+        const hayNorm = normToken(hay);
+        let score = 0;
+        if (hayNorm.includes(norm) || norm.includes(normToken(c.id))) score += 5;
+        for (const t of tokens) {
+          if (t.length >= 2 && hay.includes(t)) score += 2;
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          best = c;
+        }
+      }
+      return bestScore >= 2 ? { calc: best, mode: null } : null;
+    }
+
+    function readSlugFromURL() {
+      const hash = window.location.hash ? window.location.hash.slice(1) : '';
+      if (hash) return hash;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('calc') || '';
+      } catch (_) {
+        return '';
+      }
+    }
+
+    /* =========================================================================
+       4. DOM REFERENCES & TOAST / CLIPBOARD
+       ========================================================================= */
+    const el = {
+      search: document.getElementById('calc-search'),
+      sidebar: document.getElementById('calc-sidebar'),
+      backdrop: document.getElementById('mobile-backdrop'),
+      sidebarList: document.getElementById('sidebar-list'),
+      sidebarCount: document.getElementById('sidebar-count'),
+      sidebarUnit: document.getElementById('sidebar-unit-indicator'),
+      catTabs: document.querySelectorAll('.cat-tab'),
+      unitBtns: document.querySelectorAll('.unit-sys-btn'),
+      themeBtn: document.getElementById('theme-toggle'),
+      mobileMenuBtn: document.getElementById('mobile-menu-btn'),
+      mobileCloseBtn: document.getElementById('mobile-close-btn'),
+      wsInner: document.getElementById('workspace-inner'),
+      wsCategory: document.getElementById('ws-category'),
+      wsIdTag: document.getElementById('ws-id-tag'),
+      wsTitle: document.getElementById('ws-title'),
+      wsDesc: document.getElementById('ws-desc'),
+      wsModeWrap: document.getElementById('ws-mode-wrap'),
+      wsInputs: document.getElementById('ws-inputs'),
+      wsOutputCard: document.getElementById('ws-output-card'),
+      wsFormula: document.getElementById('ws-formula'),
+      wsCitation: document.getElementById('ws-citation'),
+      btnCopy: document.getElementById('btn-copy-summary'),
+      btnClear: document.getElementById('btn-clear-inputs'),
+      btnReset: document.getElementById('btn-reset-defaults'),
+      toast: document.getElementById('toast'),
+      toastMsg: document.getElementById('toast-msg'),
+    };
+
+    let toastTimer = null;
+    function showToast(message) {
+      el.toastMsg.textContent = message;
+      el.toast.classList.remove('opacity-0', 'translate-y-2');
+      el.toast.classList.add('opacity-100', 'translate-y-0');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        el.toast.classList.add('opacity-0', 'translate-y-2');
+        el.toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 2100);
+    }
+
+    function copyTextToClipboard(text) {
+      // Use execCommand first for iframe compatibility, with navigator.clipboard fallback
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (_) {}
+      document.body.removeChild(ta);
+      if (ok) {
+        showToast('Chart-ready summary copied');
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast('Chart-ready summary copied')).catch(() => showToast('Unable to copy'));
+      }
+    }
+
+    /* =========================================================================
+       5. FILTERING & SIDEBAR RENDERING
+       ========================================================================= */
+    function getFilteredCalculators() {
+      const q = state.searchQuery.trim().toLowerCase();
+      return CALCULATORS.filter(c => {
+        if (state.activeCat !== 'all' && c.category !== state.activeCat) return false;
+        if (!q) return true;
+        const hay = [c.title, c.shortTitle, c.desc, c.id, ...(c.aliases || [])].join(' ').toLowerCase();
+        return q.split(/\s+/).every(tok => hay.includes(tok));
+      });
+    }
+
+    function renderCategoryTabs() {
+      el.catTabs.forEach(btn => {
+        const active = btn.dataset.cat === state.activeCat;
+        btn.className = active
+          ? 'cat-tab px-2 py-1 rounded-md text-[11px] font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-obsidian transition-colors'
+          : 'cat-tab px-2 py-1 rounded-md text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors';
+      });
+    }
+
+    function renderUnitButtons() {
+      el.unitBtns.forEach(btn => {
+        const active = btn.dataset.unit === state.unitSystem;
+        btn.className = active
+          ? 'unit-sys-btn px-2 py-1 rounded-md font-medium bg-zinc-900 text-white dark:bg-tealDark/20 dark:text-tealDark transition-colors'
+          : 'unit-sys-btn px-2 py-1 rounded-md font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors';
+      });
+      el.sidebarUnit.textContent = `${state.unitSystem} units`;
+    }
+
+    function renderSidebar() {
+      const filtered = getFilteredCalculators();
+      el.sidebarCount.textContent = `${filtered.length} calculator${filtered.length === 1 ? '' : 's'}`;
+
+      if (filtered.length === 0) {
+        el.sidebarList.innerHTML = `
+          <div class="px-3 py-8 text-center text-xs text-zinc-400 dark:text-zinc-500">
+            No calculators match "<span class="text-zinc-600 dark:text-zinc-300">${escapeHtml(state.searchQuery)}</span>"
+          </div>`;
+        return;
+      }
+
+      let flatIdx = 0;
+      const groupsHtml = CATEGORIES.map(cat => {
+        const items = filtered.filter(c => c.category === cat.id);
+        if (!items.length) return '';
+        const listItems = items.map(c => {
+          const isActive = c.id === state.activeCalcId;
+          const isHigh = flatIdx === state.highlightedIdx;
+          const idx = flatIdx++;
+          const baseCls = isActive
+            ? 'border-l-2 border-tealLight dark:border-tealDark bg-teal-500/[0.08] dark:bg-teal-400/[0.09] text-zinc-950 dark:text-white font-medium'
+            : isHigh
+              ? 'border-l-2 border-zinc-400 dark:border-zinc-500 bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100'
+              : 'border-l-2 border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-100/70 dark:hover:bg-zinc-900/60';
+          return `
+            <li>
+              <button
+                type="button"
+                data-calc-id="${c.id}"
+                data-flat-idx="${idx}"
+                class="sidebar-item w-full text-left px-2.5 py-1.5 rounded-r-md text-[13px] leading-snug transition-colors flex items-center justify-between gap-2 ${baseCls}"
+              >
+                <span class="truncate">${escapeHtml(c.shortTitle || c.title)}</span>
+              </button>
+            </li>`;
+        }).join('');
+
+        return `
+          <div>
+            <div class="px-2.5 pb-1.5 mb-1 border-b border-zinc-200/70 dark:border-zinc-800/70 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
+              ${escapeHtml(cat.label)}
+            </div>
+            <ul class="space-y-0.5">${listItems}</ul>
+          </div>`;
+      }).join('');
+
+      el.sidebarList.innerHTML = groupsHtml;
+
+      // Wire click listeners
+      el.sidebarList.querySelectorAll('.sidebar-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectCalculator(btn.dataset.calcId, { updateHash: true, scrollWorkspace: true, closeMobile: true });
+        });
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    /* =========================================================================
+       6. WORKSPACE INPUTS & REACTIVE OUTPUT RENDERING
+       ========================================================================= */
+    function getActiveCalc() {
+      return CALCULATORS.find(c => c.id === state.activeCalcId) || CALCULATORS[0];
+    }
+
+    function renderWorkspaceFull(animate = false) {
+      const calc = getActiveCalc();
+      const mode = state.calcModes[calc.id] || calc.defaultMode || null;
+      const cat = CATEGORY_MAP[calc.category];
+
+      if (animate) {
+        el.wsInner.classList.remove('calc-enter');
+        void el.wsInner.offsetWidth;
+        el.wsInner.classList.add('calc-enter');
+      }
+
+      // Header
+      el.wsCategory.textContent = cat ? cat.label : '';
+      el.wsIdTag.textContent = `#${calc.id}`;
+      el.wsTitle.textContent = calc.title;
+      el.wsDesc.textContent = calc.desc;
+
+      // Optional Sub-Mode Switcher
+      if (calc.modes && calc.modes.length > 0) {
+        el.wsModeWrap.classList.remove('hidden');
+        el.wsModeWrap.innerHTML = `
+          <div class="inline-flex flex-wrap gap-1 p-1 rounded-lg bg-zinc-100/90 dark:bg-obsidian border border-zinc-200/80 dark:border-zinc-800/80">
+            ${calc.modes.map(m => {
+              const active = m.id === mode;
+              return `
+                <button
+                  type="button"
+                  data-mode-id="${m.id}"
+                  class="mode-switch-btn px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    active
+                      ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white shadow-sm'
+                      : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                  }"
+                >${escapeHtml(m.label)}</button>`;
+            }).join('')}
+          </div>`;
+
+        el.wsModeWrap.querySelectorAll('.mode-switch-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const newMode = btn.dataset.modeId;
+            if (state.calcModes[calc.id] === newMode) return;
+            state.calcModes[calc.id] = newMode;
+            // Ensure defaults exist for newly exposed fields
+            const newFields = getInputsFor(calc, newMode, state.unitSystem);
+            const bag = state.calcValues[calc.id] || (state.calcValues[calc.id] = {});
+            for (const f of newFields) {
+              if (bag[f.key] === undefined) {
+                bag[f.key] = f.type === 'number'
+                  ? (state.unitSystem === 'SI' ? f.siDefault : f.usDefault)
+                  : f.default;
+              }
+            }
+            renderWorkspaceFull(false);
+          });
+        });
+      } else {
+        el.wsModeWrap.classList.add('hidden');
+        el.wsModeWrap.innerHTML = '';
+      }
+
+      // Render Inputs
+      renderInputsOnly(calc, mode);
+      // Render Reactive Outputs + Formula
+      renderOutputsAndFormula();
+    }
+
+    function renderInputsOnly(calc, mode) {
+      const fields = getInputsFor(calc, mode, state.unitSystem);
+      const bag = state.calcValues[calc.id] || (state.calcValues[calc.id] = {});
+      const u = state.unitSystem;
+
+      el.wsInputs.innerHTML = fields.map(f => {
+        const labelText = (u === 'SI' && f.labelSI) ? f.labelSI : ((u === 'US' && f.labelUS) ? f.labelUS : f.label);
+        const curVal = bag[f.key];
+
+        if (f.type === 'number') {
+          const unit = u === 'SI' ? f.siUnit : f.usUnit;
+          const step = u === 'SI' ? (f.stepSI || f.step || 'any') : (f.stepUS || f.step || 'any');
+          const valAttr = (curVal === '' || curVal === undefined || curVal === null) ? '' : String(curVal);
+          return `
+            <div class="space-y-1.5">
+              <label for="inp-${f.key}" class="flex items-center justify-between text-[13px] font-medium text-zinc-700 dark:text-zinc-300">
+                <span>${escapeHtml(labelText)}</span>
+                ${f.optional ? '<span class="font-mono text-[10px] text-zinc-400 dark:text-zinc-500">optional</span>' : ''}
+              </label>
+              <div class="relative flex items-center">
+                <input
+                  id="inp-${f.key}"
+                  type="number"
+                  inputmode="decimal"
+                  step="${step}"
+                  data-key="${f.key}"
+                  value="${escapeHtml(valAttr)}"
+                  placeholder="—"
+                  class="calc-num-input w-full h-10 pl-3.5 pr-20 rounded-lg font-mono text-[14px] tabular-nums bg-canvasLight dark:bg-obsidian border border-zinc-200/90 dark:border-zinc-800 text-zinc-950 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-tealLight dark:focus:border-tealDark focus:ring-1 focus:ring-tealLight/30 dark:focus:ring-tealDark/30 transition-colors"
+                />
+                <span class="pointer-events-none absolute right-3 font-mono text-[11px] text-zinc-400 dark:text-zinc-500 select-none">${escapeHtml(unit)}</span>
+              </div>
+            </div>`;
+        }
+
+        if (f.type === 'segmented') {
+          return `
+            <div class="space-y-1.5">
+              <div class="text-[13px] font-medium text-zinc-700 dark:text-zinc-300">${escapeHtml(labelText)}</div>
+              <div class="grid gap-1.5" style="grid-template-columns: repeat(${Math.min(f.options.length, 5)}, minmax(0, 1fr));">
+                ${f.options.map(opt => {
+                  const active = String(curVal) === String(opt.value);
+                  return `
+                    <button
+                      type="button"
+                      data-seg-key="${f.key}"
+                      data-seg-val="${escapeHtml(opt.value)}"
+                      class="calc-seg-btn px-2 py-2 rounded-lg text-xs font-medium text-center border transition-colors ${
+                        active
+                          ? 'border-tealLight/60 dark:border-tealDark/60 bg-teal-500/10 dark:bg-teal-400/15 text-tealLight dark:text-tealDark'
+                          : 'border-zinc-200/90 dark:border-zinc-800 bg-canvasLight dark:bg-obsidian text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-200'
+                      }"
+                    >${escapeHtml(opt.label)}</button>`;
+                }).join('')}
+              </div>
+            </div>`;
+        }
+
+        if (f.type === 'select') {
+          return `
+            <div class="space-y-1.5">
+              <label for="sel-${f.key}" class="block text-[13px] font-medium text-zinc-700 dark:text-zinc-300">${escapeHtml(labelText)}</label>
+              <select
+                id="sel-${f.key}"
+                data-sel-key="${f.key}"
+                class="calc-sel-input w-full h-10 px-3 rounded-lg text-[13px] bg-canvasLight dark:bg-obsidian border border-zinc-200/90 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-tealLight dark:focus:border-tealDark transition-colors"
+              >
+                ${f.options.map(opt => `<option value="${escapeHtml(opt.value)}" ${String(curVal) === String(opt.value) ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('')}
+              </select>
+            </div>`;
+        }
+
+        if (f.type === 'toggle') {
+          const on = Boolean(curVal);
+          return `
+            <button
+              type="button"
+              role="switch"
+              aria-checked="${on}"
+              data-tog-key="${f.key}"
+              class="calc-tog-btn w-full text-left px-3.5 py-2.5 rounded-lg border transition-colors flex items-center justify-between gap-3 ${
+                on
+                  ? 'border-tealLight/55 dark:border-tealDark/50 bg-teal-500/[0.07] dark:bg-teal-400/[0.09]'
+                  : 'border-zinc-200/90 dark:border-zinc-800 bg-canvasLight/70 dark:bg-obsidian/70 hover:border-zinc-300 dark:hover:border-zinc-700'
+              }"
+            >
+              <span class="text-[13px] leading-snug ${on ? 'text-zinc-950 dark:text-white font-medium' : 'text-zinc-600 dark:text-zinc-300'}">${escapeHtml(labelText)}</span>
+              <span class="flex items-center gap-2 shrink-0">
+                ${f.points ? `<span class="font-mono text-[11px] ${on ? 'text-tealLight dark:text-tealDark font-semibold' : 'text-zinc-400 dark:text-zinc-500'}">${escapeHtml(f.points)}</span>` : ''}
+                <span class="w-8 h-4.5 rounded-full p-0.5 transition-colors flex items-center ${on ? 'bg-tealLight dark:bg-tealDark justify-end' : 'bg-zinc-300 dark:bg-zinc-700 justify-start'}">
+                  <span class="w-3.5 h-3.5 rounded-full bg-white dark:bg-obsidian shadow-sm block"></span>
+                </span>
+              </span>
+            </button>`;
+        }
+        return '';
+      }).join('');
+
+      // Attach reactive input listeners (ONLY updates output panel — preserves cursor focus!)
+      el.wsInputs.querySelectorAll('.calc-num-input').forEach(inp => {
+        inp.addEventListener('input', () => {
+          bag[inp.dataset.key] = inp.value === '' ? '' : inp.value;
+          renderOutputsAndFormula();
+        });
+      });
+
+      el.wsInputs.querySelectorAll('.calc-seg-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.segKey;
+          bag[key] = btn.dataset.segVal;
+          // Update active styling in place
+          el.wsInputs.querySelectorAll(`.calc-seg-btn[data-seg-key="${key}"]`).forEach(b => {
+            const active = b.dataset.segVal === bag[key];
+            b.className = `calc-seg-btn px-2 py-2 rounded-lg text-xs font-medium text-center border transition-colors ${
+              active
+                ? 'border-tealLight/60 dark:border-tealDark/60 bg-teal-500/10 dark:bg-teal-400/15 text-tealLight dark:text-tealDark'
+                : 'border-zinc-200/90 dark:border-zinc-800 bg-canvasLight dark:bg-obsidian text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-200'
+            }`;
+          });
+          renderOutputsAndFormula();
+        });
+      });
+
+      el.wsInputs.querySelectorAll('.calc-sel-input').forEach(sel => {
+        sel.addEventListener('change', () => {
+          bag[sel.dataset.selKey] = sel.value;
+          renderOutputsAndFormula();
+        });
+      });
+
+      el.wsInputs.querySelectorAll('.calc-tog-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.togKey;
+          bag[key] = !bag[key];
+          renderInputsOnly(calc, mode);
+          renderOutputsAndFormula();
+        });
+      });
+    }
+
+    function badgeClasses(tone) {
+      if (tone === 'rose') return 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30';
+      if (tone === 'amber') return 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30';
+      return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+    }
+
+    function renderOutputsAndFormula() {
+      const calc = getActiveCalc();
+      const mode = state.calcModes[calc.id] || calc.defaultMode || null;
+      const bag = state.calcValues[calc.id] || {};
+      const u = state.unitSystem;
+
+      // Update formula & citation
+      el.wsFormula.textContent = typeof calc.formula === 'function' ? calc.formula(u, mode) : (calc.formula || '');
+      el.wsCitation.textContent = calc.citation || '';
+
+      let res;
+      try {
+        res = calc.compute(bag, u, mode);
+      } catch (err) {
+        console.error('Calculation error:', err);
+        res = { incomplete: true };
+      }
+
+      if (!res || res.incomplete) {
+        el.wsOutputCard.innerHTML = `
+          <div class="py-10 text-center space-y-2">
+            <div class="font-mono text-2xl text-zinc-300 dark:text-zinc-700">—</div>
+            <p class="text-xs text-zinc-400 dark:text-zinc-500">Enter required clinical parameters to compute result.</p>
+          </div>`;
+        return;
+      }
+
+      const p = res.primary;
+      const secHtml = (res.secondary && res.secondary.length)
+        ? `<div class="divide-y divide-zinc-200/70 dark:divide-zinc-800/70 border-t border-zinc-200/70 dark:border-zinc-800/70 pt-1">
+            ${res.secondary.map(row => `
+              <div class="py-2.5 flex items-baseline justify-between gap-3 text-[12.5px]">
+                <span class="text-zinc-500 dark:text-zinc-400">${escapeHtml(row.label)}</span>
+                <span class="font-mono font-medium text-zinc-900 dark:text-zinc-100 text-right tabular-nums">${escapeHtml(row.value)}</span>
+              </div>`).join('')}
+          </div>`
+        : '';
+
+      const steroidHtml = res.steroidTable
+        ? `<div class="border-t border-zinc-200/70 dark:border-zinc-800/70 pt-3 overflow-x-auto">
+            <table class="w-full text-left font-mono text-[11.5px] tabular-nums">
+              <thead>
+                <tr class="text-zinc-400 dark:text-zinc-500 border-b border-zinc-200/70 dark:border-zinc-800/70">
+                  <th class="pb-1.5 font-medium">Agent</th>
+                  <th class="pb-1.5 font-medium text-right">Equiv.</th>
+                  <th class="pb-1.5 font-medium text-right">MC</th>
+                  <th class="pb-1.5 font-medium text-right">t½</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
+                ${res.steroidTable.map(r => `
+                  <tr class="${r.active ? 'text-tealLight dark:text-tealDark font-semibold' : 'text-zinc-700 dark:text-zinc-300'}">
+                    <td class="py-1.5 pr-2 font-sans text-[12px]">${escapeHtml(r.name)}</td>
+                    <td class="py-1.5 text-right whitespace-nowrap">${escapeHtml(r.dose)}</td>
+                    <td class="py-1.5 text-right text-[10.5px] text-zinc-500 dark:text-zinc-400 whitespace-nowrap pl-2">${escapeHtml(r.mc)}</td>
+                    <td class="py-1.5 text-right text-[10.5px] text-zinc-500 dark:text-zinc-400 whitespace-nowrap pl-2">${escapeHtml(r.hl)}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`
+        : '';
+
+      const notesHtml = (res.notes && res.notes.length)
+        ? `<div class="border-t border-zinc-200/70 dark:border-zinc-800/70 pt-4 space-y-2">
+            <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">Clinical Notes</div>
+            <ul class="space-y-1.5 text-[12.5px] leading-relaxed text-zinc-600 dark:text-zinc-400">
+              ${res.notes.map(n => `<li class="flex gap-2"><span class="text-tealLight dark:text-tealDark select-none">·</span><span>${escapeHtml(n)}</span></li>`).join('')}
+            </ul>
+          </div>`
+        : '';
+
+      el.wsOutputCard.innerHTML = `
+        <div class="space-y-2.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">${escapeHtml(p.label)}</div>
+          <div class="flex items-baseline gap-2 flex-wrap">
+            <span class="font-mono text-3xl sm:text-4xl font-semibold tracking-tight text-zinc-950 dark:text-white tabular-nums">${escapeHtml(p.value)}</span>
+            ${p.unit ? `<span class="font-mono text-sm text-zinc-500 dark:text-zinc-400">${escapeHtml(p.unit)}</span>` : ''}
+          </div>
+          ${p.badge ? `
+            <div class="pt-0.5">
+              <span class="inline-flex items-center px-2.5 py-1 rounded-md border text-[11.5px] font-medium ${badgeClasses(p.badge.tone)}">
+                ${escapeHtml(p.badge.text)}
+              </span>
+            </div>` : ''}
+        </div>
+        ${secHtml}
+        ${steroidHtml}
+        ${notesHtml}`;
+    }
+
+    /* =========================================================================
+       7. CALCULATOR SELECTION, UNIT CONVERSION & SUMMARY EXPORT
+       ========================================================================= */
+    function selectCalculator(id, opts = {}) {
+      const calc = CALCULATORS.find(c => c.id === id);
+      if (!calc) return;
+      state.activeCalcId = calc.id;
+      if (opts.mode && calc.modes && calc.modes.some(m => m.id === opts.mode)) {
+        state.calcModes[calc.id] = opts.mode;
+        // Initialize any missing mode fields
+        const fields = getInputsFor(calc, opts.mode, state.unitSystem);
+        const bag = state.calcValues[calc.id] || (state.calcValues[calc.id] = {});
+        for (const f of fields) {
+          if (bag[f.key] === undefined) {
+            bag[f.key] = f.type === 'number'
+              ? (state.unitSystem === 'SI' ? f.siDefault : f.usDefault)
+              : f.default;
+          }
+        }
+      }
+
+      if (opts.updateHash) {
+        try {
+          history.replaceState(null, '', '#' + calc.id);
+        } catch (_) {
+          window.location.hash = calc.id;
+        }
+      }
+
+      document.title = `${calc.shortTitle || calc.title} — MedLab Calculators`;
+      renderSidebar();
+      renderWorkspaceFull(true);
+
+      // Scroll active item into view in sidebar
+      const activeBtn = el.sidebarList.querySelector(`.sidebar-item[data-calc-id="${calc.id}"]`);
+      if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
+        activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+
+      if (opts.scrollWorkspace) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      if (opts.closeMobile) {
+        closeMobileDrawer();
+      }
+    }
+
+    /**
+     * Converts all existing numeric input values cleanly when toggling between SI and US.
+     */
+    function switchUnitSystem(newSystem) {
+      if (state.unitSystem === newSystem) return;
+      const oldSystem = state.unitSystem;
+      state.unitSystem = newSystem;
+
+      for (const calc of CALCULATORS) {
+        const bag = state.calcValues[calc.id];
+        if (!bag) continue;
+        // Inspect fields across all modes (or default)
+        const modeIds = calc.modes ? calc.modes.map(m => m.id) : [null];
+        const seen = new Set();
+        for (const mId of modeIds) {
+          const fields = getInputsFor(calc, mId, oldSystem);
+          for (const f of fields) {
+            if (seen.has(f.key) || f.type !== 'number') continue;
+            seen.add(f.key);
+            const raw = numVal(bag[f.key]);
+            if (!isNum(raw)) continue;
+            if (newSystem === 'US' && typeof f.toUS === 'function') {
+              bag[f.key] = roundNice(f.toUS(raw), f.decimalsUS !== undefined ? f.decimalsUS : 1);
+            } else if (newSystem === 'SI' && typeof f.toSI === 'function') {
+              bag[f.key] = roundNice(f.toSI(raw), f.decimalsSI !== undefined ? f.decimalsSI : 1);
+            }
+          }
+        }
+      }
+
+      renderUnitButtons();
+      renderWorkspaceFull(false);
+      showToast(`Switched to ${newSystem} units`);
+    }
+
+    function buildChartSummary() {
+      const calc = getActiveCalc();
+      const mode = state.calcModes[calc.id] || calc.defaultMode || null;
+      const bag = state.calcValues[calc.id] || {};
+      const u = state.unitSystem;
+      const fields = getInputsFor(calc, mode, u);
+      const res = calc.compute(bag, u, mode);
+
+      const lines = [`${calc.title}${mode ? ` (${mode.toUpperCase()})` : ''} [${u}]`];
+      const inParts = [];
+      for (const f of fields) {
+        const val = bag[f.key];
+        if (f.type === 'number' && val !== '' && val !== undefined) {
+          const unit = u === 'SI' ? f.siUnit : f.usUnit;
+          const lbl = (u === 'SI' && f.labelSI) ? f.labelSI : ((u === 'US' && f.labelUS) ? f.labelUS : f.label);
+          inParts.push(`${lbl}: ${val} ${unit}`);
+        } else if (f.type === 'toggle' && val) {
+          inParts.push(`${f.label}: Yes`);
+        } else if (f.type === 'segmented' || f.type === 'select') {
+          const opt = f.options.find(o => String(o.value) === String(val));
+          if (opt) inParts.push(`${f.label}: ${opt.label}`);
+        }
+      }
+      if (inParts.length) lines.push(`Inputs: ${inParts.join('; ')}`);
+      if (res && !res.incomplete) {
+        const p = res.primary;
+        lines.push(`Result: ${p.label} = ${p.value}${p.unit ? ' ' + p.unit : ''}${p.badge ? ` (${p.badge.text})` : ''}`);
+        if (res.secondary) {
+          res.secondary.forEach(s => lines.push(`- ${s.label}: ${s.value}`));
+        }
+        if (res.steroidTable) {
+          res.steroidTable.forEach(r => lines.push(`- ${r.name}: ${r.dose} (MC ${r.mc}, t½ ${r.hl})`));
+        }
+      }
+      return lines.join('\n');
+    }
+
+    /* =========================================================================
+       8. MOBILE DRAWER, EVENTS & KEYBOARD SHORTCUTS
+       ========================================================================= */
+    function openMobileDrawer() {
+      el.sidebar.classList.remove('-translate-x-full');
+      el.backdrop.classList.remove('hidden');
+    }
+    function closeMobileDrawer() {
+      el.sidebar.classList.add('-translate-x-full');
+      el.backdrop.classList.add('hidden');
+    }
+
+    el.mobileMenuBtn.addEventListener('click', openMobileDrawer);
+    el.mobileCloseBtn.addEventListener('click', closeMobileDrawer);
+    el.backdrop.addEventListener('click', closeMobileDrawer);
+
+    // Theme toggle syncing both 'medlab-theme' and 'theme' keys
+    el.themeBtn.addEventListener('click', () => {
+      const isDarkNow = document.documentElement.classList.toggle('dark');
+      const val = isDarkNow ? 'dark' : 'light';
+      try {
+        localStorage.setItem('medlab-theme', val);
+        localStorage.setItem('theme', val);
+      } catch (_) {}
+    });
+
+    // Global SI / US Unit toggle
+    el.unitBtns.forEach(btn => {
+      btn.addEventListener('click', () => switchUnitSystem(btn.dataset.unit));
+    });
+
+    // Category tabs
+    el.catTabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.activeCat = btn.dataset.cat;
+        state.highlightedIdx = -1;
+        renderCategoryTabs();
+        renderSidebar();
+      });
+    });
+
+    // Search input + keyboard navigation (ArrowUp / ArrowDown / Enter / Esc)
+    el.search.addEventListener('input', () => {
+      state.searchQuery = el.search.value;
+      state.highlightedIdx = state.searchQuery.trim() ? 0 : -1;
+      if (state.searchQuery.trim() && state.activeCat !== 'all') {
+        state.activeCat = 'all';
+        renderCategoryTabs();
+      }
+      renderSidebar();
+      // Auto-open mobile drawer if user types on mobile
+      if (window.innerWidth < 1024 && state.searchQuery.trim()) {
+        openMobileDrawer();
+      }
+    });
+
+    el.search.addEventListener('keydown', e => {
+      const filtered = getFilteredCalculators();
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (!filtered.length) return;
+        state.highlightedIdx = (state.highlightedIdx + 1) % filtered.length;
+        renderSidebar();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!filtered.length) return;
+        state.highlightedIdx = state.highlightedIdx <= 0 ? filtered.length - 1 : state.highlightedIdx - 1;
+        renderSidebar();
+      } else if (e.key === 'Enter') {
+        if (!filtered.length) return;
+        e.preventDefault();
+        const pick = filtered[Math.max(0, state.highlightedIdx)] || filtered[0];
+        selectCalculator(pick.id, { updateHash: true, scrollWorkspace: true, closeMobile: true });
+        el.search.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        state.searchQuery = '';
+        state.highlightedIdx = -1;
+        el.search.value = '';
+        el.search.blur();
+        renderSidebar();
+        closeMobileDrawer();
+      }
+    });
+
+    // Global keyboard shortcuts: '/' or Cmd/Ctrl+K focuses search; Esc closes drawer
+    document.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        el.search.focus();
+        el.search.select();
+      } else if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+        e.preventDefault();
+        el.search.focus();
+        el.search.select();
+      } else if (e.key === 'Escape') {
+        closeMobileDrawer();
+      }
+    });
+
+    // Copy Summary, Clear, Reset buttons
+    el.btnCopy.addEventListener('click', () => copyTextToClipboard(buildChartSummary()));
+
+    el.btnClear.addEventListener('click', () => {
+      const calc = getActiveCalc();
+      const mode = state.calcModes[calc.id] || calc.defaultMode || null;
+      const fields = getInputsFor(calc, mode, state.unitSystem);
+      const bag = state.calcValues[calc.id] || (state.calcValues[calc.id] = {});
+      for (const f of fields) {
+        if (f.type === 'number') bag[f.key] = '';
+        else if (f.type === 'toggle') bag[f.key] = false;
+      }
+      renderWorkspaceFull(false);
+    });
+
+    el.btnReset.addEventListener('click', () => {
+      const calc = getActiveCalc();
+      const mode = state.calcModes[calc.id] || calc.defaultMode || null;
+      initCalcDefaults(calc, mode);
+      renderWorkspaceFull(false);
+      showToast('Reset to clinical defaults');
+    });
+
+    // Hash routing listener (for direct links from index.html & browser back/forward)
+    function syncFromURL(scrollWs = false) {
+      const slug = readSlugFromURL();
+      if (!slug) return false;
+      const match = resolveSlug(slug);
+      if (match) {
+        // Ensure active category doesn't hide the target calculator
+        if (state.activeCat !== 'all' && state.activeCat !== match.calc.category) {
+          state.activeCat = 'all';
+          renderCategoryTabs();
+        }
+        selectCalculator(match.calc.id, { mode: match.mode, updateHash: false, scrollWorkspace: scrollWs, closeMobile: true });
+        return true;
+      }
+      return false;
+    }
+
+    window.addEventListener('hashchange', () => syncFromURL(true));
+
+    /* =========================================================================
+       9. INITIALIZATION
+       ========================================================================= */
+    renderCategoryTabs();
+    renderUnitButtons();
+    if (!syncFromURL(false)) {
+      selectCalculator(CALCULATORS[0].id, { updateHash: false, scrollWorkspace: false });
+    }
+  })();
+  </script>
+</body>
+</html>
