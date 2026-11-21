@@ -1,1 +1,2748 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CoagSim — MedLab Cell-Based Hemostasis &amp; TEG/ROTEM Simulator</title>
 
+  <!-- Prevent theme flash prior to first paint (defaults to obsidian dark; syncs medlab-theme & theme) -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Typography: Inter (UI) & JetBrains Mono (Labs / Telemetry / Formulas) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#111113',
+            borderDark: '#27272a',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Minimal thin scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(113, 113, 122, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(113, 113, 122, 0.45);
+    }
+
+    /* Swiss-Precision Clinical Range Sliders */
+    input[type="range"].clinical-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      border-radius: 9999px;
+      background: #e4e4e7;
+      outline: none;
+      cursor: pointer;
+    }
+    .dark input[type="range"].clinical-slider {
+      background: #27272a;
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      transition: transform 0.1s ease;
+    }
+    .dark input[type="range"].clinical-slider::-webkit-slider-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"].clinical-slider.drug-slider::-webkit-slider-thumb {
+      background: #0284c7;
+    }
+    .dark input[type="range"].clinical-slider.drug-slider::-webkit-slider-thumb {
+      background: #38bdf8;
+    }
+    input[type="range"].clinical-slider.rev-slider::-webkit-slider-thumb {
+      background: #7c3aed;
+    }
+    .dark input[type="range"].clinical-slider.rev-slider::-webkit-slider-thumb {
+      background: #a78bfa;
+    }
+    input[type="range"].clinical-slider::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    }
+    .dark input[type="range"].clinical-slider::-moz-range-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+    input[type="range"].clinical-slider.drug-slider::-moz-range-thumb {
+      background: #0284c7;
+    }
+    .dark input[type="range"].clinical-slider.drug-slider::-moz-range-thumb {
+      background: #38bdf8;
+    }
+    input[type="range"].clinical-slider.rev-slider::-moz-range-thumb {
+      background: #7c3aed;
+    }
+    .dark input[type="range"].clinical-slider.rev-slider::-moz-range-thumb {
+      background: #a78bfa;
+    }
+
+    /* Subtle animated pathway flow in SVG schematic */
+    @keyframes coagFlow {
+      from { stroke-dashoffset: 24; }
+      to { stroke-dashoffset: 0; }
+    }
+    .svg-coag-flow {
+      stroke-dasharray: 4 6;
+      animation: coagFlow var(--flux-dur, 1.8s) linear infinite;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-canvasLight text-[#09090b] dark:bg-obsidian dark:text-[#f4f4f5] transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
+
+  <!-- ==================== 1. MINIMAL STICKY HEADER ==================== -->
+  <header class="sticky top-0 z-40 h-14 w-full border-b border-[#e4e4e7] dark:border-borderDark bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md shrink-0">
+    <div class="w-full max-w-[1600px] h-full mx-auto px-4 sm:px-5 flex items-center justify-between gap-2.5">
+
+      <!-- Left: Back Link + Brand Title + Subtitle Pill -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors shrink-0">
+          &larr; MedLab
+        </a>
+        <div class="flex items-center gap-2 min-w-0">
+          <h1 class="text-[15px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] shrink-0">CoagSim</h1>
+          <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark font-mono text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
+            Cell-Based Hemostasis &middot; TEG/ROTEM
+          </span>
+          <span id="hdr-preset-name" class="hidden lg:inline font-mono text-[11px] text-tealLight dark:text-tealDark truncate max-w-[210px]">Normal Hemostasis</span>
+        </div>
+      </div>
+
+      <!-- Right: Pin Baseline, Reset, Theme Toggle -->
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <button id="btn-pin-baseline" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5 transition-colors" title="Store current traces &amp; labs as ghost reference baseline">
+          <span id="pin-dot" class="hidden w-1.5 h-1.5 rounded-full bg-tealLight dark:bg-tealDark"></span>
+          <span id="pin-label">Pin Baseline</span>
+        </button>
+
+        <button id="btn-reset" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white transition-colors" title="Restore Normal Hemostasis and clear all drugs &amp; reversals">
+          Reset
+        </button>
+
+        <button id="theme-toggle" type="button" aria-label="Toggle dark and light theme" title="Switch Dark / Light mode" class="w-8 h-8 rounded-lg flex items-center justify-center border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-white transition-colors">
+          <!-- Sun Icon (dark mode) -->
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <!-- Moon Icon (light mode) -->
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. 6-TILE KPI TELEMETRY STRIP ==================== -->
+  <section class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 pt-3.5 shrink-0">
+    <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+      <div id="kpi-strip" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-[#e4e4e7]/80 dark:divide-borderDark/80">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. MAIN 12-COLUMN WORKSPACE ==================== -->
+  <main class="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 min-w-0">
+
+    <!-- LEFT / CENTER MAIN STAGE (lg:col-span-8) -->
+    <div class="lg:col-span-8 flex flex-col gap-4 min-w-0 min-h-0">
+
+      <!-- 1. INTERACTIVE CELL-BASED HEMOSTASIS SVG SCHEMATIC CARD -->
+      <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+        <div class="px-4 py-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <div class="flex items-center gap-2 min-w-0">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5]">Cell-Based Hemostasis Cascade</h2>
+            <span id="triad-pill" class="hidden font-mono text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30">Lethal Triad Active</span>
+          </div>
+          <span class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400">Click stage to inspect kinetics &amp; targets</span>
+        </div>
+
+        <!-- Fixed-height SVG stage -->
+        <div class="relative w-full h-48 sm:h-52 overflow-hidden select-none bg-zinc-50/40 dark:bg-obsidian/40">
+          <svg id="coag-svg" viewBox="0 0 920 206" preserveAspectRatio="xMidYMid meet" class="w-full h-full block" role="img" aria-label="Interactive 4-stage cell-based hemostasis diagram"></svg>
+        </div>
+
+        <!-- Crisp 1-line Phase Inspector Bar -->
+        <div id="phase-inspector" class="px-4 py-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/70 dark:bg-zinc-950/50 flex flex-wrap items-center justify-between gap-2 text-[11.5px] shrink-0">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- 2. TWO SIDE-BY-SIDE LOCKED-WRAPPER HI-DPI CANVASES -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0 min-w-0">
+
+        <!-- Left Canvas: Viscoelastic Trace (TEG / ROTEM + FIBTEM) -->
+        <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+          <div class="px-3.5 py-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <h2 id="visco-title" class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] truncate">TEG Viscoelastic Trace</h2>
+            <div class="flex items-center gap-1.5 text-[10px] font-mono shrink-0">
+              <div class="inline-flex rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5">
+                <button data-vmode="teg" type="button" class="vmode-btn px-2 py-0.5 rounded transition-colors">TEG</button>
+                <button data-vmode="rotem" type="button" class="vmode-btn px-2 py-0.5 rounded transition-colors">ROTEM</button>
+              </div>
+              <button id="toggle-fibtem" type="button" class="px-2 py-0.5 rounded border transition-colors">FIBTEM</button>
+            </div>
+          </div>
+
+          <!-- STRICT ZERO-STRETCH LOCKED WRAPPER -->
+          <div id="visco-wrap" class="relative w-full h-64 overflow-hidden cursor-crosshair">
+            <canvas id="visco-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+            <div id="visco-tooltip" class="pointer-events-none hidden absolute top-2.5 right-2.5 z-20 min-w-[162px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-950/95 px-2.5 py-2 shadow-lg backdrop-blur-sm text-[10.5px] font-mono"></div>
+          </div>
+        </section>
+
+        <!-- Right Canvas: Thrombin Generation (CAT) & Fibrin/Lysis Kinetics -->
+        <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+          <div class="px-3.5 py-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <h2 id="cat-title" class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] truncate">Thrombin Generation (CAT)</h2>
+            <div class="inline-flex rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[10px] font-mono shrink-0">
+              <button data-cmode="thrombin" type="button" class="cmode-btn px-2 py-0.5 rounded transition-colors">Thrombin (IIa)</button>
+              <button data-cmode="fibrin" type="button" class="cmode-btn px-2 py-0.5 rounded transition-colors">Fibrin &amp; Lysis</button>
+            </div>
+          </div>
+
+          <!-- STRICT ZERO-STRETCH LOCKED WRAPPER -->
+          <div id="cat-wrap" class="relative w-full h-64 overflow-hidden cursor-crosshair">
+            <canvas id="cat-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+            <div id="cat-tooltip" class="pointer-events-none hidden absolute top-2.5 right-2.5 z-20 min-w-[166px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-950/95 px-2.5 py-2 shadow-lg backdrop-blur-sm text-[10.5px] font-mono"></div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- 3. CLINICAL LABORATORY PANEL, 1:1 MIXING STUDY & DIAGNOSTIC SYNTHESIS CARD -->
+      <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+        <!-- Card Header + Interactive 1:1 Mixing Study Button -->
+        <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <div class="flex items-center gap-2">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5]">Coagulation Laboratory Panel</h2>
+            <span class="hidden sm:inline font-mono text-[10px] text-zinc-500 dark:text-zinc-400">16 Assays</span>
+          </div>
+          <button id="btn-mixing-study" type="button" class="h-7 px-2.5 rounded-md border border-tealLight/50 dark:border-tealDark/50 bg-teal-500/10 hover:bg-teal-500/20 text-[11px] font-mono font-medium text-tealLight dark:text-tealDark transition-colors">
+            Run 1:1 Mixing Study
+          </button>
+        </div>
+
+        <!-- 16-Assay Compact High-Signal Grid -->
+        <div id="lab-grid" class="p-3.5 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1.5 text-xs">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Collapsible Interactive 1:1 Mixing Study Result Strip -->
+        <div id="mixing-panel" class="hidden px-4 py-3 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-teal-500/[0.04] dark:bg-teal-500/[0.06] space-y-2">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Concise 2-Line Clinical Synthesis & Hemostatic Strategy Bar -->
+        <div class="px-4 py-3 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/70 dark:bg-zinc-950/50 space-y-1.5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div id="synthesis-badges" class="flex flex-wrap items-center gap-1.5"></div>
+            <span id="synthesis-strategy-tag" class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400">Hemostatic Strategy</span>
+          </div>
+          <p id="synthesis-text" class="text-[12px] leading-relaxed text-zinc-700 dark:text-zinc-300"></p>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- RIGHT CONTROL CONSOLE (lg:col-span-4) -->
+    <aside class="lg:col-span-4 min-w-0 min-h-[480px] lg:max-h-[calc(100vh-178px)] rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden">
+      <!-- 4-Tab Segmented Switcher -->
+      <div class="p-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 shrink-0">
+        <div class="grid grid-cols-4 rounded-lg bg-zinc-100/90 dark:bg-obsidian p-0.5 gap-0.5 border border-[#e4e4e7]/80 dark:border-borderDark/80">
+          <button data-tab="pathologies" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors">Pathologies</button>
+          <button data-tab="drugs" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center gap-1">
+            <span>Drugs</span>
+            <span id="tab-drug-badge" class="hidden font-mono text-[9.5px] px-1 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300">0</span>
+          </button>
+          <button data-tab="factors" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors">Factors</button>
+          <button data-tab="challenges" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors">Challenges</button>
+        </div>
+      </div>
+
+      <!-- Scrollable Tab Body -->
+      <div class="flex-1 overflow-y-auto p-3 min-h-0">
+        <div id="tab-pathologies" class="space-y-1.5"></div>
+        <div id="tab-drugs" class="hidden space-y-3.5"></div>
+        <div id="tab-factors" class="hidden space-y-3.5"></div>
+        <div id="tab-challenges" class="hidden space-y-3"></div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ==================== 4. MINIMAL FOOTER ==================== -->
+  <footer class="w-full border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-white/70 dark:bg-obsidian/90 shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+      <span class="font-medium text-[#09090b] dark:text-[#f4f4f5]">MedLab &middot; CoagSim</span>
+      <span>Mechanistic cell-based hemostasis, CAT thrombin generation &amp; TEG/ROTEM simulator for educational study only.</span>
+    </div>
+  </footer>
+
+  <!-- ==================== MECHANISTIC COAGULATION ENGINE & UI CONTROLLER ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    /* =========================================================================
+       1. NUMERIC HELPERS & BASELINE DEFINITIONS
+       ========================================================================= */
+    const clamp = (v, lo, hi) => (Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo);
+
+    const NORMAL_FACTORS = {
+      // Extrinsic & Common (%)
+      f7: 100,
+      f10: 100,
+      f5: 100,
+      f2: 100,
+      // Intrinsic (%)
+      f8: 100,
+      f9: 100,
+      f11: 100,
+      // Platelets & Fibrin
+      plt: 250,          // x10^9/L
+      pltFunc: 100,      // %
+      vwf: 100,          // %
+      fbg: 3.0,          // g/L
+      f13: 100,          // %
+      // Anticoagulant & Lytic Balance
+      at3: 100,          // %
+      pcs: 100,          // % (Protein C / S + APC sensitivity)
+      endoTPA: 5,        // % (basal physiological tPA tone)
+      // Trauma Lethal Triad
+      temp: 37.0,        // °C
+      ph: 7.40,          // Arterial pH
+      // Special Pathophysiologic Flags (set by presets)
+      acquiredF8Inhib: 0, // 0..1 (Bethesda FVIII autoantibody)
+      lupusAnticoag: 0,   // 0..1 (Antiphospholipid antibody)
+      fvlAPCResist: 0,    // 0..1 (Factor V Leiden APC resistance)
+      baseDDimer: 0.25    // mg/L FEU baseline background
+    };
+
+    const NORMAL_DRUGS = {
+      // Anticoagulants & Thrombolytics
+      ufh: 0,            // 0..1.5 U/mL
+      lmwh: 0,           // 0..1.5 IU/mL
+      warfarin: 0,       // 0..100 % VKOR inhibition
+      apixaban: 0,       // 0..500 ng/mL (Direct Xa inhibitor)
+      dabigatran: 0,     // 0..500 ng/mL (Direct IIa inhibitor)
+      antiplt: 0,        // 0..100 % Aspirin + P2Y12i
+      tpa: 0,            // 0..100 % Alteplase systemic lysis
+      // Reversal & Hemostatic Agents
+      protamine: 0,      // 0..100 % (up to 1.5 U/mL UFH eq)
+      pcc: 0,            // 0..50 IU/kg 4F-PCC
+      vitK: false,       // IV Vitamin K1 (delayed 12-24h)
+      andexanet: false,  // Andexanet alfa (Direct Xa & LMWH reversal)
+      idarucizumab: false,// Idarucizumab (Dabigatran reversal)
+      txa: 0,            // 0..100 % Tranexamic Acid
+      fbgConc: 0,        // 0..3.0 g/L Fibrinogen concentrate
+      pltTransf: 0,      // 0..100 x10^9/L Platelet transfusion
+      rFVIII: false,     // Recombinant FVIII
+      rFIX: false,       // Recombinant FIX
+      rFVIIa: false      // Recombinant FVIIa bypassing agent
+    };
+
+    const PATHOLOGIES = [
+      {
+        id: 'normal',
+        name: 'Normal Hemostasis',
+        tag: 'Baseline',
+        desc: 'Balanced initiation, platelet amplification, thrombin burst (~310 nM) & intact fibrin.',
+        factors: {}, drugs: {}
+      },
+      {
+        id: 'hemo_a',
+        name: 'Hemophilia A (Severe FVIII <1%)',
+        tag: '↑↑aPTT · Nl PT',
+        desc: 'Severely impaired intrinsic tenase: blunted/delayed thrombin burst, prolonged TEG R; 1:1 mix corrects.',
+        factors: { f8: 0.5 }, drugs: {}
+      },
+      {
+        id: 'hemo_b',
+        name: 'Hemophilia B (FIX 2%)',
+        tag: 'FIX 2%',
+        desc: 'Christmas disease: prolonged aPTT, normal PT, delayed burst; rescued by rFIX or rFVIIa.',
+        factors: { f9: 2 }, drugs: {}
+      },
+      {
+        id: 'vwd_2a',
+        name: 'von Willebrand Disease (Type 2A)',
+        tag: 'vWF 22%',
+        desc: 'Defective GPIb adhesion & reduced FVIII carrier protection: primary defect + mild aPTT rise.',
+        factors: { vwf: 22, f8: 34, pltFunc: 62 }, drugs: {}
+      },
+      {
+        id: 'dic',
+        name: 'Acute DIC (Consumptive + Lysis)',
+        tag: '↓PLT · ↓Fbg · ↑↑DD',
+        desc: 'Widespread consumption of platelets, fibrinogen & factors with secondary fibrinolysis.',
+        factors: { f2: 44, f5: 38, f7: 42, f8: 40, f9: 46, f10: 42, plt: 42, fbg: 0.85, at3: 46, pcs: 45, endoTPA: 52, baseDDimer: 8.4 },
+        drugs: {}
+      },
+      {
+        id: 'cirrhosis',
+        name: 'Cirrhosis (Rebalanced Hemostasis)',
+        tag: 'INR ~1.9 · Nl ETP',
+        desc: 'Low II/V/VII/IX/X + PLT 65 offset by low AT-III/PC & high FVIII/vWF -> preserved ETP & TEG!',
+        factors: { f2: 48, f5: 46, f7: 42, f9: 50, f10: 48, f8: 175, vwf: 195, plt: 65, fbg: 2.1, at3: 44, pcs: 40, endoTPA: 12, baseDDimer: 1.4 },
+        drugs: {}
+      },
+      {
+        id: 'vit_k_def',
+        name: 'Vitamin K Deficiency',
+        tag: '↓II,VII,IX,X',
+        desc: 'Low Vit K-dependent factors & PC/S with normal FV & FVIII -> high INR; corrects with Vit K₁/PCC.',
+        factors: { f2: 26, f7: 16, f9: 26, f10: 24, pcs: 26, f5: 100, f8: 100 },
+        drugs: {}
+      },
+      {
+        id: 'thrombocytopenia',
+        name: 'Severe Thrombocytopenia',
+        tag: 'PLT 18 · Nl FIBTEM',
+        desc: 'Normal PT/aPTT/R and intact FIBTEM (~17 mm), but dramatically collapsed overall MA (~30 mm).',
+        factors: { plt: 18 }, drugs: {}
+      },
+      {
+        id: 'tic',
+        name: 'Trauma Coagulopathy (TIC)',
+        tag: '33.5°C · Lysis',
+        desc: 'Hypothermia (33.5°C), acidosis (pH 7.12), Fbg 1.1 g/L & tPA hyperfibrinolysis (wine-glass TEG).',
+        factors: { temp: 33.5, ph: 7.12, fbg: 1.1, plt: 88, f5: 62, f2: 72, endoTPA: 78, baseDDimer: 6.2 },
+        drugs: {}
+      },
+      {
+        id: 'fvl',
+        name: 'Factor V Leiden (APC Resistance)',
+        tag: 'Prothrombotic',
+        desc: 'Mutant FV resists Protein C cleavage -> elevated Peak IIa & ETP with normal routine PT/aPTT.',
+        factors: { fvlAPCResist: 0.82 }, drugs: {}
+      },
+      {
+        id: 'acq_hemo_a',
+        name: 'Acquired Hemophilia A (Inhibitor)',
+        tag: '2h Mix Non-Corr',
+        desc: 'Autoantibody against FVIII: partial immediate 1:1 mix correction, then marked 2h prolongation.',
+        factors: { acquiredF8Inhib: 0.96, f8: 1.5 }, drugs: {}
+      },
+      {
+        id: 'lupus_aps',
+        name: 'Lupus Anticoagulant / APS',
+        tag: '↑aPTT · Thrombotic',
+        desc: 'In-vitro phospholipid inhibitor prolongs aPTT (non-correcting 1:1 mix), yet high in-vivo ETP.',
+        factors: { lupusAnticoag: 0.90 }, drugs: {}
+      }
+    ];
+
+    const FACTOR_GROUPS = [
+      {
+        title: 'Extrinsic & Common',
+        items: [
+          { key: 'f7', label: 'Factor VII', unit: '%', min: 0, max: 200, step: 1, dec: 0 },
+          { key: 'f10', label: 'Factor X', unit: '%', min: 0, max: 200, step: 1, dec: 0 },
+          { key: 'f5', label: 'Factor V', unit: '%', min: 0, max: 200, step: 1, dec: 0 },
+          { key: 'f2', label: 'Prothrombin (FII)', unit: '%', min: 0, max: 200, step: 1, dec: 0 },
+        ]
+      },
+      {
+        title: 'Intrinsic Pathway',
+        items: [
+          { key: 'f8', label: 'Factor VIII', unit: '%', min: 0, max: 250, step: 1, dec: 0 },
+          { key: 'f9', label: 'Factor IX', unit: '%', min: 0, max: 200, step: 1, dec: 0 },
+          { key: 'f11', label: 'Factor XI', unit: '%', min: 0, max: 200, step: 1, dec: 0 },
+        ]
+      },
+      {
+        title: 'Platelets & Fibrin',
+        items: [
+          { key: 'plt', label: 'Platelets', unit: '×10⁹/L', min: 5, max: 600, step: 5, dec: 0 },
+          { key: 'pltFunc', label: 'Platelet Function', unit: '%', min: 10, max: 100, step: 2, dec: 0 },
+          { key: 'vwf', label: 'von Willebrand Factor', unit: '%', min: 5, max: 250, step: 5, dec: 0 },
+          { key: 'fbg', label: 'Fibrinogen', unit: 'g/L', min: 0.3, max: 7.0, step: 0.1, dec: 1 },
+          { key: 'f13', label: 'Factor XIII', unit: '%', min: 5, max: 150, step: 5, dec: 0 },
+        ]
+      },
+      {
+        title: 'Anticoagulant & Lytic Balance',
+        items: [
+          { key: 'at3', label: 'Antithrombin III', unit: '%', min: 20, max: 150, step: 2, dec: 0 },
+          { key: 'pcs', label: 'Protein C/S & APC Sens.', unit: '%', min: 10, max: 150, step: 2, dec: 0 },
+          { key: 'endoTPA', label: 'Endogenous tPA Drive', unit: '%', min: 0, max: 100, step: 2, dec: 0 },
+        ]
+      },
+      {
+        title: 'Trauma Lethal Triad',
+        items: [
+          { key: 'temp', label: 'Core Temperature', unit: '°C', min: 32.0, max: 37.5, step: 0.1, dec: 1 },
+          { key: 'ph', label: 'Arterial pH', unit: '', min: 7.00, max: 7.42, step: 0.01, dec: 2 },
+        ]
+      }
+    ];
+
+    const CHALLENGES = [
+      {
+        id: 'warfarin_ich',
+        name: 'Warfarin ICH Reversal',
+        tag: '4F-PCC + Vit K₁',
+        desc: 'Severe Warfarin overdose (INR ~4.5): run emergent 4F-PCC 35 IU/kg + IV Vitamin K₁ reversal.',
+        btnLoad: 'Load Overdose',
+        btnAct: 'Give 4F-PCC 35 + Vit K₁'
+      },
+      {
+        id: 'ufh_protamine',
+        name: 'UFH Overdose → Protamine',
+        tag: 'Titration',
+        desc: 'Supratherapeutic UFH (1.1 U/mL): neutralize with Protamine 75% and inspect aPTT, TT & TEG R.',
+        btnLoad: 'Load UFH 1.1',
+        btnAct: 'Give Protamine 75%'
+      },
+      {
+        id: 'dabi_idaru',
+        name: 'Dabigatran Bleed → Idarucizumab',
+        tag: 'Specific Fab',
+        desc: 'Dabigatran 380 ng/mL with sky-high TT & prolonged R: administer Idarucizumab for instant rescue.',
+        btnLoad: 'Load Dabigatran',
+        btnAct: 'Give Idarucizumab'
+      },
+      {
+        id: 'crash2_tic',
+        name: 'CRASH-2 Trauma Resuscitation',
+        tag: 'TXA + Fbg + Warm',
+        desc: 'Trauma Coagulopathy (33.5°C, pH 7.12, high LY30): administer TXA + Fibrinogen + Rewarm/pH.',
+        btnLoad: 'Load Trauma TIC',
+        btnAct: 'Run Full Resuscitation'
+      },
+      {
+        id: 'cirrhosis_paradox',
+        name: 'Cirrhosis INR Paradox',
+        tag: 'Rebalanced',
+        desc: 'Inspect INR ~1.9 vs preserved ETP & TEG MA. Compare unnecessary FFP vs targeted fibrinogen/PLT.',
+        btnLoad: 'Load Cirrhosis',
+        btnAct: 'Test Unnecessary FFP'
+      }
+    ];
+
+    /* =========================================================================
+       2. APPLICATION STATE
+       ========================================================================= */
+    const state = {
+      presetId: 'normal',
+      factors: { ...NORMAL_FACTORS },
+      drugs: { ...NORMAL_DRUGS },
+      // UI View States
+      activeTab: 'pathologies',
+      selectedStage: 2,        // 0: Initiation, 1: Amplification, 2: Propagation, 3: Fibrinolysis
+      viscoMode: 'teg',        // 'teg' | 'rotem'
+      showFibtem: false,
+      catMode: 'thrombin',     // 'thrombin' | 'fibrin'
+      mixingOpen: false,
+      // Hover & Baseline Pin
+      viscoHoverIdx: null,
+      catHoverIdx: null,
+      pinnedSim: null,
+      sim: null,
+      challengeLog: []
+    };
+
+    /* =========================================================================
+       3. EFFECTIVE BIOPHYSICAL PARAMETER RESOLUTION
+       ========================================================================= */
+    function resolveEffectiveState(rawF, rawD) {
+      const f = { ...rawF };
+      const d = { ...rawD };
+
+      // 1. Warfarin VKOR inhibition (offset ~85% if delayed IV Vit K1 is active)
+      const effWarf = (d.warfarin / 100) * (d.vitK ? 0.14 : 1.0);
+      const warfDrop = factorScale => Math.max(0.06, 1 - effWarf * factorScale);
+
+      // Base factors after Warfarin
+      let f7 = f.f7 * warfDrop(0.92);
+      let f10 = f.f10 * warfDrop(0.86);
+      let f9 = f.f9 * warfDrop(0.84);
+      let f2 = f.f2 * warfDrop(0.80);
+      let pcs = f.pcs * warfDrop(0.84);
+      let f5 = f.f5;
+      let f8 = f.f8;
+      let f11 = f.f11;
+
+      // 2. 4-Factor PCC replenishment (II, VII, IX, X + mild PC/S)
+      if (d.pcc > 0) {
+        const addPCC = d.pcc * 1.95; // 35 IU/kg -> +68%
+        f2 = Math.min(200, f2 + addPCC * 1.0);
+        f7 = Math.min(200, f7 + addPCC * 0.92);
+        f9 = Math.min(200, f9 + addPCC * 0.90);
+        f10 = Math.min(200, f10 + addPCC * 1.0);
+        pcs = Math.min(150, pcs + addPCC * 0.35);
+      }
+
+      // 3. Targeted Factor Rescue & Transfusions
+      const inhib = clamp(f.acquiredF8Inhib, 0, 1);
+      if (d.rFVIII) {
+        // High-titer FVIII autoantibody neutralizes most exogenous rFVIII, whereas congenital Hemophilia A responds fully
+        f8 = Math.min(250, f8 + 95 * (1 - 0.85 * inhib));
+      }
+      if (d.rFIX) f9 = Math.min(200, f9 + 95);
+      const rFVIIaBypass = d.rFVIIa ? 1.0 : 0.0;
+      if (d.rFVIIa) f7 = Math.min(350, f7 + 160);
+
+      const plt = clamp(f.plt + d.pltTransf, 5, 700);
+      const fbg = clamp(f.fbg + d.fbgConc, 0.25, 9.5);
+      const f13 = clamp(f.f13, 5, 160);
+      const vwf = clamp(f.vwf, 5, 260);
+      const at3 = clamp(f.at3, 15, 160);
+
+      // 4. Lethal Triad: Temperature & Acidosis
+      const tempLoss = Math.max(0, 37.0 - f.temp);
+      const phLoss = Math.max(0, 7.38 - f.ph);
+      const kTemp = clamp(1 - 0.082 * tempLoss, 0.45, 1.04);
+      const kPH = clamp(1 - 1.48 * phLoss, 0.35, 1.03);
+      const kEnz = clamp(kTemp * kPH, 0.25, 1.05);
+
+      // Effective Platelet Function (affected by Antiplatelets + Hypothermia + Acidosis)
+      const pltFunc = clamp(f.pltFunc * (1 - 0.58 * (d.antiplt / 100)) * (1 - 0.055 * tempLoss) * (1 - 0.45 * phLoss), 8, 105);
+
+      // 5. Anticoagulant Neutralization Kinetics
+      // Protamine (0..100%) provides up to 1.5 U/mL UFH neutralizing capacity
+      const protCap = (d.protamine / 100) * 1.5;
+      const ufhNeutralized = Math.min(d.ufh, protCap * 0.98);
+      const effUFH = Math.max(0, d.ufh - ufhNeutralized);
+
+      const remProt = Math.max(0, protCap - ufhNeutralized);
+      // Protamine neutralizes ~60% of LMWH max
+      const lmwhProtNeut = Math.min(d.lmwh * 0.60, remProt * 0.75);
+      let effLMWH = Math.max(0, d.lmwh - lmwhProtNeut);
+      if (d.andexanet) effLMWH *= 0.16;
+
+      // Excess free protamine causes mild paradoxical anticoagulation
+      const excessProt = Math.max(0, protCap - d.ufh - d.lmwh * 0.60);
+
+      // Direct Oral Anticoagulants (DOACs) + Specific Reversals
+      const effApix = d.apixaban * (d.andexanet ? 0.08 : 1.0);
+      const effDabi = d.dabigatran * (d.idarucizumab ? 0.03 : 1.0);
+
+      // Active Xa & IIa inhibition scalars (AT-III dependent for heparins)
+      const atScale = clamp(at3 / 100, 0.2, 1.5);
+      const xaInhibLoad = effUFH * 2.1 * atScale + effLMWH * 1.85 * atScale + (effApix / 155.0) + excessProt * 0.16;
+      const iiaInhibLoad = effUFH * 2.6 * atScale + effLMWH * 0.42 * atScale + (effDabi / 120.0) + excessProt * 0.22;
+
+      const xaAvail = 1 / (1 + xaInhibLoad);
+      const iiaAvail = 1 / (1 + iiaInhibLoad);
+
+      // Effective APC sensitivity (reduced in Factor V Leiden and modestly in Lupus Anticoagulant)
+      const apcEff = clamp((pcs / 100) * (1 - 0.78 * f.fvlAPCResist) * (1 - 0.30 * f.lupusAnticoag), 0.08, 1.8);
+
+      // Effective Fibrinolytic Drive (Endogenous tPA + Systemic Alteplase, blocked ~96% by TXA)
+      const rawLysis = (f.endoTPA / 100) + (d.tpa / 100) * 1.45;
+      const txaBlock = 1 - 0.96 * (d.txa / 100);
+      const effLysisDrive = rawLysis * txaBlock;
+
+      return {
+        f2, f5, f7, f8, f9, f10, f11,
+        plt, pltFunc, vwf, fbg, f13, at3, pcs, apcEff,
+        temp: f.temp, ph: f.ph, kEnz,
+        effUFH, effLMWH, effApix, effDabi, excessProt,
+        xaInhibLoad, iiaInhibLoad, xaAvail, iiaAvail,
+        rFVIIaBypass, effLysisDrive, rawLysis,
+        acquiredF8Inhib: inhib,
+        lupusAnticoag: f.lupusAnticoag,
+        fvlAPCResist: f.fvlAPCResist,
+        baseDDimer: f.baseDDimer,
+        antiplt: d.antiplt,
+        txa: d.txa,
+        warfarin: d.warfarin,
+        pcc: d.pcc,
+        vitK: d.vitK,
+        protamine: d.protamine,
+        andexanet: d.andexanet,
+        idarucizumab: d.idarucizumab
+      };
+    }
+
+    /* =========================================================================
+       4. LABORATORY ASSAYS & INTERACTIVE 1:1 MIXING STUDY SOLVER
+       ========================================================================= */
+    function computeCoagLabs(eff, finalDDimer, fbgEnd) {
+      // Factor activities normalized (floor at 0.004 to prevent divide-by-zero)
+      const a7 = clamp(eff.f7 / 100, 0.004, 2.5);
+      const a10 = clamp(eff.f10 / 100, 0.004, 2.5);
+      const a5 = clamp(eff.f5 / 100, 0.004, 2.5);
+      const a2 = clamp(eff.f2 / 100, 0.004, 2.5);
+      const a8 = clamp(eff.f8 / 100, 0.004, 2.5);
+      const a9 = clamp(eff.f9 / 100, 0.004, 2.5);
+      const a11 = clamp(eff.f11 / 100, 0.004, 2.5);
+
+      const fbgPenalty = eff.fbg < 1.0 ? Math.pow(1.0 / Math.max(0.25, eff.fbg), 0.72) - 1 : 0;
+
+      // 1. PT (s) & INR — calibrated to Normal PT = 12.2 s, INR = 1.00
+      const extDef =
+        0.52 * Math.max(0, Math.pow(1 / a7, 0.44) - 1) +
+        0.48 * Math.max(0, Math.pow(1 / a10, 0.46) - 1) +
+        0.38 * Math.max(0, Math.pow(1 / a5, 0.44) - 1) +
+        0.36 * Math.max(0, Math.pow(1 / a2, 0.44) - 1) +
+        0.45 * fbgPenalty;
+
+      // Heparin neutralizer in PT reagent buffers UFH < 0.75 U/mL
+      const ufhPT = Math.max(0, eff.effUFH - 0.70) * 5.2;
+      const apixPT = (eff.effApix / 100) * 1.45;
+      const dabiPT = (eff.effDabi / 100) * 1.35;
+      const pt = clamp(12.2 * (1 + extDef) + ufhPT + apixPT + dabiPT, 9.8, 120.0);
+      const inr = clamp(Math.pow(pt / 12.2, 1.06), 0.80, 12.0);
+
+      // 2. aPTT (s) — calibrated to Normal aPTT = 31.0 s
+      const intDef =
+        0.58 * Math.max(0, Math.pow(1 / a8, 0.30) - 1) +
+        0.52 * Math.max(0, Math.pow(1 / a9, 0.30) - 1) +
+        0.34 * Math.max(0, Math.pow(1 / a11, 0.28) - 1) +
+        0.35 * Math.max(0, Math.pow(1 / a10, 0.38) - 1) +
+        0.32 * Math.max(0, Math.pow(1 / a5, 0.36) - 1) +
+        0.30 * Math.max(0, Math.pow(1 / a2, 0.36) - 1) +
+        0.40 * fbgPenalty;
+
+      const ufhAPTT = eff.effUFH * 78.0 * clamp(eff.at3 / 100, 0.35, 1.3);
+      const lmwhAPTT = eff.effLMWH * 12.5 * clamp(eff.at3 / 100, 0.35, 1.3);
+      const dabiAPTT = Math.pow(eff.effDabi / 100, 0.85) * 14.5;
+      const apixAPTT = (eff.effApix / 100) * 3.8;
+      const protAPTT = eff.excessProt * 12.0;
+      const laAPTT = eff.lupusAnticoag * 34.0;
+      const bypassAPTT = eff.rFVIIaBypass > 0.5 ? 0.78 : 1.0;
+
+      const aptt = clamp((31.0 * (1 + intDef) * bypassAPTT) + ufhAPTT + lmwhAPTT + dabiAPTT + apixAPTT + protAPTT + laAPTT, 22.0, 180.0);
+
+      // 3. Thrombin Time (TT, s) — exquisitely sensitive to UFH, Dabigatran & low Fibrinogen (Normal 16.0 s)
+      const fbgTT = eff.fbg < 1.2 ? (1.2 - eff.fbg) * 18.0 : 0;
+      const ufhTT = eff.effUFH * 135.0 * clamp(eff.at3 / 100, 0.35, 1.3);
+      const dabiTT = eff.effDabi * 0.42;
+      const fdpTT = Math.max(0, finalDDimer - 3.0) * 1.1;
+      const tt = clamp(16.0 + fbgTT + ufhTT + dabiTT + fdpTT + eff.excessProt * 9.0, 13.0, 180.0);
+
+      // 4. Anti-Xa Assay (IU/mL)
+      const antiXa = clamp(
+        eff.effUFH * 0.92 * clamp(eff.at3 / 100, 0.4, 1.3) +
+        eff.effLMWH * 1.05 * clamp(eff.at3 / 100, 0.4, 1.3) +
+        (eff.effApix / 150.0) * 0.95,
+        0,
+        3.5
+      );
+
+      return { pt, inr, aptt, tt, antiXa, fbg: eff.fbg, fbgEnd, dDimer: finalDDimer };
+    }
+
+    function computeMixingStudy(rawF, rawD) {
+      const patEff = resolveEffectiveState(rawF, rawD);
+      const patLabs = computeCoagLabs(patEff, patEff.baseDDimer, patEff.fbg);
+
+      // Immediate 1:1 Mix (50% Patient + 50% Normal Pooled Plasma)
+      const mixImm = {
+        ...patEff,
+        f2: 0.5 * patEff.f2 + 50,
+        f5: 0.5 * patEff.f5 + 50,
+        f7: 0.5 * patEff.f7 + 50,
+        f8: 0.5 * patEff.f8 + 50 * (1 - 0.35 * patEff.acquiredF8Inhib), // Partial immediate binding of FVIII Ab
+        f9: 0.5 * patEff.f9 + 50,
+        f10: 0.5 * patEff.f10 + 50,
+        f11: 0.5 * patEff.f11 + 50,
+        fbg: 0.5 * patEff.fbg + 1.5,
+        at3: 0.5 * patEff.at3 + 50,
+        effUFH: 0.55 * patEff.effUFH,
+        effLMWH: 0.55 * patEff.effLMWH,
+        effApix: 0.55 * patEff.effApix,
+        effDabi: 0.55 * patEff.effDabi,
+        excessProt: 0.5 * patEff.excessProt,
+        lupusAnticoag: patEff.lupusAnticoag * 0.88 // Phospholipid inhibitor persists strongly on 1:1 mix!
+      };
+      const immLabs = computeCoagLabs(mixImm, 0.25, mixImm.fbg);
+
+      // 2-Hour 37°C Incubated Mix (Bethesda time- & temperature-dependent FVIII neutralization!)
+      const mix2h = {
+        ...mixImm,
+        f8: patEff.acquiredF8Inhib > 0.1
+          ? Math.max(1.2, mixImm.f8 * (1 - 0.94 * patEff.acquiredF8Inhib))
+          : mixImm.f8 * 0.97
+      };
+      const incLabs = computeCoagLabs(mix2h, 0.25, mix2h.fbg);
+
+      // Rosner Index for aPTT: ((Mix - Normal) / Patient) * 100 (<= 12% = correction, >= 15% = inhibitor)
+      const apttNormal = 31.0;
+      const patProlongedAPTT = patLabs.aptt > 38.0;
+      const patProlongedPT = patLabs.pt > 14.5;
+
+      let verdict = 'Normal Baseline Clotting Times';
+      let verdictLevel = 'ok';
+      let detail = 'Baseline PT and aPTT are within reference ranges; a 1:1 mixing study is not clinically indicated.';
+
+      if (patProlongedAPTT || patProlongedPT) {
+        const immCorrAPTT = !patProlongedAPTT || immLabs.aptt <= 36.5;
+        const incCorrAPTT = !patProlongedAPTT || incLabs.aptt <= 37.5;
+        const immCorrPT = !patProlongedPT || immLabs.pt <= 14.0;
+
+        if (patProlongedAPTT && (incLabs.aptt - immLabs.aptt) >= 10.0) {
+          verdict = 'Time- & Temp-Dependent Inhibitor (Acquired FVIII Ab)';
+          verdictLevel = 'rose';
+          detail = `Immediate 1:1 mix partially corrects (${patLabs.aptt.toFixed(1)} → ${immLabs.aptt.toFixed(1)} s), but 2h 37°C incubation markedly prolongs aPTT to ${incLabs.aptt.toFixed(1)} s — classic Bethesda FVIII autoantibody signature.`;
+        } else if (!immCorrAPTT || !immCorrPT) {
+          if (patEff.lupusAnticoag > 0.2) {
+            verdict = 'Immediate Non-Correction (Lupus Anticoagulant)';
+            verdictLevel = 'amber';
+            detail = `Phospholipid-dependent inhibitor fails to correct immediately (${immLabs.aptt.toFixed(1)} s) or at 2h (${incLabs.aptt.toFixed(1)} s). Confirm with dRVVT & hexagonal phase phospholipid neutralization.`;
+          } else if (patEff.effUFH > 0.05 || patEff.effDabi > 25 || patEff.effApix > 40 || patEff.effLMWH > 0.2) {
+            verdict = 'Immediate Non-Correction (Anticoagulant Effect)';
+            verdictLevel = 'sky';
+            detail = `Circulating anticoagulant inhibits normal pooled plasma immediately (aPTT ${immLabs.aptt.toFixed(1)} s, PT ${immLabs.pt.toFixed(1)} s). Check TT, Anti-Xa & heparinase neutralization.`;
+          } else {
+            verdict = 'Immediate Non-Correction (Circulating Inhibitor)';
+            verdictLevel = 'rose';
+            detail = `Failure to correct on immediate 1:1 mixing indicates a circulating inhibitor or severe dysfibrinogenemia.`;
+          }
+        } else if (immCorrAPTT && incCorrAPTT && immCorrPT) {
+          verdict = 'Complete Correction (Factor Deficiency)';
+          verdictLevel = 'ok';
+          detail = `50% normal pooled plasma restores deficient factor(s) above the ~30–40% threshold (aPTT ${patLabs.aptt.toFixed(1)} → ${immLabs.aptt.toFixed(1)} s, 2h ${incLabs.aptt.toFixed(1)} s; PT ${patLabs.pt.toFixed(1)} → ${immLabs.pt.toFixed(1)} s).`;
+        }
+      }
+
+      return { patLabs, immLabs, incLabs, verdict, verdictLevel, detail };
+    }
+
+    /* =========================================================================
+       5. CELL-BASED HEMOSTASIS RK4 ODE & VISCOELASTIC TEG/ROTEM ENGINE
+       ========================================================================= */
+    function runCoagSimulation(rawF, rawD) {
+      const eff = resolveEffectiveState(rawF, rawD);
+
+      // Normalized pathway strengths
+      const n7 = clamp(eff.f7 / 100, 0.005, 3.5);
+      const n10 = clamp(eff.f10 / 100, 0.005, 2.5);
+      const n5 = clamp(eff.f5 / 100, 0.005, 2.5);
+      const n2 = clamp(eff.f2 / 100, 0.005, 2.5);
+      const n8 = clamp(eff.f8 / 100, 0.004, 2.5);
+      const n9 = clamp(eff.f9 / 100, 0.004, 2.5);
+      const n11 = clamp(eff.f11 / 100, 0.02, 2.5);
+      const nAT = clamp(eff.at3 / 100, 0.18, 1.6);
+
+      const pltScale = clamp(Math.pow(eff.plt / 250, 0.42), 0.28, 1.30);
+      const pltFuncScale = clamp(eff.pltFunc / 100, 0.15, 1.1);
+      const vwfScale = clamp(Math.pow(eff.vwf / 100, 0.35), 0.38, 1.25);
+
+      // 1. CELL-BASED HEMOSTASIS RK4 ODE (0 -> 45 min, dt = 0.05 min, 900 steps)
+      const T_CAT = 45.0;
+      const dtCat = 0.05;
+      const nCatSteps = Math.round(T_CAT / dtCat);
+      const recEvery = 3; // 301 stored output points (every 0.15 min)
+
+      const initII = 1400.0 * n2; // nM Prothrombin
+      let XaE = 0.0;
+      let PltA = 0.0;
+      let Tenase = 0.0;
+      let II = initII;
+      let IIa = 0.0;
+      let APC = 0.0;
+      let Fbg = eff.fbg;
+      let Fibrin = 0.0;
+      let Plasmin = 0.0;
+      let DDimer = eff.baseDDimer;
+
+      // Rate parameters calibrated cleanly to Normal Hemostasis:
+      // Lag ~3.2 min, Peak IIa ~310 nM, TTP ~6.8 min, ETP ~1720 nM*min
+      const kInit = 0.42 * eff.kEnz * Math.pow(n7, 0.65) * Math.pow(n10, 0.70) * eff.xaAvail;
+      const kAmp = 0.85 * eff.kEnz * pltFuncScale * vwfScale * Math.pow(n5, 0.35);
+      // Intrinsic tenase rate (VIIIa:IXa) + rFVIIa bypassing activity directly on activated platelets
+      const tenaseFactor = Math.pow(n8, 0.78) * Math.pow(n9, 0.78) * (0.45 + 0.55 * Math.pow(n11, 0.55));
+      const kTenase = 1.45 * eff.kEnz * (tenaseFactor + 0.82 * eff.rFVIIaBypass) * pltScale;
+      const kBurst = 285.0 * eff.kEnz * Math.pow(n10, 0.72) * Math.pow(n5, 0.62) * eff.xaAvail * eff.iiaAvail;
+
+      // Thrombin clearance: AT-III (+ UFH/LMWH potentiation) + Dabigatran + alpha2-macroglobulin baseline
+      const kClearIIa = (0.31 * nAT * (1 + eff.effUFH * 2.4 + eff.effLMWH * 0.45) + 0.08 + (eff.effDabi / 125.0) * 0.55 + eff.excessProt * 0.12);
+
+      // Output arrays for CAT & Fibrin/Lysis
+      const catT = [];
+      const catIIa = [];
+      const catFbg = [];
+      const catFibrin = [];
+      const catPlasmin = [];
+      const catDDimer = [];
+
+      let peakIIa = 0;
+      let ttp = 0;
+      let lagTime = null;
+      let etp = 0;
+      let maxInitFlux = 0;
+      let maxAmpFlux = 0;
+      let maxPropFlux = 0;
+      let maxLysisFlux = 0;
+
+      // Full-resolution IIa lookup for coupling into TEG/ROTEM (indexed every 0.1 min)
+      const iiaGrid = new Float32Array(601);
+
+      function catDerivs(s) {
+        const iiFrac = s.II / (s.II + 420.0);
+        // Stage 1: Initiation on TF-bearing cell (TF:VIIa -> Xa, downregulated by TFPI)
+        const dXaE = kInit * Math.exp(-0.085 * s.t) * (1 / (1 + 0.35 * s.XaE)) - (0.35 + 0.55 * eff.xaInhibLoad) * s.XaE;
+
+        // Trace thrombin from initiation Xa
+        const initIIaRate = 18.5 * s.XaE * Math.pow(n5, 0.45) * iiFrac * eff.iiaAvail;
+
+        // Stage 2: Platelet Amplification (trace IIa + vWF activates platelet surface)
+        const ampDrive = kAmp * (s.IIa / (s.IIa + 10.5)) * (1 - s.PltA);
+        const dPltA = ampDrive;
+
+        // Stage 3: Propagation (Intrinsic Tenase VIIIa:IXa + Prothrombinase Va:Xa -> Thrombin Burst)
+        const apcInhib = 1 + 1.85 * s.APC * eff.apcEff;
+        const tenaseForm = kTenase * s.PltA * (s.IIa / (s.IIa + 14.0)) * (1 / apcInhib);
+        const dTenase = tenaseForm - 0.58 * s.Tenase;
+
+        const propIIaRate = (kBurst * s.Tenase * iiFrac) / apcInhib;
+        const totalIIaGen = initIIaRate + propIIaRate;
+
+        // Consume prothrombin & update free IIa
+        const dII = -totalIIaGen;
+        const dIIa = totalIIaGen - kClearIIa * s.IIa;
+
+        // Activated Protein C negative feedback (proportional to IIa via endothelial TM)
+        const dAPC = 0.0014 * s.IIa * (eff.pcs / 100) - 0.24 * s.APC;
+
+        // Fibrinogen -> Fibrin polymerization
+        const fbgCleav = 0.0046 * s.IIa * eff.iiaAvail * (s.Fbg / (s.Fbg + 0.55));
+        const dFbg = -fbgCleav;
+
+        // Stage 4: Fibrinolysis (tPA -> Plasmin -> Fibrin cleavage to D-dimer)
+        // Cross-linked FXIII protects fibrin slightly from lysis
+        const f13Prot = 0.65 + 0.35 * clamp(eff.f13 / 100, 0.1, 1.3);
+        const plasTarget = eff.effLysisDrive * (0.25 + 0.75 * (s.Fibrin / (s.Fibrin + 0.4)));
+        const dPlasmin = 0.26 * (plasTarget - s.Plasmin);
+        const lysisRate = (0.145 * s.Plasmin * s.Fibrin) / f13Prot;
+        const dFibrin = fbgCleav - lysisRate;
+        const dDDimer = lysisRate * 4.8;
+
+        return {
+          dXaE, dPltA, dTenase, dII, dIIa, dAPC, dFbg, dFibrin, dPlasmin, dDDimer,
+          initIIaRate, ampDrive, propIIaRate, lysisRate
+        };
+      }
+
+      let cur = { t: 0, XaE, PltA, Tenase, II, IIa, APC, Fbg, Fibrin, Plasmin, DDimer };
+
+      for (let step = 0; step <= nCatSteps; step++) {
+        const t = step * dtCat;
+        cur.t = t;
+
+        if (step % 2 === 0 && step / 2 <= 450) {
+          iiaGrid[step / 2] = cur.IIa;
+        }
+
+        if (cur.IIa > peakIIa) { peakIIa = cur.IIa; ttp = t; }
+        if (lagTime === null && cur.IIa >= 10.0) { lagTime = t; }
+        if (step > 0) etp += cur.IIa * dtCat;
+
+        if (step % recEvery === 0) {
+          catT.push(t);
+          catIIa.push(cur.IIa);
+          catFbg.push(cur.Fbg);
+          catFibrin.push(cur.Fibrin);
+          catPlasmin.push(cur.Plasmin);
+          catDDimer.push(cur.DDimer);
+        }
+
+        if (step === nCatSteps) break;
+
+        // RK4 Step
+        const k1 = catDerivs(cur);
+        if (k1.initIIaRate > maxInitFlux) maxInitFlux = k1.initIIaRate;
+        if (k1.ampDrive > maxAmpFlux) maxAmpFlux = k1.ampDrive;
+        if (k1.propIIaRate > maxPropFlux) maxPropFlux = k1.propIIaRate;
+        if (k1.lysisRate > maxLysisFlux) maxLysisFlux = k1.lysisRate;
+
+        const adv = (base, k, h) => ({
+          t: base.t + h,
+          XaE: Math.max(0, base.XaE + h * k.dXaE),
+          PltA: clamp(base.PltA + h * k.dPltA, 0, 1),
+          Tenase: Math.max(0, base.Tenase + h * k.dTenase),
+          II: Math.max(0, base.II + h * k.dII),
+          IIa: Math.max(0, base.IIa + h * k.dIIa),
+          APC: Math.max(0, base.APC + h * k.dAPC),
+          Fbg: Math.max(0, base.Fbg + h * k.dFbg),
+          Fibrin: Math.max(0, base.Fibrin + h * k.dFibrin),
+          Plasmin: Math.max(0, base.Plasmin + h * k.dPlasmin),
+          DDimer: Math.max(0, base.DDimer + h * k.dDDimer)
+        });
+
+        const k2 = catDerivs(adv(cur, k1, 0.5 * dtCat));
+        const k3 = catDerivs(adv(cur, k2, 0.5 * dtCat));
+        const k4 = catDerivs(adv(cur, k3, dtCat));
+
+        const combine = (v, a, b, c, dVal) => v + (dtCat / 6) * (a + 2 * b + 2 * c + dVal);
+        cur = {
+          t: t + dtCat,
+          XaE: Math.max(0, combine(cur.XaE, k1.dXaE, k2.dXaE, k3.dXaE, k4.dXaE)),
+          PltA: clamp(combine(cur.PltA, k1.dPltA, k2.dPltA, k3.dPltA, k4.dPltA), 0, 1),
+          Tenase: Math.max(0, combine(cur.Tenase, k1.dTenase, k2.dTenase, k3.dTenase, k4.dTenase)),
+          II: Math.max(0, combine(cur.II, k1.dII, k2.dII, k3.dII, k4.dII)),
+          IIa: Math.max(0, combine(cur.IIa, k1.dIIa, k2.dIIa, k3.dIIa, k4.dIIa)),
+          APC: Math.max(0, combine(cur.APC, k1.dAPC, k2.dAPC, k3.dAPC, k4.dAPC)),
+          Fbg: Math.max(0, combine(cur.Fbg, k1.dFbg, k2.dFbg, k3.dFbg, k4.dFbg)),
+          Fibrin: Math.max(0, combine(cur.Fibrin, k1.dFibrin, k2.dFibrin, k3.dFibrin, k4.dFibrin)),
+          Plasmin: Math.max(0, combine(cur.Plasmin, k1.dPlasmin, k2.dPlasmin, k3.dPlasmin, k4.dPlasmin)),
+          DDimer: Math.max(0, combine(cur.DDimer, k1.dDDimer, k2.dDDimer, k3.dDDimer, k4.dDDimer))
+        };
+      }
+
+      // Compute Clinical Coagulation Lab Panel
+      const labs = computeCoagLabs(eff, cur.DDimer, cur.Fbg);
+
+      // 2. VISCOELASTIC TEG / ROTEM CLOT FIRMNESS TRAJECTORY (0 -> 60 min, dt = 0.1 min)
+      const dtV = 0.1;
+      const nVSteps = 600;
+      const viscoT = new Float32Array(nVSteps + 1);
+      const tegAmp = new Float32Array(nVSteps + 1);
+      const rotemAmp = new Float32Array(nVSteps + 1);
+      const fibtemAmp = new Float32Array(nVSteps + 1);
+
+      // Target Mechanical Clot Strengths:
+      // Fibrin-only FIBTEM ceiling (~17 mm at Fbg 3.0 g/L, FXIII 100%)
+      const f13Strength = 0.55 + 0.45 * clamp(eff.f13 / 100, 0.08, 1.25);
+      const fbgTerm = 34.0 * (eff.fbg / (eff.fbg + 3.0)); // 17.0 at Fbg=3.0 g/L
+      const fibtemTarget = clamp(fbgTerm * f13Strength, 1.5, 42.0);
+
+      // Platelet-Fibrin contractile contribution (~45 mm at PLT 250, normal func & vWF)
+      const pltCountTerm = 55.0 * (eff.plt / (eff.plt + 56.0)); // 44.9 at PLT 250, 13.4 at PLT 18
+      const pltQualTerm = (0.35 + 0.65 * clamp(eff.pltFunc / 100, 0.1, 1.05)) * (0.68 + 0.32 * clamp(eff.vwf / 100, 0.15, 1.2));
+      const fbgScaffold = clamp(eff.fbg / (eff.fbg + 0.42), 0.25, 1.12);
+      const pltTarget = pltCountTerm * pltQualTerm * fbgScaffold;
+
+      const maTarget = clamp(fibtemTarget + pltTarget, 3.0, 82.0);
+
+      // Effective onset delay (TEG R in min; ROTEM EXTEM CT in min -> display in sec!)
+      // Normal: TEG R ≈ 6.2 min, ROTEM CT ≈ 58 s (0.97 min)
+      const burstSpeedFactor = clamp(Math.pow(Math.max(12, peakIIa) / 310.0, 0.42), 0.32, 1.45);
+      const lagRef = lagTime !== null ? lagTime : 26.0;
+
+      // TEG is kaolin (intrinsic)-sensitive, ROTEM EXTEM is tissue-factor (extrinsic)-sensitive
+      const intrinsicDelay = Math.max(0, (labs.aptt - 31.0) * 0.19);
+      const extrinsicDelay = Math.max(0, (labs.pt - 12.2) * 0.085);
+      const tegOnset = clamp(3.0 + lagRef * 0.95 + intrinsicDelay * (eff.lupusAnticoag > 0.2 ? 0.08 : 1.0) - (eff.fvlAPCResist * 0.6), 2.5, 46.0);
+      const rotemOnsetMin = clamp(0.95 + extrinsicDelay * 0.55 + Math.max(0, (lagRef - 3.2) * 0.12) + eff.effDabi * 0.002 + eff.effApix * 0.0018, 0.55, 16.0);
+
+      // Polymerization growth rate constant (sets K / CFT and alpha-angle)
+      const polyRateTEG = clamp(0.42 * eff.kEnz * burstSpeedFactor * clamp(eff.fbg / 3.0, 0.35, 1.45) * (0.45 + 0.55 * clamp(eff.plt / 250, 0.2, 1.3)), 0.06, 1.15);
+      const polyRateROTEM = clamp(polyRateTEG * 1.38, 0.08, 1.45);
+
+      // Lysis decay rate after clot maturation (sets LY30 / LI30!)
+      // At normal endoTPA=5% -> ~1.2% LY30; at Trauma TIC (endoTPA=78%) -> ~44% LY30; at TXA 100% -> <1.5%!
+      const lysisDecayRate = Math.max(0, (eff.effLysisDrive - 0.025) * 0.056) / (0.65 + 0.35 * clamp(eff.f13 / 100, 0.1, 1.3));
+      const basalLysis = 0.00045;
+
+      // Integrate TEG, ROTEM EXTEM, and FIBTEM trajectories smoothly
+      let aTEG = 0, aROT = 0, aFIB = 0;
+      let maxTEG = 0, tMaxTEG = 0;
+      let maxROT = 0, tMaxROT = 0;
+      let maxFIB = 0;
+      let rTime = null, kEnd = null;
+      let ctTime = null, cftEnd = null;
+
+      // If thrombin generation is virtually zero (e.g. extreme UFH/Dabigatran), cap clot formation
+      const thrombinPermit = clamp(peakIIa / (peakIIa + 18.0), 0.02, 1.0);
+      const effMaTarget = maTarget * thrombinPermit;
+      const effFibTarget = fibtemTarget * thrombinPermit;
+
+      for (let i = 0; i <= nVSteps; i++) {
+        const t = i * dtV;
+        viscoT[i] = t;
+
+        // Smooth growth + delayed fibrinolysis once fibrin matures
+        const gTEG = t > tegOnset ? polyRateTEG * Math.pow(Math.min(1, (t - tegOnset) / 1.4), 1.3) * Math.max(0, effMaTarget - aTEG) : 0;
+        const lTEG = (basalLysis + lysisDecayRate * clamp((t - tegOnset - 2.5) / 8.0, 0, 1)) * aTEG;
+        aTEG = clamp(aTEG + dtV * (gTEG - lTEG), 0, 85);
+
+        const gROT = t > rotemOnsetMin ? polyRateROTEM * Math.pow(Math.min(1, (t - rotemOnsetMin) / 0.8), 1.2) * Math.max(0, effMaTarget - aROT) : 0;
+        const lROT = (basalLysis + lysisDecayRate * clamp((t - rotemOnsetMin - 2.5) / 8.0, 0, 1)) * aROT;
+        aROT = clamp(aROT + dtV * (gROT - lROT), 0, 85);
+
+        const gFIB = t > rotemOnsetMin ? polyRateROTEM * 1.1 * Math.pow(Math.min(1, (t - rotemOnsetMin) / 0.8), 1.2) * Math.max(0, effFibTarget - aFIB) : 0;
+        const lFIB = (basalLysis + lysisDecayRate * 1.15 * clamp((t - rotemOnsetMin - 2.5) / 8.0, 0, 1)) * aFIB;
+        aFIB = clamp(aFIB + dtV * (gFIB - lFIB), 0, 50);
+
+        tegAmp[i] = aTEG;
+        rotemAmp[i] = aROT;
+        fibtemAmp[i] = aFIB;
+
+        if (rTime === null && aTEG >= 2.0) rTime = t;
+        if (rTime !== null && kEnd === null && aTEG >= 20.0) kEnd = t;
+        if (aTEG > maxTEG) { maxTEG = aTEG; tMaxTEG = t; }
+
+        if (ctTime === null && aROT >= 2.0) ctTime = t;
+        if (ctTime !== null && cftEnd === null && aROT >= 20.0) cftEnd = t;
+        if (aROT > maxROT) { maxROT = aROT; tMaxROT = t; }
+        if (aFIB > maxFIB) maxFIB = aFIB;
+      }
+
+      const tegR = rTime !== null ? rTime : 60.0;
+      const tegK = (rTime !== null && kEnd !== null) ? Math.max(0.6, kEnd - rTime) : null;
+      const tegAlpha = tegK !== null ? clamp(Math.atan((18.0 / tegK) * 0.21) * (180 / Math.PI), 12, 82) : clamp(maxTEG * 1.4, 5, 45);
+      const idxLY30 = Math.min(nVSteps, Math.round((tMaxTEG + 30.0) / dtV));
+      const tegLY30 = maxTEG > 4 ? clamp(((maxTEG - tegAmp[idxLY30]) / maxTEG) * 100, 0, 100) : 0;
+
+      const rotemCTSec = (ctTime !== null ? ctTime : 60.0) * 60.0;
+      const rotemCFTSec = (ctTime !== null && cftEnd !== null) ? Math.max(25, (cftEnd - ctTime) * 60.0) : null;
+      const rotemAlpha = rotemCFTSec !== null ? clamp(Math.atan((18.0 / (rotemCFTSec / 60)) * 0.24) * (180 / Math.PI), 15, 84) : clamp(maxROT * 1.5, 5, 50);
+      const idxLI30 = Math.min(nVSteps, Math.round((tMaxROT + 30.0) / dtV));
+      const rotemLI30 = maxROT > 4 ? clamp((rotemAmp[idxLI30] / maxROT) * 100, 0, 100) : 100;
+
+      // Phenotype Classification
+      let phenotype = 'Balanced';
+      let phenoLevel = 'ok';
+      if (state.presetId === 'dic' || (eff.plt < 80 && eff.fbg < 1.3 && labs.dDimer > 4.0 && labs.inr > 1.4)) {
+        phenotype = 'Consumptive DIC';
+        phenoLevel = 'rose';
+      } else if (tegLY30 >= 12.0) {
+        phenotype = 'Hyperfibrinolysis';
+        phenoLevel = 'sky';
+      } else if (labs.inr >= 1.5 && etp >= 1250 && maxTEG >= 45 && eff.at3 < 65) {
+        phenotype = 'Rebalanced';
+        phenoLevel = 'ok';
+      } else if (etp >= 2050 || eff.fvlAPCResist > 0.4 || (eff.lupusAnticoag > 0.4 && etp >= 1750)) {
+        phenotype = 'Prothrombotic';
+        phenoLevel = 'amber';
+      } else if ((eff.plt < 50 || eff.vwf < 40 || eff.pltFunc < 45) && tegR <= 9.5 && maxFIB >= 12) {
+        phenotype = 'Primary Defect';
+        phenoLevel = 'amber';
+      } else if (tegR > 10.5 || maxTEG < 48 || peakIIa < 150 || labs.inr > 1.5 || labs.aptt > 44) {
+        phenotype = 'Hypocoagulable';
+        phenoLevel = 'rose';
+      }
+
+      // Stage Fluxes (0..1.6 normalized for SVG thickness & Phase Inspector)
+      const fluxes = {
+        init: clamp(maxInitFlux / 14.0, 0.08, 1.6),
+        amp: clamp(maxAmpFlux / 0.55, 0.08, 1.6),
+        prop: clamp(maxPropFlux / 145.0, 0.06, 1.6),
+        lysis: clamp(maxLysisFlux / 0.06 + eff.effLysisDrive * 1.1, 0.08, 1.8)
+      };
+
+      return {
+        eff,
+        labs,
+        cat: { t: catT, iia: catIIa, fbg: catFbg, fibrin: catFibrin, plasmin: catPlasmin, dDimer: catDDimer, peakIIa, ttp, lagTime, etp },
+        visco: {
+          t: viscoT, teg: tegAmp, rotem: rotemAmp, fibtem: fibtemAmp,
+          tegR, tegK, tegAlpha, tegMA: maxTEG, tMaxTEG, tegLY30,
+          rotemCT: rotemCTSec, rotemCFT: rotemCFTSec, rotemAlpha, rotemMCF: maxROT, tMaxROT, rotemLI30,
+          fibtemMCF: maxFIB
+        },
+        phenotype,
+        phenoLevel,
+        fluxes
+      };
+    }
+
+    function recompute() {
+      try {
+        state.sim = runCoagSimulation(state.factors, state.drugs);
+        renderKPIStrip();
+        renderCoagSVG();
+        renderPhaseInspector();
+        renderLabPanelAndSynthesis();
+        if (state.mixingOpen) renderMixingStudyPanel();
+        drawViscoCanvas();
+        drawCATCanvas();
+      } catch (err) {
+        console.error('CoagSim solver error:', err);
+      }
+    }
+
+    /* =========================================================================
+       6. KPI TELEMETRY, SVG SCHEMATIC, LAB PANEL & SYNTHESIS RENDERERS
+       ========================================================================= */
+    function formatDelta(curr, ref, dec = 1) {
+      if (!Number.isFinite(curr) || !Number.isFinite(ref)) return '';
+      const diff = curr - ref;
+      const eps = dec === 0 ? 0.5 : (dec === 1 ? 0.05 : 0.015);
+      if (Math.abs(diff) < eps) return '<span class="font-mono text-[9.5px] text-zinc-400">&mdash;</span>';
+      const sign = diff > 0 ? '+' : '';
+      const cls = diff > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-sky-600 dark:text-sky-400';
+      return `<span class="font-mono text-[9.5px] tabular-nums ${cls}">${sign}${diff.toFixed(dec)}</span>`;
+    }
+
+    function renderKPIStrip() {
+      const sim = state.sim;
+      const ref = state.pinnedSim;
+      if (!sim) return;
+      const l = sim.labs;
+      const c = sim.cat;
+      const v = sim.visco;
+      const isROTEM = state.viscoMode === 'rotem';
+
+      const phenoBadgeCls = {
+        ok: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        amber: 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+        sky: 'border-sky-500/35 bg-sky-500/10 text-sky-700 dark:text-sky-300',
+        rose: 'border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-400'
+      }[sim.phenoLevel];
+
+      const tiles = [
+        {
+          title: 'PT / INR',
+          delta: ref ? formatDelta(l.inr, ref.labs.inr, 2) : '',
+          val: `${l.pt.toFixed(1)}s`,
+          unit: `· ${l.inr.toFixed(2)}`,
+          sub: `Ref 10.5–13.8 s · INR 0.8–1.2`,
+          cls: l.inr > 1.35 ? 'text-rose-600 dark:text-rose-400' : 'text-[#09090b] dark:text-[#f4f4f5]'
+        },
+        {
+          title: 'aPTT · TT',
+          delta: ref ? formatDelta(l.aptt, ref.labs.aptt, 1) : '',
+          val: `${l.aptt.toFixed(1)}s`,
+          unit: `TT ${l.tt.toFixed(0)}s`,
+          sub: l.antiXa > 0.02 ? `Anti-Xa ${l.antiXa.toFixed(2)} IU/mL` : 'Ref aPTT 25–37 s · TT <20 s',
+          cls: l.aptt > 38 ? 'text-rose-600 dark:text-rose-400' : 'text-[#09090b] dark:text-[#f4f4f5]'
+        },
+        {
+          title: 'Peak IIa / ETP',
+          delta: ref ? formatDelta(c.peakIIa, ref.cat.peakIIa, 0) : '',
+          val: `${Math.round(c.peakIIa)}`,
+          unit: `nM · ${Math.round(c.etp)}`,
+          sub: `Lag ${c.lagTime !== null ? c.lagTime.toFixed(1) + 'm' : '>45m'} · ETP nM·m`,
+          cls: c.peakIIa < 150 ? 'text-rose-600 dark:text-rose-400' : (c.etp > 2050 ? 'text-amber-600 dark:text-amber-400' : 'text-tealLight dark:text-tealDark')
+        },
+        {
+          title: isROTEM ? 'ROTEM CT / MCF' : 'TEG R / MA',
+          delta: ref ? (isROTEM ? formatDelta(v.rotemMCF, ref.visco.rotemMCF, 0) : formatDelta(v.tegMA, ref.visco.tegMA, 0)) : '',
+          val: isROTEM ? `${Math.round(v.rotemCT)}s / ${Math.round(v.rotemMCF)}` : `${v.tegR.toFixed(1)}m / ${Math.round(v.tegMA)}`,
+          unit: 'mm',
+          sub: isROTEM
+            ? `CFT ${v.rotemCFT ? Math.round(v.rotemCFT) + 's' : '>60m'} · FIBTEM ${Math.round(v.fibtemMCF)} mm`
+            : `K ${v.tegK ? v.tegK.toFixed(1) + 'm' : '>60m'} · α ${Math.round(v.tegAlpha)}°`,
+          cls: (v.tegMA < 50 || v.tegR > 10.5) ? 'text-rose-600 dark:text-rose-400' : 'text-[#09090b] dark:text-[#f4f4f5]'
+        },
+        {
+          title: isROTEM ? 'LI30 / Fibrinogen' : 'LY30 / Fibrinogen',
+          delta: ref ? formatDelta(v.tegLY30, ref.visco.tegLY30, 1) : '',
+          val: isROTEM ? `${v.rotemLI30.toFixed(0)}%` : `${v.tegLY30.toFixed(1)}%`,
+          unit: `· ${l.fbg.toFixed(1)} g/L`,
+          sub: `D-dimer ${l.dDimer.toFixed(2)} mg/L FEU`,
+          cls: v.tegLY30 > 8 ? 'text-sky-600 dark:text-sky-400' : (l.fbg < 1.5 ? 'text-rose-600 dark:text-rose-400' : 'text-[#09090b] dark:text-[#f4f4f5]')
+        },
+        {
+          title: 'Platelets & Phenotype',
+          delta: ref ? formatDelta(sim.eff.plt, ref.eff.plt, 0) : '',
+          val: `${Math.round(sim.eff.plt)}`,
+          unit: '×10⁹/L',
+          subHTML: `<span class="inline-block font-mono text-[9.5px] font-medium px-1.5 py-0.2 rounded border ${phenoBadgeCls}">${sim.phenotype}</span>`,
+          cls: sim.eff.plt < 100 ? 'text-amber-600 dark:text-amber-400' : 'text-[#09090b] dark:text-[#f4f4f5]'
+        }
+      ];
+
+      document.getElementById('kpi-strip').innerHTML = tiles.map(t => `
+        <div class="px-3.5 py-2.5 flex flex-col justify-between min-w-0">
+          <div class="flex items-center justify-between gap-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span class="truncate">${t.title}</span>
+            ${t.delta}
+          </div>
+          <div class="flex items-baseline gap-1 mt-1 min-w-0">
+            <span class="font-mono text-[15px] font-semibold tabular-nums leading-tight truncate ${t.cls}">${t.val}</span>
+            <span class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 shrink-0">${t.unit}</span>
+          </div>
+          <div class="mt-0.5 truncate">${t.subHTML ? t.subHTML : `<span class="text-[9.5px] font-mono text-zinc-400 dark:text-zinc-500 tabular-nums">${t.sub}</span>`}</div>
+        </div>
+      `).join('');
+
+      // Lethal triad header badge
+      const triadOn = sim.eff.temp < 35.5 || sim.eff.ph < 7.25;
+      const triadEl = document.getElementById('triad-pill');
+      if (triadEl) {
+        triadEl.classList.toggle('hidden', !triadOn);
+        triadEl.textContent = `${sim.eff.temp.toFixed(1)}°C · pH ${sim.eff.ph.toFixed(2)} (${Math.round(sim.eff.kEnz * 100)}% Enz)`;
+      }
+    }
+
+    /* --- Interactive 4-Stage Cell-Based Hemostasis SVG Schematic --- */
+    function renderCoagSVG() {
+      const svg = document.getElementById('coag-svg');
+      const sim = state.sim;
+      if (!svg || !sim) return;
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const e = sim.eff;
+      const d = state.drugs;
+      const fl = sim.fluxes;
+
+      const bgCard = isDark ? '#141418' : '#ffffff';
+      const borderCol = isDark ? '#2e2e36' : '#d4d4d8';
+      const txtMain = isDark ? '#f4f4f5' : '#09090b';
+      const txtSub = isDark ? '#a1a1aa' : '#52525b';
+      const teal = isDark ? '#2dd4bf' : '#0f766e';
+      const rose = '#f43f5e';
+      const amber = '#f59e0b';
+      const sky = '#38bdf8';
+      const violet = '#a78bfa';
+
+      const stageStroke = (idx, col) => state.selectedStage === idx ? col : borderCol;
+      const stageWidth = idx => state.selectedStage === idx ? 2.1 : 1.15;
+
+      // Dynamic drug/reversal target pills placed directly on their molecular targets
+      const pill = (x, y, label, col) => {
+        const w = Math.max(46, label.length * 5.6 + 12);
+        return `
+          <g class="pointer-events-none">
+            <rect x="${x - w / 2}" y="${y - 8.5}" width="${w}" height="17" rx="4.5" fill="${isDark ? '#18181b' : '#ffffff'}" stroke="${col}" stroke-width="1.15" />
+            <text x="${x}" y="${y + 3}" text-anchor="middle" fill="${col}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">${label}</text>
+          </g>
+        `;
+      };
+
+      // Build active target badges per stage
+      let stage0Badges = [];
+      if (d.warfarin > 5) stage0Badges.push({ txt: d.vitK ? 'Warf (VitK)' : 'Warfarin', col: sky });
+      if (d.pcc > 0) stage0Badges.push({ txt: `4F-PCC ${d.pcc}`, col: violet });
+      if (d.rFVIIa) stage0Badges.push({ txt: 'rFVIIa Bypass', col: violet });
+
+      let stage1Badges = [];
+      if (d.antiplt > 5) stage1Badges.push({ txt: 'Antiplatelet', col: sky });
+      if (d.pltTransf > 0) stage1Badges.push({ txt: `+${d.pltTransf} PLT`, col: violet });
+      if (e.acquiredF8Inhib > 0.2) stage1Badges.push({ txt: 'FVIII Ab', col: rose });
+      if (d.rFVIII) stage1Badges.push({ txt: 'rFVIII', col: violet });
+      if (d.rFIX) stage1Badges.push({ txt: 'rFIX', col: violet });
+
+      let stage2Badges = [];
+      if (d.ufh > 0.02) stage2Badges.push({ txt: 'UFH (AT-III)', col: sky });
+      if (d.lmwh > 0.02) stage2Badges.push({ txt: 'LMWH', col: sky });
+      if (d.apixaban > 5) stage2Badges.push({ txt: 'Xa-Inhib', col: sky });
+      if (d.dabigatran > 5) stage2Badges.push({ txt: 'IIa-Inhib', col: sky });
+      if (d.protamine > 5) stage2Badges.push({ txt: 'Protamine', col: violet });
+      if (d.andexanet) stage2Badges.push({ txt: 'Andexanet', col: violet });
+      if (d.idarucizumab) stage2Badges.push({ txt: 'Idaru.', col: violet });
+      if (d.fbgConc > 0.05) stage2Badges.push({ txt: `+${d.fbgConc.toFixed(1)}g Fbg`, col: violet });
+
+      let stage3Badges = [];
+      if (d.tpa > 5) stage3Badges.push({ txt: 'Alteplase tPA', col: sky });
+      if (d.txa > 5) stage3Badges.push({ txt: `TXA ${d.txa}%`, col: violet });
+
+      const renderBadgeRow = (cx, items) => items.slice(0, 2).map((b, i) => {
+        const bx = items.length === 1 ? cx : (i === 0 ? cx - 44 : cx + 44);
+        return pill(bx, 186, b.txt, b.col);
+      }).join('');
+
+      const arrDur = fVal => clamp(2.5 / Math.max(0.25, fVal), 0.55, 3.6).toFixed(2) + 's';
+      const arrW = fVal => (1.2 + clamp(fVal, 0.1, 1.6) * 1.4).toFixed(1);
+
+      svg.innerHTML = `
+        <defs>
+          <marker id="cg-arr-teal" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto">
+            <path d="M 1 2 L 8 5 L 1 8 z" fill="${teal}" />
+          </marker>
+          <marker id="cg-arr-rose" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto">
+            <path d="M 1 2 L 8 5 L 1 8 z" fill="${rose}" />
+          </marker>
+          <marker id="cg-arr-sky" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto">
+            <path d="M 1 2 L 8 5 L 1 8 z" fill="${sky}" />
+          </marker>
+        </defs>
+
+        <!-- STAGE 1: INITIATION (TF-Bearing Cell) -->
+        <g data-stage="0" class="cursor-pointer">
+          <rect x="14" y="14" width="194" height="154" rx="10" fill="${bgCard}" stroke="${stageStroke(0, teal)}" stroke-width="${stageWidth(0)}" />
+          <text x="111" y="32" text-anchor="middle" fill="${teal}" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="600">1. INITIATION</text>
+          <text x="111" y="46" text-anchor="middle" fill="${txtSub}" font-family="Inter, sans-serif" font-size="9.5">TF-Bearing Cell</text>
+
+          <rect x="28" y="58" width="166" height="32" rx="6" fill="${isDark ? '#18181b' : '#f4f4f5'}" stroke="${borderCol}" stroke-width="0.9" />
+          <text x="111" y="72" text-anchor="middle" fill="${txtMain}" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="600">TF : VIIa → Xa / IXa</text>
+          <text x="111" y="84" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8.5">FVII ${Math.round(e.f7)}% · FX ${Math.round(e.f10)}%</text>
+
+          <text x="111" y="110" text-anchor="middle" fill="${rose}" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="600">Trace Thrombin (IIa)</text>
+          <text x="111" y="125" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8.5">Lag ${sim.cat.lagTime !== null ? sim.cat.lagTime.toFixed(1) + ' min' : '>45 min'}</text>
+          <text x="111" y="156" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8">TFPI Regulated</text>
+        </g>
+
+        <!-- ARROW 1 -> 2 -->
+        <line x1="210" y1="90" x2="238" y2="90" stroke="${teal}" stroke-width="${arrW(fl.init)}" class="svg-coag-flow" style="--flux-dur:${arrDur(fl.init)}" marker-end="url(#cg-arr-teal)" />
+        <text x="224" y="80" text-anchor="middle" fill="${teal}" font-family="JetBrains Mono, monospace" font-size="8">IIa</text>
+
+        <!-- STAGE 2: AMPLIFICATION (Platelet Surface) -->
+        <g data-stage="1" class="cursor-pointer">
+          <rect x="242" y="14" width="194" height="154" rx="10" fill="${bgCard}" stroke="${stageStroke(1, amber)}" stroke-width="${stageWidth(1)}" />
+          <text x="339" y="32" text-anchor="middle" fill="${amber}" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="600">2. AMPLIFICATION</text>
+          <text x="339" y="46" text-anchor="middle" fill="${txtSub}" font-family="Inter, sans-serif" font-size="9.5">Activated Platelet Surface</text>
+
+          <rect x="256" y="58" width="166" height="34" rx="6" fill="${amber}" fill-opacity="${isDark ? 0.12 : 0.09}" stroke="${amber}" stroke-width="0.9" stroke-opacity="0.55" />
+          <text x="339" y="72" text-anchor="middle" fill="${txtMain}" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600">vWF / GPIb · GPIIb/IIIa</text>
+          <text x="339" y="85" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8.5">PLT ${Math.round(e.plt)} · Func ${Math.round(e.pltFunc)}%</text>
+
+          <text x="339" y="112" text-anchor="middle" fill="${txtMain}" font-family="JetBrains Mono, monospace" font-size="9">V→Va · VIII→VIIIa · XI→XIa</text>
+          <text x="339" y="127" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8.5">vWF ${Math.round(e.vwf)}% · FVIII ${Math.round(e.f8)}%</text>
+          <text x="339" y="156" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8">PS Surface Primed</text>
+        </g>
+
+        <!-- ARROW 2 -> 3 -->
+        <line x1="438" y1="90" x2="466" y2="90" stroke="${rose}" stroke-width="${arrW(fl.amp)}" class="svg-coag-flow" style="--flux-dur:${arrDur(fl.amp)}" marker-end="url(#cg-arr-rose)" />
+        <text x="452" y="80" text-anchor="middle" fill="${rose}" font-family="JetBrains Mono, monospace" font-size="8">Va/8a</text>
+
+        <!-- STAGE 3: PROPAGATION (Thrombin Burst & Fibrin) -->
+        <g data-stage="2" class="cursor-pointer">
+          <rect x="470" y="14" width="214" height="154" rx="10" fill="${bgCard}" stroke="${stageStroke(2, rose)}" stroke-width="${stageWidth(2)}" />
+          <text x="577" y="32" text-anchor="middle" fill="${rose}" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="600">3. PROPAGATION</text>
+          <text x="577" y="46" text-anchor="middle" fill="${txtSub}" font-family="Inter, sans-serif" font-size="9.5">Thrombin Burst &amp; Fibrin Mesh</text>
+
+          <rect x="484" y="56" width="186" height="44" rx="6" fill="${rose}" fill-opacity="${isDark ? 0.13 : 0.08}" stroke="${rose}" stroke-width="0.95" stroke-opacity="0.6" />
+          <text x="577" y="70" text-anchor="middle" fill="${txtMain}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">Tenase (VIIIa:IXa) + Va:Xa</text>
+          <text x="577" y="85" text-anchor="middle" fill="${rose}" font-family="JetBrains Mono, monospace" font-size="11.5" font-weight="700">Peak IIa ${Math.round(sim.cat.peakIIa)} nM</text>
+          <text x="577" y="96" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8">ETP ${Math.round(sim.cat.etp)} nM·min</text>
+
+          <text x="577" y="117" text-anchor="middle" fill="${txtMain}" font-family="JetBrains Mono, monospace" font-size="9">Fbg (${e.fbg.toFixed(1)} g/L) → Fibrin + XIIIa</text>
+          <text x="577" y="133" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8.5">AT-III ${Math.round(e.at3)}% · PC/S ${Math.round(e.pcs)}%</text>
+          <text x="577" y="156" text-anchor="middle" fill="${teal}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">MA ${Math.round(sim.visco.tegMA)} mm · FIBTEM ${Math.round(sim.visco.fibtemMCF)}</text>
+        </g>
+
+        <!-- ARROW 3 -> 4 -->
+        <line x1="686" y1="90" x2="714" y2="90" stroke="${sky}" stroke-width="${arrW(fl.lysis)}" class="svg-coag-flow" style="--flux-dur:${arrDur(fl.lysis)}" marker-end="url(#cg-arr-sky)" />
+        <text x="700" y="80" text-anchor="middle" fill="${sky}" font-family="JetBrains Mono, monospace" font-size="8">tPA</text>
+
+        <!-- STAGE 4: FIBRINOLYSIS -->
+        <g data-stage="3" class="cursor-pointer">
+          <rect x="718" y="14" width="188" height="154" rx="10" fill="${bgCard}" stroke="${stageStroke(3, sky)}" stroke-width="${stageWidth(3)}" />
+          <text x="812" y="32" text-anchor="middle" fill="${sky}" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="600">4. FIBRINOLYSIS</text>
+          <text x="812" y="46" text-anchor="middle" fill="${txtSub}" font-family="Inter, sans-serif" font-size="9.5">Plasmin Clot Breakdown</text>
+
+          <rect x="732" y="58" width="160" height="36" rx="6" fill="${sky}" fill-opacity="${isDark ? 0.12 : 0.08}" stroke="${sky}" stroke-width="0.9" stroke-opacity="0.55" />
+          <text x="812" y="73" text-anchor="middle" fill="${txtMain}" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600">tPA → Plasmin → D-Dimer</text>
+          <text x="812" y="86" text-anchor="middle" fill="${sky}" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600">LY30 ${sim.visco.tegLY30.toFixed(1)}% · DD ${sim.labs.dDimer.toFixed(1)}</text>
+
+          <text x="812" y="114" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8.5">FXIII Stability ${Math.round(e.f13)}%</text>
+          <text x="812" y="129" text-anchor="middle" fill="${e.txa > 5 ? violet : txtSub}" font-family="JetBrains Mono, monospace" font-size="8.5">${e.txa > 5 ? `TXA Blockade (${e.txa}%)` : 'PAI-1 / TAFI Regulated'}</text>
+          <text x="812" y="156" text-anchor="middle" fill="${sim.visco.tegLY30 > 8 ? sky : txtSub}" font-family="JetBrains Mono, monospace" font-size="8">${sim.visco.tegLY30 > 8 ? 'ACTIVE HYPERFIBRINOLYSIS' : 'Physiologic Remodeling'}</text>
+        </g>
+
+        <!-- Dynamic Drug & Reversal Target Pills -->
+        ${renderBadgeRow(111, stage0Badges)}
+        ${renderBadgeRow(339, stage1Badges)}
+        ${renderBadgeRow(577, stage2Badges)}
+        ${renderBadgeRow(812, stage3Badges)}
+      `;
+    }
+
+    function renderPhaseInspector() {
+      const el = document.getElementById('phase-inspector');
+      const sim = state.sim;
+      if (!el || !sim) return;
+      const e = sim.eff;
+
+      const stages = [
+        {
+          title: 'Stage 1 · Initiation (TF-Bearing Cell)',
+          col: 'text-tealLight dark:text-tealDark',
+          metrics: `FVII ${Math.round(e.f7)}% · FX ${Math.round(e.f10)}% · PT ${sim.labs.pt.toFixed(1)}s (INR ${sim.labs.inr.toFixed(2)}) · Lag ${sim.cat.lagTime !== null ? sim.cat.lagTime.toFixed(1) + 'm' : '>45m'}`,
+          note: e.warfarin > 10 && !e.vitK && e.pcc < 15
+            ? 'Limiting: Warfarin depletes FVII/FX/FII; 4F-PCC immediately restores initiation.'
+            : (e.rFVIIaBypass > 0.5 ? 'Active rFVIIa bypassing boosts Xa generation directly on platelets.' : 'TF:VIIa generates trace IIa to prime platelets; regulated by TFPI.')
+        },
+        {
+          title: 'Stage 2 · Amplification (Platelet Surface)',
+          col: 'text-amber-600 dark:text-amber-400',
+          metrics: `PLT ${Math.round(e.plt)}×10⁹/L · Func ${Math.round(e.pltFunc)}% · vWF ${Math.round(e.vwf)}% · FVIII ${Math.round(e.f8)}%`,
+          note: e.plt < 50
+            ? 'Limiting: Severe thrombocytopenia collapses platelet surface & TEG MA while FIBTEM stays intact.'
+            : (e.vwf < 45 ? 'Limiting: Low vWF impairs GPIb adhesion and lowers carrier FVIII levels.' : 'Trace IIa activates platelets and cleaves V→Va, VIII→VIIIa, and XI→XIa.')
+        },
+        {
+          title: 'Stage 3 · Propagation (Thrombin Burst & Fibrin)',
+          col: 'text-rose-600 dark:text-rose-400',
+          metrics: `Peak IIa ${Math.round(sim.cat.peakIIa)} nM · ETP ${Math.round(sim.cat.etp)} nM·m · AT-III ${Math.round(e.at3)}% · PC/S ${Math.round(e.pcs)}%`,
+          note: e.f8 < 10 || e.f9 < 10
+            ? 'Limiting: Intrinsic Tenase (VIIIa:IXa) collapse blunts thrombin burst; rescue with rFVIII/rFIX or rFVIIa.'
+            : (e.effUFH > 0.1 || e.effApix > 30 || e.effDabi > 30
+                ? 'Active anticoagulant suppresses Xa/IIa burst; see Drugs tab for specific reversal.'
+                : 'Intrinsic Tenase + Prothrombinase fire the explosive IIa burst converting Fibrinogen → cross-linked Fibrin.')
+        },
+        {
+          title: 'Stage 4 · Fibrinolysis (Plasmin Breakdown)',
+          col: 'text-sky-600 dark:text-sky-400',
+          metrics: `LY30 ${sim.visco.tegLY30.toFixed(1)}% · LI30 ${sim.visco.rotemLI30.toFixed(0)}% · D-dimer ${sim.labs.dDimer.toFixed(2)} mg/L · FXIII ${Math.round(e.f13)}%`,
+          note: sim.visco.tegLY30 > 8
+            ? 'Hyperfibrinolysis active! Administer Tranexamic Acid (TXA) to block plasminogen lysine binding.'
+            : (e.txa > 10 ? `TXA (${e.txa}%) effectively suppresses plasmin-mediated fibrin degradation.` : 'Balanced physiologic clot remodeling by tPA/plasmin regulated by PAI-1 & FXIII.')
+        }
+      ];
+
+      const st = stages[state.selectedStage] || stages[2];
+      el.innerHTML = `
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+          <span class="font-semibold ${st.col}">${st.title}</span>
+          <span class="font-mono text-[11px] text-zinc-700 dark:text-zinc-200 tabular-nums">${st.metrics}</span>
+        </div>
+        <span class="text-[11px] text-zinc-500 dark:text-zinc-400">${st.note}</span>
+      `;
+    }
+
+    function renderLabPanelAndSynthesis() {
+      const sim = state.sim;
+      if (!sim) return;
+      const l = sim.labs;
+      const e = sim.eff;
+
+      const labItems = [
+        { k: 'PT', v: `${l.pt.toFixed(1)} s`, abn: l.pt > 14.0 || l.pt < 9.5, cls: 'text-rose-600 dark:text-rose-400' },
+        { k: 'INR', v: l.inr.toFixed(2), abn: l.inr > 1.25, cls: 'text-rose-600 dark:text-rose-400' },
+        { k: 'aPTT', v: `${l.aptt.toFixed(1)} s`, abn: l.aptt > 37.5, cls: 'text-rose-600 dark:text-rose-400' },
+        { k: 'Thrombin Time', v: `${l.tt.toFixed(1)} s`, abn: l.tt > 21.0, cls: 'text-rose-600 dark:text-rose-400' },
+        { k: 'Anti-Xa', v: `${l.antiXa.toFixed(2)} IU/mL`, abn: l.antiXa > 0.05, cls: 'text-sky-600 dark:text-sky-400' },
+        { k: 'Fibrinogen', v: `${l.fbg.toFixed(2)} g/L`, abn: l.fbg < 1.8 || l.fbg > 4.5, cls: l.fbg < 1.8 ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400' },
+        { k: 'D-dimer', v: `${l.dDimer.toFixed(2)} mg/L`, abn: l.dDimer > 0.50, cls: 'text-sky-600 dark:text-sky-400' },
+        { k: 'Platelets', v: `${Math.round(e.plt)} ×10⁹/L`, abn: e.plt < 150 || e.plt > 450, cls: 'text-amber-600 dark:text-amber-400' },
+        { k: 'vWF', v: `${Math.round(e.vwf)} %`, abn: e.vwf < 50 || e.vwf > 160, cls: 'text-amber-600 dark:text-amber-400' },
+        { k: 'Factor VIII', v: `${e.f8 < 10 ? e.f8.toFixed(1) : Math.round(e.f8)} %`, abn: e.f8 < 50 || e.f8 > 160, cls: e.f8 < 50 ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400' },
+        { k: 'Factor IX', v: `${e.f9 < 10 ? e.f9.toFixed(1) : Math.round(e.f9)} %`, abn: e.f9 < 50, cls: 'text-rose-600 dark:text-rose-400' },
+        { k: 'Factor VII', v: `${Math.round(e.f7)} %`, abn: e.f7 < 50, cls: 'text-rose-600 dark:text-rose-400' },
+        { k: 'Factor X', v: `${Math.round(e.f10)} %`, abn: e.f10 < 50, cls: 'text-rose-600 dark:text-rose-400' },
+        { k: 'Factor II', v: `${Math.round(e.f2)} %`, abn: e.f2 < 50, cls: 'text-rose-600 dark:text-rose-400' },
+        { k: 'AT-III', v: `${Math.round(e.at3)} %`, abn: e.at3 < 75, cls: 'text-amber-600 dark:text-amber-400' },
+        { k: 'Protein C/S', v: `${Math.round(e.pcs)} %`, abn: e.pcs < 65 || e.fvlAPCResist > 0.3, cls: 'text-amber-600 dark:text-amber-400' },
+      ];
+
+      document.getElementById('lab-grid').innerHTML = labItems.map(item => `
+        <div class="flex items-baseline justify-between gap-2 py-1 border-b border-[#e4e4e7]/50 dark:border-borderDark/50 min-w-0">
+          <span class="text-zinc-500 dark:text-zinc-400 truncate">${item.k}</span>
+          <span class="font-mono font-medium tabular-nums shrink-0 ${item.abn ? item.cls : 'text-[#09090b] dark:text-[#f4f4f5]'}">${item.v}</span>
+        </div>
+      `).join('');
+
+      // Clinical Synthesis & Hemostatic Strategy
+      const badges = [];
+      const lines = [];
+
+      if (sim.phenotype === 'Rebalanced') {
+        badges.push({ text: 'Rebalanced Hemostasis (Cirrhosis)', lvl: 'ok' });
+        lines.push(`Elevated INR (${l.inr.toFixed(2)}) overestimates bleeding risk because low procoagulants are counterbalanced by reduced AT-III (${Math.round(e.at3)}%) & Protein C/S (${Math.round(e.pcs)}%) plus high FVIII (${Math.round(e.f8)}%) and vWF (${Math.round(e.vwf)}%). ETP (${Math.round(sim.cat.etp)} nM·min) & TEG remain preserved — avoid prophylactic FFP.`);
+      } else if (e.lupusAnticoag > 0.3) {
+        badges.push({ text: 'In-Vitro aPTT Artifact · In-Vivo Thrombosis', lvl: 'amber' });
+        lines.push(`Lupus anticoagulant prolongs phospholipid-dependent aPTT (${l.aptt.toFixed(1)} s, non-correcting 1:1 mix) without causing bleeding; in-vivo ETP (${Math.round(sim.cat.etp)} nM·min) reflects a prothrombotic APS phenotype.`);
+      } else if (e.acquiredF8Inhib > 0.3) {
+        badges.push({ text: 'Acquired FVIII Autoantibody', lvl: 'rose' });
+        lines.push(`Severe isolated aPTT prolongation (${l.aptt.toFixed(1)} s) with time-dependent 2h non-correction on 1:1 mixing. Standard rFVIII is neutralized — treat active bleeding with bypassing agent (rFVIIa) + immunosuppression.`);
+      } else if (sim.phenotype === 'Consumptive DIC') {
+        badges.push({ text: 'Acute Consumptive DIC', lvl: 'rose' });
+        lines.push(`Global consumption (PLT ${Math.round(e.plt)}, Fbg ${l.fbg.toFixed(1)} g/L, INR ${l.inr.toFixed(2)}) with elevated D-dimer (${l.dDimer.toFixed(1)} mg/L) and fibrinolysis (LY30 ${sim.visco.tegLY30.toFixed(1)}%). Treat underlying trigger; support bleeding with Fibrinogen/Cryo, Platelets, and FFP.`);
+      } else if (sim.visco.tegLY30 > 12) {
+        badges.push({ text: `Hyperfibrinolysis (LY30 ${sim.visco.tegLY30.toFixed(1)}%)`, lvl: 'sky' });
+        lines.push(`Classic wine-glass/teardrop viscoelastic breakdown. Administer Tranexamic Acid (TXA) immediately${l.fbg < 1.8 ? ', replete Fibrinogen Concentrate (FIBTEM ' + Math.round(sim.visco.fibtemMCF) + ' mm)' : ''}${e.temp < 35.5 || e.ph < 7.25 ? ', and reverse hypothermia/acidosis.' : '.'}`);
+      } else if (e.effDabi > 40) {
+        badges.push({ text: `Direct IIa Anticoagulation (${Math.round(e.effDabi)} ng/mL)`, lvl: 'sky' });
+        lines.push(`Dabigatran markedly prolongs TT (${l.tt.toFixed(0)} s), aPTT (${l.aptt.toFixed(1)} s), and TEG R (${sim.visco.tegR.toFixed(1)} m) while Anti-Xa stays 0.00. Specific reversal: Idarucizumab.`);
+      } else if (e.effApix > 40) {
+        badges.push({ text: `Direct Xa Anticoagulation (${Math.round(e.effApix)} ng/mL)`, lvl: 'sky' });
+        lines.push(`Direct Xa inhibitor elevates Anti-Xa (${l.antiXa.toFixed(2)} IU/mL) and blunts Peak IIa (${Math.round(sim.cat.peakIIa)} nM) with normal TT. Specific reversal: Andexanet alfa (or 4F-PCC).`);
+      } else if (e.effUFH > 0.1) {
+        badges.push({ text: `UFH Active (${e.effUFH.toFixed(2)} U/mL)`, lvl: 'sky' });
+        lines.push(`Unfractionated heparin potentiates AT-III against IIa & Xa (aPTT ${l.aptt.toFixed(1)} s, TT ${l.tt.toFixed(0)} s, TEG R ${sim.visco.tegR.toFixed(1)} m). Titrate Protamine Sulfate to neutralize.`);
+      } else if (e.warfarin > 15 && !e.vitK && e.pcc < 15) {
+        badges.push({ text: `VKA Anticoagulation (INR ${l.inr.toFixed(2)})`, lvl: 'sky' });
+        lines.push(`Warfarin depletes factors II, VII, IX, X. For major/ICH bleeding, administer 4F-PCC (immediate INR correction) plus IV Vitamin K₁ (sustained synthesis).`);
+      } else if (e.plt < 50 && sim.visco.fibtemMCF >= 12) {
+        badges.push({ text: 'Isolated Thrombocytopenia', lvl: 'amber' });
+        lines.push(`Normal PT/aPTT/R and normal FIBTEM (${Math.round(sim.visco.fibtemMCF)} mm) confirm intact fibrin polymerization, while collapsed MA (${Math.round(sim.visco.tegMA)} mm) localizes the defect to platelets — administer Platelet Transfusion.`);
+      } else if (e.f8 < 10 || e.f9 < 10) {
+        badges.push({ text: e.f8 < 10 ? 'Hemophilia A (FVIII Def.)' : 'Hemophilia B (FIX Def.)', lvl: 'rose' });
+        lines.push(`Isolated intrinsic tenase defect: normal PT (${l.pt.toFixed(1)} s), prolonged aPTT (${l.aptt.toFixed(1)} s) & TEG R (${sim.visco.tegR.toFixed(1)} m), blunted thrombin burst (${Math.round(sim.cat.peakIIa)} nM). Rescue with ${e.f8 < 10 ? 'rFVIII' : 'rFIX'} or rFVIIa.`);
+      } else if (sim.phenotype === 'Prothrombotic') {
+        badges.push({ text: `Hypercoagulable (ETP ${Math.round(sim.cat.etp)} nM·m)`, lvl: 'amber' });
+        lines.push(`Impaired Protein C/S downregulation amplifies propagation thrombin generation (Peak IIa ${Math.round(sim.cat.peakIIa)} nM) despite normal PT/aPTT.`);
+      } else {
+        badges.push({ text: 'Balanced Physiological Hemostasis', lvl: 'ok' });
+        lines.push(`Normal initiation (PT ${l.pt.toFixed(1)} s), intrinsic propagation (aPTT ${l.aptt.toFixed(1)} s, Peak IIa ${Math.round(sim.cat.peakIIa)} nM), clot firmness (MA ${Math.round(sim.visco.tegMA)} mm, FIBTEM ${Math.round(sim.visco.fibtemMCF)} mm), and minimal lysis (LY30 ${sim.visco.tegLY30.toFixed(1)}%).`);
+      }
+
+      if (e.excessProt > 0.25) {
+        badges.push({ text: 'Excess Protamine Anticoagulation', lvl: 'amber' });
+      }
+
+      const bStyles = {
+        ok: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        amber: 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+        sky: 'border-sky-500/35 bg-sky-500/10 text-sky-700 dark:text-sky-300',
+        rose: 'border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-400'
+      };
+      document.getElementById('synthesis-badges').innerHTML = badges.map(b =>
+        `<span class="font-mono text-[10px] font-medium px-2 py-0.5 rounded-md border ${bStyles[b.lvl]}">${b.text}</span>`
+      ).join('');
+      document.getElementById('synthesis-text').textContent = lines.join(' ');
+    }
+
+    function renderMixingStudyPanel() {
+      const panel = document.getElementById('mixing-panel');
+      if (!panel) return;
+      const mix = computeMixingStudy(state.factors, state.drugs);
+      const lvlCls = {
+        ok: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        amber: 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+        sky: 'border-sky-500/35 bg-sky-500/10 text-sky-700 dark:text-sky-300',
+        rose: 'border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-400'
+      }[mix.verdictLevel];
+
+      panel.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-mono text-[10px] font-semibold uppercase tracking-wider text-tealLight dark:text-tealDark">1:1 Mixing Study (50% Patient + 50% Normal Pool)</span>
+            <span class="font-mono text-[10px] font-medium px-2 py-0.5 rounded border ${lvlCls}">${mix.verdict}</span>
+          </div>
+          <button id="btn-close-mix" type="button" class="text-[11px] font-mono text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">&times; close</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-[11px] tabular-nums">
+          <div class="p-2 rounded-md bg-white dark:bg-surfaceDark border border-[#e4e4e7]/80 dark:border-borderDark/80">
+            <div class="text-[9.5px] text-zinc-500 dark:text-zinc-400 uppercase">Patient Baseline</div>
+            <div class="mt-0.5">aPTT <strong class="${mix.patLabs.aptt > 37.5 ? 'text-rose-600 dark:text-rose-400' : ''}">${mix.patLabs.aptt.toFixed(1)} s</strong> · PT <strong class="${mix.patLabs.pt > 14 ? 'text-rose-600 dark:text-rose-400' : ''}">${mix.patLabs.pt.toFixed(1)} s</strong></div>
+          </div>
+          <div class="p-2 rounded-md bg-white dark:bg-surfaceDark border border-[#e4e4e7]/80 dark:border-borderDark/80">
+            <div class="text-[9.5px] text-zinc-500 dark:text-zinc-400 uppercase">Immediate 1:1 Mix</div>
+            <div class="mt-0.5">aPTT <strong class="${mix.immLabs.aptt > 37.5 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}">${mix.immLabs.aptt.toFixed(1)} s</strong> · PT <strong class="${mix.immLabs.pt > 14 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}">${mix.immLabs.pt.toFixed(1)} s</strong></div>
+          </div>
+          <div class="p-2 rounded-md bg-white dark:bg-surfaceDark border border-[#e4e4e7]/80 dark:border-borderDark/80">
+            <div class="text-[9.5px] text-zinc-500 dark:text-zinc-400 uppercase">2h 37°C Incubated Mix</div>
+            <div class="mt-0.5">aPTT <strong class="${mix.incLabs.aptt > 37.5 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}">${mix.incLabs.aptt.toFixed(1)} s</strong> · PT <strong class="${mix.incLabs.pt > 14 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}">${mix.incLabs.pt.toFixed(1)} s</strong></div>
+          </div>
+        </div>
+        <p class="text-[11.5px] text-zinc-700 dark:text-zinc-300 leading-snug">${mix.detail}</p>
+      `;
+
+      document.getElementById('btn-close-mix').addEventListener('click', () => {
+        state.mixingOpen = false;
+        panel.classList.add('hidden');
+      });
+    }
+
+    /* =========================================================================
+       7. STRICT ZERO-STRETCH HI-DPI CANVAS RENDERERS (VISCOELASTIC & CAT)
+       ========================================================================= */
+    const viscoWrap = document.getElementById('visco-wrap');
+    const viscoCanvas = document.getElementById('visco-canvas');
+    const viscoCtx = viscoCanvas.getContext('2d');
+
+    const catWrap = document.getElementById('cat-wrap');
+    const catCanvas = document.getElementById('cat-canvas');
+    const catCtx = catCanvas.getContext('2d');
+
+    // STRICT ANTI-STRETCH CANVAS RESIZE GUARD
+    function syncCanvas(wrapper, canvas) {
+      if (!wrapper || !canvas) return false;
+      const w = wrapper.clientWidth;
+      const h = wrapper.clientHeight;
+      if (!(w > 10 && h > 10 && w < 4000 && h < 2000)) return false;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const tw = Math.round(w * dpr);
+      const th = Math.round(h * dpr);
+      if (canvas.width !== tw || canvas.height !== th) {
+        canvas.width = tw;
+        canvas.height = th;
+        return true;
+      }
+      return false;
+    }
+
+    function getPalette() {
+      const isDark = document.documentElement.classList.contains('dark');
+      return {
+        isDark,
+        bg: isDark ? '#0b0b0e' : '#ffffff',
+        grid: isDark ? 'rgba(63, 63, 70, 0.35)' : '#e4e4e7',
+        gridFaint: isDark ? 'rgba(63, 63, 70, 0.22)' : '#f4f4f5',
+        axis: isDark ? '#3f3f46' : '#a1a1aa',
+        tick: '#71717a',
+        label: isDark ? '#a1a1aa' : '#52525b',
+        teal: isDark ? '#2dd4bf' : '#0f766e',
+        tealRGB: isDark ? '45, 212, 191' : '15, 118, 110',
+        rose: '#f43f5e',
+        roseRGB: '244, 63, 94',
+        amber: '#f59e0b',
+        sky: '#38bdf8',
+        violet: '#a78bfa',
+        ghost: isDark ? 'rgba(161, 161, 170, 0.48)' : 'rgba(113, 113, 122, 0.48)',
+        dotCore: isDark ? '#ffffff' : '#09090b'
+      };
+    }
+
+    /* --- A. VISCOELASTIC TEG / ROTEM (+ FIBTEM) CANVAS --- */
+    function drawViscoCanvas() {
+      if (!viscoCanvas.width || !viscoCanvas.height || !state.sim) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = viscoCanvas.width / dpr;
+      const H = viscoCanvas.height / dpr;
+      const C = getPalette();
+      const ctx = viscoCtx;
+      const v = state.sim.visco;
+      const refV = state.pinnedSim ? state.pinnedSim.visco : null;
+      const isROTEM = state.viscoMode === 'rotem';
+      const arr = isROTEM ? v.rotem : v.teg;
+      const refArr = refV ? (isROTEM ? refV.rotem : refV.teg) : null;
+
+      document.getElementById('visco-title').textContent = isROTEM ? 'ROTEM (EXTEM) Viscoelastic' : 'TEG Viscoelastic Trace';
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      const pad = { l: 40, r: 14, t: 18, b: 30 };
+      const pw = Math.max(40, W - pad.l - pad.r);
+      const ph = Math.max(40, H - pad.t - pad.b);
+
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(pad.l, pad.t, pw, ph);
+
+      const maxT = 60.0;
+      const maxAmp = 75.0;
+      const midY = pad.t + ph / 2;
+      const xOfT = t => pad.l + (t / maxT) * pw;
+      const yTop = a => midY - (clamp(a, 0, maxAmp) / maxAmp) * (ph / 2);
+      const yBot = a => midY + (clamp(a, 0, maxAmp) / maxAmp) * (ph / 2);
+
+      // Gridlines
+      ctx.strokeStyle = C.grid;
+      ctx.lineWidth = 1;
+      for (const aTick of [25, 50]) {
+        const yt = Math.round(yTop(aTick)) + 0.5;
+        const yb = Math.round(yBot(aTick)) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, yt); ctx.lineTo(pad.l + pw, yt);
+        ctx.moveTo(pad.l, yb); ctx.lineTo(pad.l + pw, yb);
+        ctx.stroke();
+      }
+      for (let tt = 10; tt < 60; tt += 10) {
+        const gx = Math.round(xOfT(tt)) + 0.5;
+        ctx.strokeStyle = C.gridFaint;
+        ctx.beginPath(); ctx.moveTo(gx, pad.t); ctx.lineTo(gx, pad.t + ph); ctx.stroke();
+      }
+
+      // Centerline (0 mm)
+      ctx.strokeStyle = C.axis;
+      ctx.beginPath(); ctx.moveTo(pad.l, Math.round(midY) + 0.5); ctx.lineTo(pad.l + pw, Math.round(midY) + 0.5); ctx.stroke();
+
+      // Clip interior
+      ctx.save();
+      ctx.beginPath(); ctx.rect(pad.l, pad.t, pw, ph); ctx.clip();
+
+      // Pinned Baseline Ghost Symmetric Tuning Fork
+      if (refArr) {
+        ctx.save();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = C.ghost;
+        ctx.lineWidth = 1.35;
+        ctx.beginPath();
+        for (let i = 0; i < refArr.length; i++) {
+          const x = xOfT(v.t[i]), y = yTop(refArr[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.beginPath();
+        for (let i = 0; i < refArr.length; i++) {
+          const x = xOfT(v.t[i]), y = yBot(refArr[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Main Viscoelastic Shaded Symmetric Fill
+      const traceCol = state.sim.visco.tegLY30 > 12 ? C.sky : C.teal;
+      const fillRGB = state.sim.visco.tegLY30 > 12 ? '56, 189, 248' : C.tealRGB;
+
+      ctx.beginPath();
+      for (let i = 0; i < arr.length; i++) {
+        const x = xOfT(v.t[i]), y = yTop(arr[i]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      for (let i = arr.length - 1; i >= 0; i--) {
+        ctx.lineTo(xOfT(v.t[i]), yBot(arr[i]));
+      }
+      ctx.closePath();
+      ctx.fillStyle = `rgba(${fillRGB}, ${C.isDark ? 0.16 : 0.12})`;
+      ctx.fill();
+
+      // Main Upper & Lower Crisp Strokes
+      ctx.strokeStyle = traceCol;
+      ctx.lineWidth = 2.0;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (let i = 0; i < arr.length; i++) {
+        const x = xOfT(v.t[i]), y = yTop(arr[i]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      ctx.beginPath();
+      for (let i = 0; i < arr.length; i++) {
+        const x = xOfT(v.t[i]), y = yBot(arr[i]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Optional FIBTEM Platelet-Inhibited Inner Dashed Curve
+      if (state.showFibtem) {
+        ctx.save();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = C.amber;
+        ctx.lineWidth = 1.65;
+        ctx.beginPath();
+        for (let i = 0; i < v.fibtem.length; i++) {
+          const x = xOfT(v.t[i]), y = yTop(v.fibtem[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.beginPath();
+        for (let i = 0; i < v.fibtem.length; i++) {
+          const x = xOfT(v.t[i]), y = yBot(v.fibtem[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.fillStyle = C.amber;
+        ctx.font = '600 8.5px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`FIBTEM ${Math.round(v.fibtemMCF)} mm`, pad.l + 6, pad.t + ph - 6);
+        ctx.restore();
+      }
+
+      // Crisp On-Chart Callouts (R/CT, MA/MCF, LY30/LI30)
+      const onsetMin = isROTEM ? v.rotemCT / 60 : v.tegR;
+      const peakT = isROTEM ? v.tMaxROT : v.tMaxTEG;
+      const peakA = isROTEM ? v.rotemMCF : v.tegMA;
+
+      if (onsetMin < 58) {
+        const ox = Math.round(xOfT(onsetMin)) + 0.5;
+        ctx.save();
+        ctx.setLineDash([2, 2]);
+        ctx.strokeStyle = C.amber;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(ox, pad.t + 16); ctx.lineTo(ox, midY); ctx.stroke();
+        ctx.restore();
+      }
+
+      if (peakA > 3) {
+        const px = Math.round(xOfT(peakT)) + 0.5;
+        ctx.save();
+        ctx.setLineDash([2, 2]);
+        ctx.strokeStyle = C.rose;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(px, yTop(peakA)); ctx.lineTo(px, yBot(peakA)); ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.font = '500 8.5px "JetBrains Mono", monospace';
+      ctx.fillStyle = C.label;
+      ctx.textAlign = 'left';
+      const topSummary = isROTEM
+        ? `CT ${Math.round(v.rotemCT)}s · CFT ${v.rotemCFT ? Math.round(v.rotemCFT) + 's' : '>60m'} · α ${Math.round(v.rotemAlpha)}° · MCF ${Math.round(v.rotemMCF)}mm · LI30 ${Math.round(v.rotemLI30)}%`
+        : `R ${v.tegR.toFixed(1)}m · K ${v.tegK ? v.tegK.toFixed(1) + 'm' : '>60m'} · α ${Math.round(v.tegAlpha)}° · MA ${Math.round(v.tegMA)}mm · LY30 ${v.tegLY30.toFixed(1)}%`;
+      ctx.fillText(topSummary, pad.l + 6, pad.t + 11);
+
+      // Hover Crosshair & Tooltip
+      const tipEl = document.getElementById('visco-tooltip');
+      if (state.viscoHoverIdx !== null) {
+        const idx = clamp(state.viscoHoverIdx, 0, arr.length - 1);
+        const hx = Math.round(xOfT(v.t[idx])) + 0.5;
+        const aVal = arr[idx];
+        const fVal = v.fibtem[idx];
+
+        ctx.save();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = C.isDark ? 'rgba(244,244,245,0.45)' : 'rgba(24,24,27,0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, pad.t + ph); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(hx, yTop(aVal), 3.4, 0, Math.PI * 2); ctx.fillStyle = traceCol; ctx.fill();
+        ctx.beginPath(); ctx.arc(hx, yBot(aVal), 3.4, 0, Math.PI * 2); ctx.fillStyle = traceCol; ctx.fill();
+        ctx.restore();
+
+        const phaseStr = v.t[idx] < onsetMin ? 'Pre-Clot Lag' : (v.t[idx] < peakT ? 'Polymerization' : (v.tegLY30 > 8 ? 'Fibrinolysis' : 'Clot Stability'));
+        if (tipEl) {
+          tipEl.innerHTML = `
+            <div class="text-[9.5px] text-zinc-500 dark:text-zinc-400 pb-1 mb-1 border-b border-zinc-200 dark:border-zinc-800">t = ${v.t[idx].toFixed(1)} min · ${phaseStr}</div>
+            <div class="space-y-0.5 tabular-nums text-zinc-700 dark:text-zinc-200">
+              <div class="flex justify-between gap-3"><span style="color:${traceCol}">${isROTEM ? 'EXTEM' : 'TEG Amp'}</span><strong>${aVal.toFixed(1)} mm</strong></div>
+              <div class="flex justify-between gap-3"><span style="color:${C.amber}">FIBTEM</span><strong>${fVal.toFixed(1)} mm</strong></div>
+              <div class="flex justify-between gap-3 text-zinc-500 dark:text-zinc-400"><span>PLT Contrib</span><strong>${Math.max(0, aVal - fVal).toFixed(1)} mm</strong></div>
+            </div>
+          `;
+          tipEl.classList.remove('hidden');
+        }
+      } else if (tipEl) {
+        tipEl.classList.add('hidden');
+      }
+
+      ctx.restore(); // End clip
+
+      // Frame & Ticks
+      ctx.strokeStyle = C.axis;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pad.l + 0.5, pad.t + 0.5, pw - 1, ph - 1);
+
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = C.tick;
+      ctx.textAlign = 'center';
+      for (const tt of [0, 15, 30, 45, 60]) {
+        ctx.fillText(`${tt}m`, xOfT(tt), pad.t + ph + 12);
+      }
+      ctx.textAlign = 'right';
+      ctx.fillText('+50', pad.l - 5, yTop(50) + 3);
+      ctx.fillText('0', pad.l - 5, midY + 3);
+      ctx.fillText('-50', pad.l - 5, yBot(50) + 3);
+
+      ctx.fillStyle = C.label;
+      ctx.font = '500 9px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Time (min)', pad.l + pw / 2, H - 5);
+
+      ctx.save();
+      ctx.translate(11, pad.t + ph / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('Amplitude (mm)', 0, 0);
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    /* --- B. THROMBIN GENERATION (CAT) & FIBRIN/LYSIS CANVAS --- */
+    function drawCATCanvas() {
+      if (!catCanvas.width || !catCanvas.height || !state.sim) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = catCanvas.width / dpr;
+      const H = catCanvas.height / dpr;
+      const C = getPalette();
+      const ctx = catCtx;
+      const c = state.sim.cat;
+      const refC = state.pinnedSim ? state.pinnedSim.cat : null;
+      const isThrombin = state.catMode === 'thrombin';
+
+      document.getElementById('cat-title').textContent = isThrombin ? 'Thrombin Generation (CAT)' : 'Fibrin & Fibrinolysis Kinetics';
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      const pad = { l: 44, r: isThrombin ? 14 : 38, t: 18, b: 30 };
+      const pw = Math.max(40, W - pad.l - pad.r);
+      const ph = Math.max(40, H - pad.t - pad.b);
+
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(pad.l, pad.t, pw, ph);
+
+      const maxT = 45.0;
+      const xOfT = t => pad.l + (t / maxT) * pw;
+
+      // Grid
+      ctx.strokeStyle = C.grid;
+      ctx.lineWidth = 1;
+      for (let k = 0; k <= 4; k++) {
+        const gy = Math.round(pad.t + (k / 4) * ph) + 0.5;
+        ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l + pw, gy); ctx.stroke();
+      }
+      for (const tt of [10, 20, 30, 40]) {
+        const gx = Math.round(xOfT(tt)) + 0.5;
+        ctx.strokeStyle = C.gridFaint;
+        ctx.beginPath(); ctx.moveTo(gx, pad.t); ctx.lineTo(gx, pad.t + ph); ctx.stroke();
+      }
+
+      ctx.save();
+      ctx.beginPath(); ctx.rect(pad.l, pad.t, pw, ph); ctx.clip();
+
+      if (isThrombin) {
+        const maxY = Math.max(450, Math.ceil((Math.max(c.peakIIa, refC ? refC.peakIIa : 0) * 1.15) / 50) * 50);
+        const yOfI = val => pad.t + ph - (clamp(val, 0, maxY) / maxY) * ph;
+
+        // Pinned Baseline Ghost CAT Curve
+        if (refC) {
+          ctx.save();
+          ctx.setLineDash([4, 3]);
+          ctx.strokeStyle = C.ghost;
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          for (let i = 0; i < refC.t.length; i++) {
+            const x = xOfT(refC.t[i]), y = yOfI(refC.iia[i]);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Shaded ETP Area under Thrombin curve
+        ctx.beginPath();
+        ctx.moveTo(xOfT(0), pad.t + ph);
+        for (let i = 0; i < c.t.length; i++) {
+          ctx.lineTo(xOfT(c.t[i]), yOfI(c.iia[i]));
+        }
+        ctx.lineTo(xOfT(maxT), pad.t + ph);
+        ctx.closePath();
+        ctx.fillStyle = `rgba(${C.roseRGB}, ${C.isDark ? 0.16 : 0.12})`;
+        ctx.fill();
+
+        // Main Thrombin Curve
+        ctx.strokeStyle = C.rose;
+        ctx.lineWidth = 2.15;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        for (let i = 0; i < c.t.length; i++) {
+          const x = xOfT(c.t[i]), y = yOfI(c.iia[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Lag Time & Peak Callouts
+        if (c.lagTime !== null && c.lagTime < 44) {
+          const lx = Math.round(xOfT(c.lagTime)) + 0.5;
+          ctx.save();
+          ctx.setLineDash([2, 2]);
+          ctx.strokeStyle = C.amber;
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(lx, pad.t + 16); ctx.lineTo(lx, pad.t + ph); ctx.stroke();
+          ctx.restore();
+        }
+        if (c.peakIIa > 5) {
+          const px = xOfT(c.ttp), py = yOfI(c.peakIIa);
+          ctx.beginPath(); ctx.arc(px, py, 3.6, 0, Math.PI * 2);
+          ctx.fillStyle = C.dotCore; ctx.fill();
+          ctx.strokeStyle = C.rose; ctx.lineWidth = 1.8; ctx.stroke();
+        }
+
+        ctx.font = '500 8.5px "JetBrains Mono", monospace';
+        ctx.fillStyle = C.label;
+        ctx.textAlign = 'left';
+        ctx.fillText(`Lag ${c.lagTime !== null ? c.lagTime.toFixed(1) + 'm' : '>45m'} · Peak ${Math.round(c.peakIIa)} nM @${c.ttp.toFixed(1)}m · ETP ${Math.round(c.etp)}`, pad.l + 6, pad.t + 11);
+
+        ctx._catMaxY = maxY;
+      } else {
+        // Fibrin & Lysis Mode: Fibrinogen (Amber), Polymerized Fibrin (Teal), D-dimer (Sky, right axis)
+        const maxFbg = Math.max(4.5, Math.ceil(Math.max(state.sim.eff.fbg, 3.5) + 0.5));
+        const maxDD = Math.max(2.5, Math.ceil(Math.max(...c.dDimer) * 1.15));
+        const yOfF = val => pad.t + ph - (clamp(val, 0, maxFbg) / maxFbg) * ph;
+        const yOfDD = val => pad.t + ph - (clamp(val, 0, maxDD) / maxDD) * ph;
+
+        const strokeLine = (arr, mapY, col, w, dash = null) => {
+          ctx.save();
+          ctx.strokeStyle = col;
+          ctx.lineWidth = w;
+          if (dash) ctx.setLineDash(dash);
+          ctx.beginPath();
+          for (let i = 0; i < arr.length; i++) {
+            const x = xOfT(c.t[i]), y = mapY(arr[i]);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+          ctx.restore();
+        };
+
+        strokeLine(c.fbg, yOfF, C.amber, 1.8, [4, 3]);
+        strokeLine(c.fibrin, yOfF, C.teal, 2.1);
+        strokeLine(c.dDimer, yOfDD, C.sky, 1.9);
+
+        ctx.font = '500 8.5px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = C.teal; ctx.fillText('— Fibrin', pad.l + 6, pad.t + 11);
+        ctx.fillStyle = C.amber; ctx.fillText('-- Fbg (g/L)', pad.l + 62, pad.t + 11);
+        ctx.fillStyle = C.sky; ctx.fillText('— D-dimer', pad.l + 136, pad.t + 11);
+
+        ctx._catMaxY = maxFbg;
+        ctx._catMaxDD = maxDD;
+      }
+
+      // Hover Crosshair & Tooltip
+      const tipEl = document.getElementById('cat-tooltip');
+      if (state.catHoverIdx !== null) {
+        const idx = clamp(state.catHoverIdx, 0, c.t.length - 1);
+        const hx = Math.round(xOfT(c.t[idx])) + 0.5;
+        ctx.save();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = C.isDark ? 'rgba(244,244,245,0.45)' : 'rgba(24,24,27,0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, pad.t + ph); ctx.stroke();
+        ctx.restore();
+
+        if (tipEl) {
+          tipEl.innerHTML = isThrombin
+            ? `
+              <div class="text-[9.5px] text-zinc-500 dark:text-zinc-400 pb-1 mb-1 border-b border-zinc-200 dark:border-zinc-800">t = ${c.t[idx].toFixed(1)} min</div>
+              <div class="space-y-0.5 tabular-nums text-zinc-700 dark:text-zinc-200">
+                <div class="flex justify-between gap-3"><span style="color:${C.rose}">Thrombin IIa</span><strong>${c.iia[idx].toFixed(1)} nM</strong></div>
+                <div class="flex justify-between gap-3"><span style="color:${C.teal}">Fibrin</span><strong>${c.fibrin[idx].toFixed(2)} g/L</strong></div>
+                <div class="flex justify-between gap-3 text-zinc-500 dark:text-zinc-400"><span>D-dimer</span><strong>${c.dDimer[idx].toFixed(2)} mg/L</strong></div>
+              </div>
+            `
+            : `
+              <div class="text-[9.5px] text-zinc-500 dark:text-zinc-400 pb-1 mb-1 border-b border-zinc-200 dark:border-zinc-800">t = ${c.t[idx].toFixed(1)} min</div>
+              <div class="space-y-0.5 tabular-nums text-zinc-700 dark:text-zinc-200">
+                <div class="flex justify-between gap-3"><span style="color:${C.amber}">Fibrinogen</span><strong>${c.fbg[idx].toFixed(2)} g/L</strong></div>
+                <div class="flex justify-between gap-3"><span style="color:${C.teal}">Fibrin Mesh</span><strong>${c.fibrin[idx].toFixed(2)} g/L</strong></div>
+                <div class="flex justify-between gap-3"><span style="color:${C.sky}">D-dimer</span><strong>${c.dDimer[idx].toFixed(2)} mg/L</strong></div>
+              </div>
+            `;
+          tipEl.classList.remove('hidden');
+        }
+      } else if (tipEl) {
+        tipEl.classList.add('hidden');
+      }
+
+      ctx.restore(); // End clip
+
+      // Frame & Ticks
+      ctx.strokeStyle = C.axis;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pad.l + 0.5, pad.t + 0.5, pw - 1, ph - 1);
+
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = C.tick;
+      ctx.textAlign = 'center';
+      for (const tt of [0, 15, 30, 45]) {
+        ctx.fillText(`${tt}m`, xOfT(tt), pad.t + ph + 12);
+      }
+
+      const maxY = ctx._catMaxY || 450;
+      ctx.textAlign = 'right';
+      for (let k = 0; k <= 4; k++) {
+        const val = (k / 4) * maxY;
+        const y = pad.t + ph - (k / 4) * ph;
+        ctx.fillText(isThrombin ? String(Math.round(val)) : val.toFixed(1), pad.l - 5, y + 3);
+      }
+
+      if (!isThrombin) {
+        const maxDD = ctx._catMaxDD || 3;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = C.sky;
+        for (let k = 0; k <= 4; k++) {
+          const val = (k / 4) * maxDD;
+          const y = pad.t + ph - (k / 4) * ph;
+          ctx.fillText(val.toFixed(1), pad.l + pw + 4, y + 3);
+        }
+      }
+
+      ctx.fillStyle = C.label;
+      ctx.font = '500 9px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Time (min)', pad.l + pw / 2, H - 5);
+
+      ctx.save();
+      ctx.translate(11, pad.t + ph / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(isThrombin ? 'Thrombin IIa (nM)' : 'Fibrin / Fbg (g/L)', 0, 0);
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    /* =========================================================================
+       8. RIGHT CONTROL CONSOLE BUILDERS (4 TABS)
+       ========================================================================= */
+    function buildPathologiesTab() {
+      const el = document.getElementById('tab-pathologies');
+      el.innerHTML = PATHOLOGIES.map(pr => `
+        <button data-preset="${pr.id}" type="button" class="preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1">
+          <div class="flex items-center justify-between gap-2 w-full">
+            <span class="text-xs font-medium text-[#09090b] dark:text-[#f4f4f5]">${pr.name}</span>
+            <span class="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/70 shrink-0">${pr.tag}</span>
+          </div>
+          <p class="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug">${pr.desc}</p>
+        </button>
+      `).join('');
+
+      el.querySelectorAll('.preset-card').forEach(btn => {
+        btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+      });
+      highlightActivePreset();
+    }
+
+    function applyPreset(presetId) {
+      const pr = PATHOLOGIES.find(p => p.id === presetId);
+      if (!pr) return;
+      state.presetId = pr.id;
+      state.factors = { ...NORMAL_FACTORS, ...(pr.factors || {}) };
+      state.drugs = { ...NORMAL_DRUGS, ...(pr.drugs || {}) };
+      document.getElementById('hdr-preset-name').textContent = pr.name;
+      highlightActivePreset();
+      buildDrugsTab();
+      buildFactorsTab();
+      updateDrugCountBadge();
+      recompute();
+    }
+
+    function highlightActivePreset() {
+      document.querySelectorAll('.preset-card').forEach(btn => {
+        const active = btn.dataset.preset === state.presetId;
+        btn.className = `preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1 ${
+          active
+            ? 'border-tealLight/60 dark:border-tealDark/50 bg-teal-500/[0.06] dark:bg-teal-400/[0.08]'
+            : 'border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 hover:border-zinc-300 dark:hover:border-zinc-700'
+        }`;
+      });
+    }
+
+    function buildDrugsTab() {
+      const el = document.getElementById('tab-drugs');
+      const d = state.drugs;
+
+      const dSlider = (key, label, unit, min, max, step, dec, cls) => `
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-[11.5px] gap-2">
+            <span class="font-medium text-zinc-700 dark:text-zinc-300 truncate">${label}</span>
+            <span class="font-mono tabular-nums shrink-0 ${d[key] > 0 ? (cls === 'rev-slider' ? 'text-violet-700 dark:text-violet-300 font-semibold' : 'text-sky-700 dark:text-sky-300 font-semibold') : 'text-zinc-400 dark:text-zinc-500'}">
+              <span id="dv-${key}">${Number(d[key]).toFixed(dec)}</span>
+              <span class="text-[10px]">${unit}</span>
+            </span>
+          </div>
+          <input id="ds-${key}" data-dkey="${key}" data-dec="${dec}" data-cls="${cls}" type="range" class="clinical-slider ${cls}" min="${min}" max="${max}" step="${step}" value="${d[key]}" />
+        </div>
+      `;
+
+      const dToggle = (key, label, sub) => {
+        const on = Boolean(d[key]);
+        return `
+          <button data-dtoggle="${key}" type="button" class="text-left px-2.5 py-1.5 rounded-lg border transition-colors ${
+            on
+              ? 'border-violet-500/60 bg-violet-500/15 text-violet-700 dark:text-violet-300'
+              : 'border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-zinc-900/50 text-zinc-700 dark:text-zinc-300 hover:border-violet-500/40'
+          }">
+            <div class="flex items-center justify-between gap-1 text-[11px] font-medium">
+              <span class="truncate">${label}</span>
+              <span class="font-mono text-[9px]">${on ? 'ON' : 'OFF'}</span>
+            </div>
+            ${sub ? `<div class="text-[9.5px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">${sub}</div>` : ''}
+          </button>
+        `;
+      };
+
+      el.innerHTML = `
+        <div class="flex items-center justify-between gap-2 pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">
+          <span class="text-[11px] text-zinc-500 dark:text-zinc-400">Stackable anticoagulants &amp; reversals</span>
+          <button id="btn-clear-drugs" type="button" class="text-[11px] font-medium text-sky-600 dark:text-sky-400 hover:underline">Clear All</button>
+        </div>
+
+        <!-- Anticoagulants & Thrombolytics -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-2.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-sky-600 dark:text-sky-400 pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">Anticoagulants &amp; Thrombolytics</div>
+          ${dSlider('ufh', 'UFH (Unfractionated Heparin)', 'U/mL', 0, 1.5, 0.05, 2, 'drug-slider')}
+          ${dSlider('lmwh', 'LMWH (Enoxaparin)', 'IU/mL', 0, 1.5, 0.05, 2, 'drug-slider')}
+          ${dSlider('warfarin', 'Warfarin / VKA (VKOR Block)', '%', 0, 100, 5, 0, 'drug-slider')}
+          ${dSlider('apixaban', 'Direct Xa (Apixaban / Riva.)', 'ng/mL', 0, 500, 10, 0, 'drug-slider')}
+          ${dSlider('dabigatran', 'Direct IIa (Dabigatran)', 'ng/mL', 0, 500, 10, 0, 'drug-slider')}
+          ${dSlider('antiplt', 'Antiplatelets (ASA + P2Y12i)', '%', 0, 100, 5, 0, 'drug-slider')}
+          ${dSlider('tpa', 'tPA / Alteplase (Lytic)', '%', 0, 100, 5, 0, 'drug-slider')}
+        </div>
+
+        <!-- Reversal & Hemostatic Agents -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-2.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-violet-600 dark:text-violet-400 pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">Reversal &amp; Hemostatic Agents</div>
+          ${dSlider('protamine', 'Protamine Sulfate (UFH/LMWH)', '%', 0, 100, 5, 0, 'rev-slider')}
+          ${dSlider('pcc', '4-Factor PCC (II, VII, IX, X)', 'IU/kg', 0, 50, 5, 0, 'rev-slider')}
+          ${dSlider('txa', 'Tranexamic Acid (TXA)', '%', 0, 100, 5, 0, 'rev-slider')}
+          ${dSlider('fbgConc', 'Fibrinogen Concentrate', '+g/L', 0, 3.0, 0.2, 1, 'rev-slider')}
+          ${dSlider('pltTransf', 'Platelet Transfusion', '+×10⁹/L', 0, 100, 10, 0, 'rev-slider')}
+
+          <div class="grid grid-cols-2 gap-1.5 pt-1">
+            ${dToggle('vitK', 'Vitamin K₁ (IV)', 'Delayed 12–24h')}
+            ${dToggle('andexanet', 'Andexanet alfa', 'Direct Xa / LMWH')}
+            ${dToggle('idarucizumab', 'Idarucizumab', 'Dabigatran Fab')}
+            ${dToggle('rFVIIa', 'rFVIIa Bypass', 'Bypasses VIII/IX')}
+          </div>
+          <div class="grid grid-cols-2 gap-1.5">
+            ${dToggle('rFVIII', 'rFVIII Rescue', 'Hemophilia A')}
+            ${dToggle('rFIX', 'rFIX Rescue', 'Hemophilia B')}
+          </div>
+        </div>
+      `;
+
+      el.querySelectorAll('input[data-dkey]').forEach(inp => {
+        inp.addEventListener('input', () => {
+          const key = inp.dataset.dkey;
+          const dec = parseInt(inp.dataset.dec, 10);
+          const v = parseFloat(inp.value);
+          state.drugs[key] = v;
+          const lbl = document.getElementById(`dv-${key}`);
+          if (lbl) {
+            lbl.textContent = v.toFixed(dec);
+            lbl.parentElement.className = `font-mono tabular-nums shrink-0 ${v > 0 ? (inp.dataset.cls === 'rev-slider' ? 'text-violet-700 dark:text-violet-300 font-semibold' : 'text-sky-700 dark:text-sky-300 font-semibold') : 'text-zinc-400 dark:text-zinc-500'}`;
+          }
+          updateDrugCountBadge();
+          recompute();
+        });
+      });
+
+      el.querySelectorAll('[data-dtoggle]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.dtoggle;
+          state.drugs[key] = !state.drugs[key];
+          buildDrugsTab();
+          updateDrugCountBadge();
+          recompute();
+        });
+      });
+
+      document.getElementById('btn-clear-drugs').addEventListener('click', () => {
+        state.drugs = { ...NORMAL_DRUGS };
+        buildDrugsTab();
+        updateDrugCountBadge();
+        recompute();
+      });
+    }
+
+    function updateDrugCountBadge() {
+      let count = 0;
+      for (const [k, v] of Object.entries(state.drugs)) {
+        if ((typeof v === 'boolean' && v) || (typeof v === 'number' && v > 0.005)) count++;
+      }
+      const badge = document.getElementById('tab-drug-badge');
+      if (badge) {
+        badge.textContent = String(count);
+        badge.classList.toggle('hidden', count === 0);
+      }
+    }
+
+    function buildFactorsTab() {
+      const el = document.getElementById('tab-factors');
+      const f = state.factors;
+
+      el.innerHTML = FACTOR_GROUPS.map(grp => `
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-2.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">${grp.title}</div>
+          ${grp.items.map(cfg => `
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-[11.5px] gap-2">
+                <span class="font-medium text-zinc-700 dark:text-zinc-300 truncate">${cfg.label}</span>
+                <span class="font-mono tabular-nums text-[#09090b] dark:text-[#f4f4f5] shrink-0">
+                  <span id="fv-${cfg.key}">${Number(f[cfg.key]).toFixed(cfg.dec)}</span>
+                  <span class="text-[10px] text-zinc-400 dark:text-zinc-500">${cfg.unit}</span>
+                </span>
+              </div>
+              <input id="fs-${cfg.key}" data-fkey="${cfg.key}" data-dec="${cfg.dec}" type="range" class="clinical-slider" min="${cfg.min}" max="${cfg.max}" step="${cfg.step}" value="${f[cfg.key]}" />
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
+
+      el.querySelectorAll('input[data-fkey]').forEach(inp => {
+        inp.addEventListener('input', () => {
+          const key = inp.dataset.fkey;
+          const dec = parseInt(inp.dataset.dec, 10);
+          const v = parseFloat(inp.value);
+          state.factors[key] = v;
+          state.presetId = 'custom';
+          document.getElementById('hdr-preset-name').textContent = 'Custom Factors';
+          const lbl = document.getElementById(`fv-${key}`);
+          if (lbl) lbl.textContent = v.toFixed(dec);
+          highlightActivePreset();
+          recompute();
+        });
+      });
+    }
+
+    function buildChallengesTab() {
+      const el = document.getElementById('tab-challenges');
+      el.innerHTML = `
+        <div class="space-y-2">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Interactive Bedside Cases</div>
+          ${CHALLENGES.map(ch => `
+            <div class="p-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50/40 dark:bg-zinc-900/30 space-y-1.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-medium text-[#09090b] dark:text-[#f4f4f5]">${ch.name}</span>
+                <span class="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/25 shrink-0">${ch.tag}</span>
+              </div>
+              <p class="text-[10.5px] text-zinc-500 dark:text-zinc-400 leading-snug">${ch.desc}</p>
+              <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <button data-ch-load="${ch.id}" type="button" class="px-2 py-1 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-[10.5px] font-medium text-zinc-700 dark:text-zinc-200 hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors">${ch.btnLoad}</button>
+                <button data-ch-act="${ch.id}" type="button" class="px-2 py-1 rounded-md border border-violet-500/50 bg-violet-500/10 text-[10.5px] font-medium text-violet-700 dark:text-violet-300 hover:bg-violet-500/20 transition-colors">${ch.btnAct}</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Before -> After Clinical Action Log -->
+        <div class="pt-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Before &rarr; After Action Log</span>
+            <button id="btn-clear-log" type="button" class="text-[10px] font-mono text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">clear</button>
+          </div>
+          <div id="challenge-log" class="space-y-1.5"></div>
+        </div>
+      `;
+
+      el.querySelectorAll('[data-ch-load]').forEach(btn => {
+        btn.addEventListener('click', () => handleChallenge(btn.dataset.chLoad, 'load'));
+      });
+      el.querySelectorAll('[data-ch-act]').forEach(btn => {
+        btn.addEventListener('click', () => handleChallenge(btn.dataset.chAct, 'act'));
+      });
+      document.getElementById('btn-clear-log').addEventListener('click', () => {
+        state.challengeLog = [];
+        renderChallengeLog();
+      });
+      renderChallengeLog();
+    }
+
+    function handleChallenge(id, step) {
+      if (step === 'load') {
+        state.pinnedSim = null;
+        syncPinUI();
+        if (id === 'warfarin_ich') {
+          state.presetId = 'custom';
+          state.factors = { ...NORMAL_FACTORS };
+          state.drugs = { ...NORMAL_DRUGS, warfarin: 92 };
+          document.getElementById('hdr-preset-name').textContent = 'Warfarin ICH Overdose';
+        } else if (id === 'ufh_protamine') {
+          state.presetId = 'custom';
+          state.factors = { ...NORMAL_FACTORS };
+          state.drugs = { ...NORMAL_DRUGS, ufh: 1.10 };
+          document.getElementById('hdr-preset-name').textContent = 'UFH Overdose (1.1 U/mL)';
+        } else if (id === 'dabi_idaru') {
+          state.presetId = 'custom';
+          state.factors = { ...NORMAL_FACTORS };
+          state.drugs = { ...NORMAL_DRUGS, dabigatran: 380 };
+          document.getElementById('hdr-preset-name').textContent = 'Dabigatran Bleed (380 ng/mL)';
+        } else if (id === 'crash2_tic') {
+          applyPreset('tic');
+          return;
+        } else if (id === 'cirrhosis_paradox') {
+          applyPreset('cirrhosis');
+          return;
+        }
+        highlightActivePreset();
+        buildDrugsTab();
+        buildFactorsTab();
+        updateDrugCountBadge();
+        recompute();
+        return;
+      }
+
+      // Action step: ensure scenario is loaded if currently Normal, pin before state, apply intervention, and log!
+      if (state.presetId === 'normal' && Object.values(state.drugs).every(v => !v)) {
+        handleChallenge(id, 'load');
+      }
+      const before = state.sim;
+      state.pinnedSim = before;
+      syncPinUI();
+
+      let title = '', logStr = '';
+      if (id === 'warfarin_ich') {
+        state.drugs.pcc = 35;
+        state.drugs.vitK = true;
+        buildDrugsTab();
+        updateDrugCountBadge();
+        recompute();
+        const a = state.sim;
+        title = 'Warfarin ICH → 4F-PCC 35 + Vit K₁';
+        logStr = `INR ${before.labs.inr.toFixed(2)}→${a.labs.inr.toFixed(2)} · TEG R ${before.visco.tegR.toFixed(1)}→${a.visco.tegR.toFixed(1)}m · Peak IIa ${Math.round(before.cat.peakIIa)}→${Math.round(a.cat.peakIIa)} nM`;
+      } else if (id === 'ufh_protamine') {
+        state.drugs.protamine = 75;
+        buildDrugsTab();
+        updateDrugCountBadge();
+        recompute();
+        const a = state.sim;
+        title = 'UFH Overdose → Protamine 75%';
+        logStr = `aPTT ${before.labs.aptt.toFixed(1)}→${a.labs.aptt.toFixed(1)}s · TT ${before.labs.tt.toFixed(0)}→${a.labs.tt.toFixed(0)}s · TEG R ${before.visco.tegR.toFixed(1)}→${a.visco.tegR.toFixed(1)}m`;
+      } else if (id === 'dabi_idaru') {
+        state.drugs.idarucizumab = true;
+        buildDrugsTab();
+        updateDrugCountBadge();
+        recompute();
+        const a = state.sim;
+        title = 'Dabigatran → Idarucizumab';
+        logStr = `TT ${before.labs.tt.toFixed(0)}→${a.labs.tt.toFixed(0)}s · aPTT ${before.labs.aptt.toFixed(1)}→${a.labs.aptt.toFixed(1)}s · Peak IIa ${Math.round(before.cat.peakIIa)}→${Math.round(a.cat.peakIIa)} nM`;
+      } else if (id === 'crash2_tic') {
+        state.drugs.txa = 100;
+        state.drugs.fbgConc = 2.0;
+        state.factors.temp = 36.8;
+        state.factors.ph = 7.36;
+        buildDrugsTab();
+        buildFactorsTab();
+        updateDrugCountBadge();
+        recompute();
+        const a = state.sim;
+        title = 'CRASH-2: TXA + Fbg + Rewarm/pH';
+        logStr = `LY30 ${before.visco.tegLY30.toFixed(1)}→${a.visco.tegLY30.toFixed(1)}% · MA ${Math.round(before.visco.tegMA)}→${Math.round(a.visco.tegMA)}mm · FIBTEM ${Math.round(before.visco.fibtemMCF)}→${Math.round(a.visco.fibtemMCF)}mm`;
+      } else if (id === 'cirrhosis_paradox') {
+        // Simulate 2 units FFP: minimal factor boost (+8% II/V/VII/IX/X) with negligible INR/ETP change!
+        state.factors.f2 = Math.min(200, state.factors.f2 + 8);
+        state.factors.f5 = Math.min(200, state.factors.f5 + 8);
+        state.factors.f7 = Math.min(200, state.factors.f7 + 8);
+        state.factors.f9 = Math.min(200, state.factors.f9 + 8);
+        state.factors.f10 = Math.min(200, state.factors.f10 + 8);
+        buildFactorsTab();
+        recompute();
+        const a = state.sim;
+        title = 'Cirrhosis: 2 U FFP (Low Utility)';
+        logStr = `INR ${before.labs.inr.toFixed(2)}→${a.labs.inr.toFixed(2)} (barely changed) · ETP ${Math.round(before.cat.etp)}→${Math.round(a.cat.etp)} (already preserved; FFP adds portal volume!)`;
+      }
+
+      state.challengeLog.unshift({ title, logStr });
+      if (state.challengeLog.length > 5) state.challengeLog.pop();
+      renderChallengeLog();
+    }
+
+    function renderChallengeLog() {
+      const el = document.getElementById('challenge-log');
+      if (!el) return;
+      if (state.challengeLog.length === 0) {
+        el.innerHTML = '<div class="text-[11px] text-zinc-400 dark:text-zinc-500">Run a bedside challenge above to log Before &rarr; After coagulation response.</div>';
+        return;
+      }
+      el.innerHTML = state.challengeLog.map(item => `
+        <div class="p-2 rounded-md border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-white dark:bg-zinc-900/50">
+          <div class="text-[10.5px] font-medium text-tealLight dark:text-tealDark">${item.title}</div>
+          <div class="font-mono text-[10px] text-zinc-600 dark:text-zinc-300 mt-0.5 tabular-nums">${item.logStr}</div>
+        </div>
+      `).join('');
+    }
+
+    /* =========================================================================
+       9. UI STATE SYNC, EVENTS & STRICT RESIZE OBSERVER
+       ========================================================================= */
+    function switchSidebarTab(tabId) {
+      state.activeTab = tabId;
+      document.querySelectorAll('.side-tab').forEach(btn => {
+        const active = btn.dataset.tab === tabId;
+        btn.className = `side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center gap-1 ${
+          active
+            ? 'bg-white dark:bg-zinc-800 text-[#09090b] dark:text-[#f4f4f5] shadow-sm'
+            : 'text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-zinc-200'
+        }`;
+      });
+      ['pathologies', 'drugs', 'factors', 'challenges'].forEach(id => {
+        document.getElementById(`tab-${id}`).classList.toggle('hidden', id !== tabId);
+      });
+    }
+
+    function syncChartButtons() {
+      document.querySelectorAll('.vmode-btn').forEach(b => {
+        const on = b.dataset.vmode === state.viscoMode;
+        b.className = `vmode-btn px-2 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+      document.querySelectorAll('.cmode-btn').forEach(b => {
+        const on = b.dataset.cmode === state.catMode;
+        b.className = `cmode-btn px-2 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+      const fibBtn = document.getElementById('toggle-fibtem');
+      fibBtn.className = `px-2 py-0.5 rounded border transition-colors ${
+        state.showFibtem
+          ? 'border-amber-500/60 bg-amber-500/15 text-amber-700 dark:text-amber-300 font-medium'
+          : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400'
+      }`;
+    }
+
+    function syncPinUI() {
+      const pinned = Boolean(state.pinnedSim);
+      const btn = document.getElementById('btn-pin-baseline');
+      document.getElementById('pin-dot').classList.toggle('hidden', !pinned);
+      document.getElementById('pin-label').textContent = pinned ? 'Pinned' : 'Pin Baseline';
+      btn.className = `h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors ${
+        pinned
+          ? 'border-tealLight/60 dark:border-tealDark/60 bg-teal-500/10 text-tealLight dark:text-tealDark'
+          : 'bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border-[#e4e4e7] dark:border-borderDark text-zinc-700 dark:text-zinc-200'
+      }`;
+    }
+
+    function wireEvents() {
+      // Theme Toggle (synced with medlab-theme & theme)
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        const val = isDark ? 'dark' : 'light';
+        try {
+          localStorage.setItem('medlab-theme', val);
+          localStorage.setItem('theme', val);
+        } catch (_) {}
+        renderCoagSVG();
+        drawViscoCanvas();
+        drawCATCanvas();
+      });
+
+      // Pin Baseline Toggle
+      document.getElementById('btn-pin-baseline').addEventListener('click', () => {
+        state.pinnedSim = state.pinnedSim ? null : state.sim;
+        syncPinUI();
+        renderKPIStrip();
+        drawViscoCanvas();
+        drawCATCanvas();
+      });
+
+      // Reset
+      document.getElementById('btn-reset').addEventListener('click', () => {
+        state.pinnedSim = null;
+        state.mixingOpen = false;
+        document.getElementById('mixing-panel').classList.add('hidden');
+        syncPinUI();
+        applyPreset('normal');
+      });
+
+      // Sidebar Tabs
+      document.querySelectorAll('.side-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchSidebarTab(btn.dataset.tab));
+      });
+
+      // Viscoelastic Mode (TEG / ROTEM) & FIBTEM Overlay
+      document.querySelectorAll('.vmode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.viscoMode = btn.dataset.vmode;
+          syncChartButtons();
+          renderKPIStrip();
+          drawViscoCanvas();
+        });
+      });
+      document.getElementById('toggle-fibtem').addEventListener('click', () => {
+        state.showFibtem = !state.showFibtem;
+        syncChartButtons();
+        drawViscoCanvas();
+      });
+
+      // CAT Mode (Thrombin / Fibrin & Lysis)
+      document.querySelectorAll('.cmode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.catMode = btn.dataset.cmode;
+          syncChartButtons();
+          drawCATCanvas();
+        });
+      });
+
+      // Interactive 1:1 Mixing Study Toggle Button
+      document.getElementById('btn-mixing-study').addEventListener('click', () => {
+        state.mixingOpen = !state.mixingOpen;
+        const panel = document.getElementById('mixing-panel');
+        panel.classList.toggle('hidden', !state.mixingOpen);
+        if (state.mixingOpen) renderMixingStudyPanel();
+      });
+
+      // Clickable SVG Hemostasis Stages
+      document.getElementById('coag-svg').addEventListener('click', e => {
+        const g = e.target.closest('[data-stage]');
+        if (!g) return;
+        state.selectedStage = parseInt(g.getAttribute('data-stage'), 10);
+        renderCoagSVG();
+        renderPhaseInspector();
+      });
+
+      // Viscoelastic Canvas Hover Crosshair
+      const handleViscoMove = clientX => {
+        if (!state.sim) return;
+        const rect = viscoWrap.getBoundingClientRect();
+        const padL = 40, padR = 14;
+        const pw = Math.max(40, rect.width - padL - padR);
+        const rel = (clientX - rect.left - padL) / pw;
+        state.viscoHoverIdx = (rel >= 0 && rel <= 1) ? Math.round(rel * (state.sim.visco.t.length - 1)) : null;
+        drawViscoCanvas();
+      };
+      viscoWrap.addEventListener('mousemove', e => handleViscoMove(e.clientX));
+      viscoWrap.addEventListener('mouseleave', () => { state.viscoHoverIdx = null; drawViscoCanvas(); });
+      viscoWrap.addEventListener('touchmove', e => { if (e.touches[0]) handleViscoMove(e.touches[0].clientX); }, { passive: true });
+      viscoWrap.addEventListener('touchend', () => { state.viscoHoverIdx = null; drawViscoCanvas(); });
+
+      // CAT Canvas Hover Crosshair
+      const handleCATMove = clientX => {
+        if (!state.sim) return;
+        const rect = catWrap.getBoundingClientRect();
+        const padL = 44, padR = state.catMode === 'thrombin' ? 14 : 38;
+        const pw = Math.max(40, rect.width - padL - padR);
+        const rel = (clientX - rect.left - padL) / pw;
+        state.catHoverIdx = (rel >= 0 && rel <= 1) ? Math.round(rel * (state.sim.cat.t.length - 1)) : null;
+        drawCATCanvas();
+      };
+      catWrap.addEventListener('mousemove', e => handleCATMove(e.clientX));
+      catWrap.addEventListener('mouseleave', () => { state.catHoverIdx = null; drawCATCanvas(); });
+      catWrap.addEventListener('touchmove', e => { if (e.touches[0]) handleCATMove(e.touches[0].clientX); }, { passive: true });
+      catWrap.addEventListener('touchend', () => { state.catHoverIdx = null; drawCATCanvas(); });
+
+      // STRICT ANTI-STRETCH RESIZE OBSERVER: Observe WRAPPERS ONLY!
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(entries => {
+          for (const entry of entries) {
+            if (entry.target === viscoWrap && syncCanvas(viscoWrap, viscoCanvas)) drawViscoCanvas();
+            if (entry.target === catWrap && syncCanvas(catWrap, catCanvas)) drawCATCanvas();
+          }
+        });
+        ro.observe(viscoWrap);
+        ro.observe(catWrap);
+      }
+
+      window.addEventListener('resize', () => {
+        if (syncCanvas(viscoWrap, viscoCanvas)) drawViscoCanvas();
+        if (syncCanvas(catWrap, catCanvas)) drawCATCanvas();
+      });
+    }
+
+    // Bootstrap cleanly on window load
+    window.addEventListener('load', () => {
+      buildPathologiesTab();
+      buildDrugsTab();
+      buildFactorsTab();
+      buildChallengesTab();
+      wireEvents();
+
+      switchSidebarTab('pathologies');
+      syncChartButtons();
+      syncPinUI();
+
+      syncCanvas(viscoWrap, viscoCanvas);
+      syncCanvas(catWrap, catCanvas);
+
+      recompute();
+    });
+  })();
+  </script>
+</body>
+</html>
