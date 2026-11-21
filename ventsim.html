@@ -1,1 +1,2466 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VentSim — MedLab Mechanical Ventilation Simulator</title>
 
+  <!-- Prevent theme flash prior to first paint (syncs medlab-theme & theme keys; defaults to dark) -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#0f0f12',
+            subtleDark: '#141418',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Subtle Minimal Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(113, 113, 122, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(113, 113, 122, 0.45);
+    }
+
+    /* Minimalist Swiss-Precision Range Sliders (Light & Dark aware) */
+    input[type="range"].clinical-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      border-radius: 9999px;
+      background: #e4e4e7;
+      outline: none;
+      cursor: pointer;
+    }
+    .dark input[type="range"].clinical-slider {
+      background: #27272a;
+    }
+
+    input[type="range"].clinical-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+      transition: transform 0.1s ease, background-color 0.15s ease;
+    }
+    .dark input[type="range"].clinical-slider::-webkit-slider-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.14);
+    }
+
+    input[type="range"].clinical-slider::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+      transition: transform 0.1s ease, background-color 0.15s ease;
+    }
+    .dark input[type="range"].clinical-slider::-moz-range-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+
+    input[type="range"].clinical-slider:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    /* Floating Clinical Tooltip */
+    #clinical-tooltip {
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+      z-index: 9999;
+    }
+
+    /* Calm Live Status Pulse */
+    @keyframes monitorPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .pulse-live {
+      animation: monitorPulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-canvasLight text-zinc-900 dark:bg-obsidian dark:text-zinc-100 transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
+
+  <!-- ==================== FLOATING CLINICAL TOOLTIP ==================== -->
+  <div id="clinical-tooltip" class="fixed opacity-0 max-w-xs px-3 py-2 rounded-lg bg-zinc-900/95 text-zinc-100 border border-zinc-800 shadow-lg text-xs leading-relaxed backdrop-blur-sm"></div>
+
+  <!-- ==================== 1. STICKY MINIMAL HEADER (h-12) ==================== -->
+  <header class="sticky top-0 z-40 w-full border-b border-zinc-200 dark:border-zinc-800/90 bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 min-h-[48px] py-1.5 flex flex-wrap items-center justify-between gap-2">
+
+      <!-- Left: MedLab Breadcrumb + VentSim + Active Scenario + Live Dot -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="flex items-center gap-2 group focus:outline-none shrink-0">
+          <span class="w-7 h-7 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-surfaceDark group-hover:border-tealLight/50 dark:group-hover:border-tealDark/50 transition-colors">
+            <svg class="w-4 h-4 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2.5 13h4l2.1-6.2 3.5 11.2 2.3-5h7.1" />
+            </svg>
+          </span>
+          <span class="text-[14px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">MedLab</span>
+        </a>
+
+        <span class="text-zinc-300 dark:text-zinc-700 text-sm font-light select-none">/</span>
+
+        <span class="text-[14px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 shrink-0">VentSim</span>
+
+        <span class="hidden sm:inline-block h-3.5 w-px bg-zinc-200 dark:bg-zinc-800 mx-0.5"></span>
+
+        <div class="hidden sm:flex items-center gap-1.5 min-w-0">
+          <span id="live-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 pulse-live shrink-0"></span>
+          <span id="active-preset-label" class="text-xs font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[170px] md:max-w-[230px]">Normal Lungs</span>
+          <span id="mode-header-badge" class="hidden md:inline-block font-mono text-[10px] font-medium px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-subtleDark text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 shrink-0">VCV</span>
+        </div>
+      </div>
+
+      <!-- Right: Playback, Speed, Hold Maneuvers, Pin, Reset, Theme -->
+      <div class="flex flex-wrap items-center gap-1.5">
+        <!-- Play / Pause -->
+        <button id="btn-play-pause" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-subtleDark border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5 transition-colors" title="Play / Pause Simulation">
+          <svg id="icon-pause" class="w-3.5 h-3.5 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+            <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+          </svg>
+          <svg id="icon-play" class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 hidden" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5,3 20,12 5,21"></polygon>
+          </svg>
+          <span id="play-pause-text" class="hidden md:inline">Pause</span>
+        </button>
+
+        <!-- Speed Toggle (0.5x / 1.0x) -->
+        <div class="inline-flex items-center h-8 rounded-lg bg-zinc-100 dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800 p-0.5 text-[11px] font-mono">
+          <button data-speed="0.5" type="button" class="speed-btn px-2 h-full rounded-md text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">0.5×</button>
+          <button data-speed="1" type="button" class="speed-btn px-2 h-full rounded-md bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm transition-colors">1.0×</button>
+        </div>
+
+        <!-- Insp Hold Maneuver -->
+        <button id="btn-insp-hold" type="button" data-tooltip="Trigger a 0.5s end-inspiratory occlusion hold: flow drops to zero so Paw equilibrates to static Plateau Pressure (Pplat), isolating elastic vs. resistive load." class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-subtleDark border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:border-tealLight/50 dark:hover:border-tealDark/50 flex items-center gap-1.5 transition-colors">
+          <span id="insp-hold-dot" class="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600 transition-colors"></span>
+          <span>Insp Hold</span>
+        </button>
+
+        <!-- Exp Hold Maneuver -->
+        <button id="btn-exp-hold" type="button" data-tooltip="Trigger a 0.8s end-expiratory occlusion hold: equilibrates airway and alveolar pressure to unmask occult Intrinsic PEEP (Auto-PEEP = PEEPtot − Set PEEP)." class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-subtleDark border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:border-amber-500/50 flex items-center gap-1.5 transition-colors">
+          <span id="exp-hold-dot" class="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600 transition-colors"></span>
+          <span>Exp Hold</span>
+        </button>
+
+        <!-- Pin Snapshot -->
+        <button id="btn-pin-snapshot" type="button" data-tooltip="Pin the current respiratory mechanics & ABG state as the Ghost Reference loop and telemetry delta baseline." class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-subtleDark border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:border-tealLight/50 dark:hover:border-tealDark/50 flex items-center gap-1.5 transition-colors">
+          <svg class="w-3.5 h-3.5 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 17v5" />
+            <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+          </svg>
+          <span id="snapshot-btn-label" class="hidden sm:inline">Pin</span>
+        </button>
+
+        <!-- Reset -->
+        <button id="btn-reset-normal" type="button" data-tooltip="Reset to Normal Lungs baseline and clear pinned reference." class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-subtleDark border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+          Reset
+        </button>
+
+        <!-- Dark / Light Mode Toggle -->
+        <button
+          id="theme-toggle"
+          type="button"
+          aria-label="Toggle dark and light theme"
+          title="Switch Bright / Dark mode"
+          class="w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+        >
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. TOP TELEMETRY STRIP (8 HAIRLINE CELLS) ==================== -->
+  <section id="telemetry-strip" class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 pt-3 shrink-0">
+    <div class="rounded-xl border border-zinc-200 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark overflow-hidden">
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 divide-x divide-y lg:divide-y-0 divide-zinc-200 dark:divide-zinc-800/90">
+
+        <!-- 1. Ppeak / Pplat -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Peak Inspiratory Pressure (Ppeak) and Static Plateau Pressure (Pplat) in cmH2O. Pplat > 30 cmH2O indicates barotrauma risk; Ppeak − Pplat reflects airway resistance.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>Ppeak / Pplat</span>
+            <span id="delta-pplat" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-ppeak" class="font-mono text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">15</span>
+            <span class="font-mono text-xs text-zinc-400 dark:text-zinc-600">/</span>
+            <span id="val-pplat" class="font-mono text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">12</span>
+            <span class="text-[9.5px] text-zinc-400 dark:text-zinc-500 font-mono">cmH₂O</span>
+          </div>
+        </div>
+
+        <!-- 2. ΔP / PEEPtot -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Driving Pressure (ΔP = Pplat − PEEPtot) and Total PEEP (Set PEEP + Auto-PEEP). Keep ΔP ≤ 15 cmH2O to minimize cyclic alveolar strain and mortality in ARDS (Amato et al.).">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>ΔP / PEEPtot</span>
+            <span id="delta-dp" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <span id="val-dp" class="font-mono text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">7.0</span>
+            <span id="val-peeptot" class="font-mono text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">/ 5.0</span>
+          </div>
+        </div>
+
+        <!-- 3. Auto-PEEP / I:E -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Intrinsic PEEP (Auto-PEEP = PEEPtot − Set PEEP) from incomplete lung emptying and Inspiratory-to-Expiratory time ratio (I:E). Auto-PEEP > 2 cmH2O signals dynamic hyperinflation.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>Auto-PEEP / I:E</span>
+            <span id="delta-peepi" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <span id="val-peepi" class="font-mono text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">0.0</span>
+            <span id="val-ie" class="font-mono text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">1:3.3</span>
+          </div>
+        </div>
+
+        <!-- 4. MV / Vt -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Minute Ventilation (MV = Vt × RR in L/min) and Delivered Tidal Volume (mL and mL/kg Predicted Body Weight). ARDSNet lung-protective target: 6 mL/kg PBW.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>MV / Vt</span>
+            <span id="delta-mv" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline justify-between gap-1 mt-1">
+            <div class="flex items-baseline gap-1">
+              <span id="val-mv" class="font-mono text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">6.3</span>
+              <span class="text-[9.5px] text-zinc-400 dark:text-zinc-500 font-mono">L/m</span>
+            </div>
+            <span id="val-vt-pbw" class="font-mono text-[10.5px] text-zinc-500 dark:text-zinc-400 tabular-nums">450 · 6.4</span>
+          </div>
+        </div>
+
+        <!-- 5. PaO2 / SpO2 -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Arterial Oxygen Tension (PaO2 mmHg) and Arterial Hemoglobin Saturation (SpO2 %) computed via Berggren venous admixture and Bohr-shifted Severinghaus dissociation curve.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>PaO₂ / SpO₂</span>
+            <span id="delta-pao2" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <span id="val-pao2" class="font-mono text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">132</span>
+            <span id="val-spo2" class="font-mono text-[12px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">99%</span>
+          </div>
+        </div>
+
+        <!-- 6. PaCO2 / pH -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Arterial CO2 Tension (PaCO2 = 0.863 × VCO2 / VA) and arterial pH via Henderson-Hasselbalch with acute metabolic buffering. Normal pH: 7.35–7.45.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>PaCO₂ / pH</span>
+            <span id="delta-paco2" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <span id="val-paco2" class="font-mono text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">39</span>
+            <span id="val-ph" class="font-mono text-[12px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">7.41</span>
+          </div>
+        </div>
+
+        <!-- 7. P/F · A-a -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="PaO2/FiO2 oxygenation index (Berlin ARDS: Mild ≤300, Moderate ≤200, Severe ≤100 mmHg) and Alveolar-Arterial oxygen gradient (A-a = PAO2 − PaO2).">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>P/F · A-a</span>
+            <span id="delta-pf" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <span id="val-pf" class="font-mono text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">440</span>
+            <span id="val-aa" class="font-mono text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">A-a 32</span>
+          </div>
+        </div>
+
+        <!-- 8. MP / Cstat -->
+        <div class="px-3 py-2 flex flex-col justify-between" data-tooltip="Mechanical Power delivered to the respiratory system (J/min; VILI risk increases > 17 J/min) and effective static compliance (Cstat = Vt / ΔP in mL/cmH2O).">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>MP / Cstat</span>
+            <span id="delta-mp" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <span id="val-mp" class="font-mono text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">7.4</span>
+            <span id="val-cstat" class="font-mono text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">65 mL/c</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. MAIN WORKSPACE (xl:grid-cols-12) ==================== -->
+  <main class="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-3.5 grid grid-cols-1 xl:grid-cols-12 gap-3 min-h-0">
+
+    <!-- LEFT PANEL (xl:col-span-5): VENTILATOR SCALARS (12-SECOND SWEEP) -->
+    <section class="xl:col-span-5 rounded-xl bg-white dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800/90 flex flex-col min-h-[420px] xl:min-h-[550px] overflow-hidden">
+      <!-- Header + Legend + Hold Readout Pill -->
+      <div class="px-3.5 py-2.5 border-b border-zinc-200 dark:border-zinc-800/90 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div class="flex items-center gap-2">
+          <h2 class="text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Ventilator Scalars</h2>
+          <span class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500">12s sweep</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5 text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-teal-600 dark:bg-teal-400 inline-block"></span>Paw</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 border-t border-dashed border-amber-600 dark:border-amber-400 inline-block"></span>Palv</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-sky-600 dark:bg-sky-400 inline-block"></span>Flow</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-emerald-600 dark:bg-emerald-400 inline-block"></span>Vol</span>
+        </div>
+      </div>
+
+      <!-- Inline Hold Maneuver Measurement Banner (hidden unless Insp/Exp Hold triggered) -->
+      <div id="hold-banner" class="hidden px-3.5 py-1.5 border-b border-zinc-200 dark:border-zinc-800/90 bg-zinc-50 dark:bg-subtleDark flex items-center justify-between gap-2 text-[11px] font-mono">
+        <span id="hold-banner-text" class="text-tealLight dark:text-tealDark font-medium"></span>
+        <button id="hold-banner-dismiss" type="button" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-xs leading-none px-1">×</button>
+      </div>
+
+      <!-- High-DPI Canvas Container -->
+      <div id="scalars-canvas-wrap" class="relative flex-1 w-full min-h-[340px] p-1">
+        <canvas id="scalars-canvas" class="block w-full h-full"></canvas>
+      </div>
+
+      <!-- Compact Footer -->
+      <div class="px-3.5 py-2 border-t border-zinc-200 dark:border-zinc-800/90 bg-zinc-50/70 dark:bg-subtleDark/60 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 shrink-0">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span data-tooltip="Expiratory Time Constant τ_exp = R_exp × C_stat (seconds). Complete passive exhalation requires ~3–4 × τ_exp.">τ<sub>exp</sub> <strong id="foot-tau" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">0.46 s</strong></span>
+          <span data-tooltip="Resistive Airway Pressure Gradient (Ppeak − Pplat). Values > 8–10 cmH2O indicate elevated airway resistance (bronchospasm, mucus plug, kinked ETT).">R<sub>aw</sub> Δ <strong id="foot-raw-grad" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">3.0 cmH₂O</strong></span>
+        </div>
+        <span id="foot-phase" class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/90 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700/70">Inspiration</span>
+      </div>
+    </section>
+
+    <!-- CENTER PANEL (xl:col-span-4): PRESSURE-VOLUME & FLOW-VOLUME LOOPS -->
+    <section class="xl:col-span-4 rounded-xl bg-white dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800/90 flex flex-col min-h-[420px] xl:min-h-[550px] overflow-hidden">
+      <!-- Header + Monochrome Overlay Toggles -->
+      <div class="px-3.5 py-2.5 border-b border-zinc-200 dark:border-zinc-800/90 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div class="flex items-baseline gap-2">
+          <h2 class="text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">P-V &amp; F-V Loops</h2>
+          <span id="loop-ref-tag" class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500">Ref: Normal</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-1 text-[10px] font-mono">
+          <button data-overlay="staticCrs" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Overlay sigmoidal static respiratory system Pressure-Volume backbone with Lower (LIP) and Upper (UIP) Inflection Points.">Static Crs</button>
+          <button data-overlay="ghost" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Overlay dashed Ghost Reference P-V and F-V loops from Normal baseline or Pinned Snapshot.">Ghost</button>
+          <button data-overlay="beaking" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Highlight upper overdistension ('beaking') zone above the Upper Inflection Point (UIP) where lung stiffness rises sharply.">Beaking</button>
+        </div>
+      </div>
+
+      <!-- High-DPI Canvas Container -->
+      <div id="loops-canvas-wrap" class="relative flex-1 w-full min-h-[340px] p-1">
+        <canvas id="loops-canvas" class="block w-full h-full"></canvas>
+      </div>
+
+      <!-- Compact Gas-Exchange Internals Footer -->
+      <div class="px-3.5 py-2 border-t border-zinc-200 dark:border-zinc-800/90 bg-zinc-50/70 dark:bg-subtleDark/60 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 shrink-0">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span data-tooltip="Alveolar Oxygen Tension PAO2 = FiO2 × (760 − 47) − PaCO2 / 0.8">PAO₂ <strong id="foot-palvo2" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">165</strong></span>
+          <span data-tooltip="Effective Right-to-Left Intrapulmonary Shunt Fraction (Qs/Qt) after PEEP recruitment.">Q<sub>s</sub>/Q<sub>t</sub> <strong id="foot-shunt" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">3%</strong></span>
+          <span data-tooltip="Effective Physiologic Dead Space Ratio (Vd/Vt) including anatomical & overdistension components.">V<sub>d</sub>/V<sub>t</sub> <strong id="foot-vdvt" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">30%</strong></span>
+          <span data-tooltip="Bohr-shifted Oxygen-Hemoglobin P50 (PO2 at 50% saturation; rises in acidemia, falls in alkalemia).">P<sub>50</sub> <strong id="foot-p50" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">26.6</strong></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT SIDEBAR (xl:col-span-3): 3 MINIMAL TABS -->
+    <aside class="xl:col-span-3 rounded-xl bg-white dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800/90 flex flex-col min-h-[450px] xl:min-h-0 xl:max-h-[calc(100vh-198px)] overflow-hidden">
+      <!-- 3-Tab Segmented Switcher -->
+      <div class="p-2 border-b border-zinc-200 dark:border-zinc-800/90 shrink-0">
+        <div class="grid grid-cols-3 rounded-lg bg-zinc-100/90 dark:bg-obsidian p-0.5 gap-0.5 border border-zinc-200/70 dark:border-zinc-800/90">
+          <button data-tab="pathologies" type="button" class="tab-btn py-1.5 rounded-md text-xs font-medium bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm transition-colors">
+            Pathologies
+          </button>
+          <button data-tab="ventilator" type="button" class="tab-btn py-1.5 rounded-md text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors">
+            Ventilator
+          </button>
+          <button data-tab="lung" type="button" class="tab-btn py-1.5 rounded-md text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors">
+            Lung &amp; Gas
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Tab Content Area -->
+      <div class="flex-1 overflow-y-auto p-3">
+
+        <!-- TAB 1: PATHOLOGIES (9 High-Yield Presets) -->
+        <div id="tab-pathologies" class="space-y-1.5"></div>
+
+        <!-- TAB 2: VENTILATOR CONTROLS -->
+        <div id="tab-ventilator" class="hidden space-y-4">
+          <!-- Mode Segmented Switch -->
+          <div class="space-y-1.5">
+            <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">Ventilation Mode</div>
+            <div class="grid grid-cols-3 rounded-lg bg-zinc-100 dark:bg-obsidian p-0.5 gap-0.5 border border-zinc-200 dark:border-zinc-800 text-[11px] font-medium">
+              <button data-vmode="vcv_sq" type="button" class="vmode-btn py-1.5 rounded-md transition-colors">VCV Square</button>
+              <button data-vmode="vcv_ramp" type="button" class="vmode-btn py-1.5 rounded-md transition-colors">VCV Ramp</button>
+              <button data-vmode="pcv" type="button" class="vmode-btn py-1.5 rounded-md transition-colors">PCV</button>
+            </div>
+          </div>
+
+          <!-- Quick Clinical Strategy Pills -->
+          <div class="space-y-1.5">
+            <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">Quick Strategy</div>
+            <div class="grid grid-cols-3 gap-1.5 text-[10.5px] font-medium">
+              <button data-strategy="standard" type="button" class="strategy-btn py-1.5 px-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-subtleDark hover:border-tealLight/50 dark:hover:border-tealDark/50 text-zinc-700 dark:text-zinc-300 transition-colors truncate" data-tooltip="Standard protective baseline: VCV Square, Vt 6.5 mL/kg PBW, RR 14, PEEP 5, Ti 1.0s.">Standard</button>
+              <button data-strategy="ardsnet" type="button" class="strategy-btn py-1.5 px-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-subtleDark hover:border-tealLight/50 dark:hover:border-tealDark/50 text-zinc-700 dark:text-zinc-300 transition-colors truncate" data-tooltip="ARDSNet Low-Vt protocol: 6.0 mL/kg PBW, RR 22, PEEP 12 cmH2O, Ti 0.85s, Tpause 0.15s.">ARDSNet 6mL</button>
+              <button data-strategy="copd" type="button" class="strategy-btn py-1.5 px-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-subtleDark hover:border-tealLight/50 dark:hover:border-tealDark/50 text-zinc-700 dark:text-zinc-300 transition-colors truncate" data-tooltip="Obstructive strategy (long expiration): Vt 7 mL/kg, RR 12, Ti 0.8s (I:E > 1:5), PEEP 5 to relieve Auto-PEEP.">COPD Long-E</button>
+            </div>
+          </div>
+
+          <!-- Ventilator Sliders -->
+          <div id="vent-sliders-list" class="space-y-3.5 pt-1 border-t border-zinc-200/80 dark:border-zinc-800/80"></div>
+        </div>
+
+        <!-- TAB 3: LUNG & GAS PHYSIOLOGY -->
+        <div id="tab-lung" class="hidden space-y-4">
+          <div id="lung-sliders-list" class="space-y-4"></div>
+        </div>
+
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ==================== 4. MINIMAL BOTTOM CLINICAL DIAGNOSTICS FOOTER ==================== -->
+  <footer class="w-full border-t border-zinc-200 dark:border-zinc-800/90 bg-white/85 dark:bg-obsidian/90 shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2">
+      <div id="diagnostics-badges" class="flex flex-wrap items-center gap-1.5"></div>
+      <div id="vent-summary-strip" class="text-[11px] font-mono text-zinc-500 dark:text-zinc-400"></div>
+    </div>
+  </footer>
+
+  <!-- ==================== BIOPHYSICAL RESPIRATORY ENGINE & UI CONTROLLER ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+    /* =========================================================================
+       1. PRESETS, VENTILATOR & LUNG/GAS SLIDER DEFINITIONS
+       ========================================================================= */
+
+    const NORMAL_VENT = {
+      mode: 'vcv_sq',   // 'vcv_sq' | 'vcv_ramp' | 'pcv'
+      vt: 450,          // mL (VCV)
+      dPinsp: 12,       // cmH2O above PEEP (PCV)
+      rr: 14,           // breaths/min
+      peep: 5,          // cmH2O
+      fio2: 30,         // %
+      ti: 1.0,          // s
+      tpause: 0.15      // s (VCV)
+    };
+
+    const NORMAL_LUNG = {
+      crs: 65,          // Static compliance (mL/cmH2O)
+      rin: 6,           // Inspiratory resistance (cmH2O/L/s)
+      rex: 7,           // Expiratory resistance (cmH2O/L/s)
+      shunt: 3,         // Baseline Qs/Qt (%)
+      recruit: 10,      // PEEP recruitability (%)
+      vdvt: 30,         // Base dead space Vd/Vt (%)
+      vco2: 200,        // CO2 production (mL/min)
+      hco3: 24,         // Baseline HCO3- (mEq/L)
+      pbw: 70,          // Predicted body weight (kg)
+      lip: 0            // Lower inflection point (cmH2O)
+    };
+
+    const PATHOLOGIES = [
+      {
+        id: 'normal',
+        name: 'Normal Lungs',
+        tag: 'Baseline',
+        desc: 'Healthy compliance, low resistance, minimal shunt and optimal V/Q.',
+        vent: { ...NORMAL_VENT },
+        lung: { ...NORMAL_LUNG }
+      },
+      {
+        id: 'ards',
+        name: 'Severe ARDS',
+        tag: 'Crs 25 · Shunt 38%',
+        desc: 'Baby lung, LIP 11 cmH₂O, overdistension beaking & refractory hypoxemia.',
+        vent: { mode: 'vcv_sq', vt: 520, dPinsp: 22, rr: 18, peep: 5, fio2: 70, ti: 1.0, tpause: 0.15 },
+        lung: { crs: 25, rin: 9, rex: 10, shunt: 38, recruit: 75, vdvt: 48, vco2: 210, hco3: 24, pbw: 70, lip: 11 }
+      },
+      {
+        id: 'copd',
+        name: 'COPD Exacerbation',
+        tag: 'Rex 26 · Auto-PEEP',
+        desc: 'Expiratory flow limitation, scooped F-V loop, breath-stacking & ↑HCO₃⁻.',
+        vent: { mode: 'vcv_sq', vt: 480, dPinsp: 14, rr: 22, peep: 5, fio2: 35, ti: 1.0, tpause: 0.10 },
+        lung: { crs: 85, rin: 15, rex: 26, shunt: 12, recruit: 10, vdvt: 46, vco2: 210, hco3: 32, pbw: 70, lip: 0 }
+      },
+      {
+        id: 'asthma',
+        name: 'Status Asthmaticus',
+        tag: 'Rex 38 · ↑↑Ppeak',
+        desc: 'Severe bronchospasm: extreme Ppeak, wide resistive gradient & stacking.',
+        vent: { mode: 'vcv_sq', vt: 480, dPinsp: 22, rr: 20, peep: 5, fio2: 40, ti: 1.0, tpause: 0.15 },
+        lung: { crs: 60, rin: 28, rex: 38, shunt: 10, recruit: 10, vdvt: 38, vco2: 220, hco3: 24, pbw: 70, lip: 0 }
+      },
+      {
+        id: 'pe',
+        name: 'Massive Pulmonary Embolism',
+        tag: 'Vd/Vt 66%',
+        desc: 'Normal airway pressures with massive alveolar dead space & hypercapnia.',
+        vent: { mode: 'vcv_sq', vt: 450, dPinsp: 12, rr: 16, peep: 5, fio2: 60, ti: 1.0, tpause: 0.15 },
+        lung: { crs: 65, rin: 6, rex: 7, shunt: 22, recruit: 5, vdvt: 66, vco2: 215, hco3: 24, pbw: 70, lip: 0 }
+      },
+      {
+        id: 'edema',
+        name: 'Cardiogenic Pulm. Edema',
+        tag: 'Crs 36 · Shunt 30%',
+        desc: 'Alveolar flooding, reduced compliance, PEEP-responsive oxygenation.',
+        vent: { mode: 'vcv_sq', vt: 450, dPinsp: 16, rr: 18, peep: 5, fio2: 60, ti: 1.0, tpause: 0.15 },
+        lung: { crs: 36, rin: 11, rex: 13, shunt: 30, recruit: 65, vdvt: 36, vco2: 205, hco3: 23, pbw: 70, lip: 8 }
+      },
+      {
+        id: 'obesity',
+        name: 'Obesity / Stiff Chest Wall',
+        tag: 'Crs 38 · LIP 10',
+        desc: 'Basilar atelectasis, elevated LIP and high PEEP recruitability.',
+        vent: { mode: 'vcv_sq', vt: 460, dPinsp: 15, rr: 16, peep: 5, fio2: 40, ti: 1.0, tpause: 0.15 },
+        lung: { crs: 38, rin: 9, rex: 10, shunt: 18, recruit: 70, vdvt: 34, vco2: 235, hco3: 25, pbw: 68, lip: 10 }
+      },
+      {
+        id: 'ptx',
+        name: 'Tension Pneumothorax',
+        tag: 'Crs 19 · Critical',
+        desc: 'Acute severe spike in both Ppeak and Pplat with non-recruitable shunt.',
+        vent: { mode: 'vcv_sq', vt: 460, dPinsp: 22, rr: 18, peep: 5, fio2: 60, ti: 1.0, tpause: 0.15 },
+        lung: { crs: 19, rin: 10, rex: 12, shunt: 34, recruit: 5, vdvt: 50, vco2: 210, hco3: 23, pbw: 70, lip: 0 }
+      },
+      {
+        id: 'ett',
+        name: 'Kinked ETT / Mucus Plug',
+        tag: 'Rin 34 · Pplat OK',
+        desc: 'Textbook isolated airway resistance spike: massive Ppeak, normal Pplat.',
+        vent: { mode: 'vcv_sq', vt: 450, dPinsp: 20, rr: 14, peep: 5, fio2: 35, ti: 1.0, tpause: 0.20 },
+        lung: { crs: 65, rin: 34, rex: 30, shunt: 5, recruit: 5, vdvt: 32, vco2: 200, hco3: 24, pbw: 70, lip: 0 }
+      }
+    ];
+
+    const VENT_SLIDERS = [
+      { key: 'vt', label: 'Tidal Volume (Vt)', unit: 'mL', min: 240, max: 800, step: 10, decimals: 0, modeReq: 'vcv', showPbw: true, tip: 'Set tidal volume in Volume-Control modes. ARDSNet lung-protective target: 6 mL/kg PBW.' },
+      { key: 'dPinsp', label: 'Insp Pressure (ΔPinsp)', unit: 'cmH₂O', min: 6, max: 36, step: 1, decimals: 0, modeReq: 'pcv', tip: 'Inspiratory driving pressure delivered above PEEP in Pressure-Control Ventilation (PCV).' },
+      { key: 'rr', label: 'Respiratory Rate (RR)', unit: '/min', min: 6, max: 38, step: 1, decimals: 0, tip: 'Set ventilator frequency. High RR shortens expiratory time and promotes Auto-PEEP in obstructive disease.' },
+      { key: 'peep', label: 'PEEP', unit: 'cmH₂O', min: 0, max: 24, step: 1, decimals: 0, tip: 'Positive End-Expiratory Pressure. Recruits collapsed alveoli above LIP, but excessive PEEP causes overdistension.' },
+      { key: 'fio2', label: 'FiO₂', unit: '%', min: 21, max: 100, step: 1, decimals: 0, tip: 'Fraction of inspired oxygen. Note: true right-to-left shunt responds poorly to FiO2 alone compared to PEEP recruitment.' },
+      { key: 'ti', label: 'Inspiratory Time (Ti)', unit: 's', min: 0.4, max: 2.4, step: 0.05, decimals: 2, tip: 'Total inspiratory duration (includes Tpause in VCV). Shorter Ti increases expiratory time (Te) and reduces Auto-PEEP.' },
+      { key: 'tpause', label: 'Insp Pause (Tpause)', unit: 's', min: 0.0, max: 0.5, step: 0.05, decimals: 2, modeReq: 'vcv', tip: 'End-inspiratory zero-flow pause in VCV allowing direct visualization of static Plateau Pressure (Pplat).' }
+    ];
+
+    const LUNG_SLIDERS = [
+      { key: 'crs', group: 'mech', label: 'Static Compliance (Crs)', unit: 'mL/c', min: 15, max: 110, step: 1, decimals: 0, tip: 'Baseline respiratory system compliance (normal 55–80 mL/cmH2O). Low in ARDS/edema/PTX; high in emphysema/COPD.' },
+      { key: 'rin', group: 'mech', label: 'Insp Resistance (Rin)', unit: 'c/L/s', min: 3, max: 40, step: 1, decimals: 0, tip: 'Inspiratory airway + ETT resistance (normal 5–8 cmH2O/L/s). Drives resistive gradient (Ppeak − Pplat).' },
+      { key: 'rex', group: 'mech', label: 'Exp Resistance (Rex)', unit: 'c/L/s', min: 3, max: 45, step: 1, decimals: 0, tip: 'Expiratory airway resistance. Above 12 cmH2O/L/s induces volume-dependent expiratory flow limitation (scooped F-V loop & Auto-PEEP).' },
+      { key: 'recruit', group: 'mech', label: 'PEEP Recruitability', unit: '%', min: 0, max: 100, step: 5, decimals: 0, tip: 'Fraction of collapsed lung units recruitable by PEEP (high in early ARDS/edema/obesity, low in PTX/fibrosis).' },
+
+      { key: 'shunt', group: 'gas', label: 'Shunt Fraction (Qs/Qt)', unit: '%', min: 2, max: 60, step: 1, decimals: 0, tip: 'Baseline right-to-left intrapulmonary shunt. Improves with optimal PEEP according to recruitability.' },
+      { key: 'vdvt', group: 'gas', label: 'Dead Space (Vd/Vt)', unit: '%', min: 20, max: 75, step: 1, decimals: 0, tip: 'Wasted ventilation fraction (normal ~30%). Markedly elevated in PE, ARDS, and severe COPD.' },
+      { key: 'vco2', group: 'gas', label: 'CO₂ Production (VCO₂)', unit: 'mL/m', min: 120, max: 380, step: 5, decimals: 0, tip: 'Metabolic CO2 production (normal ~200 mL/min; elevated in fever, sepsis, agitation).' },
+      { key: 'hco3', group: 'gas', label: 'Baseline HCO₃⁻', unit: 'mEq/L', min: 14, max: 40, step: 0.5, decimals: 1, tip: 'Chronic metabolic bicarbonate baseline (elevated in chronic hypercapnic COPD, low in metabolic acidosis).' },
+      { key: 'pbw', group: 'gas', label: 'Predicted Body Wt (PBW)', unit: 'kg', min: 45, max: 100, step: 1, decimals: 0, tip: 'Height/sex-derived Predicted Body Weight used for lung-protective Vt (6 mL/kg) and baby-lung scaling.' }
+    ];
+
+    /* =========================================================================
+       2. BIOPHYSICAL NONLINEAR RESPIRATORY MECHANICS & GAS EXCHANGE ENGINE
+       ========================================================================= */
+
+    /**
+     * Builds the nonlinear sigmoidal elastic pressure-volume relationship Pel(V_abs)
+     * with lower inflection point (LIP), PEEP recruitment modulation, and upper
+     * overdistension "beaking" above V_uip.
+     */
+    function createElasticModel(lung, peep) {
+      // Optimal recruitment PEEP scales with recruitability and degree of stiffness
+      const stiffnessRatio = clamp((62 - lung.crs) / 38, 0, 1);
+      const recFrac = lung.recruit / 100;
+      const optPEEP = 5 + 9.5 * recFrac * stiffnessRatio;
+
+      // Compliance gain from alveolar recruitment near optimal PEEP
+      const recBell = Math.max(0, 1 - Math.abs(peep - optPEEP) / 10.5);
+      const cGain = recFrac * stiffnessRatio * 0.28 * recBell;
+      const cMid = lung.crs * (1 + cGain);
+
+      // Lower Inflection Point (cmH2O): explicit preset LIP or derived when recruitable & stiff
+      const lipP = lung.lip > 0
+        ? lung.lip
+        : (stiffnessRatio > 0.25 && recFrac > 0.35 ? 11 * stiffnessRatio * recFrac : 0);
+      const vLip = lipP > 0.5 ? Math.max(40, cMid * lipP * 0.52) : 0;
+
+      // Upper Inflection Point (mL above FRC): baby-lung ceiling scaled by compliance & PBW
+      const vUip = Math.max(350, cMid * 19.2 * (0.65 + 0.35 * (lung.pbw / 70)));
+
+      // Smooth overdistension stiffening coefficient above V_uip
+      const kOver = 0.00013 * (45 / Math.max(15, cMid));
+
+      function pelOfV(vAbs) {
+        const v = Math.max(0, vAbs);
+        let p = v / cMid;
+        // Sigmoidal toe below LIP (lower initial compliance that opens above LIP)
+        if (vLip > 0) {
+          p += 1.05 * (vLip / cMid) * (1 - Math.exp(-v / vLip));
+        }
+        // Nonlinear upper overdistension "beaking" above V_uip
+        if (v > vUip) {
+          p += kOver * Math.pow(v - vUip, 2.2);
+        }
+        return p;
+      }
+
+      // Exact monotonic binary search inversion V(Pel)
+      function vOfPel(pTarget) {
+        if (pTarget <= 0) return 0;
+        let lo = 0, hi = 3200;
+        for (let i = 0; i < 28; i++) {
+          const mid = 0.5 * (lo + hi);
+          if (pelOfV(mid) < pTarget) lo = mid;
+          else hi = mid;
+        }
+        return 0.5 * (lo + hi);
+      }
+
+      const pUip = pelOfV(vUip);
+      const pLipAtV = vLip > 0 ? pelOfV(vLip) : 0;
+      const vAtSetPeep = vOfPel(peep);
+
+      return { cMid, lipP: pLipAtV, vLip, vUip, pUip, vAtSetPeep, optPEEP, pelOfV, vOfPel };
+    }
+
+    /**
+     * Simulates 12 consecutive respiratory cycles at dt = 0.002 s (500 Hz) until
+     * dynamic hyperinflation (trapped volume & Auto-PEEP) converges cleanly.
+     * Also generates 1-breath Insp Hold & Exp Hold traces from the converged state.
+     */
+    function runVentilationSimulation(vent, lung) {
+      const dt = 0.002; // 500 Hz integration step
+      const elastic = createElasticModel(lung, vent.peep);
+
+      const Ttot = 60.0 / vent.rr;
+      const TiEff = clamp(vent.ti, 0.3, Ttot * 0.86);
+      const TeEff = Ttot - TiEff;
+      const isPCV = vent.mode === 'pcv';
+      const TpauseEff = isPCV ? 0 : clamp(vent.tpause, 0, Math.max(0, TiEff - 0.22));
+      const Tflow = Math.max(0.20, TiEff - TpauseEff);
+
+      const VtTargetL = vent.vt / 1000.0;
+      const Rin = lung.rin;
+      const Rex = lung.rex;
+      const obsFactor = clamp((Rex - 12) / 14, 0, 1);
+
+      /**
+       * Runs a single respiratory cycle starting from vStart (mL above FRC)
+       * with optional maneuver ('none' | 'insp_hold' | 'exp_hold').
+       */
+      function simulateOneCycle(vStart, maneuver = 'none', record = false) {
+        const extraInspHold = maneuver === 'insp_hold' ? 0.55 : 0;
+        const extraExpHold = maneuver === 'exp_hold' ? 0.85 : 0;
+
+        const cycleTi = TiEff + extraInspHold;
+        const cycleTpause = isPCV ? extraInspHold : (TpauseEff + extraInspHold);
+        const cycleTtot = Ttot + extraInspHold + extraExpHold;
+        const nSteps = Math.max(200, Math.round(cycleTtot / dt));
+        const h = cycleTtot / nSteps;
+
+        let vAbs = vStart;
+        let pPeak = vent.peep;
+        let pPlat = vent.peep;
+        let vMax = vStart;
+        let vMin = vStart;
+        let endExpFlowLpm = 0;
+        let inspWorkJ = 0; // Integral Paw * dV (cmH2O * L * 0.0980665)
+        let pEndInspPaw = vent.peep;
+
+        const trace = record ? { t: [], paw: [], palv: [], flow: [], vol: [], vAbs: [], phase: [] } : null;
+        const stride = record ? Math.max(1, Math.floor(nSteps / 320)) : 999999;
+
+        for (let i = 0; i < nSteps; i++) {
+          const tc = i * h;
+          const palv = elastic.pelOfV(vAbs);
+          let paw = palv;
+          let flowLs = 0; // L/s (positive = inspiration, negative = expiration)
+          let phaseCode = 0; // 0=Insp, 1=InspPause, 2=Exp, 3=InspHold, 4=ExpHold
+
+          if (tc < cycleTi) {
+            if (!isPCV) {
+              // VCV Square or VCV Decelerating Ramp
+              if (tc < Tflow) {
+                if (vent.mode === 'vcv_ramp') {
+                  flowLs = (VtTargetL / Tflow) * (1.5 - 1.0 * (tc / Tflow));
+                } else {
+                  flowLs = VtTargetL / Tflow;
+                }
+                paw = palv + flowLs * Rin;
+                phaseCode = 0;
+              } else {
+                // Inspiratory Pause / Hold (Zero Flow -> Paw == Palv == Pplat)
+                flowLs = 0;
+                paw = palv;
+                phaseCode = (maneuver === 'insp_hold' && tc >= TiEff) ? 3 : 1;
+              }
+            } else {
+              // PCV Mode
+              if (maneuver === 'insp_hold' && tc >= TiEff) {
+                flowLs = 0;
+                paw = palv;
+                phaseCode = 3;
+              } else {
+                const rise = 1 - Math.exp(-tc / 0.045);
+                paw = vent.peep + vent.dPinsp * rise;
+                flowLs = (paw - palv) / Rin;
+                phaseCode = 0;
+              }
+            }
+            pEndInspPaw = paw;
+            if (paw > pPeak) pPeak = paw;
+            if (flowLs > 0) {
+              inspWorkJ += paw * (flowLs * h) * 0.0980665;
+            }
+          } else if (maneuver === 'exp_hold' && tc >= Ttot) {
+            // End-Expiratory Occlusion Hold: zero flow, Paw equilibrates up to Palv (PEEPtot)
+            flowLs = 0;
+            paw = palv;
+            phaseCode = 4;
+          } else {
+            // Passive Expiration (with volume-dependent expiratory flow limitation when Rex > 12)
+            const tExp = tc - cycleTi;
+            const valveDrop = Math.exp(-tExp / 0.018);
+            paw = vent.peep + Math.max(0, pEndInspPaw - vent.peep) * valveDrop;
+
+            const span = Math.max(160, vMax - elastic.vAtSetPeep);
+            const vRel = clamp((vAbs - elastic.vAtSetPeep) / span, 0, 1);
+            const rExpInst = Rex * (1 + 0.65 * obsFactor * Math.pow(1 - vRel, 1.5));
+            flowLs = (paw - palv) / rExpInst;
+            // Prevent reverse inhalation during valve drop artifact
+            if (flowLs > 0) flowLs = 0;
+            phaseCode = 2;
+          }
+
+          // Sample Pplat right at end of inspiration
+          if (i === Math.max(0, Math.round(cycleTi / h) - 1)) {
+            pPlat = palv;
+          }
+          // Sample end-expiratory flow right before next breath (or before exp hold)
+          if (i === Math.max(0, Math.round(Ttot / h) - 1)) {
+            endExpFlowLpm = flowLs * 60.0;
+          }
+
+          if (record && (i % stride === 0 || i === nSteps - 1)) {
+            trace.t.push(tc);
+            trace.paw.push(paw);
+            trace.palv.push(palv);
+            trace.flow.push(flowLs * 60.0); // L/min
+            trace.vol.push(Math.max(0, vAbs - elastic.vAtSetPeep));
+            trace.vAbs.push(vAbs);
+            trace.phase.push(phaseCode);
+          }
+
+          // Integrate volume forward (RK2-equivalent midpoint stability safeguard)
+          const vNext = Math.max(0, vAbs + flowLs * 1000.0 * h);
+          vAbs = vNext;
+          if (vAbs > vMax) vMax = vAbs;
+          if (vAbs < vMin) vMin = vAbs;
+        }
+
+        const pEndExpAlv = elastic.pelOfV(vAbs);
+        return {
+          vEnd: vAbs,
+          vStart,
+          vMax,
+          vMin,
+          vtDelivered: Math.max(10, vMax - vStart),
+          pPeak,
+          pPlat,
+          peepTot: pEndExpAlv,
+          autoPeep: Math.max(0, pEndExpAlv - vent.peep),
+          trappedVol: Math.max(0, vAbs - elastic.vAtSetPeep),
+          endExpFlowLpm,
+          inspWorkJ,
+          duration: cycleTtot,
+          trace
+        };
+      }
+
+      // Converge over 12 consecutive respiratory cycles
+      let vState = elastic.vAtSetPeep;
+      let steady = null;
+      for (let b = 0; b < 12; b++) {
+        steady = simulateOneCycle(vState, 'none', b === 11);
+        vState = steady.vEnd;
+      }
+
+      // Pre-build 1-breath Hold maneuver cycles from the exact converged state
+      const inspHoldCycle = simulateOneCycle(steady.vStart, 'insp_hold', true);
+      const expHoldCycle = simulateOneCycle(steady.vStart, 'exp_hold', true);
+
+      // Derived respiratory mechanics metrics
+      const vtDeliv = steady.vtDelivered;
+      const vtPerKg = vtDeliv / lung.pbw;
+      const mv = (vtDeliv / 1000.0) * vent.rr;
+      const drivingP = Math.max(0.5, steady.pPlat - steady.peepTot);
+      const cStat = vtDeliv / drivingP;
+      const rawGrad = Math.max(0, steady.pPeak - steady.pPlat);
+      const tauExp = Rex * (cStat / 1000.0);
+      const mechPower = steady.inspWorkJ * vent.rr; // J/min
+
+      // I:E ratio formatting
+      const ieRatio = TeEff / Math.max(0.05, TiEff);
+      const ieText = ieRatio >= 1
+        ? `1:${ieRatio.toFixed(1)}`
+        : `${(1 / ieRatio).toFixed(1)}:1`;
+      const inverseIE = ieRatio < 1.0;
+
+      // Overdistension pressure at end-inspiration
+      const overDistVol = Math.max(0, steady.vMax - elastic.vUip);
+      const overDistP = overDistVol > 0
+        ? (elastic.pelOfV(steady.vMax) - (elastic.pelOfV(elastic.vUip) + overDistVol / elastic.cMid))
+        : 0;
+
+      /* --- EXACT GAS EXCHANGE SOLVER --- */
+      const baseVdVt = lung.vdvt / 100.0;
+      const tinyVtPenalty = vtDeliv < 350 ? clamp((350 - vtDeliv) / 950, 0, 0.22) : 0;
+      const overDistDeadSpace = clamp(Math.max(0, vent.peep - 14) * 0.008 + Math.max(0, overDistP) * 0.006, 0, 0.14);
+      const vdVtEff = clamp(baseVdVt + tinyVtPenalty + overDistDeadSpace, 0.15, 0.88);
+
+      const va = Math.max(0.8, mv * (1 - vdVtEff));
+      const paCO2 = clamp((0.863 * lung.vco2) / va, 14, 130);
+
+      // Henderson-Hasselbalch with acute metabolic buffering
+      const hco3Eff = Math.max(6, lung.hco3 + 0.1 * (paCO2 - 40));
+      const pH = 6.1 + Math.log10(hco3Eff / (0.03 * paCO2));
+
+      // Alveolar Gas Equation
+      const fio2Frac = vent.fio2 / 100.0;
+      const pAO2 = Math.max(10, fio2Frac * (760 - 47) - paCO2 / 0.8);
+
+      // PEEP Recruitment Effect on Intrapulmonary Shunt Qs/Qt
+      const baseQs = lung.shunt / 100.0;
+      const recPot = lung.recruit / 100.0;
+      let qsEff = baseQs;
+      if (recPot > 0.01 && vent.peep > 5) {
+        const optimalDelta = Math.max(4, elastic.optPEEP - 5);
+        const recProgress = clamp((vent.peep - 5) / optimalDelta, 0, 1.05);
+        // Recruitable shunt drops by up to 58% at optimal PEEP
+        qsEff = baseQs * (1 - 0.58 * recPot * Math.min(1, recProgress));
+      } else if (recPot > 0.3 && vent.peep < 5) {
+        // Derecruitment below PEEP 5
+        qsEff = baseQs * (1 + 0.18 * recPot * ((5 - vent.peep) / 5));
+      }
+      // Excessive PEEP overdistension slight shunt/V-Q penalty
+      if (vent.peep > 18 || overDistP > 6) {
+        qsEff += 0.012 * Math.max(0, vent.peep - 18) + 0.004 * Math.max(0, overDistP - 6);
+      }
+      qsEff = clamp(qsEff, 0.01, 0.72);
+
+      // Bohr-Shifted Severinghaus Oxyhemoglobin Dissociation Curve
+      const p50 = 26.8 * Math.pow(10, -0.48 * (pH - 7.4));
+      const so2OfP = (p) => {
+        if (p <= 0) return 0;
+        const pStd = p * (26.8 / p50);
+        const p3 = pStd * pStd * pStd;
+        return 1.0 / (1.0 + 23400.0 / (p3 + 150.0 * pStd));
+      };
+      const HB = 14.0;
+      const o2Content = (p) => 1.34 * HB * so2OfP(p) + 0.0031 * p;
+
+      const ccO2 = o2Content(pAO2);
+      const cvO2 = Math.max(4.0, ccO2 - 4.5);
+      const caO2 = (1 - qsEff) * ccO2 + qsEff * cvO2;
+
+      // Binary search inversion for exact PaO2
+      let loP = 5, hiP = 700;
+      for (let i = 0; i < 36; i++) {
+        const mid = 0.5 * (loP + hiP);
+        if (o2Content(mid) < caO2) loP = mid;
+        else hiP = mid;
+      }
+      const paO2 = 0.5 * (loP + hiP);
+      const spO2 = clamp(so2OfP(paO2) * 100.0, 20, 100);
+      const pfRatio = paO2 / fio2Frac;
+      const aaGrad = Math.max(0, pAO2 - paO2);
+
+      return {
+        vent: { ...vent },
+        lung: { ...lung },
+        elastic,
+        steady,
+        inspHoldCycle,
+        expHoldCycle,
+        metrics: {
+          pPeak: steady.pPeak,
+          pPlat: steady.pPlat,
+          peepTot: steady.peepTot,
+          autoPeep: steady.autoPeep,
+          drivingP,
+          rawGrad,
+          vtDeliv,
+          vtPerKg,
+          mv,
+          cStat,
+          tauExp,
+          mechPower,
+          ieText,
+          ieRatio,
+          inverseIE,
+          trappedVol: steady.trappedVol,
+          endExpFlowLpm: steady.endExpFlowLpm,
+          overDistVol,
+          overDistP,
+          paO2,
+          spO2,
+          paCO2,
+          pH,
+          hco3Eff,
+          pAO2,
+          pfRatio,
+          aaGrad,
+          qsEffPct: qsEff * 100,
+          vdVtEffPct: vdVtEff * 100,
+          p50
+        }
+      };
+    }
+
+    /* =========================================================================
+       3. LIVE 12-SECOND SWEEP RING BUFFER & APPLICATION STATE
+       ========================================================================= */
+
+    const SWEEP_SEC = 12.0;
+    const SAMPLES = 1200; // 100 Hz ring buffer (dt = 0.01 s)
+    const DT_SAMPLE = SWEEP_SEC / SAMPLES;
+    const ERASE_GAP = Math.floor(SAMPLES * 0.04);
+    const VISIBLE_SAMPLES = SAMPLES - ERASE_GAP - 1;
+
+    const ring = {
+      paw: new Float32Array(SAMPLES),
+      palv: new Float32Array(SAMPLES),
+      flow: new Float32Array(SAMPLES),
+      vol: new Float32Array(SAMPLES),
+      phase: new Uint8Array(SAMPLES),
+      autoPeepFlag: new Uint8Array(SAMPLES),
+      writeIdx: 0,
+      sampleClock: 0,
+      liveTime: 0,
+      cycleElapsed: 0,
+      activeCycleKind: 'normal', // 'normal' | 'insp_hold' | 'exp_hold'
+      queuedHold: null           // null | 'insp_hold' | 'exp_hold'
+    };
+
+    const state = {
+      activePresetId: 'normal',
+      vent: { ...NORMAL_VENT },
+      lung: { ...NORMAL_LUNG },
+      playing: true,
+      speed: 1.0,
+      overlays: {
+        staticCrs: true,
+        ghost: true,
+        beaking: true
+      },
+      currentSim: null,
+      referenceSim: null,
+      referenceLabel: 'Normal',
+      // Smooth loop auto-scaling
+      maxLoopP: 40,
+      targetLoopP: 40,
+      maxLoopV: 750,
+      targetLoopV: 750,
+      maxLoopFlow: 70,
+      targetLoopFlow: 70,
+      holdBannerTimer: null
+    };
+
+    function sampleCycleAtTime(cycle, tSec) {
+      const tr = cycle.trace;
+      const N = tr.t.length;
+      const u = clamp(tSec / cycle.duration, 0, 0.9999);
+      const pos = u * (N - 1);
+      const i0 = Math.floor(pos);
+      const i1 = Math.min(N - 1, i0 + 1);
+      const f = pos - i0;
+      const lerp = (a, b) => a + (b - a) * f;
+      return {
+        paw: lerp(tr.paw[i0], tr.paw[i1]),
+        palv: lerp(tr.palv[i0], tr.palv[i1]),
+        flow: lerp(tr.flow[i0], tr.flow[i1]),
+        vol: lerp(tr.vol[i0], tr.vol[i1]),
+        vAbs: lerp(tr.vAbs[i0], tr.vAbs[i1]),
+        phase: tr.phase[i0]
+      };
+    }
+
+    function getActiveCycleObj() {
+      if (!state.currentSim) return null;
+      if (ring.activeCycleKind === 'insp_hold') return state.currentSim.inspHoldCycle;
+      if (ring.activeCycleKind === 'exp_hold') return state.currentSim.expHoldCycle;
+      return state.currentSim.steady;
+    }
+
+    function stepRingSample() {
+      const sim = state.currentSim;
+      if (!sim) return;
+
+      let cyc = getActiveCycleObj();
+      ring.cycleElapsed += DT_SAMPLE;
+      let isEndExpAutoPeep = 0;
+
+      if (ring.cycleElapsed >= cyc.duration) {
+        // Flag incomplete expiratory return right at end of breath
+        if (cyc.endExpFlowLpm < -1.8) isEndExpAutoPeep = 1;
+
+        ring.cycleElapsed -= cyc.duration;
+        if (ring.queuedHold) {
+          ring.activeCycleKind = ring.queuedHold;
+          ring.queuedHold = null;
+        } else {
+          ring.activeCycleKind = 'normal';
+        }
+        cyc = getActiveCycleObj();
+        if (ring.cycleElapsed >= cyc.duration) ring.cycleElapsed = 0;
+      }
+
+      const pt = sampleCycleAtTime(cyc, ring.cycleElapsed);
+      ring.writeIdx = (ring.writeIdx + 1) % SAMPLES;
+      ring.paw[ring.writeIdx] = pt.paw;
+      ring.palv[ring.writeIdx] = pt.palv;
+      ring.flow[ring.writeIdx] = pt.flow;
+      ring.vol[ring.writeIdx] = pt.vol;
+      ring.phase[ring.writeIdx] = pt.phase;
+      ring.autoPeepFlag[ring.writeIdx] = isEndExpAutoPeep;
+    }
+
+    function prefillSweepBuffer() {
+      if (!state.currentSim) return;
+      ring.activeCycleKind = 'normal';
+      ring.queuedHold = null;
+      ring.cycleElapsed = 0;
+      ring.writeIdx = Math.floor(SAMPLES * 0.72);
+      ring.sampleClock = 0;
+      ring.liveTime = 0;
+      for (let i = 0; i < SAMPLES; i++) {
+        stepRingSample();
+      }
+    }
+
+    /* =========================================================================
+       4. SIMULATION UPDATE, TELEMETRY & CLINICAL DIAGNOSTICS
+       ========================================================================= */
+
+    function updateSimulation(refill = false) {
+      try {
+        state.currentSim = runVentilationSimulation(state.vent, state.lung);
+        if (!state.referenceSim) {
+          state.referenceSim = state.currentSim;
+        }
+
+        // Update smooth loop axis targets
+        const m = state.currentSim.metrics;
+        const r = state.referenceSim.metrics;
+        const peakP = Math.max(m.pPeak, r.pPeak, m.pPlat + 4);
+        const peakV = Math.max(m.vtDeliv + m.trappedVol, r.vtDeliv + r.trappedVol);
+        const maxFNow = Math.max(
+          ...state.currentSim.steady.trace.flow.map(Math.abs),
+          ...state.referenceSim.steady.trace.flow.map(Math.abs)
+        );
+        state.targetLoopP = Math.max(40, Math.ceil((peakP + 8) / 10) * 10);
+        state.targetLoopV = Math.max(700, Math.ceil((peakV + 110) / 100) * 100);
+        state.targetLoopFlow = Math.max(60, Math.ceil((maxFNow + 14) / 20) * 20);
+
+        if (refill) {
+          prefillSweepBuffer();
+        }
+
+        renderTelemetry();
+        renderDiagnostics();
+        updateHeaderMeta();
+      } catch (err) {
+        console.error('VentSim error:', err);
+      }
+    }
+
+    function formatDelta(curr, ref, decimals = 0, invertColor = false) {
+      const diff = curr - ref;
+      const thresh = decimals === 0 ? 0.5 : 0.08;
+      if (Math.abs(diff) < thresh) return { text: '—', cls: 'text-zinc-300 dark:text-zinc-700' };
+      const sign = diff > 0 ? '+' : '';
+      const text = `${sign}${diff.toFixed(decimals)}`;
+      const isPos = diff > 0;
+      let cls = isPos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+      if (invertColor) cls = isPos ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
+      return { text, cls };
+    }
+
+    function setDelta(id, obj) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = obj.text;
+      el.className = `font-mono text-[10px] tabular-nums ${obj.cls}`;
+    }
+
+    function renderTelemetry() {
+      const m = state.currentSim.metrics;
+      const r = state.referenceSim.metrics;
+      const norm = 'text-zinc-900 dark:text-zinc-100';
+      const muted = 'text-zinc-500 dark:text-zinc-400';
+      const amber = 'text-amber-600 dark:text-amber-400';
+      const rose = 'text-rose-600 dark:text-rose-400';
+
+      // 1. Ppeak / Pplat
+      const pkEl = document.getElementById('val-ppeak');
+      const plEl = document.getElementById('val-pplat');
+      pkEl.textContent = Math.round(m.pPeak);
+      plEl.textContent = Math.round(m.pPlat);
+      pkEl.className = `font-mono text-[15px] font-semibold tabular-nums ${m.pPeak > 35 ? rose : (m.pPeak > 32 ? amber : norm)}`;
+      plEl.className = `font-mono text-[15px] font-semibold tabular-nums ${m.pPlat > 30 ? rose : (m.pPlat > 28 ? amber : norm)}`;
+      setDelta('delta-pplat', formatDelta(m.pPlat, r.pPlat, 0, true));
+
+      // 2. ΔP / PEEPtot
+      const dpEl = document.getElementById('val-dp');
+      dpEl.textContent = m.drivingP.toFixed(1);
+      dpEl.className = `font-mono text-[16px] font-semibold tabular-nums ${m.drivingP > 15 ? rose : (m.drivingP > 13.5 ? amber : norm)}`;
+      document.getElementById('val-peeptot').textContent = `/ ${m.peepTot.toFixed(1)}`;
+      setDelta('delta-dp', formatDelta(m.drivingP, r.drivingP, 1, true));
+
+      // 3. Auto-PEEP / I:E
+      const piEl = document.getElementById('val-peepi');
+      const ieEl = document.getElementById('val-ie');
+      piEl.textContent = m.autoPeep.toFixed(1);
+      piEl.className = `font-mono text-[16px] font-semibold tabular-nums ${m.autoPeep > 4 ? rose : (m.autoPeep > 2 ? amber : norm)}`;
+      ieEl.textContent = m.ieText;
+      ieEl.className = `font-mono text-[11px] font-medium tabular-nums ${m.inverseIE ? amber : muted}`;
+      setDelta('delta-peepi', formatDelta(m.autoPeep, r.autoPeep, 1, true));
+
+      // 4. MV / Vt
+      document.getElementById('val-mv').textContent = m.mv.toFixed(1);
+      const vtPbwEl = document.getElementById('val-vt-pbw');
+      vtPbwEl.textContent = `${Math.round(m.vtDeliv)} · ${m.vtPerKg.toFixed(1)}`;
+      vtPbwEl.className = `font-mono text-[10.5px] tabular-nums ${m.vtPerKg > 8.2 ? amber : muted}`;
+      setDelta('delta-mv', formatDelta(m.mv, r.mv, 1, false));
+
+      // 5. PaO2 / SpO2
+      const pao2El = document.getElementById('val-pao2');
+      const spo2El = document.getElementById('val-spo2');
+      pao2El.textContent = Math.round(m.paO2);
+      spo2El.textContent = `${Math.round(m.spO2)}%`;
+      const hypoxCrit = m.spO2 < 88 || m.paO2 < 55;
+      const hypoxWarn = m.spO2 < 92 || m.paO2 < 60;
+      pao2El.className = `font-mono text-[16px] font-semibold tabular-nums ${hypoxCrit ? rose : (hypoxWarn ? amber : norm)}`;
+      spo2El.className = `font-mono text-[12px] font-medium tabular-nums ${hypoxCrit ? rose : (hypoxWarn ? amber : muted)}`;
+      setDelta('delta-pao2', formatDelta(m.paO2, r.paO2, 0, false));
+
+      // 6. PaCO2 / pH
+      const co2El = document.getElementById('val-paco2');
+      const phEl = document.getElementById('val-ph');
+      co2El.textContent = Math.round(m.paCO2);
+      phEl.textContent = m.pH.toFixed(2);
+      const phCrit = m.pH < 7.25 || m.pH > 7.52;
+      const phWarn = m.pH < 7.35 || m.pH > 7.45;
+      co2El.className = `font-mono text-[16px] font-semibold tabular-nums ${phCrit ? rose : (phWarn ? amber : norm)}`;
+      phEl.className = `font-mono text-[12px] font-medium tabular-nums ${phCrit ? rose : (phWarn ? amber : muted)}`;
+      setDelta('delta-paco2', formatDelta(m.paCO2, r.paCO2, 0, true));
+
+      // 7. P/F · A-a
+      const pfEl = document.getElementById('val-pf');
+      pfEl.textContent = Math.round(m.pfRatio);
+      pfEl.className = `font-mono text-[16px] font-semibold tabular-nums ${m.pfRatio <= 100 ? rose : (m.pfRatio < 300 ? amber : norm)}`;
+      document.getElementById('val-aa').textContent = `A-a ${Math.round(m.aaGrad)}`;
+      setDelta('delta-pf', formatDelta(m.pfRatio, r.pfRatio, 0, false));
+
+      // 8. MP / Cstat
+      const mpEl = document.getElementById('val-mp');
+      mpEl.textContent = m.mechPower.toFixed(1);
+      mpEl.className = `font-mono text-[16px] font-semibold tabular-nums ${m.mechPower > 20 ? rose : (m.mechPower > 17 ? amber : norm)}`;
+      document.getElementById('val-cstat').textContent = `${Math.round(m.cStat)} mL/c`;
+      setDelta('delta-mp', formatDelta(m.mechPower, r.mechPower, 1, true));
+
+      // Panel Footers
+      document.getElementById('foot-tau').textContent = `${m.tauExp.toFixed(2)} s`;
+      document.getElementById('foot-raw-grad').textContent = `${m.rawGrad.toFixed(1)} cmH₂O`;
+      document.getElementById('foot-palvo2').textContent = `${Math.round(m.pAO2)}`;
+      document.getElementById('foot-shunt').textContent = `${Math.round(m.qsEffPct)}%`;
+      document.getElementById('foot-vdvt').textContent = `${Math.round(m.vdVtEffPct)}%`;
+      document.getElementById('foot-p50').textContent = `${m.p50.toFixed(1)}`;
+      document.getElementById('loop-ref-tag').textContent = `Ref: ${state.referenceLabel}`;
+
+      // Update dynamic Vt mL/kg label in Ventilator tab
+      const vtPbwLabel = document.getElementById('v-sub-vt');
+      if (vtPbwLabel) {
+        vtPbwLabel.textContent = `(${(state.vent.vt / state.lung.pbw).toFixed(1)} mL/kg)`;
+      }
+    }
+
+    function renderDiagnostics() {
+      const m = state.currentSim.metrics;
+      const badges = [];
+
+      if (m.pPlat > 30) {
+        badges.push({ text: `Barotrauma Risk (Pplat ${Math.round(m.pPlat)} > 30 cmH₂O)`, level: 'critical' });
+      }
+      if (m.drivingP > 15) {
+        badges.push({ text: `High Driving Pressure (ΔP ${m.drivingP.toFixed(1)} > 15)`, level: 'critical' });
+      }
+      if (m.autoPeep > 2.0) {
+        badges.push({ text: `Dynamic Hyperinflation (Auto-PEEP ${m.autoPeep.toFixed(1)} cmH₂O)`, level: m.autoPeep > 4.5 ? 'critical' : 'warn' });
+      }
+      if (m.rawGrad > 10) {
+        badges.push({ text: `High Resistive Gradient (${Math.round(m.rawGrad)} cmH₂O)`, level: 'warn' });
+      }
+      if (m.spO2 < 88 || m.pfRatio <= 100) {
+        badges.push({ text: `Severe Hypoxemia (P/F ${Math.round(m.pfRatio)} · SpO₂ ${Math.round(m.spO2)}%)`, level: 'critical' });
+      } else if (m.spO2 < 92 || m.pfRatio < 200) {
+        badges.push({ text: `Moderate Hypoxemia (P/F ${Math.round(m.pfRatio)})`, level: 'warn' });
+      }
+      if (m.pH < 7.35) {
+        badges.push({ text: `Respiratory Acidosis (pH ${m.pH.toFixed(2)} · PaCO₂ ${Math.round(m.paCO2)})`, level: m.pH < 7.25 ? 'critical' : 'warn' });
+      } else if (m.pH > 7.45) {
+        badges.push({ text: `Respiratory Alkalosis (pH ${m.pH.toFixed(2)} · PaCO₂ ${Math.round(m.paCO2)})`, level: 'warn' });
+      }
+      if (m.mechPower > 17 && badges.length < 4) {
+        badges.push({ text: `High Mechanical Power (${m.mechPower.toFixed(1)} J/min)`, level: 'warn' });
+      }
+
+      if (badges.length === 0) {
+        badges.push({ text: 'Lung-Protective Targets Met · Normoxemia & Normal Acid-Base', level: 'ok' });
+      }
+
+      const styles = {
+        ok: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
+        warn: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
+        critical: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30'
+      };
+
+      document.getElementById('diagnostics-badges').innerHTML = badges.slice(0, 4).map(b =>
+        `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[11px] font-medium ${styles[b.level]}">
+          <span class="w-1.5 h-1.5 rounded-full bg-current"></span>${b.text}
+        </span>`
+      ).join('');
+
+      const v = state.vent;
+      const modeName = v.mode === 'pcv' ? `PCV ΔP ${v.dPinsp}` : (v.mode === 'vcv_ramp' ? `VCV-Ramp Vt ${v.vt}` : `VCV-Sq Vt ${v.vt}`);
+      document.getElementById('vent-summary-strip').textContent =
+        `${modeName} · RR ${v.rr} · PEEP ${v.peep} · FiO₂ ${v.fio2}% · I:E ${m.ieText}`;
+    }
+
+    function updateHeaderMeta() {
+      const preset = PATHOLOGIES.find(p => p.id === state.activePresetId);
+      document.getElementById('active-preset-label').textContent = preset ? preset.name : 'Custom Mechanics';
+      const badge = document.getElementById('mode-header-badge');
+      badge.textContent = state.vent.mode === 'pcv' ? 'PCV' : (state.vent.mode === 'vcv_ramp' ? 'VCV-R' : 'VCV-SQ');
+    }
+
+    /* =========================================================================
+       5. HIGH-DPI THEME-AWARE CANVAS RENDERERS
+          - Left: 12s Sweeping Ventilator Scalars (Paw/Palv, Flow, Volume)
+          - Center: Dynamic P-V Loop (Static Crs + LIP/UIP + Beaking) & F-V Loop
+       ========================================================================= */
+
+    const scalarsCanvas = document.getElementById('scalars-canvas');
+    const scalarsCtx = scalarsCanvas.getContext('2d');
+    const loopsCanvas = document.getElementById('loops-canvas');
+    const loopsCtx = loopsCanvas.getContext('2d');
+
+    function getCanvasPalette(isDark) {
+      if (isDark) {
+        return {
+          subBoxBg: '#0f0f12',
+          plotBg: '#09090b',
+          grid: 'rgba(63, 63, 70, 0.34)',
+          gridFaint: 'rgba(63, 63, 70, 0.22)',
+          boxBorder: 'rgba(63, 63, 70, 0.65)',
+          axis: '#3f3f46',
+          tick: '#71717a',
+          label: '#a1a1aa',
+          paw: '#2dd4bf',
+          pawRGB: '45, 212, 191',
+          palv: '#fbbf24',
+          rawShade: 'rgba(251, 191, 36, 0.16)',
+          safetyLine: 'rgba(244, 63, 94, 0.50)',
+          flow: '#38bdf8',
+          flowFill: 'rgba(56, 189, 248, 0.12)',
+          autoPeepMark: '#f59e0b',
+          vol: '#34d399',
+          volFill: 'rgba(52, 211, 153, 0.10)',
+          staticCurve: 'rgba(161, 161, 170, 0.45)',
+          ghost: 'rgba(161, 161, 170, 0.38)',
+          beakFill: 'rgba(244, 63, 94, 0.13)',
+          beakStroke: 'rgba(244, 63, 94, 0.55)',
+          lipColor: '#38bdf8',
+          uipColor: '#fb7185',
+          playhead: 'rgba(244, 244, 245, 0.72)',
+          playheadTrail: 'rgba(45, 212, 191, 0.10)',
+          beadFill: '#ffffff',
+          beadRing: '#2dd4bf',
+          dotOutline: '#09090b'
+        };
+      }
+      return {
+        subBoxBg: '#fafafa',
+        plotBg: '#ffffff',
+        grid: '#e4e4e7',
+        gridFaint: '#f4f4f5',
+        boxBorder: '#e4e4e7',
+        axis: '#a1a1aa',
+        tick: '#71717a',
+        label: '#52525b',
+        paw: '#0f766e',
+        pawRGB: '15, 118, 110',
+        palv: '#d97706',
+        rawShade: 'rgba(217, 119, 6, 0.14)',
+        safetyLine: 'rgba(225, 29, 72, 0.45)',
+        flow: '#0284c7',
+        flowFill: 'rgba(2, 132, 199, 0.10)',
+        autoPeepMark: '#d97706',
+        vol: '#059669',
+        volFill: 'rgba(5, 150, 105, 0.08)',
+        staticCurve: 'rgba(113, 113, 122, 0.48)',
+        ghost: 'rgba(113, 113, 122, 0.40)',
+        beakFill: 'rgba(225, 29, 72, 0.09)',
+        beakStroke: 'rgba(225, 29, 72, 0.48)',
+        lipColor: '#0284c7',
+        uipColor: '#e11d48',
+        playhead: 'rgba(24, 24, 27, 0.68)',
+        playheadTrail: 'rgba(15, 118, 110, 0.08)',
+        beadFill: '#ffffff',
+        beadRing: '#0f766e',
+        dotOutline: '#ffffff'
+      };
+    }
+
+    function resizeCanvas(canvas, wrapId) {
+      const wrap = document.getElementById(wrapId);
+      if (!wrap) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const rect = wrap.getBoundingClientRect();
+      const w = Math.max(100, Math.floor(rect.width - 8));
+      const h = Math.max(100, Math.floor(rect.height - 8));
+      if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+      }
+    }
+
+    /**
+     * Draws a ring-buffer scalar waveform cleanly with erase gap ahead of writeIdx.
+     */
+    function strokeRingTrace(ctx, arr, padL, plotW, mapY, color, lw, dash = null, fillBaseY = null, fillColor = null) {
+      const dx = plotW / (SAMPLES - 1);
+      const wi = ring.writeIdx;
+      const isErased = (idx) => {
+        const ahead = (idx - wi + SAMPLES) % SAMPLES;
+        return ahead > 0 && ahead <= ERASE_GAP;
+      };
+
+      // Optional subtle fill under positive region (e.g., positive inspiratory flow or volume)
+      if (fillBaseY !== null && fillColor) {
+        ctx.save();
+        ctx.fillStyle = fillColor;
+        let inSeg = false;
+        let startX = 0;
+        let lastX = 0;
+        for (let i = 0; i < SAMPLES; i++) {
+          if (isErased(i)) {
+            if (inSeg) {
+              ctx.lineTo(lastX, fillBaseY);
+              ctx.lineTo(startX, fillBaseY);
+              ctx.closePath();
+              ctx.fill();
+              inSeg = false;
+            }
+            continue;
+          }
+          const x = padL + i * dx;
+          const y = mapY(arr[i]);
+          const yClamp = Math.min(fillBaseY, y); // Positive above baseline
+          if (!inSeg) {
+            ctx.beginPath();
+            ctx.moveTo(x, fillBaseY);
+            ctx.lineTo(x, yClamp);
+            startX = x;
+            inSeg = true;
+          } else {
+            ctx.lineTo(x, yClamp);
+          }
+          lastX = x;
+        }
+        if (inSeg) {
+          ctx.lineTo(lastX, fillBaseY);
+          ctx.lineTo(startX, fillBaseY);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // Main crisp stroke
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lw;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      if (dash) ctx.setLineDash(dash);
+
+      let penDown = false;
+      ctx.beginPath();
+      for (let i = 0; i < SAMPLES; i++) {
+        if (isErased(i)) {
+          penDown = false;
+          continue;
+        }
+        const x = padL + i * dx;
+        const y = mapY(arr[i]);
+        if (!penDown) {
+          ctx.moveTo(x, y);
+          penDown = true;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /**
+     * Renders the 3 stacked 12-second Ventilator Scalars (Paw/Palv, Flow, Volume)
+     */
+    function drawScalars() {
+      const sim = state.currentSim;
+      if (!sim) return;
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const C = getCanvasPalette(isDark);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = scalarsCanvas.width / dpr;
+      const H = scalarsCanvas.height / dpr;
+
+      scalarsCtx.save();
+      scalarsCtx.scale(dpr, dpr);
+      scalarsCtx.clearRect(0, 0, W, H);
+
+      const padL = 42, padR = 12, padT = 10, padB = 20;
+      const gap = 12;
+      const usableH = Math.max(150, H - padT - padB - 2 * gap);
+      const plotW = Math.max(60, W - padL - padR);
+
+      const h1 = usableH * 0.40; // Pressure
+      const h2 = usableH * 0.32; // Flow
+      const h3 = usableH * 0.28; // Volume
+      const y1 = padT;
+      const y2 = y1 + h1 + gap;
+      const y3 = y2 + h2 + gap;
+
+      // Dynamic scales
+      const maxP = Math.max(40, Math.ceil((Math.max(sim.metrics.pPeak, 32) + 8) / 10) * 10);
+      const maxFlow = Math.max(60, Math.ceil((Math.max(...sim.steady.trace.flow.map(Math.abs)) + 14) / 20) * 20);
+      const maxVol = Math.max(700, Math.ceil((sim.metrics.vtDeliv + sim.metrics.trappedVol + 110) / 100) * 100);
+
+      const mapP = p => y1 + h1 - (clamp(p, 0, maxP) / maxP) * h1;
+      const mapF = f => y2 + h2 * 0.5 - (clamp(f, -maxFlow, maxFlow) / maxFlow) * (h2 * 0.44);
+      const mapV = v => y3 + h3 - (clamp(v, 0, maxVol) / maxVol) * h3;
+
+      // Helper for panel frame & horizontal ticks
+      function drawBox(top, height, title, ticks, mapper) {
+        scalarsCtx.fillStyle = C.subBoxBg;
+        scalarsCtx.fillRect(padL, top, plotW, height);
+
+        scalarsCtx.strokeStyle = C.grid;
+        scalarsCtx.lineWidth = 1;
+        scalarsCtx.font = '9px "JetBrains Mono", monospace';
+        scalarsCtx.fillStyle = C.tick;
+        scalarsCtx.textAlign = 'right';
+
+        for (const tk of ticks) {
+          const py = Math.round(mapper(tk)) + 0.5;
+          scalarsCtx.beginPath();
+          scalarsCtx.moveTo(padL, py);
+          scalarsCtx.lineTo(padL + plotW, py);
+          scalarsCtx.stroke();
+          scalarsCtx.fillText(String(Math.round(tk)), padL - 6, py + 3);
+        }
+
+        scalarsCtx.strokeStyle = C.boxBorder;
+        scalarsCtx.strokeRect(padL + 0.5, top + 0.5, plotW - 1, height - 1);
+
+        scalarsCtx.fillStyle = C.label;
+        scalarsCtx.font = '500 9px "JetBrains Mono", monospace';
+        scalarsCtx.textAlign = 'left';
+        scalarsCtx.fillText(title, padL + 7, top + 12);
+      }
+
+      drawBox(y1, h1, 'PRESSURE (cmH₂O)', [0, 10, 20, 30, maxP > 40 ? 40 : null, maxP > 50 ? 50 : null].filter(v => v !== null && v <= maxP), mapP);
+      drawBox(y2, h2, 'FLOW (L/min)', [-maxFlow, 0, maxFlow], mapF);
+      drawBox(y3, h3, 'VOLUME (mL)', [0, Math.round(maxVol * 0.5), maxVol], mapV);
+
+      // Vertical time gridlines every 2 seconds
+      scalarsCtx.strokeStyle = C.gridFaint;
+      scalarsCtx.fillStyle = C.tick;
+      scalarsCtx.font = '9px "JetBrains Mono", monospace';
+      scalarsCtx.textAlign = 'center';
+      for (let ts = 0; ts <= SWEEP_SEC + 0.01; ts += 2) {
+        const gx = Math.round(padL + (ts / SWEEP_SEC) * plotW) + 0.5;
+        scalarsCtx.beginPath();
+        scalarsCtx.moveTo(gx, y1);
+        scalarsCtx.lineTo(gx, y3 + h3);
+        scalarsCtx.stroke();
+        scalarsCtx.fillText(`${ts}s`, gx, H - 5);
+      }
+
+      const dx = plotW / (SAMPLES - 1);
+      const wi = ring.writeIdx;
+      const isErased = (idx) => {
+        const ahead = (idx - wi + SAMPLES) % SAMPLES;
+        return ahead > 0 && ahead <= ERASE_GAP;
+      };
+
+      // --- TRACE 1: PRESSURE (30 cmH2O Safety Line + Resistive Shading + Palv + Paw) ---
+      scalarsCtx.save();
+      scalarsCtx.beginPath();
+      scalarsCtx.rect(padL, y1, plotW, h1);
+      scalarsCtx.clip();
+
+      // Subtle dashed 30 cmH2O safety threshold line
+      const y30 = Math.round(mapP(30)) + 0.5;
+      scalarsCtx.save();
+      scalarsCtx.setLineDash([4, 4]);
+      scalarsCtx.strokeStyle = C.safetyLine;
+      scalarsCtx.lineWidth = 1;
+      scalarsCtx.beginPath();
+      scalarsCtx.moveTo(padL, y30);
+      scalarsCtx.lineTo(padL + plotW, y30);
+      scalarsCtx.stroke();
+      scalarsCtx.restore();
+
+      // Light shading between Paw and Palv when resistive gradient > 8 cmH2O
+      if (sim.metrics.rawGrad > 8) {
+        scalarsCtx.fillStyle = C.rawShade;
+        for (let i = 0; i < SAMPLES - 1; i++) {
+          if (isErased(i) || isErased(i + 1)) continue;
+          if (ring.paw[i] - ring.palv[i] > 3.5) {
+            const x = padL + i * dx;
+            const yTop = mapP(ring.paw[i]);
+            const yBot = mapP(ring.palv[i]);
+            scalarsCtx.fillRect(x, yTop, Math.max(1.2, dx + 0.4), Math.max(0, yBot - yTop));
+          }
+        }
+      }
+
+      // Alveolar Pressure (dashed amber) & Airway Pressure (solid teal)
+      strokeRingTrace(scalarsCtx, ring.palv, padL, plotW, mapP, C.palv, 1.35, [3, 3]);
+      strokeRingTrace(scalarsCtx, ring.paw, padL, plotW, mapP, C.paw, 1.9);
+      scalarsCtx.restore();
+
+      // --- TRACE 2: AIRWAY FLOW (Positive Insp Shaded + Incomplete Exp Auto-PEEP Marker) ---
+      scalarsCtx.save();
+      scalarsCtx.beginPath();
+      scalarsCtx.rect(padL, y2, plotW, h2);
+      scalarsCtx.clip();
+
+      const zeroFlowY = mapF(0);
+      strokeRingTrace(scalarsCtx, ring.flow, padL, plotW, mapF, C.flow, 1.75, null, zeroFlowY, C.flowFill);
+
+      // Amber marker on incomplete expiratory return (non-zero flow before next breath = Auto-PEEP)
+      for (let i = 0; i < SAMPLES; i++) {
+        if (ring.autoPeepFlag[i] === 1 && !isErased(i)) {
+          const mx = padL + i * dx;
+          const my = mapF(ring.flow[i]);
+          scalarsCtx.beginPath();
+          scalarsCtx.arc(mx, my, 3.2, 0, Math.PI * 2);
+          scalarsCtx.fillStyle = C.autoPeepMark;
+          scalarsCtx.fill();
+          scalarsCtx.strokeStyle = C.dotOutline;
+          scalarsCtx.lineWidth = 1;
+          scalarsCtx.stroke();
+        }
+      }
+      scalarsCtx.restore();
+
+      // --- TRACE 3: VOLUME (Shows Tidal Volume + Trapped Volume Elevation above Baseline) ---
+      scalarsCtx.save();
+      scalarsCtx.beginPath();
+      scalarsCtx.rect(padL, y3, plotW, h3);
+      scalarsCtx.clip();
+
+      // If breath-stacking / trapped volume exists, mark the trapped volume floor subtly
+      if (sim.metrics.trappedVol > 15) {
+        const yTrap = Math.round(mapV(sim.metrics.trappedVol)) + 0.5;
+        scalarsCtx.save();
+        scalarsCtx.setLineDash([3, 3]);
+        scalarsCtx.strokeStyle = C.autoPeepMark;
+        scalarsCtx.lineWidth = 1;
+        scalarsCtx.beginPath();
+        scalarsCtx.moveTo(padL, yTrap);
+        scalarsCtx.lineTo(padL + plotW, yTrap);
+        scalarsCtx.stroke();
+        scalarsCtx.restore();
+      }
+
+      strokeRingTrace(scalarsCtx, ring.vol, padL, plotW, mapV, C.vol, 1.8, null, y3 + h3, C.volFill);
+      scalarsCtx.restore();
+
+      // --- SYNCHRONIZED PLAYHEAD & ACTIVE DOTS ---
+      const headX = padL + wi * dx;
+      const trailGrad = scalarsCtx.createLinearGradient(headX - 18, 0, headX, 0);
+      trailGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      trailGrad.addColorStop(1, C.playheadTrail);
+      scalarsCtx.fillStyle = trailGrad;
+      scalarsCtx.fillRect(Math.max(padL, headX - 18), y1, Math.min(18, headX - padL), h1);
+      scalarsCtx.fillRect(Math.max(padL, headX - 18), y2, Math.min(18, headX - padL), h2);
+      scalarsCtx.fillRect(Math.max(padL, headX - 18), y3, Math.min(18, headX - padL), h3);
+
+      scalarsCtx.strokeStyle = C.playhead;
+      scalarsCtx.lineWidth = 1.15;
+      scalarsCtx.beginPath();
+      scalarsCtx.moveTo(headX, y1);
+      scalarsCtx.lineTo(headX, y1 + h1);
+      scalarsCtx.moveTo(headX, y2);
+      scalarsCtx.lineTo(headX, y2 + h2);
+      scalarsCtx.moveTo(headX, y3);
+      scalarsCtx.lineTo(headX, y3 + h3);
+      scalarsCtx.stroke();
+
+      const dots = [
+        { y: mapP(ring.paw[wi]), col: C.paw },
+        { y: mapF(ring.flow[wi]), col: C.flow },
+        { y: mapV(ring.vol[wi]), col: C.vol }
+      ];
+      for (const d of dots) {
+        scalarsCtx.beginPath();
+        scalarsCtx.arc(headX, d.y, 3, 0, Math.PI * 2);
+        scalarsCtx.fillStyle = d.col;
+        scalarsCtx.fill();
+        scalarsCtx.strokeStyle = C.dotOutline;
+        scalarsCtx.lineWidth = 1;
+        scalarsCtx.stroke();
+      }
+
+      // Update live phase footer pill
+      const phaseNames = ['Inspiration', 'Insp Pause', 'Expiration', 'Insp Hold', 'Exp Hold'];
+      const phaseEl = document.getElementById('foot-phase');
+      if (phaseEl) {
+        phaseEl.textContent = phaseNames[ring.phase[wi]] || 'Expiration';
+      }
+
+      scalarsCtx.restore();
+    }
+
+    /**
+     * Renders the stacked Pressure-Volume (top 54%) and Flow-Volume (bottom 46%) Loops
+     */
+    function drawLoops() {
+      const sim = state.currentSim;
+      if (!sim) return;
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const C = getCanvasPalette(isDark);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = loopsCanvas.width / dpr;
+      const H = loopsCanvas.height / dpr;
+
+      // Smoothly ease loop axes
+      state.maxLoopP += (state.targetLoopP - state.maxLoopP) * 0.14;
+      state.maxLoopV += (state.targetLoopV - state.maxLoopV) * 0.14;
+      state.maxLoopFlow += (state.targetLoopFlow - state.maxLoopFlow) * 0.14;
+
+      loopsCtx.save();
+      loopsCtx.scale(dpr, dpr);
+      loopsCtx.clearRect(0, 0, W, H);
+
+      const padL = 44, padR = 14, padT = 12, padB = 26;
+      const gap = 24;
+      const usableH = Math.max(150, H - padT - padB - gap);
+      const plotW = Math.max(60, W - padL - padR);
+
+      const hPV = usableH * 0.54;
+      const hFV = usableH * 0.46;
+      const yPV = padT;
+      const yFV = yPV + hPV + gap;
+
+      const cyc = getActiveCycleObj();
+      const tr = cyc.trace;
+      const curPt = sampleCycleAtTime(cyc, ring.cycleElapsed);
+
+      /* =======================================================================
+         TOP LOOP: PRESSURE-VOLUME (X: Pressure cmH2O, Y: Volume mL)
+         ======================================================================= */
+      {
+        const maxP = state.maxLoopP;
+        const maxV = state.maxLoopV;
+        const xOfP = p => padL + (clamp(p, 0, maxP) / maxP) * plotW;
+        const yOfV = v => yPV + hPV - (clamp(v, 0, maxV) / maxV) * hPV;
+
+        loopsCtx.fillStyle = C.subBoxBg;
+        loopsCtx.fillRect(padL, yPV, plotW, hPV);
+
+        // Hairline grid
+        loopsCtx.strokeStyle = C.grid;
+        loopsCtx.lineWidth = 1;
+        loopsCtx.font = '9px "JetBrains Mono", monospace';
+        loopsCtx.fillStyle = C.tick;
+
+        const pStep = maxP > 55 ? 20 : 10;
+        for (let p = 0; p <= maxP + 0.1; p += pStep) {
+          const x = Math.round(xOfP(p)) + 0.5;
+          loopsCtx.beginPath();
+          loopsCtx.moveTo(x, yPV);
+          loopsCtx.lineTo(x, yPV + hPV);
+          loopsCtx.stroke();
+          loopsCtx.textAlign = 'center';
+          loopsCtx.fillText(String(Math.round(p)), x, yPV + hPV + 12);
+        }
+
+        const vStep = maxV > 1000 ? 400 : 200;
+        for (let v = 0; v <= maxV + 0.1; v += vStep) {
+          const y = Math.round(yOfV(v)) + 0.5;
+          loopsCtx.beginPath();
+          loopsCtx.moveTo(padL, y);
+          loopsCtx.lineTo(padL + plotW, y);
+          loopsCtx.stroke();
+          loopsCtx.textAlign = 'right';
+          loopsCtx.fillText(String(Math.round(v)), padL - 6, y + 3);
+        }
+
+        loopsCtx.strokeStyle = C.boxBorder;
+        loopsCtx.strokeRect(padL + 0.5, yPV + 0.5, plotW - 1, hPV - 1);
+
+        loopsCtx.fillStyle = C.label;
+        loopsCtx.font = '500 9px "JetBrains Mono", monospace';
+        loopsCtx.textAlign = 'left';
+        loopsCtx.fillText('PRESSURE–VOLUME (mL vs cmH₂O)', padL + 7, yPV + 12);
+
+        // Clip interior
+        loopsCtx.save();
+        loopsCtx.beginPath();
+        loopsCtx.rect(padL, yPV, plotW, hPV);
+        loopsCtx.clip();
+
+        const el = sim.elastic;
+
+        // 1. Upper Overdistension "Beaking" Zone Highlight
+        if (state.overlays.beaking) {
+          const vUipRel = el.vUip - el.vAtSetPeep;
+          if (vUipRel > 0 && vUipRel < maxV) {
+            const yUip = yOfV(vUipRel);
+            loopsCtx.fillStyle = C.beakFill;
+            loopsCtx.fillRect(padL, yPV, plotW, Math.max(0, yUip - yPV));
+            loopsCtx.save();
+            loopsCtx.setLineDash([3, 3]);
+            loopsCtx.strokeStyle = C.beakStroke;
+            loopsCtx.lineWidth = 1;
+            loopsCtx.beginPath();
+            loopsCtx.moveTo(padL, yUip);
+            loopsCtx.lineTo(padL + plotW, yUip);
+            loopsCtx.stroke();
+            loopsCtx.restore();
+
+            loopsCtx.font = '500 8.5px "JetBrains Mono", monospace';
+            loopsCtx.fillStyle = C.uipColor;
+            loopsCtx.textAlign = 'right';
+            loopsCtx.fillText('UIP / Overdistension', padL + plotW - 6, Math.max(yPV + 12, yUip - 4));
+          }
+        }
+
+        // 2. Static Sigmoidal Crs Curve + LIP & UIP Markers
+        if (state.overlays.staticCrs) {
+          loopsCtx.save();
+          loopsCtx.setLineDash([4, 4]);
+          loopsCtx.strokeStyle = C.staticCurve;
+          loopsCtx.lineWidth = 1.3;
+          loopsCtx.beginPath();
+          let started = false;
+          for (let vRel = 0; vRel <= maxV; vRel += 12) {
+            const pStat = el.pelOfV(el.vAtSetPeep + vRel);
+            if (pStat > maxP * 1.15) break;
+            const px = xOfP(pStat);
+            const py = yOfV(vRel);
+            if (!started) { loopsCtx.moveTo(px, py); started = true; }
+            else loopsCtx.lineTo(px, py);
+          }
+          loopsCtx.stroke();
+          loopsCtx.restore();
+
+          // LIP marker if present
+          if (el.lipP > 1 && el.vLip > el.vAtSetPeep) {
+            const lx = xOfP(el.lipP);
+            const ly = yOfV(el.vLip - el.vAtSetPeep);
+            loopsCtx.beginPath();
+            loopsCtx.arc(lx, ly, 3, 0, Math.PI * 2);
+            loopsCtx.fillStyle = C.lipColor;
+            loopsCtx.fill();
+            loopsCtx.font = '500 8.5px "JetBrains Mono", monospace';
+            loopsCtx.textAlign = 'left';
+            loopsCtx.fillText(`LIP ${Math.round(el.lipP)}`, lx + 5, ly + 3);
+          }
+        }
+
+        // 3. Ghost Reference P-V Loop
+        if (state.overlays.ghost && state.referenceSim) {
+          const refTr = state.referenceSim.steady.trace;
+          loopsCtx.save();
+          loopsCtx.setLineDash([4, 4]);
+          loopsCtx.strokeStyle = C.ghost;
+          loopsCtx.lineWidth = 1.35;
+          loopsCtx.beginPath();
+          for (let i = 0; i < refTr.paw.length; i++) {
+            const px = xOfP(refTr.paw[i]);
+            const py = yOfV(refTr.vol[i]);
+            if (i === 0) loopsCtx.moveTo(px, py);
+            else loopsCtx.lineTo(px, py);
+          }
+          loopsCtx.closePath();
+          loopsCtx.stroke();
+          loopsCtx.restore();
+        }
+
+        // 4. Active Dynamic P-V Loop
+        loopsCtx.strokeStyle = C.paw;
+        loopsCtx.lineWidth = 2.0;
+        loopsCtx.lineJoin = 'round';
+        loopsCtx.beginPath();
+        for (let i = 0; i < tr.paw.length; i++) {
+          const px = xOfP(tr.paw[i]);
+          const py = yOfV(tr.vol[i]);
+          if (i === 0) loopsCtx.moveTo(px, py);
+          else loopsCtx.lineTo(px, py);
+        }
+        loopsCtx.closePath();
+        loopsCtx.stroke();
+
+        // 5. Synchronized Dot + Subtle Trail
+        const trailN = 12;
+        for (let k = trailN; k >= 1; k--) {
+          const tPrev = (ring.cycleElapsed - k * 0.025 + cyc.duration) % cyc.duration;
+          const pt = sampleCycleAtTime(cyc, tPrev);
+          const alpha = (1 - k / trailN) * 0.42;
+          loopsCtx.beginPath();
+          loopsCtx.arc(xOfP(pt.paw), yOfV(pt.vol), 1.6 + (1 - k / trailN) * 1.6, 0, Math.PI * 2);
+          loopsCtx.fillStyle = `rgba(${C.pawRGB}, ${alpha.toFixed(3)})`;
+          loopsCtx.fill();
+        }
+
+        loopsCtx.beginPath();
+        loopsCtx.arc(xOfP(curPt.paw), yOfV(curPt.vol), 4.5, 0, Math.PI * 2);
+        loopsCtx.fillStyle = C.beadFill;
+        loopsCtx.fill();
+        loopsCtx.lineWidth = 2.1;
+        loopsCtx.strokeStyle = C.beadRing;
+        loopsCtx.stroke();
+
+        loopsCtx.restore(); // End PV clip
+      }
+
+      /* =======================================================================
+         BOTTOM LOOP: FLOW-VOLUME (X: Volume mL, Y: Flow L/min, Insp +, Exp -)
+         ======================================================================= */
+      {
+        const maxV = state.maxLoopV;
+        const maxF = state.maxLoopFlow;
+        const xOfV = v => padL + (clamp(v, 0, maxV) / maxV) * plotW;
+        const yOfF = f => yFV + hFV * 0.5 - (clamp(f, -maxF, maxF) / maxF) * (hFV * 0.44);
+
+        loopsCtx.fillStyle = C.subBoxBg;
+        loopsCtx.fillRect(padL, yFV, plotW, hFV);
+
+        // Grid
+        loopsCtx.strokeStyle = C.grid;
+        loopsCtx.lineWidth = 1;
+        loopsCtx.font = '9px "JetBrains Mono", monospace';
+        loopsCtx.fillStyle = C.tick;
+
+        const vStep = maxV > 1000 ? 400 : 200;
+        for (let v = 0; v <= maxV + 0.1; v += vStep) {
+          const x = Math.round(xOfV(v)) + 0.5;
+          loopsCtx.beginPath();
+          loopsCtx.moveTo(x, yFV);
+          loopsCtx.lineTo(x, yFV + hFV);
+          loopsCtx.stroke();
+          loopsCtx.textAlign = 'center';
+          loopsCtx.fillText(String(Math.round(v)), x, yFV + hFV + 13);
+        }
+
+        for (const ft of [-maxF, 0, maxF]) {
+          const y = Math.round(yOfF(ft)) + 0.5;
+          loopsCtx.beginPath();
+          loopsCtx.moveTo(padL, y);
+          loopsCtx.lineTo(padL + plotW, y);
+          loopsCtx.stroke();
+          loopsCtx.textAlign = 'right';
+          loopsCtx.fillText(String(Math.round(ft)), padL - 6, y + 3);
+        }
+
+        loopsCtx.strokeStyle = C.boxBorder;
+        loopsCtx.strokeRect(padL + 0.5, yFV + 0.5, plotW - 1, hFV - 1);
+
+        loopsCtx.fillStyle = C.label;
+        loopsCtx.font = '500 9px "JetBrains Mono", monospace';
+        loopsCtx.textAlign = 'left';
+        loopsCtx.fillText('FLOW–VOLUME (L/min vs mL)', padL + 7, yFV + 12);
+
+        loopsCtx.font = '400 8.5px "JetBrains Mono", monospace';
+        loopsCtx.fillStyle = C.tick;
+        loopsCtx.textAlign = 'right';
+        loopsCtx.fillText('+ Insp', padL + plotW - 6, yFV + 12);
+        loopsCtx.fillText('− Exp', padL + plotW - 6, yFV + hFV - 6);
+
+        // Clip interior
+        loopsCtx.save();
+        loopsCtx.beginPath();
+        loopsCtx.rect(padL, yFV, plotW, hFV);
+        loopsCtx.clip();
+
+        // Ghost Reference F-V Loop
+        if (state.overlays.ghost && state.referenceSim) {
+          const refTr = state.referenceSim.steady.trace;
+          const refBaseV = refTr.vol[0];
+          loopsCtx.save();
+          loopsCtx.setLineDash([4, 4]);
+          loopsCtx.strokeStyle = C.ghost;
+          loopsCtx.lineWidth = 1.35;
+          loopsCtx.beginPath();
+          for (let i = 0; i < refTr.flow.length; i++) {
+            const px = xOfV(Math.max(0, refTr.vol[i] - refBaseV));
+            const py = yOfF(refTr.flow[i]);
+            if (i === 0) loopsCtx.moveTo(px, py);
+            else loopsCtx.lineTo(px, py);
+          }
+          loopsCtx.stroke();
+          loopsCtx.restore();
+        }
+
+        // Active F-V Loop (plotted relative to cycle start volume so non-zero end-exp flow gap at V=0 is unmistakable!)
+        const baseV = tr.vol[0];
+        loopsCtx.strokeStyle = C.flow;
+        loopsCtx.lineWidth = 2.0;
+        loopsCtx.lineJoin = 'round';
+        loopsCtx.beginPath();
+        for (let i = 0; i < tr.flow.length; i++) {
+          const px = xOfV(Math.max(0, tr.vol[i] - baseV));
+          const py = yOfF(tr.flow[i]);
+          if (i === 0) loopsCtx.moveTo(px, py);
+          else loopsCtx.lineTo(px, py);
+        }
+        loopsCtx.stroke();
+
+        // Highlight Auto-PEEP gap at V = 0 when end-expiratory flow fails to return to zero
+        if (sim.metrics.endExpFlowLpm < -2.0) {
+          const gx = xOfV(0) + 2;
+          const gyZero = yOfF(0);
+          const gyEnd = yOfF(sim.metrics.endExpFlowLpm);
+          loopsCtx.strokeStyle = C.autoPeepMark;
+          loopsCtx.lineWidth = 2.5;
+          loopsCtx.beginPath();
+          loopsCtx.moveTo(gx, gyZero);
+          loopsCtx.lineTo(gx, gyEnd);
+          loopsCtx.stroke();
+
+          loopsCtx.beginPath();
+          loopsCtx.arc(gx, gyEnd, 3.2, 0, Math.PI * 2);
+          loopsCtx.fillStyle = C.autoPeepMark;
+          loopsCtx.fill();
+
+          loopsCtx.font = '500 8.5px "JetBrains Mono", monospace';
+          loopsCtx.fillStyle = C.autoPeepMark;
+          loopsCtx.textAlign = 'left';
+          loopsCtx.fillText(`Auto-PEEP`, gx + 6, Math.min(yFV + hFV - 6, gyEnd + 4));
+        }
+
+        // Synchronized Dot on F-V Loop
+        const fx = xOfV(Math.max(0, curPt.vol - baseV));
+        const fy = yOfF(curPt.flow);
+        loopsCtx.beginPath();
+        loopsCtx.arc(fx, fy, 4.3, 0, Math.PI * 2);
+        loopsCtx.fillStyle = C.beadFill;
+        loopsCtx.fill();
+        loopsCtx.lineWidth = 2.1;
+        loopsCtx.strokeStyle = C.flow;
+        loopsCtx.stroke();
+
+        loopsCtx.restore(); // End FV clip
+      }
+
+      loopsCtx.restore();
+    }
+
+    /* =========================================================================
+       6. SIDEBAR UI GENERATION (PATHOLOGIES, VENTILATOR, LUNG & GAS)
+       ========================================================================= */
+
+    function buildPathologiesTab() {
+      const container = document.getElementById('tab-pathologies');
+      container.innerHTML = PATHOLOGIES.map(p => `
+        <button data-preset="${p.id}" type="button" class="preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1">
+          <div class="flex items-center justify-between gap-2 w-full">
+            <span class="text-xs font-medium text-zinc-900 dark:text-zinc-100">${p.name}</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/70 shrink-0">${p.tag}</span>
+          </div>
+          <p class="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug line-clamp-1">${p.desc}</p>
+        </button>
+      `).join('');
+
+      highlightActivePresetCard();
+
+      container.querySelectorAll('.preset-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const preset = PATHOLOGIES.find(p => p.id === btn.dataset.preset);
+          if (!preset) return;
+          state.activePresetId = preset.id;
+          state.vent = { ...preset.vent };
+          state.lung = { ...preset.lung };
+          syncAllControlsFromState();
+          highlightActivePresetCard();
+          updateSimulation(true);
+        });
+      });
+    }
+
+    function highlightActivePresetCard() {
+      document.querySelectorAll('.preset-card').forEach(btn => {
+        const isActive = btn.dataset.preset === state.activePresetId;
+        btn.className = `preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1 ${
+          isActive
+            ? 'border-tealLight/50 dark:border-tealDark/50 bg-teal-500/[0.06] dark:bg-teal-400/[0.08]'
+            : 'border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-subtleDark/60 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-100/60 dark:hover:bg-zinc-900/60'
+        }`;
+      });
+    }
+
+    function buildVentilatorTab() {
+      const container = document.getElementById('vent-sliders-list');
+      container.innerHTML = VENT_SLIDERS.map(cfg => `
+        <div id="v-wrap-${cfg.key}" class="space-y-1.5 transition-opacity" data-tooltip="${cfg.tip}">
+          <div class="flex items-center justify-between text-[11.5px] gap-2">
+            <span class="font-medium text-zinc-700 dark:text-zinc-300 truncate">${cfg.label}</span>
+            <div class="flex items-center gap-1 font-mono tabular-nums shrink-0">
+              <span id="v-val-${cfg.key}" class="text-zinc-900 dark:text-zinc-100 font-medium">${state.vent[cfg.key].toFixed(cfg.decimals)}</span>
+              <span class="text-[10px] text-zinc-400 dark:text-zinc-500">${cfg.unit}</span>
+              ${cfg.showPbw ? `<span id="v-sub-vt" class="text-[10px] text-tealLight dark:text-tealDark font-medium">(${(state.vent.vt / state.lung.pbw).toFixed(1)} mL/kg)</span>` : ''}
+            </div>
+          </div>
+          <input
+            type="range"
+            id="v-slider-${cfg.key}"
+            class="clinical-slider"
+            min="${cfg.min}"
+            max="${cfg.max}"
+            step="${cfg.step}"
+            value="${state.vent[cfg.key]}"
+          />
+        </div>
+      `).join('');
+
+      VENT_SLIDERS.forEach(cfg => {
+        const slider = document.getElementById(`v-slider-${cfg.key}`);
+        slider.addEventListener('input', () => {
+          state.vent[cfg.key] = parseFloat(slider.value);
+          document.getElementById(`v-val-${cfg.key}`).textContent = state.vent[cfg.key].toFixed(cfg.decimals);
+          updateSimulation(false);
+        });
+      });
+
+      syncVentModeUI();
+    }
+
+    function syncVentModeUI() {
+      const isPCV = state.vent.mode === 'pcv';
+      document.querySelectorAll('.vmode-btn').forEach(btn => {
+        const active = btn.dataset.vmode === state.vent.mode;
+        btn.className = `vmode-btn py-1.5 rounded-md transition-colors ${
+          active
+            ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
+            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+        }`;
+      });
+
+      for (const cfg of VENT_SLIDERS) {
+        if (!cfg.modeReq) continue;
+        const disabled = (cfg.modeReq === 'vcv' && isPCV) || (cfg.modeReq === 'pcv' && !isPCV);
+        const wrap = document.getElementById(`v-wrap-${cfg.key}`);
+        const slider = document.getElementById(`v-slider-${cfg.key}`);
+        if (wrap) wrap.classList.toggle('opacity-40', disabled);
+        if (slider) slider.disabled = disabled;
+      }
+    }
+
+    function buildLungTab() {
+      const container = document.getElementById('lung-sliders-list');
+      const groups = [
+        { id: 'mech', title: 'Mechanics' },
+        { id: 'gas', title: 'Gas Exchange' }
+      ];
+
+      container.innerHTML = groups.map(grp => {
+        const items = LUNG_SLIDERS.filter(c => c.group === grp.id);
+        return `
+          <div class="space-y-3">
+            <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500 pb-1 border-b border-zinc-200/80 dark:border-zinc-800/80">
+              ${grp.title}
+            </div>
+            <div class="space-y-3">
+              ${items.map(cfg => `
+                <div class="space-y-1.5" data-tooltip="${cfg.tip}">
+                  <div class="flex items-center justify-between text-[11.5px] gap-2">
+                    <span class="font-medium text-zinc-700 dark:text-zinc-300 truncate">${cfg.label}</span>
+                    <div class="flex items-center gap-1 font-mono tabular-nums shrink-0">
+                      <span id="l-val-${cfg.key}" class="text-zinc-900 dark:text-zinc-100 font-medium">${state.lung[cfg.key].toFixed(cfg.decimals)}</span>
+                      <span class="text-[10px] text-zinc-400 dark:text-zinc-500">${cfg.unit}</span>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    id="l-slider-${cfg.key}"
+                    class="clinical-slider"
+                    min="${cfg.min}"
+                    max="${cfg.max}"
+                    step="${cfg.step}"
+                    value="${state.lung[cfg.key]}"
+                  />
+                </div>
+              `).join('')}
+            </div>
+          </div>`;
+      }).join('');
+
+      LUNG_SLIDERS.forEach(cfg => {
+        const slider = document.getElementById(`l-slider-${cfg.key}`);
+        slider.addEventListener('input', () => {
+          state.lung[cfg.key] = parseFloat(slider.value);
+          state.activePresetId = 'custom';
+          document.getElementById(`l-val-${cfg.key}`).textContent = state.lung[cfg.key].toFixed(cfg.decimals);
+          highlightActivePresetCard();
+          updateSimulation(false);
+        });
+      });
+    }
+
+    function syncAllControlsFromState() {
+      for (const cfg of VENT_SLIDERS) {
+        const s = document.getElementById(`v-slider-${cfg.key}`);
+        const v = document.getElementById(`v-val-${cfg.key}`);
+        if (s) s.value = state.vent[cfg.key];
+        if (v) v.textContent = state.vent[cfg.key].toFixed(cfg.decimals);
+      }
+      for (const cfg of LUNG_SLIDERS) {
+        const s = document.getElementById(`l-slider-${cfg.key}`);
+        const v = document.getElementById(`l-val-${cfg.key}`);
+        if (s) s.value = state.lung[cfg.key];
+        if (v) v.textContent = state.lung[cfg.key].toFixed(cfg.decimals);
+      }
+      syncVentModeUI();
+    }
+
+    /* =========================================================================
+       7. HOLD MANEUVERS, EVENT WIRING & ZERO-FLICKER ANIMATION LOOP
+       ========================================================================= */
+
+    function triggerHoldManeuver(kind) {
+      if (!state.currentSim) return;
+      ring.queuedHold = kind;
+
+      const m = state.currentSim.metrics;
+      const banner = document.getElementById('hold-banner');
+      const textEl = document.getElementById('hold-banner-text');
+      const inspDot = document.getElementById('insp-hold-dot');
+      const expDot = document.getElementById('exp-hold-dot');
+
+      if (kind === 'insp_hold') {
+        textEl.textContent = `Insp Hold (0.55s) · Pplat ${m.pPlat.toFixed(1)} cmH₂O · ΔP ${m.drivingP.toFixed(1)} · Cstat ${Math.round(m.cStat)} mL/cmH₂O`;
+        textEl.className = 'text-tealLight dark:text-tealDark font-medium';
+        inspDot.className = 'w-1.5 h-1.5 rounded-full bg-tealLight dark:bg-tealDark pulse-live';
+        expDot.className = 'w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600';
+      } else {
+        textEl.textContent = `Exp Hold (0.85s) · Total PEEP ${m.peepTot.toFixed(1)} cmH₂O · Set ${state.vent.peep} · Auto-PEEP ${m.autoPeep.toFixed(1)} cmH₂O`;
+        textEl.className = 'text-amber-600 dark:text-amber-400 font-medium';
+        expDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400 pulse-live';
+        inspDot.className = 'w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600';
+      }
+
+      banner.classList.remove('hidden');
+      clearTimeout(state.holdBannerTimer);
+      state.holdBannerTimer = setTimeout(() => {
+        inspDot.className = 'w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600';
+        expDot.className = 'w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600';
+      }, 4500);
+    }
+
+    function wireControls() {
+      // Theme Toggle (syncs both medlab-theme & theme keys)
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const isDarkNow = document.documentElement.classList.toggle('dark');
+        const val = isDarkNow ? 'dark' : 'light';
+        try {
+          localStorage.setItem('medlab-theme', val);
+          localStorage.setItem('theme', val);
+        } catch (_) {}
+      });
+
+      // Sidebar 3-Tab Switcher
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = btn.dataset.tab;
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            const active = b.dataset.tab === target;
+            b.className = `tab-btn py-1.5 rounded-md text-xs font-medium transition-colors ${
+              active
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+            }`;
+          });
+          ['pathologies', 'ventilator', 'lung'].forEach(id => {
+            document.getElementById(`tab-${id}`).classList.toggle('hidden', id !== target);
+          });
+        });
+      });
+
+      // Vent Mode Segmented Buttons
+      document.querySelectorAll('.vmode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.vent.mode = btn.dataset.vmode;
+          syncVentModeUI();
+          updateSimulation(false);
+        });
+      });
+
+      // Quick Strategy Buttons
+      document.querySelectorAll('.strategy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const strat = btn.dataset.strategy;
+          const pbw = state.lung.pbw;
+          if (strat === 'standard') {
+            state.vent = { ...state.vent, mode: 'vcv_sq', vt: Math.round((pbw * 6.5) / 10) * 10, rr: 14, peep: 5, ti: 1.0, tpause: 0.15 };
+          } else if (strat === 'ardsnet') {
+            state.vent = { ...state.vent, mode: 'vcv_sq', vt: clamp(Math.round((pbw * 6.0) / 10) * 10, 240, 800), rr: 22, peep: 12, ti: 0.85, tpause: 0.15 };
+          } else if (strat === 'copd') {
+            state.vent = { ...state.vent, mode: 'vcv_sq', vt: clamp(Math.round((pbw * 6.8) / 10) * 10, 240, 800), rr: 12, peep: 5, ti: 0.80, tpause: 0.10 };
+          }
+          syncAllControlsFromState();
+          updateSimulation(false);
+        });
+      });
+
+      // Play / Pause
+      document.getElementById('btn-play-pause').addEventListener('click', () => {
+        state.playing = !state.playing;
+        document.getElementById('icon-pause').classList.toggle('hidden', !state.playing);
+        document.getElementById('icon-play').classList.toggle('hidden', state.playing);
+        document.getElementById('play-pause-text').textContent = state.playing ? 'Pause' : 'Play';
+        const dot = document.getElementById('live-dot');
+        dot.classList.toggle('pulse-live', state.playing);
+        dot.classList.toggle('bg-emerald-500', state.playing);
+        dot.classList.toggle('dark:bg-emerald-400', state.playing);
+        dot.classList.toggle('bg-amber-500', !state.playing);
+        dot.classList.toggle('dark:bg-amber-400', !state.playing);
+      });
+
+      // Speed Selector (0.5x / 1.0x)
+      document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.speed = parseFloat(btn.dataset.speed);
+          document.querySelectorAll('.speed-btn').forEach(b => {
+            const active = b === btn;
+            b.className = `speed-btn px-2 h-full rounded-md transition-colors ${
+              active
+                ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+            }`;
+          });
+        });
+      });
+
+      // Insp Hold & Exp Hold
+      document.getElementById('btn-insp-hold').addEventListener('click', () => triggerHoldManeuver('insp_hold'));
+      document.getElementById('btn-exp-hold').addEventListener('click', () => triggerHoldManeuver('exp_hold'));
+      document.getElementById('hold-banner-dismiss').addEventListener('click', () => {
+        document.getElementById('hold-banner').classList.add('hidden');
+      });
+
+      // Pin Snapshot
+      let pinTimer = null;
+      document.getElementById('btn-pin-snapshot').addEventListener('click', () => {
+        if (!state.currentSim) return;
+        state.referenceSim = state.currentSim;
+        const preset = PATHOLOGIES.find(p => p.id === state.activePresetId);
+        state.referenceLabel = preset ? preset.name.split(' ')[0] + ' Pin' : 'Pinned';
+        const lbl = document.getElementById('snapshot-btn-label');
+        lbl.textContent = 'Pinned ✓';
+        clearTimeout(pinTimer);
+        pinTimer = setTimeout(() => { lbl.textContent = 'Pin'; }, 1400);
+        renderTelemetry();
+      });
+
+      // Reset Normal
+      document.getElementById('btn-reset-normal').addEventListener('click', () => {
+        state.activePresetId = 'normal';
+        state.vent = { ...NORMAL_VENT };
+        state.lung = { ...NORMAL_LUNG };
+        document.getElementById('hold-banner').classList.add('hidden');
+        syncAllControlsFromState();
+        highlightActivePresetCard();
+        updateSimulation(true);
+        state.referenceSim = state.currentSim;
+        state.referenceLabel = 'Normal';
+        renderTelemetry();
+      });
+
+      // Loop Overlay Toggle Pills
+      document.querySelectorAll('.overlay-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.overlay;
+          state.overlays[key] = !state.overlays[key];
+          const on = state.overlays[key];
+          btn.className = `overlay-btn px-1.5 py-0.5 rounded border transition-colors ${
+            on
+              ? 'border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200'
+              : 'border-zinc-200/70 dark:border-zinc-800/70 bg-transparent text-zinc-400 dark:text-zinc-600 line-through'
+          }`;
+        });
+      });
+
+      // Clinical Tooltip Delegation
+      const tipEl = document.getElementById('clinical-tooltip');
+      document.addEventListener('mouseover', e => {
+        const target = e.target.closest('[data-tooltip]');
+        if (!target) return;
+        tipEl.textContent = target.dataset.tooltip;
+        tipEl.classList.remove('opacity-0');
+        tipEl.classList.add('opacity-100');
+      });
+      document.addEventListener('mousemove', e => {
+        if (tipEl.classList.contains('opacity-0')) return;
+        const pad = 14;
+        const rect = tipEl.getBoundingClientRect();
+        let x = e.clientX + pad;
+        let y = e.clientY + pad;
+        if (x + rect.width > window.innerWidth - 10) x = e.clientX - rect.width - pad;
+        if (y + rect.height > window.innerHeight - 10) y = e.clientY - rect.height - pad;
+        tipEl.style.left = `${Math.max(8, x)}px`;
+        tipEl.style.top = `${Math.max(8, y)}px`;
+      });
+      document.addEventListener('mouseout', e => {
+        const target = e.target.closest('[data-tooltip]');
+        if (!target) return;
+        tipEl.classList.add('opacity-0');
+        tipEl.classList.remove('opacity-100');
+      });
+
+      // High-DPI ResizeObservers
+      const ro = new ResizeObserver(() => {
+        resizeCanvas(scalarsCanvas, 'scalars-canvas-wrap');
+        resizeCanvas(loopsCanvas, 'loops-canvas-wrap');
+      });
+      ro.observe(document.getElementById('scalars-canvas-wrap'));
+      ro.observe(document.getElementById('loops-canvas-wrap'));
+      window.addEventListener('resize', () => {
+        resizeCanvas(scalarsCanvas, 'scalars-canvas-wrap');
+        resizeCanvas(loopsCanvas, 'loops-canvas-wrap');
+      });
+    }
+
+    // Zero-Flicker Fixed-Rate Animation Loop
+    let lastTimestamp = 0;
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) lastTimestamp = performance.now();
+    });
+
+    function animate(now) {
+      if (!lastTimestamp) lastTimestamp = now;
+      const dt = Math.min(0.05, Math.max(0, (now - lastTimestamp) / 1000));
+      lastTimestamp = now;
+
+      if (state.playing && state.currentSim) {
+        ring.liveTime += dt * state.speed;
+        let steps = 0;
+        while (ring.sampleClock + DT_SAMPLE <= ring.liveTime && steps < 25) {
+          ring.sampleClock += DT_SAMPLE;
+          stepRingSample();
+          steps++;
+        }
+      }
+
+      drawScalars();
+      drawLoops();
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('load', () => {
+      buildPathologiesTab();
+      buildVentilatorTab();
+      buildLungTab();
+      wireControls();
+
+      resizeCanvas(scalarsCanvas, 'scalars-canvas-wrap');
+      resizeCanvas(loopsCanvas, 'loops-canvas-wrap');
+
+      updateSimulation(true);
+      requestAnimationFrame(animate);
+    });
+  })();
+  </script>
+</body>
+</html>
