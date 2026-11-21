@@ -3,15 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PhysioLab — Quantitative Physiology & Clinical Computation</title>
+  <title>MedLab — Quantitative Physiology & Clinical Computation</title>
+
+  <!-- Prevent flash of wrong theme before paint -->
+  <script>
+    (function () {
+      try {
+        const saved = localStorage.getItem('medlab-theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Typography: Inter (UI) & JetBrains Mono (Equations, Parameters, Routes) -->
+  <!-- Typography: Inter (UI) & JetBrains Mono (Routes & Metadata) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
   <script>
     tailwind.config = {
@@ -23,41 +37,27 @@
             mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
           },
           colors: {
-            obsidian: '#080c12',
-            surface: '#0f1622',
-            surfaceHover: '#141d2d',
-            borderDark: '#1e293b',
-          }
-        }
-      }
+            obsidian: '#09090b',
+            cardDark: '#111114',
+            canvasLight: '#fafafa',
+            accentDark: '#2dd4bf',
+            accentLight: '#0f766e',
+          },
+        },
+      },
     };
   </script>
 
   <style>
-    /* Clinical Precision Base & Micro-Interactions */
+    /* Swiss-precision typography & subtle micro-polish */
     html, body {
       overflow-x: hidden;
       font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
-    .tabular-nums {
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* Subtle Biomedical Technical Grid Backdrop */
-    .bg-clinical-grid {
-      background-size: 32px 32px;
-      background-image:
-        linear-gradient(to right, rgba(30, 41, 59, 0.25) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(30, 41, 59, 0.25) 1px, transparent 1px);
-    }
-    html:not(.dark) .bg-clinical-grid {
-      background-image:
-        linear-gradient(to right, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(148, 163, 184, 0.16) 1px, transparent 1px);
-    }
-
-    /* Custom Slim Scrollbars */
+    /* Custom ultra-thin scrollbars */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -66,1667 +66,793 @@
       background: transparent;
     }
     ::-webkit-scrollbar-thumb {
-      background: rgba(100, 116, 139, 0.35);
+      background: rgba(113, 113, 122, 0.28);
       border-radius: 9999px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: rgba(100, 116, 139, 0.55);
+      background: rgba(113, 113, 122, 0.5);
     }
 
-    /* Live Status Pulse */
-    @keyframes statusPulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.45; transform: scale(0.82); }
+    /* Subtle live indicator pulse for CardioSim */
+    @keyframes livePulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.45;
+        transform: scale(0.8);
+      }
     }
-    .pulse-dot {
-      animation: statusPulse 1.8s ease-in-out infinite;
+    .dot-pulse {
+      animation: livePulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
 
-    /* Drawer & Modal Transitions */
-    .drawer-panel {
-      transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .modal-card {
-      transition: opacity 0.18s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Smooth radial fade mask for borderless hero canvas */
+    .canvas-fade-mask {
+      -webkit-mask-image: radial-gradient(ellipse 76% 74% at 50% 50%, #000 58%, transparent 100%);
+      mask-image: radial-gradient(ellipse 76% 74% at 50% 50%, #000 58%, transparent 100%);
     }
   </style>
 </head>
 
-<body class="min-h-screen bg-slate-50 text-slate-900 dark:bg-obsidian dark:text-slate-100 transition-colors duration-200 selection:bg-cyan-500/25 selection:text-cyan-600 dark:selection:text-cyan-200 antialiased">
+<body class="min-h-screen flex flex-col bg-canvasLight text-zinc-900 dark:bg-obsidian dark:text-zinc-100 transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
 
-  <!-- ==================== 1. STICKY TOP NAVIGATION BAR ==================== -->
-  <header class="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-borderDark/90 bg-white/85 dark:bg-obsidian/85 backdrop-blur-md">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
+  <!-- ==================== 1. MINIMAL STICKY HEADER (60px) ==================== -->
+  <header class="sticky top-0 z-40 h-[60px] w-full border-b border-zinc-200/90 dark:border-white/[0.08] bg-canvasLight/80 dark:bg-obsidian/80 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between gap-4">
 
-      <!-- Left: Brand Emblem & Wordmark -->
+      <!-- Left: Minimalist Geometric Mark + Wordmark -->
       <a href="#" class="flex items-center gap-2.5 shrink-0 group focus:outline-none">
-        <div class="w-8 h-8 rounded-lg bg-slate-900 dark:bg-surface border border-slate-800 dark:border-cyan-500/30 flex items-center justify-center shadow-sm group-hover:border-cyan-400/70 transition-colors">
-          <!-- Minimal SVG Pulse / Loop Emblem -->
-          <svg class="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2.5 12h3.5l2.2-6 3.6 12 2.4-6h2.3" />
-            <circle cx="19" cy="12" r="2.2" class="text-emerald-400" stroke="currentColor" />
+        <span class="w-7 h-7 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-white/[0.1] bg-white dark:bg-cardDark group-hover:border-teal-600/50 dark:group-hover:border-teal-400/50 transition-colors">
+          <!-- Geometric waveform / node mark -->
+          <svg class="w-4 h-4 text-accentLight dark:text-accentDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12h4l2.5-6 4 12 2.5-6h2.5" />
+            <circle cx="20.2" cy="12" r="1.4" fill="currentColor" stroke="none" />
           </svg>
-        </div>
-        <div class="flex items-baseline gap-2">
-          <span class="font-semibold text-[15px] tracking-tight text-slate-900 dark:text-slate-50">PhysioLab</span>
-          <span class="hidden sm:inline-block font-mono text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/80">Hub</span>
-        </div>
+        </span>
+        <span class="text-[15px] font-semibold tracking-tight text-zinc-950 dark:text-white">MedLab</span>
       </a>
 
-      <!-- Center: Clean Anchor Navigation -->
-      <nav class="hidden md:flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-slate-400">
-        <a href="#simulators" class="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">Simulators</a>
-        <a href="#calculators" class="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">Calculators</a>
-        <a href="#architecture" class="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">Architecture</a>
-      </nav>
+      <!-- Center / Right: Anchor Links, Compact Search, Theme Toggle -->
+      <div class="flex items-center gap-2 sm:gap-5 flex-1 justify-end">
+        <nav class="hidden md:flex items-center gap-5 text-[13px] font-medium text-zinc-500 dark:text-zinc-400">
+          <a href="#simulators" class="hover:text-zinc-950 dark:hover:text-white transition-colors">Simulators</a>
+          <a href="#calculators" class="hover:text-zinc-950 dark:hover:text-white transition-colors">Calculators</a>
+        </nav>
 
-      <!-- Right: Instant Search + Theme Toggle -->
-      <div class="flex items-center gap-2 flex-1 sm:flex-initial justify-end max-w-md">
-        <!-- Search Input -->
-        <div class="relative flex-1 sm:w-64 lg:w-72">
-          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <path d="m21 21-4.3-4.3"></path>
+        <!-- Sleek Compact Search Input -->
+        <div class="relative w-full max-w-[200px] sm:max-w-[240px]">
+          <svg class="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7.5" />
+            <path d="m20.5 20.5-3.8-3.8" />
           </svg>
           <input
-            id="global-search"
+            id="search-input"
             type="text"
             autocomplete="off"
-            placeholder="Filter models, formulas..."
-            aria-label="Search simulators and calculators"
-            class="w-full h-9 pl-9 pr-14 rounded-lg text-xs sm:text-sm bg-slate-100/90 dark:bg-surface border border-slate-200 dark:border-borderDark text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/80 dark:focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-500/15 transition"
+            spellcheck="false"
+            placeholder="Search..."
+            aria-label="Filter simulators and calculators"
+            class="w-full h-8 pl-8 pr-8 rounded-lg text-[13px] bg-white dark:bg-cardDark border border-zinc-200 dark:border-white/[0.08] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-accentLight/60 dark:focus:border-accentDark/50 transition-colors"
           />
-          <!-- Clear button (shown when query active) -->
-          <button id="clear-search-btn" type="button" aria-label="Clear search" class="hidden absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          <kbd id="search-shortcut" class="hidden sm:inline-flex items-center justify-center absolute right-2 top-1/2 -translate-y-1/2 h-4.5 px-1.5 font-mono text-[10px] text-zinc-400 dark:text-zinc-500 border border-zinc-200 dark:border-white/[0.08] rounded pointer-events-none">/</kbd>
+          <button id="search-clear" type="button" aria-label="Clear search" class="hidden absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
           </button>
-          <!-- Shortcut badge -->
-          <kbd id="search-kbd" class="hidden sm:inline-flex items-center gap-0.5 absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 font-mono text-[10px] text-slate-400 dark:text-slate-500 bg-white dark:bg-obsidian border border-slate-200 dark:border-slate-700/80 rounded pointer-events-none">/</kbd>
         </div>
 
         <!-- Dark / Light Theme Toggle -->
-        <button id="theme-toggle" type="button" aria-label="Toggle Dark and Light Mode" title="Toggle Dark / Light theme" class="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center bg-slate-100/90 dark:bg-surface border border-slate-200 dark:border-borderDark text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white transition">
-          <!-- Sun icon (shown in dark mode) -->
-          <svg id="icon-sun" class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="4"></circle>
-            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+        <button
+          id="theme-toggle"
+          type="button"
+          aria-label="Toggle theme"
+          title="Switch Light / Dark mode"
+          class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center border border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-cardDark text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300 dark:hover:border-white/[0.16] transition-colors"
+        >
+          <!-- Sun (shown in dark mode) -->
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
           </svg>
-          <!-- Moon icon (shown in light mode) -->
-          <svg id="icon-moon" class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          <!-- Moon (shown in light mode) -->
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
           </svg>
         </button>
       </div>
-    </div>
-
-    <!-- Mobile Quick Anchor Bar -->
-    <div class="md:hidden border-t border-slate-200/70 dark:border-borderDark/70 px-4 py-1.5 flex items-center gap-4 text-xs font-medium text-slate-600 dark:text-slate-400">
-      <a href="#simulators" class="hover:text-cyan-600 dark:hover:text-cyan-400">Simulators</a>
-      <a href="#calculators" class="hover:text-cyan-600 dark:hover:text-cyan-400">Calculators</a>
-      <a href="#architecture" class="hover:text-cyan-600 dark:hover:text-cyan-400">Architecture</a>
     </div>
   </header>
 
-  <!-- Active Search Summary Banner (Hidden unless searching) -->
-  <div id="search-status-bar" class="hidden border-b border-cyan-500/25 bg-cyan-500/10 dark:bg-cyan-950/35">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-      <div class="flex items-center gap-2 font-mono text-cyan-800 dark:text-cyan-200">
-        <span>FILTER:</span>
-        <span id="search-query-echo" class="px-1.5 py-0.5 rounded bg-cyan-500/15 border border-cyan-500/30 font-semibold"></span>
-        <span id="search-match-counts" class="text-slate-600 dark:text-slate-400"></span>
-      </div>
-      <button id="search-reset-inline" type="button" class="text-xs font-medium text-cyan-700 dark:text-cyan-300 hover:underline">Reset filter</button>
-    </div>
-  </div>
+  <!-- ==================== MAIN CONTENT ==================== -->
+  <main class="flex-1 w-full">
 
-  <!-- ==================== 2. COMPACT, HIGH-IMPACT HERO SECTION ==================== -->
-  <section class="relative border-b border-slate-200/80 dark:border-borderDark/90 bg-clinical-grid overflow-hidden">
-    <!-- Subtle Top-Right Ambient Radial Glow -->
-    <div class="pointer-events-none absolute -top-24 right-0 w-[520px] h-[360px] rounded-full bg-cyan-500/10 dark:bg-cyan-500/[0.07] blur-3xl"></div>
+    <!-- ==================== 2. ASYMMETRIC HERO + GENERATIVE HARMONIC MANIFOLD ==================== -->
+    <section class="relative max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-14 sm:pt-20 sm:pb-20 lg:pt-24 lg:pb-24">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
 
-    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14 lg:py-16">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-
-        <!-- Left Column: Direct Headline, Subtitle, Stats & CTAs -->
+        <!-- Left Column: Crisp Swiss Typography -->
         <div class="lg:col-span-6 space-y-6">
-          <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/90 dark:bg-surface border border-slate-200 dark:border-borderDark shadow-sm">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
-            <span class="font-mono text-[11px] text-slate-600 dark:text-slate-300 tracking-tight">CLIENT-SIDE BIOMEDICAL WORKBENCH · v1.0</span>
+          <div class="inline-flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-accentLight dark:bg-accentDark"></span>
+            <span class="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
+              Quantitative Physiology
+            </span>
           </div>
 
-          <div class="space-y-3">
-            <h1 class="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-slate-900 dark:text-white leading-[1.12]">
-              Quantitative Physiology &amp; Clinical Computation
-            </h1>
-            <p class="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl">
-              Mechanistic, real-time physiological simulators paired with transparent, evidence-based clinical calculators. Built to execute ODE solvers and bedside equations locally in the browser with zero server latency.
-            </p>
-          </div>
+          <h1 class="text-4xl sm:text-5xl lg:text-[52px] font-semibold tracking-[-0.035em] leading-[1.06] text-zinc-950 dark:text-white">
+            Interactive models for clinical medicine.
+          </h1>
 
-          <!-- Quick Stats Strip -->
-          <div class="grid grid-cols-3 gap-3 max-w-lg pt-1">
-            <div class="px-3 py-2.5 rounded-lg bg-white/85 dark:bg-surface/90 border border-slate-200 dark:border-borderDark">
-              <div class="font-mono text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-50 tabular-nums">9</div>
-              <div class="text-[11px] text-slate-500 dark:text-slate-400">Physiological Models</div>
-            </div>
-            <div class="px-3 py-2.5 rounded-lg bg-white/85 dark:bg-surface/90 border border-slate-200 dark:border-borderDark">
-              <div class="font-mono text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-50 tabular-nums">20+</div>
-              <div class="text-[11px] text-slate-500 dark:text-slate-400">Clinical Calculators</div>
-            </div>
-            <div class="px-3 py-2.5 rounded-lg bg-white/85 dark:bg-surface/90 border border-slate-200 dark:border-borderDark">
-              <div class="font-mono text-base sm:text-lg font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">100%</div>
-              <div class="text-[11px] text-slate-500 dark:text-slate-400">Client-Side</div>
-            </div>
-          </div>
+          <p class="text-[15px] sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-lg">
+            First-principles physiological simulations and rapid bedside equations—built to run locally in the browser.
+          </p>
 
-          <!-- Dual CTAs -->
-          <div class="flex flex-wrap items-center gap-3 pt-1">
-            <a href="#simulators" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-900 dark:bg-cyan-500 hover:bg-slate-800 dark:hover:bg-cyan-400 text-white dark:text-obsidian text-sm font-semibold shadow-sm transition">
-              <span>Browse Simulators</span>
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          <div class="flex flex-wrap items-center gap-3 pt-2">
+            <a
+              href="#simulators"
+              class="inline-flex items-center justify-center h-10 px-4 rounded-lg text-[13px] font-medium bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-obsidian dark:hover:bg-zinc-200 transition-colors"
+            >
+              Explore Simulators
             </a>
-            <a href="#calculators" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white dark:bg-surface hover:bg-slate-100 dark:hover:bg-surfaceHover text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-borderDark text-sm font-semibold transition">
-              <span>Browse Calculators</span>
+            <a
+              href="calculators.html"
+              class="group inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-[13px] font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white border border-transparent hover:border-zinc-200 dark:hover:border-white/[0.1] hover:bg-white dark:hover:bg-cardDark transition-all"
+            >
+              <span>Open Calculators</span>
+              <span class="inline-block transition-transform duration-150 group-hover:translate-x-0.5">&rarr;</span>
             </a>
           </div>
         </div>
 
-        <!-- Right Column: Decorative Clinical Monitor Preview Card -->
+        <!-- Right Column: Borderless Interactive 3D Harmonic Flow-Field Canvas -->
         <div class="lg:col-span-6">
-          <div class="rounded-xl bg-white dark:bg-surface border border-slate-200 dark:border-borderDark shadow-xl dark:shadow-2xl dark:shadow-black/50 overflow-hidden">
-            <!-- Monitor Chrome Header -->
-            <div class="px-3.5 py-2 border-b border-slate-200 dark:border-borderDark bg-slate-50 dark:bg-[#0b111b] flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 pulse-dot"></span>
-                <span class="font-mono text-[11px] font-medium text-slate-700 dark:text-slate-300 tracking-tight">MONITOR PREVIEW · LV HEMODYNAMICS</span>
-              </div>
-              <div class="flex items-center gap-2 font-mono text-[10px] text-slate-500 dark:text-slate-400">
-                <span class="hidden sm:inline px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/25">PV LOOP</span>
-                <span class="hidden sm:inline px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">ECG · AoP</span>
-                <span>60 FPS</span>
-              </div>
-            </div>
-
-            <!-- Decorative Animated Canvas -->
-            <div id="hero-canvas-wrap" class="relative w-full h-[230px] sm:h-[255px] bg-slate-50/70 dark:bg-[#070b11]">
-              <canvas id="hero-canvas" class="block w-full h-full"></canvas>
-            </div>
-
-            <!-- Mock Telemetry Readouts Footer -->
-            <div class="px-3.5 py-2.5 border-t border-slate-200 dark:border-borderDark bg-slate-50/90 dark:bg-[#0b111b] grid grid-cols-4 gap-2 font-mono tabular-nums">
-              <div>
-                <div class="text-[9px] uppercase tracking-wider text-slate-500">HR</div>
-                <div class="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400">72 <span class="text-[10px] font-normal text-slate-500">bpm</span></div>
-              </div>
-              <div>
-                <div class="text-[9px] uppercase tracking-wider text-slate-500">CO</div>
-                <div class="text-xs sm:text-sm font-semibold text-cyan-600 dark:text-cyan-400">5.2 <span class="text-[10px] font-normal text-slate-500">L/min</span></div>
-              </div>
-              <div>
-                <div class="text-[9px] uppercase tracking-wider text-slate-500">EF</div>
-                <div class="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100">61<span class="text-[10px] font-normal text-slate-500">%</span></div>
-              </div>
-              <div>
-                <div class="text-[9px] uppercase tracking-wider text-slate-500">BP / MAP</div>
-                <div class="text-xs sm:text-sm font-semibold text-rose-600 dark:text-rose-400">120/80 <span class="hidden sm:inline text-[10px] font-normal text-slate-500">(93)</span></div>
-              </div>
-            </div>
+          <div
+            id="manifold-wrap"
+            class="relative w-full h-[270px] sm:h-[340px] lg:h-[380px] canvas-fade-mask cursor-crosshair select-none touch-none"
+            aria-label="Interactive 3D harmonic phase-space visualization"
+          >
+            <canvas id="manifold-canvas" class="block w-full h-full"></canvas>
           </div>
         </div>
 
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ==================== 3. INTERACTIVE PHYSIOLOGY SIMULATORS SECTION ==================== -->
-  <section id="simulators" class="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16 scroll-mt-16">
-    <!-- Section Header -->
-    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-      <div>
-        <div class="flex items-center gap-2 mb-1">
-          <span class="font-mono text-[11px] uppercase tracking-wider text-cyan-600 dark:text-cyan-400 font-semibold">01 / Mechanistic Engines</span>
-          <span id="sim-count-badge" class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400 tabular-nums">9 modules</span>
-        </div>
-        <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Interactive Physiology Simulators</h2>
-        <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Coupled differential equation models across organ systems. Select any module to inspect its mathematical blueprint and route.</p>
-      </div>
+    <!-- Subtle Hairline Divider -->
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <div class="h-px w-full bg-zinc-200/80 dark:bg-white/[0.07]"></div>
     </div>
 
-    <!-- Category Filter Pills -->
-    <div id="sim-filter-bar" class="flex flex-wrap items-center gap-1.5 mb-6" role="tablist" aria-label="Simulator organ system filter">
-      <!-- Populated via JS -->
-    </div>
-
-    <!-- 3-Column Responsive Simulator Cards Grid -->
-    <div id="simulators-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <!-- Populated via JS -->
-    </div>
-
-    <!-- Empty State for Simulators -->
-    <div id="simulators-empty" class="hidden rounded-xl border border-dashed border-slate-300 dark:border-borderDark p-10 text-center">
-      <p class="text-sm font-medium text-slate-700 dark:text-slate-300">No physiological simulators match your current filter.</p>
-      <p class="text-xs text-slate-500 mt-1">Try clearing the search query or selecting "All" organ systems.</p>
-    </div>
-  </section>
-
-  <!-- ==================== 4. CLINICAL CALCULATORS DIRECTORY SECTION ==================== -->
-  <section id="calculators" class="border-t border-slate-200/80 dark:border-borderDark/90 bg-slate-100/50 dark:bg-[#0a0f17]/70 scroll-mt-16">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
-      <!-- Section Header -->
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+    <!-- ==================== 3. SIMULATORS SECTION (#simulators) ==================== -->
+    <section id="simulators" class="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20 scroll-mt-16">
+      <!-- Header + Minimal Horizontal Filter Tabs -->
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
-          <div class="flex items-center gap-2 mb-1">
-            <span class="font-mono text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-semibold">02 / Bedside Reference</span>
-            <span id="calc-count-badge" class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400 tabular-nums">21 formulas</span>
-          </div>
-          <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Clinical Calculators Directory</h2>
-          <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">Evidence-based bedside scores and physiological equations. Click any entry to view its formula specification and clinical criteria.</p>
+          <h2 class="text-xl sm:text-2xl font-semibold tracking-[-0.025em] text-zinc-950 dark:text-white">Simulators</h2>
+        </div>
+
+        <div id="sim-tabs" class="flex flex-wrap items-center gap-1" role="tablist" aria-label="Filter simulators by discipline">
+          <!-- Rendered from JS -->
         </div>
       </div>
 
-      <!-- Calculator Category Tabs -->
-      <div id="calc-filter-bar" class="flex flex-wrap items-center gap-1.5 mb-6" role="tablist" aria-label="Calculator category filter">
-        <!-- Populated via JS -->
+      <!-- 3-Column Spacious Card Grid -->
+      <div id="simulators-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+        <!-- Rendered from JS -->
       </div>
+    </section>
 
-      <!-- Dense Scannable Calculators Container -->
-      <div id="calculators-container" class="space-y-8">
-        <!-- Populated via JS -->
-      </div>
-
-      <!-- Empty State for Calculators -->
-      <div id="calculators-empty" class="hidden rounded-xl border border-dashed border-slate-300 dark:border-borderDark p-10 text-center bg-white/50 dark:bg-surface/40">
-        <p class="text-sm font-medium text-slate-700 dark:text-slate-300">No clinical calculators match your current filter.</p>
-        <p class="text-xs text-slate-500 mt-1">Try adjusting your search keywords or switching category tabs.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==================== 5. COMPACT ARCHITECTURE & FOOTER SECTION ==================== -->
-  <section id="architecture" class="border-t border-slate-200/80 dark:border-borderDark/90 scroll-mt-16">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-14">
-      <div class="mb-6">
-        <span class="font-mono text-[11px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-semibold">03 / Platform Design</span>
-        <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white mt-1">Technical Architecture</h2>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- Card 1 -->
-        <div class="p-5 rounded-xl bg-white dark:bg-surface border border-slate-200 dark:border-borderDark">
-          <div class="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-600 dark:text-cyan-400 mb-3.5">
-            <svg class="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-            </svg>
+    <!-- ==================== 4. COMPACT CLINICAL CALCULATORS SECTION (#calculators) ==================== -->
+    <section id="calculators" class="max-w-6xl mx-auto px-4 sm:px-6 pb-20 sm:pb-24 scroll-mt-16">
+      <div class="rounded-2xl border border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-cardDark overflow-hidden">
+        <!-- Compact Panel Header Row -->
+        <div class="px-5 py-4 border-b border-zinc-200/80 dark:border-white/[0.07] flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <h2 class="text-base font-semibold tracking-[-0.02em] text-zinc-950 dark:text-white">Clinical Calculators</h2>
+            <span id="calc-meta" class="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">20 tools &middot; single unified workspace</span>
           </div>
-          <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Mechanistic Client-Side Solvers</h3>
-          <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mt-1.5">
-            Runge-Kutta (RK2/RK4) ODE integration and compartmental mass-balance solvers execute directly in the browser's JS engine—zero backend latency, zero cloud dependencies.
-          </p>
-          <div class="mt-3 pt-3 border-t border-slate-100 dark:border-borderDark/70 font-mono text-[10px] text-slate-500">
-            dt = 0.5 ms · Canvas 2D High-DPI · Local State
-          </div>
+
+          <a
+            href="calculators.html"
+            class="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-accentLight dark:text-accentDark bg-teal-500/[0.07] hover:bg-teal-500/[0.14] border border-teal-600/20 dark:border-teal-400/20 transition-colors"
+          >
+            <span>Open Calculators</span>
+            <span class="inline-block transition-transform duration-150 group-hover:translate-x-0.5">&rarr;</span>
+          </a>
         </div>
 
-        <!-- Card 2 -->
-        <div class="p-5 rounded-xl bg-white dark:bg-surface border border-slate-200 dark:border-borderDark">
-          <div class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-3.5">
-            <svg class="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
-              <path d="M8 7h8M8 11h6"/>
-            </svg>
-          </div>
-          <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Evidence-Based Clinical Formulas</h3>
-          <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mt-1.5">
-            Every calculator exposes its exact mathematical derivation, SI/US unit conversions, boundary conditions, and peer-reviewed primary literature rather than black-box outputs.
-          </p>
-          <div class="mt-3 pt-3 border-t border-slate-100 dark:border-borderDark/70 font-mono text-[10px] text-slate-500">
-            Transparent Equations · Explicit Units · Cited
-          </div>
+        <!-- 4-Column Tight Categorized Index -->
+        <div id="calculators-grid" class="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-5">
+          <!-- Rendered from JS -->
         </div>
+      </div>
+    </section>
 
-        <!-- Card 3 -->
-        <div class="p-5 rounded-xl bg-white dark:bg-surface border border-slate-200 dark:border-borderDark">
-          <div class="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-600 dark:text-amber-400 mb-3.5">
-            <svg class="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="7" rx="1"/>
-              <rect x="14" y="3" width="7" height="7" rx="1"/>
-              <rect x="14" y="14" width="7" height="7" rx="1"/>
-              <rect x="3" y="14" width="7" height="7" rx="1"/>
-            </svg>
-          </div>
-          <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Modular Static Deployment</h3>
-          <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mt-1.5">
-            Each simulator and calculator lives as an independent, self-contained HTML route—enabling instant page loads, effortless static hosting, and reliable offline educational access.
-          </p>
-          <div class="mt-3 pt-3 border-t border-slate-100 dark:border-borderDark/70 font-mono text-[10px] text-slate-500">
-            /simulators/*.html · /calculators/*.html · Offline-Ready
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+    <!-- ==================== GLOBAL SEARCH EMPTY STATE (ONLY WHEN ZERO MATCHES TOTAL) ==================== -->
+    <section id="global-empty-state" class="hidden max-w-6xl mx-auto px-4 sm:px-6 py-20 text-center">
+      <p class="text-sm font-medium text-zinc-700 dark:text-zinc-300">No models or calculators match "<span id="empty-query" class="font-mono text-accentLight dark:text-accentDark"></span>".</p>
+      <button id="empty-reset-btn" type="button" class="mt-3 text-xs font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-white underline underline-offset-4 transition-colors">
+        Clear search
+      </button>
+    </section>
 
-  <!-- Minimal Clinical Footer -->
-  <footer class="border-t border-slate-200/80 dark:border-borderDark/90 bg-white/70 dark:bg-[#06090e]">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <div class="space-y-1">
-        <div class="flex items-center gap-2">
-          <span class="font-semibold text-xs text-slate-900 dark:text-slate-200">PhysioLab</span>
-          <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-surface border border-slate-200 dark:border-borderDark text-slate-500">v0.9.0-hub</span>
-        </div>
-        <p class="text-[11px] text-slate-500 dark:text-slate-400">
-          For medical education and physiological exploration only — not for clinical decision-making.
-        </p>
-      </div>
-      <div class="flex items-center gap-4 text-xs font-mono text-slate-500 dark:text-slate-400">
-        <a href="#simulators" class="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">Modules</a>
-        <a href="#calculators" class="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">Formulas</a>
-        <a href="#architecture" class="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">Specs</a>
-      </div>
+  </main>
+
+  <!-- ==================== 5. MINIMAL SINGLE-ROW FOOTER ==================== -->
+  <footer class="w-full border-t border-zinc-200/80 dark:border-white/[0.08]">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+      <span class="font-medium text-zinc-900 dark:text-zinc-200">MedLab</span>
+      <span class="text-zinc-500 dark:text-zinc-500">Client-side educational models &middot; Not for clinical decision-making</span>
     </div>
   </footer>
 
-  <!-- ==================== SIMULATOR SPECIFICATION SLIDE-OVER DRAWER ==================== -->
-  <div id="sim-drawer-overlay" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
-    <!-- Backdrop -->
-    <div id="sim-drawer-backdrop" class="absolute inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"></div>
-
-    <!-- Slide-Over Panel -->
-    <div id="sim-drawer-panel" class="drawer-panel translate-x-full absolute right-0 top-0 bottom-0 w-full max-w-lg bg-white dark:bg-surface border-l border-slate-200 dark:border-borderDark shadow-2xl flex flex-col">
-      <!-- Drawer Header -->
-      <div class="px-5 py-4 border-b border-slate-200 dark:border-borderDark flex items-start justify-between gap-3 shrink-0">
-        <div class="min-w-0">
-          <div class="flex items-center gap-2 mb-1">
-            <span id="drawer-system" class="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"></span>
-            <span id="drawer-status" class="inline-flex items-center gap-1.5 font-mono text-[10px] px-2 py-0.5 rounded border"></span>
-          </div>
-          <h3 id="drawer-title" class="text-lg font-bold text-slate-900 dark:text-white tracking-tight"></h3>
-          <p id="drawer-subtitle" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"></p>
-        </div>
-        <button id="drawer-close" type="button" aria-label="Close specification panel" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-
-      <!-- Drawer Body (Scrollable) -->
-      <div class="flex-1 overflow-y-auto p-5 space-y-5 text-sm">
-        <!-- Target File Route -->
-        <div>
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-1.5">Target Module Route</div>
-          <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-obsidian border border-slate-200 dark:border-borderDark font-mono text-xs">
-            <code id="drawer-route" class="text-cyan-700 dark:text-cyan-300 truncate"></code>
-            <button id="drawer-copy-route" type="button" class="shrink-0 px-2 py-1 rounded text-[10px] bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-cyan-500/60 transition">Copy Path</button>
-          </div>
-        </div>
-
-        <!-- Mathematical Engine Overview -->
-        <div>
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-1.5">Mathematical Engine</div>
-          <div class="p-3.5 rounded-lg bg-slate-50 dark:bg-obsidian/80 border border-slate-200 dark:border-borderDark space-y-2">
-            <div id="drawer-model-line" class="font-mono text-xs font-semibold text-emerald-700 dark:text-emerald-400"></div>
-            <p id="drawer-engine-desc" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed"></p>
-          </div>
-        </div>
-
-        <!-- Planned Pathologies & Pharmacology -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-2">Pathology Presets</div>
-            <ul id="drawer-pathologies" class="space-y-1.5 text-xs text-slate-700 dark:text-slate-300"></ul>
-          </div>
-          <div>
-            <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-2">Interventions &amp; Drugs</div>
-            <ul id="drawer-interventions" class="space-y-1.5 text-xs text-slate-700 dark:text-slate-300"></ul>
-          </div>
-        </div>
-
-        <!-- Planned Visualizations & Outputs -->
-        <div>
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-2">Visualizations &amp; Telemetry Outputs</div>
-          <div id="drawer-outputs" class="flex flex-wrap gap-1.5"></div>
-        </div>
-
-        <!-- Wiring Notice (Contextual for CardioSim vs Planned) -->
-        <div id="drawer-notice" class="p-3 rounded-lg border text-xs leading-relaxed"></div>
-      </div>
-
-      <!-- Drawer Footer -->
-      <div class="px-5 py-3.5 border-t border-slate-200 dark:border-borderDark bg-slate-50 dark:bg-[#0b111b] flex items-center justify-between gap-3 shrink-0">
-        <button id="drawer-dismiss-btn" type="button" class="px-3.5 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 transition">
-          Close
-        </button>
-        <div id="drawer-action-slot"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== CALCULATOR FORMULA BLUEPRINT MODAL ==================== -->
-  <div id="calc-modal-overlay" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="calc-modal-title">
-    <!-- Backdrop -->
-    <div id="calc-modal-backdrop" class="absolute inset-0 bg-slate-950/65 backdrop-blur-xs"></div>
-
-    <!-- Modal Card -->
-    <div id="calc-modal-card" class="modal-card opacity-0 scale-95 relative w-full max-w-lg rounded-xl bg-white dark:bg-surface border border-slate-200 dark:border-borderDark shadow-2xl overflow-hidden">
-      <!-- Header -->
-      <div class="px-5 py-4 border-b border-slate-200 dark:border-borderDark flex items-start justify-between gap-3">
-        <div>
-          <div class="flex items-center gap-2 mb-1">
-            <span id="calc-modal-category" class="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25"></span>
-            <span id="calc-modal-badge" class="font-mono text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"></span>
-          </div>
-          <h3 id="calc-modal-title" class="text-base font-bold text-slate-900 dark:text-white"></h3>
-          <p id="calc-modal-purpose" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"></p>
-        </div>
-        <button id="calc-modal-close" type="button" aria-label="Close formula blueprint" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
-          <svg class="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-
-      <!-- Body -->
-      <div class="p-5 space-y-4">
-        <!-- Mathematical Formula / Scoring Criteria -->
-        <div>
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-1.5">Formula / Clinical Criteria</div>
-          <pre id="calc-modal-formula" class="p-3.5 rounded-lg bg-slate-900 dark:bg-obsidian border border-slate-800 dark:border-borderDark font-mono text-xs text-cyan-300 whitespace-pre-wrap leading-relaxed overflow-x-auto"></pre>
-        </div>
-
-        <!-- Interpretation & Units -->
-        <div>
-          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-1">Clinical Notes &amp; Reference Thresholds</div>
-          <p id="calc-modal-notes" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed"></p>
-        </div>
-
-        <!-- Target Route & Reference -->
-        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-borderDark/80 text-[11px] font-mono text-slate-500">
-          <span id="calc-modal-route" class="text-slate-600 dark:text-slate-400"></span>
-          <span id="calc-modal-ref"></span>
-        </div>
-
-        <!-- Pending Notice -->
-        <div class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-xs text-amber-800 dark:text-amber-200">
-          <svg class="w-4 h-4 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-          <span>Calculator UI pending implementation — Blueprint specification only.</span>
-        </div>
-      </div>
-
-      <!-- Footer -->
-      <div class="px-5 py-3 border-t border-slate-200 dark:border-borderDark bg-slate-50 dark:bg-[#0b111b] flex justify-end">
-        <button id="calc-modal-done" type="button" class="px-4 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-medium transition">
-          Done
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Non-Blocking Toast Notification -->
-  <div id="toast-notification" class="fixed bottom-5 right-5 z-[60] pointer-events-none opacity-0 translate-y-2 transition-all duration-200 px-3.5 py-2 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-mono text-xs shadow-lg border border-slate-700 dark:border-slate-300"></div>
-
-  <!-- ==================== PORTAL DATA ARRAYS & APPLICATION SCRIPT ==================== -->
+  <!-- ==================== REGISTRY, FILTERING & GENERATIVE MANIFOLD SCRIPT ==================== -->
   <script>
   (() => {
     'use strict';
 
     /* =========================================================================
-       1. CENTRAL MODULE REGISTRIES (EDIT ROUTES HERE TO WIRE REAL PAGES LATER)
+       1. EDITABLE DATA REGISTRIES (ADD OR RENAME ROUTES HERE)
        ========================================================================= */
 
     /**
-     * All 9 planned physiology simulators.
-     * To wire up a completed simulator later, update `status: 'ready'` and verify `route`.
+     * Physiology Simulators
+     * Strictly relative hrefs (no leading slash) for GitHub Pages subpath compatibility.
      */
     const SIMULATORS = [
       {
-        id: 'cardiosim',
-        title: 'CardioSim',
-        subtitle: 'Hemodynamics & PV Loops',
-        category: 'Cardiovascular',
-        status: 'ready', // 'ready' | 'planned'
-        statusLabel: 'Built / Ready',
-        route: '/simulators/cardiosim.html',
-        summary: 'Closed-loop cardiovascular mechanics with real-time left ventricular pressure-volume analysis and titratable ICU infusions.',
-        model: 'Suga-Sagawa Elastance · 3-Element Windkessel',
-        engineOverview: '6-compartment closed-loop lumped-parameter ODE solver (RK2, dt = 0.5 ms) coupling time-varying ventricular elastance (linear ESPVR, exponential EDPVR), active left atrium, systemic/pulmonary Windkessel beds, Gorlin valve stenosis/regurgitation, and closed-loop baroreflex regulation.',
-        outputs: ['PV Loop', 'Wiggers', 'ECG/Phono', 'Baroreflex'],
-        pathologies: ['HFrEF & HFpEF', 'Severe AS / AR / MR / MS', 'Cardiogenic, Septic & Hypovolemic Shock', 'Hypertensive Crisis'],
-        interventions: ['Norepinephrine & Phenylephrine', 'Dobutamine & Milrinone', 'Epinephrine & Esmolol', 'Nitroprusside, NTG, Furosemide, Fluids'],
-        accent: 'cyan',
-        glyph: 'pv-loop'
+        name: 'CardioSim',
+        href: 'cardiosim.html',
+        category: 'Cardiopulmonary',
+        subtitle: 'LV pressure-volume loops, hemodynamics & pressors',
+        live: true,
+        icon: 'cardio',
       },
       {
-        id: 'ventsim',
-        title: 'VentSim',
-        subtitle: 'Mechanical Ventilation & Respiratory Mechanics',
-        category: 'Respiratory',
-        status: 'planned',
-        statusLabel: 'Planned',
-        route: '/simulators/ventsim.html',
-        summary: 'Two-compartment pulmonary mechanics, gas exchange, and ventilator waveform simulation across obstructive and restrictive lung injury.',
-        model: 'Equation of Motion · V/Q · Alveolar Gas',
-        engineOverview: 'Solves the respiratory equation of motion (Paw = V/C + R·V̇ + PEEP) across heterogeneous fast/slow alveolar compartments coupled with the alveolar gas equation, West zone V/Q shunt/dead-space ratios, and Hill oxyhemoglobin dissociation.',
-        outputs: ['VCV/PCV Scalars', 'PV/FV Loops', 'Live ABG'],
-        pathologies: ['ARDS (Low Compliance)', 'COPD / Status Asthmaticus (Auto-PEEP)', 'Pulmonary Embolism (Dead Space)', 'Pneumothorax'],
-        interventions: ['VCV & PCV Mode Control', 'PEEP Titration & Recruitment', 'FiO2, Vt, RR & I:E Ratio', 'Inspiratory Hold (Pplat / Driving P)'],
-        accent: 'emerald',
-        glyph: 'vent-wave'
+        name: 'VentSim',
+        href: 'ventsim.html',
+        category: 'Cardiopulmonary',
+        subtitle: 'Mechanical ventilation, V/Q matching & ABG dynamics',
+        live: false,
+        icon: 'vent',
       },
       {
-        id: 'nephrosim',
-        title: 'NephroSim',
-        subtitle: 'Nephron Transport & Acid-Base',
-        category: 'Renal & Acid-Base',
-        status: 'planned',
-        statusLabel: 'Planned',
-        route: '/simulators/nephrosim.html',
-        summary: 'Segmental tubular reabsorption and acid-base equilibria linking diuretic pharmacology to serum and urine chemistry.',
-        model: 'Segmental Mass Balance · Henderson-Hasselbalch',
-        engineOverview: 'Models filtered load and active/passive solute flux across PCT, Loop of Henle, DCT, and Collecting Duct linked to bicarbonate/Stewart acid-base equilibria and physiological respiratory/renal compensation limits.',
-        outputs: ['Tubular Handling', 'Davenport Diagram', 'FENa/AG'],
-        pathologies: ['DKA & High-AG Metabolic Acidosis', 'SIADH & Diabetes Insipidus', 'RTA Types 1, 2 & 4', 'Mixed Acid-Base Disorders'],
-        interventions: ['Acetazolamide & SGLT2i', 'Loop & Thiazide Diuretics', 'Amiloride & Spironolactone', 'ADH / Aldosterone Modulation'],
-        accent: 'amber',
-        glyph: 'nephron'
+        name: 'NephroSim',
+        href: 'nephrosim.html',
+        category: 'Renal & Fluids',
+        subtitle: 'Segmental nephron transport, diuretics & Davenport acid-base',
+        live: false,
+        icon: 'nephro',
       },
       {
-        id: 'pharmasim',
-        title: 'PharmaSim',
-        subtitle: 'Multi-Compartment PK/PD & Anesthesia',
+        name: 'PKPD',
+        href: 'pkpd.html',
         category: 'Pharmacology',
-        status: 'planned',
-        statusLabel: 'Planned',
-        route: '/simulators/pharmasim.html',
-        summary: 'Three-compartment drug distribution, effect-site equilibration, and context-sensitive half-time kinetics for IV infusions.',
-        model: '3-Compartment ODE · Effect-Site ke0 · Hill Eq.',
-        engineOverview: 'Integrates central, fast peripheral, and slow peripheral compartment ODEs coupled via effect-site equilibration constant (ke0) into sigmoidal Emax/EC50 pharmacodynamic response and competitive/non-competitive receptor occupancy.',
-        outputs: ['Plasma/Effect Curves', 'CSHT', 'EC50 Shifts'],
-        pathologies: ['Renal & Hepatic Clearance Failure', 'Obesity (Vd Expansion)', 'CYP450 Induction / Inhibition', 'Hypoalbuminemia'],
-        interventions: ['Bolus, Infusion & TCI Dosing', 'Propofol, Fentanyl & Remifentanil', 'Loading Dose Optimization', 'Competitive / Irreversible Antagonists'],
-        accent: 'violet',
-        glyph: 'pk-curve'
+        subtitle: 'Multi-compartment kinetics, effect-site curves & dosing',
+        live: false,
+        icon: 'pkpd',
       },
       {
-        id: 'rhythmsim',
-        title: 'RhythmSim',
-        subtitle: 'Cardiac Electrophysiology & Arrhythmias',
-        category: 'Cardiovascular',
-        status: 'planned',
-        statusLabel: 'Planned',
-        route: '/simulators/rhythmsim.html',
-        summary: 'Myocyte and nodal ion-channel action potentials mapped to conduction pathways, re-entrant circuits, and synthetic ECG traces.',
-        model: 'Ion Channel Kinetics · Re-entry Conduction',
-        engineOverview: 'Simulates pacemaker and ventricular myocyte ionic currents (INa, ICaL, IKr, IK1) driving refractory period dispersion, AV nodal dual-pathway re-entry, early afterdepolarizations (EADs), and Lead II ECG synthesis.',
-        outputs: ['Action Potentials', 'Ladder Diagram', 'Lead II ECG'],
-        pathologies: ['Hyperkalemia / Hypokalemia', 'Long QT & Torsades (EADs)', 'AVNRT & WPW Accessory Tract', 'AV Blocks (1st–3rd Degree)'],
-        interventions: ['Class I–IV Antiarrhythmics', 'Adenosine & Digoxin', 'Extracellular K+ / Ca2+ / Mg2+', 'Overdrive Pacing & Cardioversion'],
-        accent: 'rose',
-        glyph: 'ap-ecg'
+        name: 'ElectroSim',
+        href: 'electrosim.html',
+        category: 'Cardiopulmonary',
+        subtitle: 'Cardiac action potentials, ion channels & arrhythmias',
+        live: false,
+        icon: 'electro',
       },
       {
-        id: 'fluidsim',
-        title: 'FluidSim',
-        subtitle: 'Body Fluid Compartments & Revised Starling',
-        category: 'Renal & Acid-Base',
-        status: 'planned',
-        statusLabel: 'Planned',
-        route: '/simulators/fluidsim.html',
-        summary: 'Intracellular, interstitial, and intravascular volume equilibration under osmotic shifts and endothelial glycocalyx dynamics.',
-        model: 'Darrow-Yannet · Revised Starling + Glycocalyx',
-        engineOverview: 'Computes osmotic water redistribution across ICF, ISF, and plasma compartments alongside revised Starling microvascular filtration incorporating sub-glycocalyx oncotic pressure and lymphatic drainage.',
-        outputs: ['Compartment Boxes', 'Na+ Shift Rate', 'Edema'],
-        pathologies: ['Hemorrhagic Volume Loss', 'Sepsis (Glycocalyx Capillary Leak)', 'Nephrotic Hypoalbuminemia', 'Severe Hyponatremia / ODS Risk'],
-        interventions: ['0.9% NaCl & Lactated Ringer\'s', 'D5W & 3% Hypertonic Saline', '5% / 25% Albumin Infusions', 'Packed Red Blood Cells'],
-        accent: 'cyan',
-        glyph: 'compartments'
+        name: 'FluidSim',
+        href: 'fluidsim.html',
+        category: 'Renal & Fluids',
+        subtitle: 'Darrow-Yannet compartments & revised Starling forces',
+        live: false,
+        icon: 'fluid',
       },
       {
-        id: 'coagsim',
-        title: 'CoagSim',
-        subtitle: 'Coagulation Kinetics & TEG/Lab',
-        category: 'Hematology',
-        status: 'planned',
-        statusLabel: 'Planned',
-        route: '/simulators/coagsim.html',
-        summary: 'Cell-based hemostasis ODEs generating real-time thrombin bursts, viscoelastic TEG curves, and standard coagulation panels.',
-        model: 'Cell-Based Hemostasis ODE · Fibrinolysis',
-        engineOverview: 'Models TF-VIIa initiation, platelet surface tenase/prothrombinase amplification, fibrin cross-linking, antithrombin/Protein C feedback, and tPA-mediated plasmin fibrinolysis to output TEG/ROTEM traces and clotting times.',
-        outputs: ['Thrombin Curve', 'TEG/ROTEM', 'PT/aPTT/Mixing'],
-        pathologies: ['Hemophilia A & B / vWD', 'Disseminated Intravascular Coagulation', 'Cirrhosis Rebalanced Hemostasis', 'Hyperfibrinolysis'],
-        interventions: ['UFH, LMWH & Warfarin', 'Factor Xa & IIa DOACs', 'Protamine, PCC & Vitamin K', 'TXA, Cryoprecipitate & Platelets'],
-        accent: 'rose',
-        glyph: 'teg-curve'
+        name: 'CoagSim',
+        href: 'coagsim.html',
+        category: 'Pharmacology',
+        subtitle: 'Cell-based coagulation cascade, anticoagulants & TEG',
+        live: false,
+        icon: 'coag',
       },
       {
-        id: 'neuroophtho',
-        title: 'NeuroOphthoSim',
-        subtitle: 'Ocular Motility, Pathways & IOP',
-        category: 'Neuro-Ophtho',
-        status: 'planned',
-        statusLabel: 'Planned',
-        route: '/simulators/neuroophtho.html',
-        summary: 'Interactive cranial nerve and visual pathway lesion simulator paired with pupillary reflexes and aqueous humor dynamics.',
-        model: 'Pathway Lesion Graph · Ray Tracing · Goldmann',
-        engineOverview: 'Propagates anatomical tract lesions across CN II/III/IV/VI, MLF, PPRF, optic radiations, and sympathetic chain to drive synchronized binocular gaze, swinging-flashlight pupillometry, visual perimetry, and Goldmann IOP.',
-        outputs: ['Binocular Gaze', 'Pupils/RAPD', 'Visual Fields'],
-        pathologies: ['INO (MLF Lesion) & CN III/IV/VI Palsy', 'Optic Tract / Chiasm / Radiation Lesions', 'Horner\'s Syndrome & RAPD', 'Open / Closed-Angle Glaucoma'],
-        interventions: ['Interactive Lesion Placement', '9-Gaze & Swinging-Flashlight Test', 'Pilocarpine, Atropine & Timolol', 'Trabecular Outflow Modulation'],
-        accent: 'amber',
-        glyph: 'eye-pathway'
+        name: 'NeuroOphtho',
+        href: 'neuroophtho.html',
+        category: 'Neuro & Endocrine',
+        subtitle: 'Cranial nerve pathways, pupillary reflexes & ray optics',
+        live: false,
+        icon: 'neuro',
       },
       {
-        id: 'endosim',
-        title: 'EndoSim',
-        subtitle: 'Endocrine Feedback Loops',
-        category: 'Endocrine',
-        status: 'planned',
-        statusLabel: 'Planned',
-        route: '/simulators/endosim.html',
-        summary: 'Coupled nonlinear hormone feedback axes with circadian pulsatility, receptor downregulation, and dynamic suppression testing.',
-        model: 'Coupled Nonlinear Feedback · Circadian Pulsatility',
-        engineOverview: 'Integrates Bergman minimal glucose-insulin dynamics alongside multi-tier Pituitary-Adrenal (HPA) and Pituitary-Thyroid (HPT) feedback ODEs with time delays, trophic gland hypertrophy, and diagnostic stimulation protocols.',
-        outputs: ['Glucose-Insulin', 'HPA/HPT Axes', 'Dynamic Tests'],
-        pathologies: ['Type 1 & Type 2 Diabetes Mellitus', 'Cushing\'s Disease vs. Ectopic ACTH', 'Addison\'s & Steroid Suppression', 'Graves\' Disease & Hypothyroidism'],
-        interventions: ['Basal-Bolus Insulin & GLP-1 RA', 'Exogenous Steroid Taper Schedules', 'Low/High-Dose Dexamethasone Test', 'ACTH Stimulation & OGTT'],
-        accent: 'emerald',
-        glyph: 'feedback-loop'
-      }
-    ];
-
-    /**
-     * All 21 planned clinical calculators grouped into 4 clinical categories.
-     */
-    const CALCULATORS = [
-      // --- Acid-Base & Electrolytes (6) ---
-      {
-        id: 'anion-gap',
-        name: 'Anion Gap & Delta-Delta',
-        category: 'Acid-Base & Electrolytes',
-        purpose: 'Differentiate high-AG metabolic acidosis and detect concurrent non-AG acidosis or metabolic alkalosis.',
-        badge: 'AG / Δ-Δ',
-        route: '/calculators/anion-gap.html',
-        formula: 'AG = [Na⁺] − ([Cl⁻] + [HCO₃⁻])\nCorrected AG = AG + 2.5 × (4.0 − Albumin [g/dL])\nDelta Ratio (Δ/Δ) = (Corrected AG − 12) / (24 − [HCO₃⁻])',
-        notes: 'Normal AG: 8–12 mEq/L. Δ/Δ < 0.4 suggests pure NAGMA; 0.4–0.8 mixed HAGMA + NAGMA; 1.0–2.0 pure HAGMA; > 2.0 concurrent metabolic alkalosis or chronic respiratory acidosis.',
-        ref: 'Figge et al., Crit Care Med 1998'
+        name: 'EndoSim',
+        href: 'endosim.html',
+        category: 'Neuro & Endocrine',
+        subtitle: 'Coupled glucose-insulin & HPA/HPT feedback loops',
+        live: false,
+        icon: 'endo',
       },
-      {
-        id: 'winters',
-        name: "Winter's Formula",
-        category: 'Acid-Base & Electrolytes',
-        purpose: 'Predict expected respiratory compensation (PaCO2) in primary metabolic acidosis.',
-        badge: 'PaCO₂ Exp',
-        route: '/calculators/winters-formula.html',
-        formula: 'Expected PaCO₂ = (1.5 × [HCO₃⁻]) + 8 ± 2 mmHg',
-        notes: 'Measured PaCO2 above expected range indicates concomitant primary respiratory acidosis; below expected range indicates concomitant primary respiratory alkalosis.',
-        ref: 'Albert, Dell & Winters, Ann Intern Med 1967'
-      },
-      {
-        id: 'corrected-na',
-        name: 'Corrected Sodium (Hyperglycemia)',
-        category: 'Acid-Base & Electrolytes',
-        purpose: 'Correct measured serum sodium for osmotic water shift induced by elevated serum glucose.',
-        badge: 'Katz / Hillier',
-        route: '/calculators/corrected-sodium.html',
-        formula: 'Katz (1973):  Na_corr = Na_meas + 1.6 × ((Glucose − 100) / 100)\nHillier (1999): Na_corr = Na_meas + 2.4 × ((Glucose − 100) / 100)',
-        notes: 'Use Katz factor (1.6) for mild-to-moderate hyperglycemia; Hillier factor (2.4) is more accurate when serum glucose exceeds 400 mg/dL (22.2 mmol/L).',
-        ref: 'Katz, NEJM 1973; Hillier, Am J Med 1999'
-      },
-      {
-        id: 'free-water-deficit',
-        name: 'Free Water Deficit',
-        category: 'Acid-Base & Electrolytes',
-        purpose: 'Estimate total body free water deficit to guide safe hypernatremia correction.',
-        badge: 'FWD (L)',
-        route: '/calculators/free-water-deficit.html',
-        formula: 'FWD (L) = TBW × (([Na⁺] / 140) − 1)\nTBW = Weight (kg) × k\n  k = 0.60 (adult male) | 0.50 (adult female / elderly male) | 0.45 (elderly female)',
-        notes: 'Limit serum Na+ reduction to ≤ 8–10 mEq/L per 24 hours in chronic hypernatremia to prevent cerebral edema. Accounts for deficit only, not ongoing insensible/renal losses.',
-        ref: 'Adrogué & Madias, NEJM 2000'
-      },
-      {
-        id: 'fena-feurea',
-        name: 'FENa & FEUrea',
-        category: 'Acid-Base & Electrolytes',
-        purpose: 'Distinguish prerenal azotemia from intrinsic acute tubular necrosis (ATN) in oliguric AKI.',
-        badge: 'FENa / FEUr',
-        route: '/calculators/fena-feurea.html',
-        formula: 'FENa (%)   = 100 × (U_Na × P_Cr) / (P_Na × U_Cr)\nFEUrea (%) = 100 × (U_Urea × P_Cr) / (P_Urea × U_Cr)',
-        notes: 'FENa < 1% suggests prerenal state; > 2% suggests ATN. When diuretics confound sodium handling, FEUrea < 35% supports prerenal physiology vs. > 50% for ATN.',
-        ref: 'Espinel, JAMA 1976; Carvounis, Kidney Int 2002'
-      },
-      {
-        id: 'osmolar-gap',
-        name: 'Osmolar Gap',
-        category: 'Acid-Base & Electrolytes',
-        purpose: 'Screen for unmeasured osmotically active toxins (methanol, ethylene glycol, isopropanol).',
-        badge: 'mOsm/kg',
-        route: '/calculators/osmolar-gap.html',
-        formula: 'Calc Osm = 2 × [Na⁺] + (Glucose / 18) + (BUN / 2.8) + (Ethanol / 3.7)\nOsmolar Gap = Measured Osm − Calc Osm',
-        notes: 'Normal osmolar gap is < 10 mOsm/kg. Elevated gap > 10–15 mOsm/kg raises suspicion for toxic alcohols (note: late presentations may show falling osmolar gap with rising anion gap).',
-        ref: 'Purssell et al., Ann Emerg Med 2001'
-      },
-
-      // --- Cardiology & Hemodynamics (5) ---
-      {
-        id: 'cha2ds2-vasc',
-        name: 'CHA₂DS₂-VASc Score',
-        category: 'Cardiology & Hemodynamics',
-        purpose: 'Estimate annual ischemic stroke risk in non-valvular atrial fibrillation to guide anticoagulation.',
-        badge: '0–9 pts',
-        route: '/calculators/cha2ds2-vasc.html',
-        formula: 'C: CHF (+1)  |  H: Hypertension (+1)  |  A₂: Age ≥ 75 (+2)\nD: Diabetes (+1)  |  S₂: Prior Stroke/TIA/TE (+2)\nV: Vascular Disease (+1)  |  A: Age 65–74 (+1)  |  Sc: Female Sex (+1)',
-        notes: 'Oral anticoagulation generally recommended for score ≥ 2 in men or ≥ 3 in women; consider for score 1 (men) or 2 (women) after bleeding-risk assessment.',
-        ref: 'Lip et al., Chest 2010; ESC/AHA AF Guidelines'
-      },
-      {
-        id: 'has-bled',
-        name: 'HAS-BLED Score',
-        category: 'Cardiology & Hemodynamics',
-        purpose: 'Quantify 1-year major bleeding risk and flag modifiable risk factors in anticoagulated AF patients.',
-        badge: '0–9 pts',
-        route: '/calculators/has-bled.html',
-        formula: 'H: Uncontrolled HTN >160 (+1) | A: Abnormal Renal/Liver (+1 each)\nS: Stroke (+1) | B: Bleeding history (+1) | L: Labile INR (+1)\nE: Elderly >65 (+1) | D: Drugs (antiplatelets/NSAIDs) or Alcohol (+1 each)',
-        notes: 'Score ≥ 3 indicates high bleeding risk and warrants closer follow-up and correction of modifiable factors—not automatic contraindication to anticoagulation.',
-        ref: 'Pisters et al., Chest 2010'
-      },
-      {
-        id: 'wells-pe-dvt',
-        name: 'Wells Score (PE / DVT)',
-        category: 'Cardiology & Hemodynamics',
-        purpose: 'Stratify pre-test clinical probability for acute pulmonary embolism and deep vein thrombosis.',
-        badge: 'Pre-Test Prob',
-        route: '/calculators/wells-score.html',
-        formula: 'PE: Clinical DVT (+3), Alt dx less likely (+3), HR >100 (+1.5), Immob/Surg (+1.5),\n    Prior DVT/PE (+1.5), Hemoptysis (+1), Malignancy (+1)\nDVT: Active cancer, paralysis, bedridden, tenderness, leg/calf swelling, pitting edema,\n     collateral veins, prior DVT (+1 each); Alt dx at least as likely (−2)',
-        notes: 'Two-tier PE rule: ≤ 4.0 PE Unlikely (check D-dimer) vs. > 4.0 PE Likely (CTPA). Two-tier DVT rule: < 2 DVT Unlikely vs. ≥ 2 DVT Likely (compression ultrasound).',
-        ref: 'Wells et al., Thromb Haemost 2000 & NEJM 2003'
-      },
-      {
-        id: 'qtc',
-        name: 'Corrected QT (Bazett & Fridericia)',
-        category: 'Cardiology & Hemodynamics',
-        purpose: 'Normalize electrocardiographic QT interval for heart rate to assess Torsades de Pointes risk.',
-        badge: 'QTc (ms)',
-        route: '/calculators/corrected-qt.html',
-        formula: 'RR (s) = 60 / HR\nBazett:     QTc = QT / √(RR)\nFridericia: QTc = QT / ∛(RR)',
-        notes: 'Bazett overcorrects at HR > 100 bpm and undercorrects at HR < 60 bpm; Fridericia is preferred at heart rate extremes. Prolonged QTc: > 450 ms (M), > 460 ms (F); high TdP risk > 500 ms.',
-        ref: 'Bazett 1920; Fridericia 1920; AHA/ACC ECG Standards'
-      },
-      {
-        id: 'map-svr',
-        name: 'MAP & SVR Estimator',
-        category: 'Cardiology & Hemodynamics',
-        purpose: 'Compute mean arterial perfusion pressure and systemic vascular resistance from hemodynamic telemetry.',
-        badge: 'dyn·s/cm⁵',
-        route: '/calculators/map-svr.html',
-        formula: 'MAP (mmHg) = (SBP + 2 × DBP) / 3\nSVR (dyn·s/cm⁵) = 80 × (MAP − CVP) / CO [L/min]\nSVRI = SVR × BSA',
-        notes: 'Normal MAP: 70–100 mmHg (sepsis target ≥ 65 mmHg). Normal SVR: 800–1200 dyn·s/cm⁵. High SVR + low CO suggests cardiogenic/hypovolemic shock; low SVR suggests distributive shock.',
-        ref: 'Standard Hemodynamic Monitoring Equations'
-      },
-
-      // --- Renal & Dosing (5) ---
-      {
-        id: 'ckd-epi',
-        name: 'CKD-EPI eGFR (2021)',
-        category: 'Renal & Dosing',
-        purpose: 'Estimate glomerular filtration rate using the race-free 2021 creatinine refit equation.',
-        badge: 'mL/min/1.73m²',
-        route: '/calculators/ckd-epi-2021.html',
-        formula: 'eGFR = 142 × min(Scr/κ, 1)^α × max(Scr/κ, 1)^(−1.200) × 0.9938^Age × [1.012 if Female]\n  Female: κ = 0.7, α = −0.241  |  Male: κ = 0.9, α = −0.302',
-        notes: 'Recommended by NKF-ASN Task Force for CKD staging (G1–G5). Requires steady-state serum creatinine; invalid in rapidly evolving AKI.',
-        ref: 'Inker et al., NEJM 2021'
-      },
-      {
-        id: 'cockcroft-gault',
-        name: 'Cockcroft-Gault CrCl',
-        category: 'Renal & Dosing',
-        purpose: 'Estimate creatinine clearance for renal drug dosing per FDA pharmacokinetic labeling.',
-        badge: 'CrCl (mL/min)',
-        route: '/calculators/cockcroft-gault.html',
-        formula: 'CrCl = ((140 − Age) × Weight [kg]) / (72 × Scr [mg/dL]) × [0.85 if Female]',
-        notes: 'Use actual body weight if underweight, IBW for normal BMI, and Adjusted Body Weight (AdjBW) when actual weight exceeds 120% of IBW.',
-        ref: 'Cockcroft & Gault, Nephron 1976'
-      },
-      {
-        id: 'ibw-adjbw',
-        name: 'Ideal & Adjusted Body Weight',
-        category: 'Renal & Dosing',
-        purpose: 'Calculate Devine Ideal Body Weight (for ventilator Vt & dosing) and obesity-adjusted weight.',
-        badge: 'IBW / AdjBW',
-        route: '/calculators/ibw-adjbw.html',
-        formula: 'IBW Male   = 50.0 + 2.3 × (Height [in] − 60)\nIBW Female = 45.5 + 2.3 × (Height [in] − 60)\nAdjBW      = IBW + 0.4 × (Actual Weight − IBW)',
-        notes: 'Predicted/Ideal Body Weight is essential for ARDS lung-protective tidal volume sizing (6 mL/kg PBW) and aminoglycoside/vancomycin dosing.',
-        ref: 'Devine, Drug Intell Clin Pharm 1974'
-      },
-      {
-        id: 'maintenance-fluids',
-        name: 'Maintenance Fluids (4-2-1)',
-        category: 'Renal & Dosing',
-        purpose: 'Determine baseline hourly isotonic maintenance fluid rate via Holliday-Segar weight tiers.',
-        badge: 'mL/hr',
-        route: '/calculators/maintenance-fluids.html',
-        formula: 'First 10 kg:   4 mL/kg/hr  (max 40 mL/hr)\nSecond 10 kg:  2 mL/kg/hr  (+20 mL/hr)\nEach kg > 20:  1 mL/kg/hr  (Shortcut >20 kg: Weight [kg] + 40 mL/hr)',
-        notes: 'Originally derived for pediatric energy expenditure; commonly adapted for adults. Adjust downward in oliguric AKI, heart failure, or SIADH.',
-        ref: 'Holliday & Segar, Pediatrics 1957'
-      },
-      {
-        id: 'parkland',
-        name: 'Parkland Burn Formula',
-        category: 'Renal & Dosing',
-        purpose: 'Calculate initial 24-hour crystalloid resuscitation volume for major thermal burns.',
-        badge: '4 mL/kg/%TBSA',
-        route: '/calculators/parkland-burn.html',
-        formula: 'Total 24h Volume (mL) = 4 × Weight [kg] × %TBSA (2nd & 3rd degree burns)\n  First 8h (from time of burn): 50% of total\n  Next 16h: remaining 50% of total',
-        notes: 'Initial starting estimate only—titrate actual lactated Ringer\'s rate hourly to urine output (0.5 mL/kg/hr adults; 1.0 mL/kg/hr children) to avoid fluid creep.',
-        ref: 'Baxter & Shires, Ann NY Acad Sci 1968'
-      },
-
-      // --- Critical Care & Risk (5) ---
-      {
-        id: 'aa-gradient',
-        name: 'A-a Oxygen Gradient',
-        category: 'Critical Care & Risk',
-        purpose: 'Differentiate hypoventilation from V/Q mismatch, shunt, or diffusion impairment in hypoxemia.',
-        badge: 'P(A−a)O₂',
-        route: '/calculators/aa-gradient.html',
-        formula: 'PAO₂ = FiO₂ × (Patm − PH₂O) − (PaCO₂ / RQ)\n  [Sea level: Patm = 760 mmHg, PH₂O = 47 mmHg, RQ = 0.8]\nA-a Gradient = PAO₂ − PaO₂\nExpected Normal ≈ (Age / 4) + 4 mmHg',
-        notes: 'Normal A-a gradient with hypoxemia indicates hypoventilation or low inspired PiO2; elevated gradient indicates V/Q mismatch, right-to-left shunt, or diffusion block.',
-        ref: 'Alveolar Gas Equation (Fenn, Rahn & Otis)'
-      },
-      {
-        id: 'sofa-qsofa',
-        name: 'SOFA & qSOFA Score',
-        category: 'Critical Care & Risk',
-        purpose: 'Quantify multi-organ dysfunction severity and screen sepsis-associated mortality risk.',
-        badge: '0–24 / 0–3',
-        route: '/calculators/sofa-qsofa.html',
-        formula: 'SOFA (0–4 per organ): PaO₂/FiO₂ · Platelets · Bilirubin · MAP/Pressors · GCS · Cr/UOP\nqSOFA (0–3): RR ≥ 22 (+1) · Altered Mentation GCS <15 (+1) · SBP ≤ 100 mmHg (+1)',
-        notes: 'Sepsis-3 defines sepsis as suspected infection with an acute increase in SOFA ≥ 2 points. qSOFA ≥ 2 identifies non-ICU patients at elevated risk of poor outcome.',
-        ref: 'Vincent et al. 1996; Singer et al., JAMA 2016'
-      },
-      {
-        id: 'curb-65',
-        name: 'CURB-65 Pneumonia Severity',
-        category: 'Critical Care & Risk',
-        purpose: 'Stratify 30-day mortality risk in community-acquired pneumonia to guide site-of-care decisions.',
-        badge: '0–5 pts',
-        route: '/calculators/curb-65.html',
-        formula: 'C: Confusion (+1)  |  U: BUN > 19 mg/dL or Urea > 7 mmol/L (+1)\nR: Respiratory Rate ≥ 30 (+1)  |  B: SBP < 90 or DBP ≤ 60 (+1)\n65: Age ≥ 65 years (+1)',
-        notes: 'Score 0–1: outpatient care appropriate; Score 2: consider short inpatient admission or supervised outpatient; Score 3–5: hospitalize and assess for ICU admission.',
-        ref: 'Lim et al., Thorax 2003'
-      },
-      {
-        id: 'meld-child-pugh',
-        name: 'MELD-Na & Child-Pugh',
-        category: 'Critical Care & Risk',
-        purpose: 'Assess chronic liver disease severity, 90-day mortality, and transplant prioritization.',
-        badge: '6–40 / A–C',
-        route: '/calculators/meld-child-pugh.html',
-        formula: 'MELD = 3.78·ln(Bili) + 11.2·ln(INR) + 9.57·ln(Cr) + 6.43\nMELD-Na = MELD + 1.32·(137 − Na) − [0.033 × MELD × (137 − Na)]\nChild-Pugh (5–15): Bilirubin, Albumin, INR, Ascites, Encephalopathy (Class A/B/C)',
-        notes: 'Values < 1.0 are bounded to 1.0; Cr capped at 4.0 (or set to 4.0 if recent dialysis); Na bounded between 125 and 137 mEq/L. Child-Pugh A: 5–6, B: 7–9, C: 10–15.',
-        ref: 'Kamath et al., Hepatology 2001; UNOS MELD-Na'
-      },
-      {
-        id: 'gcs',
-        name: 'Glasgow Coma Scale (GCS)',
-        category: 'Critical Care & Risk',
-        purpose: 'Standardized neurological grading of consciousness across eye, verbal, and motor domains.',
-        badge: '3–15 pts',
-        route: '/calculators/glasgow-coma-scale.html',
-        formula: 'GCS = Eye (E1–E4) + Verbal (V1–V5) + Motor (M1–M6)\n  Mild TBI: 13–15  |  Moderate: 9–12  |  Severe / Coma: ≤ 8',
-        notes: 'Report component subscores (e.g., E3 V4 M5 = 12) rather than aggregate alone; append "T" if intubated (e.g., E2 VT M4). GCS ≤ 8 traditionally prompts airway protection evaluation.',
-        ref: 'Teasdale & Jennett, Lancet 1974'
-      }
     ];
 
     const SIM_CATEGORIES = [
-      'All', 'Cardiovascular', 'Respiratory', 'Renal & Acid-Base',
-      'Pharmacology', 'Hematology', 'Neuro-Ophtho', 'Endocrine'
+      'All',
+      'Cardiopulmonary',
+      'Renal & Fluids',
+      'Pharmacology',
+      'Neuro & Endocrine',
     ];
 
-    const CALC_CATEGORIES = [
-      'All', 'Acid-Base & Electrolytes', 'Cardiology & Hemodynamics',
-      'Renal & Dosing', 'Critical Care & Risk'
+    /**
+     * Clinical Calculators (20 tools, all routing to calculators.html#slug)
+     */
+    const CALCULATOR_GROUPS = [
+      {
+        category: 'Acid-Base & Electrolytes',
+        items: [
+          { name: 'Anion Gap & Delta-Delta', slug: 'anion-gap', keywords: 'metabolic acidosis hagma nagma' },
+          { name: "Winter's Formula", slug: 'winters', keywords: 'paco2 compensation respiratory' },
+          { name: 'Corrected Na⁺', slug: 'corrected-na', keywords: 'sodium hyperglycemia glucose katz' },
+          { name: 'Osmolar Gap', slug: 'osmolar-gap', keywords: 'toxic alcohol methanol ethylene glycol' },
+          { name: 'A-a Gradient', slug: 'aa-gradient', keywords: 'oxygenation hypoxemia shunt alveolar' },
+        ],
+      },
+      {
+        category: 'Cardiology',
+        items: [
+          { name: 'QTc Interval', slug: 'qtc', keywords: 'bazett fridericia ecg torsades' },
+          { name: 'MAP & SVR', slug: 'map-svr', keywords: 'mean arterial pressure resistance shock' },
+          { name: 'Fick Cardiac Output', slug: 'fick-co', keywords: 'vo2 oxygen consumption svo2 hemodynamics' },
+          { name: 'CHA₂DS₂-VASc', slug: 'cha2ds2-vasc', keywords: 'atrial fibrillation stroke anticoagulation' },
+          { name: 'HAS-BLED', slug: 'has-bled', keywords: 'bleeding risk atrial fibrillation' },
+        ],
+      },
+      {
+        category: 'Renal & Dosing',
+        items: [
+          { name: 'eGFR CKD-EPI', slug: 'egfr', keywords: 'kidney filtration creatinine 2021' },
+          { name: 'Cockcroft-Gault CrCl', slug: 'crcl', keywords: 'creatinine clearance renal dosing' },
+          { name: 'FENa / FEUrea', slug: 'fena', keywords: 'aki prerenal atn fractional excretion' },
+          { name: 'Free Water Deficit', slug: 'free-water', keywords: 'hypernatremia tbw fluids' },
+          { name: 'Corrected Ca²⁺', slug: 'corrected-ca', keywords: 'calcium albumin hypoalbuminemia' },
+        ],
+      },
+      {
+        category: 'Critical Care',
+        items: [
+          { name: 'SOFA Score', slug: 'sofa', keywords: 'sepsis icu organ dysfunction mortality' },
+          { name: 'qSOFA', slug: 'qsofa', keywords: 'quick sepsis screening bedside' },
+          { name: 'Wells PE / DVT', slug: 'wells', keywords: 'pulmonary embolism thrombosis pretest' },
+          { name: 'CURB-65', slug: 'curb65', keywords: 'pneumonia severity cap admission' },
+          { name: 'MELD-Na', slug: 'meld-na', keywords: 'cirrhosis liver sodium transplant' },
+        ],
+      },
     ];
 
     /* =========================================================================
-       2. CUSTOM MINIMAL VECTOR SCHEMATIC GLYPHS FOR SIMULATOR CARDS
+       2. THIN-STROKE 20px MONOCHROME SVG ICONS FOR SIMULATORS
        ========================================================================= */
 
-    function getSchematicGlyph(type) {
-      const glyphs = {
-        'pv-loop': `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M4 20V4" opacity="0.4"/><path d="M7 17L17 5" stroke-dasharray="2 2" opacity="0.55"/><path d="M9.5 16.5C12 16.5 15.5 16 17.5 14.5V9C15.5 7 11.5 7.5 9.5 8.8V16.5Z"/></svg>`,
-        'vent-wave': `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18" opacity="0.35"/><path d="M3 16c2 0 2.5-9 5.5-9 1.8 0 2.2 2.5 3.5 2.5s1.2 6.5 3 6.5 2-9 5-9"/></svg>`,
-        'nephron': `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="7.5" r="2.5"/><path d="M9 7.5h2.5v10a2 2 0 0 0 4 0V7.5h2a2 2 0 0 1 2 2V19"/></svg>`,
-        'pk-curve': `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19h18M3 19V5" opacity="0.35"/><path d="M4 18L7.5 6.5C9.5 13 13.5 15.8 20 17"/><path d="M4 18C7 18 9 11 12 11c3 0 5 4.2 8 6" stroke-dasharray="2 2" opacity="0.7"/></svg>`,
-        'ap-ecg': `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 16h3l1.2-10h4.5c2 0 2.8 5.5 4.2 10h6"/></svg>`,
-        'compartments': `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7" height="14" rx="1.5"/><rect x="13" y="7" width="8" height="12" rx="1.5"/><path d="M10 11h3M10 14h3" stroke-dasharray="1.5 1.5"/></svg>`,
-        'teg-curve': `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4c2.5 0 4-5.5 8-5.5h6"/><path d="M3 12h4c2.5 0 4 5.5 8 5.5h6"/><path d="M3 12h18" opacity="0.3"/></svg>`,
-        'eye-pathway': `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>`,
-        'feedback-loop': `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 4h3v3"/><path d="M20 4l-3.5 3.5A7 7 0 1 0 18.8 14"/><path d="M7 20H4v-3"/></svg>`
+    function getModuleIcon(key) {
+      const icons = {
+        cardio: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16M4 19V5" opacity="0.45"/><path d="M9 16.2c2.5 0 6.5-.5 8.2-2.2V8.8c-1.8-1.6-6-1.4-8.2-.2v7.6Z"/></svg>`,
+        vent: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16c2.2 0 2.8-9 5.8-9 2 0 2.4 3 3.7 3s1.2 6 3 6 2.2-9 5.5-9"/><path d="M3 18.5h18" opacity="0.35"/></svg>`,
+        nephro: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6.5" cy="7.5" r="2.5"/><path d="M9 7.5h2.5v10a2 2 0 0 0 4 0V7.5h2a2 2 0 0 1 2 2v9"/></svg>`,
+        pkpd: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18.5L7.5 6.5c2 6.8 6 9.8 12.5 11.2"/><path d="M4 18.5c3 0 5-7 8-7 3.2 0 5 4.2 8 6.2" stroke-dasharray="2.5 2.5" opacity="0.6"/></svg>`,
+        electro: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 15.5h3.2l1.4-9.5h4.3c2 0 2.8 5.2 4.3 9.5h5.8"/></svg>`,
+        fluid: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="7" height="13" rx="1.5"/><rect x="13.5" y="8" width="7" height="10.5" rx="1.5"/><path d="M10.5 11.5h3M10.5 14.5h3" opacity="0.55"/></svg>`,
+        coag: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4c2.4 0 4-5.2 8-5.2h6"/><path d="M3 12h4c2.4 0 4 5.2 8 5.2h6"/><path d="M3 12h18" opacity="0.28"/></svg>`,
+        neuro: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.4"/></svg>`,
+        endo: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 4.5h3v3"/><path d="M20.5 4.5 17 8a6.8 6.8 0 1 0 1.9 5.6"/><path d="M6.5 19.5h-3v-3"/></svg>`,
       };
-      return glyphs[type] || glyphs['pv-loop'];
+      return icons[key] || icons.cardio;
     }
 
-    const ACCENT_STYLES = {
-      cyan: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/25',
-      emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25',
-      amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25',
-      rose: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25',
-      violet: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/25'
-    };
-
     /* =========================================================================
-       3. APPLICATION STATE & FILTERING ENGINE
+       3. STATE & RENDERING (SIMULATORS + COMPACT CALCULATORS + LIVE SEARCH)
        ========================================================================= */
 
     const state = {
-      searchQuery: '',
-      simCategory: 'All',
-      calcCategory: 'All',
-      activeSimModal: null,
-      activeCalcModal: null
+      query: '',
+      activeCategory: 'All',
     };
 
-    function matchesSearch(haystack, query) {
+    function matchesQuery(text, query) {
       if (!query) return true;
       const tokens = query.toLowerCase().trim().split(/\s+/);
-      const text = haystack.toLowerCase();
-      return tokens.every(tok => text.includes(tok));
+      const hay = text.toLowerCase();
+      return tokens.every(tok => hay.includes(tok));
     }
 
-    function getFilteredSimulators() {
-      return SIMULATORS.filter(s => {
-        if (state.simCategory !== 'All' && s.category !== state.simCategory) return false;
-        const searchable = [s.title, s.subtitle, s.category, s.summary, s.model, ...s.outputs, ...s.pathologies, ...s.interventions].join(' ');
-        return matchesSearch(searchable, state.searchQuery);
-      });
-    }
-
-    function getFilteredCalculators() {
-      return CALCULATORS.filter(c => {
-        if (state.calcCategory !== 'All' && c.category !== state.calcCategory) return false;
-        const searchable = [c.name, c.category, c.purpose, c.badge, c.formula, c.notes].join(' ');
-        return matchesSearch(searchable, state.searchQuery);
-      });
-    }
-
-    /* =========================================================================
-       4. RENDERERS: FILTERS, SIMULATOR CARDS & CALCULATOR DIRECTORY
-       ========================================================================= */
-
-    function renderFilterBars() {
-      // Simulator category pills
-      const simBar = document.getElementById('sim-filter-bar');
-      simBar.innerHTML = SIM_CATEGORIES.map(cat => {
-        const active = state.simCategory === cat;
+    function renderTabs() {
+      const container = document.getElementById('sim-tabs');
+      container.innerHTML = SIM_CATEGORIES.map(cat => {
+        const active = state.activeCategory === cat;
         return `
           <button
             type="button"
-            data-sim-cat="${cat}"
             role="tab"
             aria-selected="${active}"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+            data-cat="${cat}"
+            class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
               active
-                ? 'bg-slate-900 dark:bg-cyan-500/15 text-white dark:text-cyan-300 border-slate-900 dark:border-cyan-500/40 shadow-xs'
-                : 'bg-white dark:bg-surface text-slate-600 dark:text-slate-400 border-slate-200 dark:border-borderDark hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-200'
+                ? 'bg-zinc-900 text-white dark:bg-white/[0.1] dark:text-white'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.04]'
             }"
           >${cat}</button>
         `;
       }).join('');
 
-      simBar.querySelectorAll('button').forEach(btn => {
+      container.querySelectorAll('button').forEach(btn => {
         btn.addEventListener('click', () => {
-          state.simCategory = btn.dataset.simCat;
+          state.activeCategory = btn.dataset.cat;
           renderAll();
         });
       });
-
-      // Calculator category tabs
-      const calcBar = document.getElementById('calc-filter-bar');
-      calcBar.innerHTML = CALC_CATEGORIES.map(cat => {
-        const active = state.calcCategory === cat;
-        return `
-          <button
-            type="button"
-            data-calc-cat="${cat}"
-            role="tab"
-            aria-selected="${active}"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
-              active
-                ? 'bg-slate-900 dark:bg-emerald-500/15 text-white dark:text-emerald-300 border-slate-900 dark:border-emerald-500/40 shadow-xs'
-                : 'bg-white dark:bg-surface text-slate-600 dark:text-slate-400 border-slate-200 dark:border-borderDark hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-200'
-            }"
-          >${cat}</button>
-        `;
-      }).join('');
-
-      calcBar.querySelectorAll('button').forEach(btn => {
-        btn.addEventListener('click', () => {
-          state.calcCategory = btn.dataset.calcCat;
-          renderAll();
-        });
-      });
-    }
-
-    function renderSimulators() {
-      const list = getFilteredSimulators();
-      const grid = document.getElementById('simulators-grid');
-      const empty = document.getElementById('simulators-empty');
-      const badge = document.getElementById('sim-count-badge');
-
-      badge.textContent = `${list.length} ${list.length === 1 ? 'module' : 'modules'}`;
-
-      if (list.length === 0) {
-        grid.innerHTML = '';
-        grid.classList.add('hidden');
-        empty.classList.remove('hidden');
-        return;
-      }
-
-      grid.classList.remove('hidden');
-      empty.classList.add('hidden');
-
-      grid.innerHTML = list.map(sim => {
-        const isReady = sim.status === 'ready';
-        const statusMarkup = isReady
-          ? `<span class="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>${sim.statusLabel}</span>`
-          : `<span class="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/80"><span class="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500"></span>${sim.statusLabel}</span>`;
-
-        return `
-          <article
-            data-sim-id="${sim.id}"
-            tabindex="0"
-            role="button"
-            aria-label="Inspect ${sim.title} specification"
-            class="sim-card group relative flex flex-col justify-between p-4 sm:p-5 rounded-xl bg-white dark:bg-surface border ${
-              isReady
-                ? 'border-cyan-500/35 dark:border-cyan-500/35 hover:border-cyan-500/80'
-                : 'border-slate-200 dark:border-borderDark hover:border-slate-300 dark:hover:border-slate-600'
-            } hover:bg-slate-50/70 dark:hover:bg-surfaceHover/90 transition-all duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
-          >
-            <div>
-              <!-- Top Row: Glyph + System Tag + Status -->
-              <div class="flex items-start justify-between gap-2 mb-3.5">
-                <div class="flex items-center gap-2.5">
-                  <div class="w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 ${ACCENT_STYLES[sim.accent]}">
-                    ${getSchematicGlyph(sim.glyph)}
-                  </div>
-                  <span class="font-mono text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">${sim.category}</span>
-                </div>
-                ${statusMarkup}
-              </div>
-
-              <!-- Title & Summary -->
-              <h3 class="text-[15px] font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-cyan-700 dark:group-hover:text-cyan-300 transition-colors">
-                ${sim.title} <span class="font-normal text-slate-500 dark:text-slate-400 text-xs">— ${sim.subtitle}</span>
-              </h3>
-              <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mt-1.5 line-clamp-2">
-                ${sim.summary}
-              </p>
-
-              <!-- Monospace Equation / Model Line -->
-              <div class="mt-3 px-2.5 py-1.5 rounded-md bg-slate-100/80 dark:bg-obsidian/80 border border-slate-200/80 dark:border-borderDark/80 font-mono text-[11px] text-slate-700 dark:text-slate-300 truncate" title="${sim.model}">
-                ${sim.model}
-              </div>
-            </div>
-
-            <!-- Footer: Output Chips + Arrow Indicator -->
-            <div class="mt-4 pt-3 border-t border-slate-100 dark:border-borderDark/80 flex items-center justify-between gap-2">
-              <div class="flex flex-wrap items-center gap-1 min-w-0">
-                ${sim.outputs.map(out => `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60">${out}</span>`).join('')}
-              </div>
-              <span class="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-              </span>
-            </div>
-          </article>
-        `;
-      }).join('');
-
-      grid.querySelectorAll('.sim-card').forEach(card => {
-        const open = () => openSimulatorDrawer(card.dataset.simId);
-        card.addEventListener('click', open);
-        card.addEventListener('keydown', e => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
-        });
-      });
-    }
-
-    function renderCalculators() {
-      const list = getFilteredCalculators();
-      const container = document.getElementById('calculators-container');
-      const empty = document.getElementById('calculators-empty');
-      const badge = document.getElementById('calc-count-badge');
-
-      badge.textContent = `${list.length} ${list.length === 1 ? 'formula' : 'formulas'}`;
-
-      if (list.length === 0) {
-        container.innerHTML = '';
-        container.classList.add('hidden');
-        empty.classList.remove('hidden');
-        return;
-      }
-
-      container.classList.remove('hidden');
-      empty.classList.add('hidden');
-
-      // Group by category for crisp clinical scannability
-      const groups = {};
-      for (const calc of list) {
-        if (!groups[calc.category]) groups[calc.category] = [];
-        groups[calc.category].push(calc);
-      }
-
-      const categoryAccents = {
-        'Acid-Base & Electrolytes': 'text-amber-600 dark:text-amber-400',
-        'Cardiology & Hemodynamics': 'text-rose-600 dark:text-rose-400',
-        'Renal & Dosing': 'text-cyan-600 dark:text-cyan-400',
-        'Critical Care & Risk': 'text-emerald-600 dark:text-emerald-400'
-      };
-
-      container.innerHTML = Object.entries(groups).map(([cat, items]) => `
-        <div>
-          <div class="flex items-center justify-between border-b border-slate-200 dark:border-borderDark pb-2 mb-3">
-            <h3 class="font-mono text-xs font-semibold uppercase tracking-wider ${categoryAccents[cat] || 'text-slate-500'}">${cat}</h3>
-            <span class="font-mono text-[10px] text-slate-400 tabular-nums">${items.length}</span>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            ${items.map(c => `
-              <button
-                type="button"
-                data-calc-id="${c.id}"
-                class="calc-row group text-left p-3.5 rounded-lg bg-white dark:bg-surface border border-slate-200 dark:border-borderDark hover:border-emerald-500/50 dark:hover:border-emerald-500/45 hover:bg-slate-50/70 dark:hover:bg-surfaceHover transition flex flex-col justify-between gap-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/35"
-              >
-                <div class="flex items-start justify-between gap-2 w-full">
-                  <span class="text-[13px] font-semibold text-slate-900 dark:text-slate-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors leading-snug">${c.name}</span>
-                  <span class="shrink-0 font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-obsidian border border-slate-200 dark:border-borderDark text-slate-600 dark:text-slate-300">${c.badge}</span>
-                </div>
-                <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">${c.purpose}</p>
-              </button>
-            `).join('')}
-          </div>
-        </div>
-      `).join('');
-
-      container.querySelectorAll('.calc-row').forEach(btn => {
-        btn.addEventListener('click', () => openCalculatorModal(btn.dataset.calcId));
-      });
-    }
-
-    function updateSearchStatusBanner() {
-      const q = state.searchQuery.trim();
-      const bar = document.getElementById('search-status-bar');
-      const clearBtn = document.getElementById('clear-search-btn');
-      const kbd = document.getElementById('search-kbd');
-
-      if (!q) {
-        bar.classList.add('hidden');
-        clearBtn.classList.add('hidden');
-        kbd.classList.remove('hidden');
-        return;
-      }
-
-      bar.classList.remove('hidden');
-      clearBtn.classList.remove('hidden');
-      kbd.classList.add('hidden');
-
-      const simCount = getFilteredSimulators().length;
-      const calcCount = getFilteredCalculators().length;
-      document.getElementById('search-query-echo').textContent = `"${q}"`;
-      document.getElementById('search-match-counts').textContent = `${simCount} simulator${simCount === 1 ? '' : 's'} · ${calcCount} calculator${calcCount === 1 ? '' : 's'}`;
     }
 
     function renderAll() {
-      renderFilterBars();
-      renderSimulators();
-      renderCalculators();
-      updateSearchStatusBanner();
-    }
+      renderTabs();
 
-    /* =========================================================================
-       5. SLIDE-OVER SIMULATOR DRAWER & CALCULATOR BLUEPRINT MODAL
-       ========================================================================= */
+      const q = state.query.trim();
+      const simSection = document.getElementById('simulators');
+      const calcSection = document.getElementById('calculators');
+      const simGrid = document.getElementById('simulators-grid');
+      const calcGrid = document.getElementById('calculators-grid');
+      const emptyState = document.getElementById('global-empty-state');
 
-    function showToast(message) {
-      const el = document.getElementById('toast-notification');
-      el.textContent = message;
-      el.classList.remove('opacity-0', 'translate-y-2');
-      el.classList.add('opacity-100', 'translate-y-0');
-      clearTimeout(el._timer);
-      el._timer = setTimeout(() => {
-        el.classList.add('opacity-0', 'translate-y-2');
-        el.classList.remove('opacity-100', 'translate-y-0');
-      }, 2400);
-    }
+      // 1. Filter simulators
+      const visibleSims = SIMULATORS.filter(s => {
+        if (state.activeCategory !== 'All' && s.category !== state.activeCategory) return false;
+        return matchesQuery(`${s.name} ${s.subtitle} ${s.category} ${s.href}`, q);
+      });
 
-    function copyTextSafe(text) {
-      try {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showToast(`Copied route: ${text}`);
-      } catch (err) {
-        showToast(`Route: ${text}`);
+      // 2. Filter calculators
+      const visibleGroups = CALCULATOR_GROUPS.map(g => ({
+        category: g.category,
+        items: g.items.filter(item =>
+          matchesQuery(`${item.name} ${item.slug} ${item.keywords} ${g.category}`, q)
+        ),
+      })).filter(g => g.items.length > 0);
+
+      const totalCalcMatches = visibleGroups.reduce((acc, g) => acc + g.items.length, 0);
+      const totalMatches = visibleSims.length + totalCalcMatches;
+
+      // Toggle global empty state only when zero matches exist across both sections
+      if (totalMatches === 0 && q) {
+        simSection.classList.add('hidden');
+        calcSection.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        document.getElementById('empty-query').textContent = q;
+        return;
       }
-    }
 
-    function openSimulatorDrawer(simId) {
-      const sim = SIMULATORS.find(s => s.id === simId);
-      if (!sim) return;
-      state.activeSimModal = sim;
+      emptyState.classList.add('hidden');
 
-      const isReady = sim.status === 'ready';
-      document.getElementById('drawer-system').textContent = sim.category;
-      const statusEl = document.getElementById('drawer-status');
-      statusEl.innerHTML = isReady
-        ? `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>${sim.statusLabel}`
-        : `<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>${sim.statusLabel}`;
-      statusEl.className = isReady
-        ? 'inline-flex items-center gap-1.5 font-mono text-[10px] px-2 py-0.5 rounded border bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-        : 'inline-flex items-center gap-1.5 font-mono text-[10px] px-2 py-0.5 rounded border bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700';
-
-      document.getElementById('drawer-title').textContent = sim.title;
-      document.getElementById('drawer-subtitle').textContent = sim.subtitle;
-      document.getElementById('drawer-route').textContent = sim.route;
-      document.getElementById('drawer-model-line').textContent = sim.model;
-      document.getElementById('drawer-engine-desc').textContent = sim.engineOverview;
-
-      document.getElementById('drawer-pathologies').innerHTML = sim.pathologies
-        .map(item => `<li class="flex items-start gap-2"><span class="text-cyan-500 mt-0.5">▪</span><span>${item}</span></li>`)
-        .join('');
-      document.getElementById('drawer-interventions').innerHTML = sim.interventions
-        .map(item => `<li class="flex items-start gap-2"><span class="text-emerald-500 mt-0.5">▪</span><span>${item}</span></li>`)
-        .join('');
-      document.getElementById('drawer-outputs').innerHTML = sim.outputs
-        .map(o => `<span class="px-2 py-1 rounded-md font-mono text-[11px] bg-slate-100 dark:bg-obsidian border border-slate-200 dark:border-borderDark text-slate-700 dark:text-slate-300">${o}</span>`)
-        .join('');
-
-      const noticeEl = document.getElementById('drawer-notice');
-      const actionSlot = document.getElementById('drawer-action-slot');
-
-      if (isReady) {
-        noticeEl.className = 'p-3 rounded-lg border text-xs leading-relaxed bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200';
-        noticeEl.innerHTML = `<strong class="font-semibold">Ready to link:</strong> Place <code class="font-mono px-1 py-0.5 rounded bg-emerald-500/15">cardiosim.html</code> at <code class="font-mono">${sim.route}</code> (or update <code class="font-mono">SIMULATORS[0].route</code> in this file) to launch directly from this hub.`;
-        actionSlot.innerHTML = `
-          <button id="drawer-launch-ready" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition">
-            <span>Link to cardiosim.html</span>
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17 17 7M7 7h10v10"/></svg>
-          </button>
-        `;
-        document.getElementById('drawer-launch-ready').addEventListener('click', () => {
-          showToast(`Target route ready: ${sim.route} (host cardiosim.html to open)`);
-        });
+      // Show/hide sections smoothly when filtering
+      if (q && visibleSims.length === 0) {
+        simSection.classList.add('hidden');
       } else {
-        noticeEl.className = 'p-3 rounded-lg border text-xs leading-relaxed bg-slate-100 dark:bg-obsidian border-slate-200 dark:border-borderDark text-slate-600 dark:text-slate-400';
-        noticeEl.innerHTML = `<strong class="font-semibold text-slate-800 dark:text-slate-200">Module Planned:</strong> This route is reserved in the PhysioLab registry. Once built, flip <code class="font-mono">status</code> to <code class="font-mono">'ready'</code> inside the <code class="font-mono">SIMULATORS</code> array.`;
-        actionSlot.innerHTML = `
-          <button type="button" disabled class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-700 text-xs font-semibold cursor-not-allowed">
-            <span>Launch Simulator (Pending)</span>
-          </button>
-        `;
+        simSection.classList.remove('hidden');
       }
 
-      const overlay = document.getElementById('sim-drawer-overlay');
-      const panel = document.getElementById('sim-drawer-panel');
-      overlay.classList.remove('hidden');
-      requestAnimationFrame(() => {
-        panel.classList.remove('translate-x-full');
-      });
-    }
+      if (q && totalCalcMatches === 0) {
+        calcSection.classList.add('hidden');
+      } else {
+        calcSection.classList.remove('hidden');
+      }
 
-    function closeSimulatorDrawer() {
-      const overlay = document.getElementById('sim-drawer-overlay');
-      const panel = document.getElementById('sim-drawer-panel');
-      panel.classList.add('translate-x-full');
-      setTimeout(() => {
-        overlay.classList.add('hidden');
-        state.activeSimModal = null;
-      }, 220);
-    }
+      // Render Simulator Cards (direct relative <a> navigation)
+      simGrid.innerHTML = visibleSims.map(sim => `
+        <a
+          href="${sim.href}"
+          class="group relative flex flex-col justify-between p-5 rounded-xl bg-white dark:bg-cardDark border border-zinc-200 dark:border-white/[0.08] hover:border-accentLight/45 dark:hover:border-accentDark/40 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_-12px_rgba(15,118,110,0.16)] dark:hover:shadow-[0_12px_32px_-12px_rgba(45,212,191,0.12)] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+        >
+          <div>
+            <!-- Top Row: 20px Monochrome Icon + Gliding ↗ Arrow -->
+            <div class="flex items-start justify-between gap-3 mb-4">
+              <div class="text-zinc-700 dark:text-zinc-300 group-hover:text-accentLight dark:group-hover:text-accentDark transition-colors">
+                ${getModuleIcon(sim.icon)}
+              </div>
+              <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-accentLight dark:group-hover:text-accentDark transition-all duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 text-sm leading-none" aria-hidden="true">&#8599;</span>
+            </div>
 
-    function openCalculatorModal(calcId) {
-      const calc = CALCULATORS.find(c => c.id === calcId);
-      if (!calc) return;
-      state.activeCalcModal = calc;
+            <!-- Title (+ subtle live emerald dot for CardioSim) -->
+            <div class="flex items-center gap-2">
+              <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">
+                ${sim.name}
+              </h3>
+              ${sim.live ? `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 dot-pulse" title="Live module"></span>` : ''}
+            </div>
 
-      document.getElementById('calc-modal-category').textContent = calc.category;
-      document.getElementById('calc-modal-badge').textContent = calc.badge;
-      document.getElementById('calc-modal-title').textContent = calc.name;
-      document.getElementById('calc-modal-purpose').textContent = calc.purpose;
-      document.getElementById('calc-modal-formula').textContent = calc.formula;
-      document.getElementById('calc-modal-notes').textContent = calc.notes;
-      document.getElementById('calc-modal-route').textContent = calc.route;
-      document.getElementById('calc-modal-ref').textContent = calc.ref;
+            <!-- Concise 1-line Muted Description -->
+            <p class="mt-1.5 text-[13px] text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-1">
+              ${sim.subtitle}
+            </p>
+          </div>
 
-      const overlay = document.getElementById('calc-modal-overlay');
-      const card = document.getElementById('calc-modal-card');
-      overlay.classList.remove('hidden');
-      requestAnimationFrame(() => {
-        card.classList.remove('opacity-0', 'scale-95');
-        card.classList.add('opacity-100', 'scale-100');
-      });
-    }
+          <!-- Tiny Muted Monospace Filename -->
+          <div class="mt-5 pt-3 border-t border-zinc-100 dark:border-white/[0.05] flex items-center justify-between">
+            <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">${sim.href}</span>
+          </div>
+        </a>
+      `).join('');
 
-    function closeCalculatorModal() {
-      const overlay = document.getElementById('calc-modal-overlay');
-      const card = document.getElementById('calc-modal-card');
-      card.classList.add('opacity-0', 'scale-95');
-      card.classList.remove('opacity-100', 'scale-100');
-      setTimeout(() => {
-        overlay.classList.add('hidden');
-        state.activeCalcModal = null;
-      }, 170);
+      // Render Compact 4-Column Calculator Directory
+      const metaEl = document.getElementById('calc-meta');
+      metaEl.textContent = q
+        ? `${totalCalcMatches} matching · single unified workspace`
+        : '20 tools · single unified workspace';
+
+      calcGrid.innerHTML = visibleGroups.map(group => `
+        <div class="space-y-2">
+          <h3 class="px-2 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
+            ${group.category}
+          </h3>
+          <ul class="space-y-0.5">
+            ${group.items.map(item => `
+              <li>
+                <a
+                  href="calculators.html#${item.slug}"
+                  class="group flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/90 dark:hover:bg-white/[0.05] transition-colors"
+                >
+                  <span class="truncate">${item.name}</span>
+                  <span class="text-[11px] text-zinc-400 dark:text-zinc-600 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-accentLight dark:group-hover:text-accentDark transition-all duration-150 shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `).join('');
+
+      // Search input shortcut / clear button toggle
+      const clearBtn = document.getElementById('search-clear');
+      const kbd = document.getElementById('search-shortcut');
+      if (q) {
+        clearBtn.classList.remove('hidden');
+        kbd.classList.add('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+        kbd.classList.remove('hidden');
+      }
     }
 
     /* =========================================================================
-       6. DECORATIVE HERO MONITOR CANVAS (STYLIZED PV LOOP + ECG + AoP PREVIEW)
+       4. INTERACTIVE 3D HARMONIC PHASE-SPACE FLOW-FIELD CANVAS (60 FPS)
        ========================================================================= */
 
-    function initHeroMonitorCanvas() {
-      const wrap = document.getElementById('hero-canvas-wrap');
-      const canvas = document.getElementById('hero-canvas');
+    function initHarmonicManifold() {
+      const wrap = document.getElementById('manifold-wrap');
+      const canvas = document.getElementById('manifold-canvas');
       if (!wrap || !canvas) return;
       const ctx = canvas.getContext('2d');
 
+      let width = 1;
+      let height = 1;
+      let dpr = 1;
+
       function resize() {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
         const rect = wrap.getBoundingClientRect();
-        canvas.width = Math.max(100, Math.floor(rect.width * dpr));
-        canvas.height = Math.max(100, Math.floor(rect.height * dpr));
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = Math.max(100, rect.width);
+        height = Math.max(100, rect.height);
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
       }
 
       resize();
       new ResizeObserver(resize).observe(wrap);
       window.addEventListener('resize', resize);
 
-      // Purely decorative parametric PV loop curve (normalized V in [0,1], P in [0,1])
-      function sampleDecorativePV(u) {
-        const t = ((u % 1) + 1) % 1;
-        // 4 stylized cardiac cycle segments:
-        // 0.00-0.12: IVC (rising pressure at EDV)
-        // 0.12-0.42: Ejection (domed pressure, volume falls EDV -> ESV)
-        // 0.42-0.55: IVR (falling pressure at ESV)
-        // 0.55-1.00: Diastolic filling along subtle EDPVR curve
-        const vED = 0.78, vES = 0.30;
-        const pED = 0.11, pAVO = 0.56, pPeak = 0.84, pAVC = 0.70, pMVO = 0.07;
+      // Smooth cursor interaction state (normalized -1..1)
+      const pointer = {
+        active: false,
+        tx: 0,
+        ty: 0,
+        x: 0,
+        y: 0,
+        canvasX: 0.5,
+        canvasY: 0.5,
+      };
 
-        if (t < 0.12) {
-          const s = t / 0.12;
-          const ease = s * s * (3 - 2 * s);
-          return { v: vED - 0.01 * Math.sin(Math.PI * s), p: pED + (pAVO - pED) * ease };
-        }
-        if (t < 0.42) {
-          const s = (t - 0.12) / 0.30;
-          const v = vED - (vED - vES) * (0.5 - 0.5 * Math.cos(Math.PI * s));
-          const p = pAVO + (pAVC - pAVO) * s + (pPeak - 0.5 * (pAVO + pAVC)) * Math.sin(Math.PI * s);
-          return { v, p };
-        }
-        if (t < 0.55) {
-          const s = (t - 0.42) / 0.13;
-          const ease = s * s * (3 - 2 * s);
-          return { v: vES + 0.008 * Math.sin(Math.PI * s), p: pAVC - (pAVC - pMVO) * ease };
-        }
-        const s = (t - 0.55) / 0.45;
-        const v = vES + (vED - vES) * Math.pow(s, 0.82);
-        const p = pMVO + (pED - pMVO) * Math.pow(s, 1.9) + (s > 0.82 ? 0.022 * Math.sin(Math.PI * (s - 0.82) / 0.18) : 0);
-        return { v, p };
+      // Active radial harmonic ripples emitted on click/tap
+      const ripples = [];
+
+      function updatePointer(clientX, clientY) {
+        const rect = wrap.getBoundingClientRect();
+        const nx = (clientX - rect.left) / rect.width;
+        const ny = (clientY - rect.top) / rect.height;
+        pointer.active = true;
+        pointer.canvasX = nx;
+        pointer.canvasY = ny;
+        pointer.tx = (nx - 0.5) * 2;
+        pointer.ty = (ny - 0.5) * 2;
       }
 
-      // Stylized synthetic Lead II ECG signal for decorative preview
-      function sampleDecorativeECG(u) {
-        const t = ((u % 1) + 1) % 1;
-        let y = 0;
-        const g = (c, w, a) => a * Math.exp(-Math.pow((t - c) / w, 2));
-        y += g(0.90, 0.028, 0.16);   // P
-        y += g(0.015, 0.008, -0.14); // Q
-        y += g(0.032, 0.010, 1.05);  // R
-        y += g(0.052, 0.009, -0.24); // S
-        y += g(0.32, 0.048, 0.28);   // T
-        return y;
+      function emitRipple(clientX, clientY, nowSec) {
+        const rect = wrap.getBoundingClientRect();
+        const nx = ((clientX - rect.left) / rect.width - 0.5) * 2;
+        const ny = ((clientY - rect.top) / rect.height - 0.5) * 2;
+        ripples.push({ x: nx * 1.35, y: ny * 0.9, born: nowSec });
+        if (ripples.length > 5) ripples.shift();
       }
 
-      // Stylized Arterial Pressure waveform with dicrotic notch
-      function sampleDecorativeAoP(u) {
-        const t = ((u % 1) + 1) % 1;
-        if (t < 0.12) {
-          return 0.22 - 0.04 * (t / 0.12);
-        }
-        if (t < 0.42) {
-          const s = (t - 0.12) / 0.30;
-          return 0.18 + 0.68 * Math.sin(Math.PI * Math.pow(s, 0.68));
-        }
-        const s = (t - 0.42) / 0.58;
-        const notch = 0.07 * Math.exp(-Math.pow((s - 0.07) / 0.045, 2));
-        return 0.18 + 0.38 * Math.exp(-2.8 * s) + notch;
-      }
+      let currentSec = 0;
 
-      let startTime = 0;
+      wrap.addEventListener('pointermove', e => updatePointer(e.clientX, e.clientY));
+      wrap.addEventListener('pointerleave', () => {
+        pointer.active = false;
+        pointer.tx = 0;
+        pointer.ty = 0;
+      });
+      wrap.addEventListener('pointerdown', e => {
+        updatePointer(e.clientX, e.clientY);
+        emitRipple(e.clientX, e.clientY, currentSec);
+      });
+
+      // Manifold parameters
+      const NUM_THREADS = 26;
+      const SEGMENTS = 78;
+
+      // Floating phase-space particles tethered to threads
+      const particles = Array.from({ length: 46 }, (_, i) => ({
+        thread: Math.floor((i * 7) % NUM_THREADS),
+        u: ((i * 0.6180339) % 1) * 2 - 1,
+        speed: 0.055 + (i % 7) * 0.014,
+        size: 1.15 + (i % 4) * 0.38,
+      }));
+
+      // Subtle physiological breathing / double-harmonic rhythmic pulse
+      function physiologicalPulse(t) {
+        const phase = (t * 0.85) % 1;
+        const primary = Math.exp(-Math.pow((phase - 0.16) / 0.09, 2));
+        const dicrotic = 0.38 * Math.exp(-Math.pow((phase - 0.36) / 0.12, 2));
+        return 1.0 + 0.085 * (primary + dicrotic);
+      }
 
       function render(ts) {
-        if (!startTime) startTime = ts;
-        const elapsed = (ts - startTime) / 1000;
+        currentSec = ts * 0.001;
+        const t = currentSec;
 
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const W = canvas.width / dpr;
-        const H = canvas.height / dpr;
+        // Smooth pointer inertia
+        pointer.x += (pointer.tx - pointer.x) * 0.065;
+        pointer.y += (pointer.ty - pointer.y) * 0.065;
+
+        // Expire old ripples
+        for (let i = ripples.length - 1; i >= 0; i--) {
+          if (t - ripples[i].born > 2.4) ripples.splice(i, 1);
+        }
+
         const isDark = document.documentElement.classList.contains('dark');
+        const pulse = physiologicalPulse(t);
 
         ctx.save();
         ctx.scale(dpr, dpr);
-        ctx.clearRect(0, 0, W, H);
+        ctx.clearRect(0, 0, width, height);
 
-        // Palette adapting to Dark / Light theme
-        const gridCol = isDark ? 'rgba(30, 41, 59, 0.55)' : 'rgba(148, 163, 184, 0.26)';
-        const axisCol = isDark ? 'rgba(71, 85, 105, 0.7)' : 'rgba(100, 116, 139, 0.55)';
-        const labelCol = isDark ? '#64748b' : '#64748b';
-        const pvStroke = isDark ? '#22d3ee' : '#0891b2';
-        const pvFill = isDark ? 'rgba(34, 211, 238, 0.10)' : 'rgba(8, 145, 178, 0.09)';
-        const ecgStroke = isDark ? '#10b981' : '#059669';
-        const aopStroke = isDark ? '#f43f5e' : '#e11d48';
+        // 3D camera rotation angles (gentle autonomous drift + cursor tilt)
+        const rotY = Math.sin(t * 0.22) * 0.26 + pointer.x * 0.42;
+        const rotX = 0.28 + Math.cos(t * 0.17) * 0.12 - pointer.y * 0.34;
+        const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+        const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
 
-        // Subtle oscilloscope background grid
-        ctx.strokeStyle = gridCol;
-        ctx.lineWidth = 1;
-        const gridStep = 24;
-        for (let x = 0; x <= W; x += gridStep) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+        const cx = width * 0.5;
+        const cy = height * 0.5;
+        const scaleBase = Math.min(width, height) * 0.42;
+        const fov = 3.4;
+
+        // Evaluate a single 3D manifold point and project to 2D
+        function projectPoint(u, vNorm) {
+          // Layered harmonic ribbon geometry
+          const layerPhase = vNorm * Math.PI * 1.45;
+          const twist = u * 2.15 + t * 0.55;
+          const env = Math.cos(u * Math.PI * 0.48); // Taper ends cleanly
+
+          let x = u * 1.48;
+          let y =
+            (Math.sin(twist + layerPhase * 0.65) * 0.44 +
+              Math.cos(u * 3.6 - t * 0.42 + layerPhase) * 0.22 +
+              vNorm * 0.34) *
+            pulse *
+            (0.45 + 0.55 * env);
+          let z =
+            (Math.cos(twist * 0.85 + layerPhase) * 0.56 +
+              Math.sin(u * 2.8 + t * 0.38 - layerPhase * 0.5) * 0.24) *
+            (0.45 + 0.55 * env);
+
+          // Local cursor gravitational warp
+          if (pointer.active) {
+            const dx = x - pointer.x * 1.25;
+            const dy = y - pointer.y * 0.85;
+            const d2 = dx * dx + dy * dy;
+            const warp = Math.exp(-d2 * 1.9) * 0.24;
+            z += warp;
+            y += dy * warp * 0.45;
+          }
+
+          // Click radial harmonic ripples
+          let rippleGlow = 0;
+          for (let r = 0; r < ripples.length; r++) {
+            const rp = ripples[r];
+            const age = t - rp.born;
+            const radius = age * 1.55;
+            const dist = Math.hypot(x - rp.x, y - rp.y);
+            const band = Math.exp(-Math.pow((dist - radius) / 0.24, 2));
+            const decay = Math.max(0, 1 - age / 2.4);
+            const wave = Math.sin((dist - radius) * 14) * band * decay;
+            z += wave * 0.28;
+            y += wave * 0.11;
+            rippleGlow = Math.max(rippleGlow, band * decay);
+          }
+
+          // 3D rotation (Y then X)
+          const rx = x * cosY - z * sinY;
+          const rz1 = x * sinY + z * cosY;
+          const ry = y * cosX - rz1 * sinX;
+          const rz = y * sinX + rz1 * cosX;
+
+          const perspective = fov / (fov + rz + 1.3);
+          return {
+            sx: cx + rx * scaleBase * perspective,
+            sy: cy + ry * scaleBase * perspective,
+            depth: perspective,
+            glow: rippleGlow,
+          };
         }
-        for (let y = 0; y <= H; y += gridStep) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-        }
 
-        // Split canvas: Left = PV Loop (44%), Right = Waveforms (56%)
-        const splitX = Math.floor(W * 0.44);
-        ctx.strokeStyle = axisCol;
-        ctx.beginPath();
-        ctx.moveTo(splitX, 12);
-        ctx.lineTo(splitX, H - 12);
-        ctx.stroke();
+        // Draw delicate layered sine-harmonic threads
+        for (let i = 0; i < NUM_THREADS; i++) {
+          const vNorm = (i / (NUM_THREADS - 1)) * 2 - 1; // -1..1
+          const centerWeight = 1 - Math.abs(vNorm); // Brighter near core
 
-        const beatPeriod = 0.833; // 72 bpm
-        const beatPhase = (elapsed % beatPeriod) / beatPeriod;
-
-        /* --- LEFT SUB-PANEL: STYLIZED PV LOOP --- */
-        const pvPad = { l: 26, r: 16, t: 26, b: 24 };
-        const pvW = Math.max(40, splitX - pvPad.l - pvPad.r);
-        const pvH = Math.max(40, H - pvPad.t - pvPad.b);
-        const px = v => pvPad.l + v * pvW;
-        const py = p => pvPad.t + pvH - p * pvH;
-
-        // Mini axes
-        ctx.strokeStyle = axisCol;
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(pvPad.l, pvPad.t);
-        ctx.lineTo(pvPad.l, pvPad.t + pvH);
-        ctx.lineTo(pvPad.l + pvW, pvPad.t + pvH);
-        ctx.stroke();
-
-        ctx.fillStyle = labelCol;
-        ctx.font = '500 9px "JetBrains Mono", monospace';
-        ctx.fillText('LV PV LOOP', pvPad.l + 4, 16);
-        ctx.fillText('V (mL)', pvPad.l + pvW - 32, H - 8);
-
-        // Dashed ESPVR
-        ctx.save();
-        ctx.setLineDash([4, 3]);
-        ctx.strokeStyle = isDark ? 'rgba(16, 185, 129, 0.55)' : 'rgba(5, 150, 105, 0.55)';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(px(0.06), py(0));
-        ctx.lineTo(px(0.41), py(0.95));
-        ctx.stroke();
-
-        // Dashed EDPVR
-        ctx.strokeStyle = isDark ? 'rgba(56, 189, 248, 0.45)' : 'rgba(2, 132, 199, 0.45)';
-        ctx.beginPath();
-        for (let i = 0; i <= 24; i++) {
-          const v = 0.08 + (i / 24) * 0.84;
-          const p = 0.018 * (Math.exp(2.55 * (v - 0.08)) - 1);
-          if (i === 0) ctx.moveTo(px(v), py(p));
-          else ctx.lineTo(px(v), py(Math.min(1, p)));
-        }
-        ctx.stroke();
-        ctx.restore();
-
-        // Closed PV Loop Fill + Glow Stroke
-        ctx.save();
-        ctx.beginPath();
-        const pvSteps = 120;
-        for (let i = 0; i <= pvSteps; i++) {
-          const pt = sampleDecorativePV(i / pvSteps);
-          if (i === 0) ctx.moveTo(px(pt.v), py(pt.p));
-          else ctx.lineTo(px(pt.v), py(pt.p));
-        }
-        ctx.closePath();
-        ctx.fillStyle = pvFill;
-        ctx.fill();
-        ctx.strokeStyle = pvStroke;
-        ctx.lineWidth = 2.1;
-        if (isDark) {
-          ctx.shadowColor = 'rgba(34, 211, 238, 0.55)';
-          ctx.shadowBlur = 10;
-        }
-        ctx.stroke();
-        ctx.restore();
-
-        // Animated Comet Trail & Glowing Bead on PV Loop
-        for (let k = 12; k >= 1; k--) {
-          const pt = sampleDecorativePV(beatPhase - k * 0.008);
+          let maxGlow = 0;
           ctx.beginPath();
-          ctx.arc(px(pt.v), py(pt.p), 1.8 + (1 - k / 12) * 1.8, 0, Math.PI * 2);
+          for (let s = 0; s <= SEGMENTS; s++) {
+            const u = (s / SEGMENTS) * 2 - 1;
+            const p = projectPoint(u, vNorm);
+            if (p.glow > maxGlow) maxGlow = p.glow;
+            if (s === 0) ctx.moveTo(p.sx, p.sy);
+            else ctx.lineTo(p.sx, p.sy);
+          }
+
+          // Theme-adapted restrained palette (electric teal core -> cool zinc outer)
+          if (isDark) {
+            const alpha = Math.min(0.82, 0.08 + centerWeight * 0.34 + maxGlow * 0.35);
+            const isCore = centerWeight > 0.36;
+            ctx.strokeStyle = isCore
+              ? `rgba(45, 212, 191, ${alpha.toFixed(3)})`
+              : `rgba(161, 161, 170, ${(alpha * 0.72).toFixed(3)})`;
+          } else {
+            const alpha = Math.min(0.75, 0.09 + centerWeight * 0.32 + maxGlow * 0.32);
+            const isCore = centerWeight > 0.36;
+            ctx.strokeStyle = isCore
+              ? `rgba(15, 118, 110, ${alpha.toFixed(3)})`
+              : `rgba(82, 82, 91, ${(alpha * 0.65).toFixed(3)})`;
+          }
+
+          ctx.lineWidth = 0.7 + centerWeight * 0.75 + maxGlow * 0.55;
+          ctx.stroke();
+        }
+
+        // Draw floating luminous phase-space particles along manifold threads
+        for (let i = 0; i < particles.length; i++) {
+          const pt = particles[i];
+          pt.u += pt.speed * 0.016;
+          if (pt.u > 1) pt.u = -1;
+
+          const vNorm = (pt.thread / (NUM_THREADS - 1)) * 2 - 1;
+          const p = projectPoint(pt.u, vNorm);
+          const edgeFade = Math.max(0, 1 - Math.pow(Math.abs(pt.u), 3));
+          const r = pt.size * p.depth * (1 + p.glow * 0.6);
+          const alpha = Math.min(0.95, (0.28 + p.depth * 0.45 + p.glow * 0.4) * edgeFade);
+
+          ctx.beginPath();
+          ctx.arc(p.sx, p.sy, Math.max(0.6, r), 0, Math.PI * 2);
           ctx.fillStyle = isDark
-            ? `rgba(103, 232, 249, ${(1 - k / 12) * 0.55})`
-            : `rgba(8, 145, 178, ${(1 - k / 12) * 0.45})`;
+            ? `rgba(94, 234, 212, ${alpha.toFixed(3)})`
+            : `rgba(15, 118, 110, ${alpha.toFixed(3)})`;
           ctx.fill();
         }
-        const bead = sampleDecorativePV(beatPhase);
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(px(bead.v), py(bead.p), 4.6, 0, Math.PI * 2);
-        ctx.fillStyle = isDark ? '#ffffff' : '#0891b2';
-        ctx.shadowColor = '#22d3ee';
-        ctx.shadowBlur = 12;
-        ctx.fill();
-        ctx.lineWidth = 1.6;
-        ctx.strokeStyle = pvStroke;
-        ctx.stroke();
-        ctx.restore();
-
-        /* --- RIGHT SUB-PANEL: SYNCHRONIZED ECG + ARTERIAL PRESSURE --- */
-        const wfPad = { l: splitX + 16, r: 16, t: 22, b: 18 };
-        const wfW = Math.max(60, W - wfPad.l - wfPad.r);
-        const wfH = Math.max(60, H - wfPad.t - wfPad.b);
-        const windowSec = 2.5;
-        const sweepSec = elapsed % windowSec;
-        const playX = wfPad.l + (sweepSec / windowSec) * wfW;
-
-        // Top Half: Lead II ECG
-        const ecgTop = wfPad.t;
-        const ecgH = wfH * 0.44;
-        const ecgBase = ecgTop + ecgH * 0.72;
-
-        // Bottom Half: Arterial Pressure (AoP)
-        const aopTop = wfPad.t + wfH * 0.54;
-        const aopH = wfH * 0.46;
-
-        ctx.fillStyle = ecgStroke;
-        ctx.font = '600 9px "JetBrains Mono", monospace';
-        ctx.fillText('LEAD II ECG', wfPad.l, ecgTop + 6);
-
-        ctx.fillStyle = aopStroke;
-        ctx.fillText('AORTIC PRESSURE (mmHg)', wfPad.l, aopTop + 6);
-
-        const samples = 200;
-        // Draw ECG trace
-        ctx.save();
-        ctx.beginPath();
-        for (let i = 0; i <= samples; i++) {
-          const t = (i / samples) * windowSec;
-          const x = wfPad.l + (i / samples) * wfW;
-          const y = ecgBase - sampleDecorativeECG(t / beatPeriod) * (ecgH * 0.56);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.strokeStyle = ecgStroke;
-        ctx.lineWidth = 1.7;
-        if (isDark) {
-          ctx.shadowColor = 'rgba(16, 185, 129, 0.4)';
-          ctx.shadowBlur = 6;
-        }
-        ctx.stroke();
-        ctx.restore();
-
-        // Draw AoP trace with subtle fill
-        ctx.save();
-        ctx.beginPath();
-        for (let i = 0; i <= samples; i++) {
-          const t = (i / samples) * windowSec;
-          const x = wfPad.l + (i / samples) * wfW;
-          const y = aopTop + aopH - sampleDecorativeAoP(t / beatPeriod) * (aopH * 0.85);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.strokeStyle = aopStroke;
-        ctx.lineWidth = 1.8;
-        if (isDark) {
-          ctx.shadowColor = 'rgba(244, 63, 94, 0.35)';
-          ctx.shadowBlur = 6;
-        }
-        ctx.stroke();
-        ctx.restore();
-
-        // Synchronized Sweep Cursor & Glow Trail
-        ctx.save();
-        const trailW = 22;
-        const grad = ctx.createLinearGradient(playX - trailW, 0, playX, 0);
-        grad.addColorStop(0, 'rgba(34, 211, 238, 0)');
-        grad.addColorStop(1, isDark ? 'rgba(34, 211, 238, 0.16)' : 'rgba(8, 145, 178, 0.12)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(Math.max(wfPad.l, playX - trailW), wfPad.t, Math.min(trailW, playX - wfPad.l), wfH);
-
-        ctx.beginPath();
-        ctx.moveTo(playX, wfPad.t);
-        ctx.lineTo(playX, wfPad.t + wfH);
-        ctx.strokeStyle = isDark ? 'rgba(226, 232, 240, 0.7)' : 'rgba(15, 23, 42, 0.55)';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-
-        // Dots on ECG and AoP at playhead
-        const curEcgY = ecgBase - sampleDecorativeECG(sweepSec / beatPeriod) * (ecgH * 0.56);
-        const curAopY = aopTop + aopH - sampleDecorativeAoP(sweepSec / beatPeriod) * (aopH * 0.85);
-
-        ctx.beginPath();
-        ctx.arc(playX, curEcgY, 3, 0, Math.PI * 2);
-        ctx.fillStyle = ecgStroke;
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(playX, curAopY, 3, 0, Math.PI * 2);
-        ctx.fillStyle = aopStroke;
-        ctx.fill();
-        ctx.restore();
 
         ctx.restore();
         requestAnimationFrame(render);
@@ -1736,37 +862,38 @@
     }
 
     /* =========================================================================
-       7. THEME TOGGLE, KEYBOARD SHORTCUTS & EVENT WIRING
+       5. EVENT WIRING (SEARCH, KEYBOARD SHORTCUTS, THEME TOGGLE)
        ========================================================================= */
 
     function wireEvents() {
-      const searchInput = document.getElementById('global-search');
-      const clearBtn = document.getElementById('clear-search-btn');
-      const resetInline = document.getElementById('search-reset-inline');
+      const searchInput = document.getElementById('search-input');
+      const clearBtn = document.getElementById('search-clear');
+      const emptyReset = document.getElementById('empty-reset-btn');
+      const themeToggle = document.getElementById('theme-toggle');
 
-      const setSearch = val => {
-        state.searchQuery = val;
+      const setQuery = val => {
+        state.query = val;
         searchInput.value = val;
         renderAll();
       };
 
       searchInput.addEventListener('input', e => {
-        state.searchQuery = e.target.value;
+        state.query = e.target.value;
         renderAll();
       });
 
       clearBtn.addEventListener('click', () => {
-        setSearch('');
+        setQuery('');
         searchInput.focus();
       });
 
-      resetInline.addEventListener('click', () => {
-        state.simCategory = 'All';
-        state.calcCategory = 'All';
-        setSearch('');
+      emptyReset.addEventListener('click', () => {
+        state.activeCategory = 'All';
+        setQuery('');
+        searchInput.focus();
       });
 
-      // Global keyboard shortcuts: '/' or Cmd/Ctrl+K to focus search; Escape to close/clear
+      // Global keyboard shortcuts: '/' or Cmd/Ctrl+K focuses search; Escape clears/blurs
       document.addEventListener('keydown', e => {
         const tag = document.activeElement?.tagName;
         const isTyping = tag === 'INPUT' || tag === 'TEXTAREA';
@@ -1778,56 +905,29 @@
           return;
         }
 
-        if (e.key === 'Escape') {
-          if (state.activeSimModal) {
-            closeSimulatorDrawer();
-          } else if (state.activeCalcModal) {
-            closeCalculatorModal();
-          } else if (document.activeElement === searchInput) {
-            if (state.searchQuery) setSearch('');
+        if (e.key === 'Escape' && document.activeElement === searchInput) {
+          if (state.query) {
+            setQuery('');
+          } else {
             searchInput.blur();
           }
         }
       });
 
-      // Dark / Light Theme Toggle
-      const themeToggle = document.getElementById('theme-toggle');
+      // Dark / Light theme toggle persisted in localStorage
       themeToggle.addEventListener('click', () => {
-        const root = document.documentElement;
-        const nowDark = root.classList.toggle('dark');
+        const isDarkNow = document.documentElement.classList.toggle('dark');
         try {
-          localStorage.setItem('physiolab-theme', nowDark ? 'dark' : 'light');
+          localStorage.setItem('medlab-theme', isDarkNow ? 'dark' : 'light');
         } catch (_) {}
       });
-
-      // Restore saved theme preference (defaults to dark)
-      try {
-        const saved = localStorage.getItem('physiolab-theme');
-        if (saved === 'light') document.documentElement.classList.remove('dark');
-      } catch (_) {}
-
-      // Simulator Drawer controls
-      document.getElementById('drawer-close').addEventListener('click', closeSimulatorDrawer);
-      document.getElementById('drawer-dismiss-btn').addEventListener('click', closeSimulatorDrawer);
-      document.getElementById('sim-drawer-backdrop').addEventListener('click', closeSimulatorDrawer);
-      document.getElementById('drawer-copy-route').addEventListener('click', () => {
-        if (state.activeSimModal) copyTextSafe(state.activeSimModal.route);
-      });
-
-      // Calculator Blueprint Modal controls
-      document.getElementById('calc-modal-close').addEventListener('click', closeCalculatorModal);
-      document.getElementById('calc-modal-done').addEventListener('click', closeCalculatorModal);
-      document.getElementById('calc-modal-backdrop').addEventListener('click', closeCalculatorModal);
     }
 
-    /* =========================================================================
-       8. BOOT PORTAL
-       ========================================================================= */
-
+    // Boot
     window.addEventListener('load', () => {
       wireEvents();
       renderAll();
-      initHeroMonitorCanvas();
+      initHarmonicManifold();
     });
   })();
   </script>
