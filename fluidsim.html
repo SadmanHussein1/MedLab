@@ -1,1 +1,2764 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FluidSim — MedLab Darrow-Yannet &amp; Revised Starling Simulator</title>
 
+  <!-- Prevent theme flash prior to first paint (syncs medlab-theme & theme; defaults to obsidian dark) -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Typography: Inter (UI) & JetBrains Mono (Numeric/Data/Formulas) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#111113',
+            borderDark: '#27272a',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Minimal thin scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(113, 113, 122, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(113, 113, 122, 0.45);
+    }
+
+    /* Swiss-Precision Range Sliders */
+    input[type="range"].clinical-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      border-radius: 9999px;
+      background: #e4e4e7;
+      outline: none;
+      cursor: pointer;
+    }
+    .dark input[type="range"].clinical-slider {
+      background: #27272a;
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      transition: transform 0.1s ease;
+    }
+    .dark input[type="range"].clinical-slider::-webkit-slider-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"].clinical-slider:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+    }
+    input[type="range"].clinical-slider::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    }
+    .dark input[type="range"].clinical-slider::-moz-range-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+
+    /* Subtle animated flux dashes in SVG schematic */
+    @keyframes fluidFlow {
+      from { stroke-dashoffset: 24; }
+      to { stroke-dashoffset: 0; }
+    }
+    .svg-flux-anim {
+      stroke-dasharray: 4 6;
+      animation: fluidFlow var(--flux-dur, 1.8s) linear infinite;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-canvasLight text-[#09090b] dark:bg-obsidian dark:text-[#fafafa] transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
+
+  <!-- ==================== 1. MINIMAL STICKY HEADER ==================== -->
+  <header class="sticky top-0 z-40 w-full border-b border-[#e4e4e7] dark:border-borderDark bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md shrink-0">
+    <div class="w-full max-w-7xl mx-auto px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+
+      <!-- Left: Back link, Title & Subtle Mono Tag -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors shrink-0">
+          &larr; MedLab
+        </a>
+        <div class="flex items-center gap-2.5 min-w-0">
+          <h1 class="text-[15px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa] shrink-0">FluidSim</h1>
+          <span class="hidden md:inline font-mono text-[10px] tracking-[0.12em] uppercase text-zinc-500 dark:text-zinc-400 truncate">DARROW-YANNET &middot; REVISED STARLING &middot; KINETICS</span>
+        </div>
+        <span class="hidden lg:inline-block h-3.5 w-px bg-[#e4e4e7] dark:bg-borderDark mx-0.5"></span>
+        <span id="hdr-preset-label" class="hidden lg:inline font-mono text-[11px] text-tealLight dark:text-tealDark truncate max-w-[200px]">Normal Physiology</span>
+      </div>
+
+      <!-- Right: Pin Baseline, Reset, Theme Toggle -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button id="btn-pin-baseline" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-zinc-700 dark:text-zinc-200 transition-colors" title="Snapshot current fluid state as baseline reference for deltas and ghost overlays">
+          Pin Baseline
+        </button>
+
+        <button id="btn-reset" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white transition-colors" title="Restore Normal 70 kg Physiology and clear IV infusions">
+          Reset
+        </button>
+
+        <button id="theme-toggle" type="button" aria-label="Toggle dark and light theme" title="Switch Dark / Light mode" class="w-8 h-8 rounded-lg flex items-center justify-center border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-white transition-colors">
+          <!-- Sun (shown in dark mode) -->
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <!-- Moon (shown in light mode) -->
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. TOP 6-KPI TELEMETRY STRIP ==================== -->
+  <section class="w-full max-w-7xl mx-auto px-4 sm:px-5 pt-3.5 shrink-0">
+    <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+      <div id="kpi-strip" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-[#e4e4e7]/80 dark:divide-borderDark/80">
+        <!-- Populated dynamically via JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. LIVE CLINICAL DIAGNOSTIC & SAFETY STRIP ==================== -->
+  <section class="w-full max-w-7xl mx-auto px-4 sm:px-5 pt-2.5 shrink-0">
+    <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div id="diagnostic-badges" class="flex flex-wrap items-center gap-1.5 shrink-0"></div>
+      <p id="diagnostic-summary" class="text-[11.5px] text-zinc-600 dark:text-zinc-300 leading-snug"></p>
+    </div>
+  </section>
+
+  <!-- ==================== 4. MAIN 12-COLUMN WORKSPACE ==================== -->
+  <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-5 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 min-w-0">
+
+    <!-- LEFT VISUALIZATION COLUMN (lg:col-span-8) -->
+    <div class="lg:col-span-8 min-w-0 min-h-0 space-y-4">
+
+      <!-- CARD 1: INTERACTIVE MICROVASCULAR & COMPARTMENT SCHEMATIC (SVG) -->
+      <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+        <div class="px-4 py-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <div class="flex items-center gap-2 min-w-0">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa]">Microvascular &amp; Compartment Schematic</h2>
+            <span id="svg-time-pill" class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-zinc-600 dark:text-zinc-400 tabular-nums">t = 4.0 h</span>
+          </div>
+          <span class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400">Click zone to inspect</span>
+        </div>
+
+        <div class="relative w-full h-48 sm:h-52 overflow-hidden select-none bg-zinc-50/40 dark:bg-obsidian/40">
+          <svg id="micro-svg" viewBox="0 0 880 206" preserveAspectRatio="xMidYMid meet" class="w-full h-full block" role="img" aria-label="Interactive ICF, ISF, endothelial glycocalyx, capillary, and lymphatic schematic"></svg>
+        </div>
+
+        <!-- 1-Line Compartment Inspector Strip -->
+        <div id="compartment-inspector" class="px-4 py-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/70 dark:bg-zinc-950/50 flex flex-wrap items-center justify-between gap-2 text-[11.5px] shrink-0">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ROW OF TWO SIDE-BY-SIDE LOCKED CANVASES -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0 min-w-0">
+
+        <!-- LEFT CANVAS: DARROW-YANNET FLUID COMPARTMENT DIAGRAM -->
+        <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+          <div class="px-3.5 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 shrink-0">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa] truncate">Darrow&ndash;Yannet Diagram</h2>
+            <span id="dy-ref-tag" class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 shrink-0">Ghost: Baseline</span>
+          </div>
+
+          <!-- STRICT LOCKED CANVAS WRAPPER -->
+          <div id="dy-wrap" class="relative w-full h-64 overflow-hidden cursor-crosshair">
+            <canvas id="dy-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+            <div id="dy-tooltip" class="pointer-events-none hidden absolute top-2.5 left-2.5 z-20 min-w-[164px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-950/95 px-2.5 py-2 shadow-lg backdrop-blur-sm text-[10.5px] font-mono"></div>
+          </div>
+        </section>
+
+        <!-- RIGHT CANVAS: REVISED STARLING CAPILLARY PROFILE -->
+        <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+          <div class="px-3.5 py-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa] truncate">Starling Capillary Profile</h2>
+            <div class="inline-flex rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[10px] font-mono shrink-0">
+              <button data-smode="revised" type="button" class="smode-btn px-2 py-0.5 rounded transition-colors">Revised (&pi;&#8337;)</button>
+              <button data-smode="classic" type="button" class="smode-btn px-2 py-0.5 rounded transition-colors">Classic (&pi;&#7522;)</button>
+            </div>
+          </div>
+
+          <!-- STRICT LOCKED CANVAS WRAPPER -->
+          <div id="starling-wrap" class="relative w-full h-64 overflow-hidden cursor-crosshair">
+            <canvas id="starling-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+            <div id="starling-tooltip" class="pointer-events-none hidden absolute top-2.5 right-2.5 z-20 min-w-[164px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-950/95 px-2.5 py-2 shadow-lg backdrop-blur-sm text-[10.5px] font-mono"></div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- CARD 3: RESUSCITATION & REDISTRIBUTION KINETICS CANVAS -->
+      <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+        <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa]">Resuscitation &amp; Redistribution Kinetics</h2>
+            <div id="kinetics-legend" class="hidden sm:flex items-center gap-2.5 text-[10px] font-mono text-zinc-500 dark:text-zinc-400"></div>
+          </div>
+
+          <div class="flex items-center gap-1.5 text-[10px] font-mono">
+            <!-- View Toggle -->
+            <div class="inline-flex rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5">
+              <button data-kview="volumes" type="button" class="kview-btn px-2 py-0.5 rounded transition-colors">&Delta;Volumes</button>
+              <button data-kview="chemistry" type="button" class="kview-btn px-2 py-0.5 rounded transition-colors">Na&sup1; &middot; Osm &middot; Hct</button>
+            </div>
+            <!-- Horizon Toggle -->
+            <div class="inline-flex rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5">
+              <button data-horizon="240" type="button" class="khor-btn px-2 py-0.5 rounded transition-colors">4 h</button>
+              <button data-horizon="1440" type="button" class="khor-btn px-2 py-0.5 rounded transition-colors">24 h</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STRICT LOCKED CANVAS WRAPPER -->
+        <div id="kinetics-wrap" class="relative w-full h-64 sm:h-72 overflow-hidden cursor-crosshair">
+          <canvas id="kinetics-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+          <div id="kinetics-tooltip" class="pointer-events-none hidden absolute top-3 left-3 z-20 min-w-[186px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-950/95 px-3 py-2 shadow-lg backdrop-blur-sm text-[10.5px] font-mono"></div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- RIGHT CONTROL PANEL (lg:col-span-4) -->
+    <aside class="lg:col-span-4 min-w-0 min-h-[480px] lg:max-h-[calc(100vh-204px)] rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden">
+      <!-- 4-Tab Switcher -->
+      <div class="p-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 shrink-0">
+        <div class="grid grid-cols-4 rounded-lg bg-zinc-100/90 dark:bg-obsidian p-0.5 gap-0.5 border border-[#e4e4e7]/80 dark:border-borderDark/80">
+          <button data-tab="pathologies" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors">Pathologies</button>
+          <button data-tab="resuscitation" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center gap-1">
+            <span>Fluids</span>
+            <span id="tab-fluid-badge" class="hidden font-mono text-[9.5px] px-1 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300">0</span>
+          </button>
+          <button data-tab="parameters" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors">Parameters</button>
+          <button data-tab="experiments" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors">Challenges</button>
+        </div>
+      </div>
+
+      <!-- Scrollable Tab Body -->
+      <div class="flex-1 overflow-y-auto p-3 min-h-0">
+        <div id="tab-pathologies" class="space-y-1.5"></div>
+        <div id="tab-resuscitation" class="hidden space-y-3"></div>
+        <div id="tab-parameters" class="hidden space-y-3.5"></div>
+        <div id="tab-experiments" class="hidden space-y-3"></div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ==================== 5. MINIMAL FOOTER ==================== -->
+  <footer class="w-full border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-white/70 dark:bg-obsidian/90 shrink-0">
+    <div class="w-full max-w-7xl mx-auto px-4 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+      <span class="font-medium text-[#09090b] dark:text-[#fafafa]">MedLab &middot; FluidSim</span>
+      <span>Mechanistic Darrow-Yannet, Michel-Weinbaum Revised Starling &amp; IV resuscitation simulator for educational study only.</span>
+    </div>
+  </footer>
+
+  <!-- ==================== MECHANISTIC FLUID ENGINE & UI CONTROLLER ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    /* =========================================================================
+       1. NUMERIC HELPERS & BIOPHYSICAL CONSTANTS
+       ========================================================================= */
+    const clamp = (v, lo, hi) => (Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo);
+
+    /**
+     * Albumin-weighted Landis-Pappenheimer oncotic pressure equation (mmHg).
+     * Inputs in g/L; converted internally to g/dL.
+     * Baseline: Alb 42 g/L, Glob 26 g/L -> C_eq = 6.828 g/dL -> pi_p = 24.66 mmHg.
+     */
+    function computeOncoticPressure(alb_gL, glob_gL) {
+      const alb_gdL = Math.max(0, alb_gL) / 10.0;
+      const glob_gdL = Math.max(0, glob_gL) / 10.0;
+      const cEq = 1.18 * alb_gdL + 0.72 * glob_gdL;
+      return clamp(2.1 * cEq + 0.16 * cEq * cEq + 0.009 * cEq * cEq * cEq, 0, 75);
+    }
+
+    /**
+     * Guyton's nonlinear interstitial hydrostatic pressure P_i(V_ISF) curve (mmHg).
+     * Baseline V_ISF0 (11.0 L @ 70 kg) -> P_i = -1.5 mmHg.
+     */
+    function computePi(vISF, vISF0, bwScale) {
+      const dV = (vISF - vISF0) / Math.max(0.5, bwScale);
+      if (dV < 0) {
+        // Dehydration: drops smoothly from -1.5 toward -6.0 mmHg
+        return -1.5 - 4.5 * (1 - Math.exp(0.55 * dV));
+      }
+      if (dV <= 2.5) {
+        // Pre-edema steep compliance safety factor: -1.5 -> +1.8 mmHg
+        return -1.5 + 3.3 * (dV / 2.5);
+      }
+      // Overt pitting edema high-compliance plateau (+0.22 mmHg/L asymptotically up to +6.0 mmHg)
+      return 1.8 + 4.2 * Math.tanh(((dV - 2.5) * 0.22) / 4.2);
+    }
+
+    /**
+     * Lymphatic drainage J_lymph (mL/min): sigmoidal function of P_i.
+     * Calibrated so at baseline (P_i = -1.5 mmHg, lymphCap = 100%, 70 kg): J_lymph = 2.40 mL/min exact!
+     */
+    function computeLymphFlow(pI, lymphCapPct, bwScale) {
+      const cap = clamp(lymphCapPct / 100.0, 0.05, 2.5);
+      const raw = 0.35 + 28.45 / (1 + Math.exp(-0.85 * (pI - 1.511)));
+      return cap * bwScale * raw;
+    }
+
+    /**
+     * Glycocalyx coupling to reflection coefficient sigma & permeability multiplier Lp.
+     */
+    function coupledGlycocalyx(G) {
+      const g = clamp(G, 0.10, 1.0);
+      const sigma = clamp(0.33 + 0.59 * g, 0.35, 0.96); // 0.92 at G=1.0, 0.42 at G=0.15
+      const lpMult = clamp(1.0 + 4.4 * Math.pow(1 - g, 1.45), 0.5, 5.5); // 1.0x at G=1.0, ~4.5x at G=0.15
+      return { sigma, lpMult };
+    }
+
+    /* =========================================================================
+       2. DEFAULT PARAMETERS, PRESETS, FLUIDS & TEACHING EXPERIMENTS
+       ========================================================================= */
+    const NORMAL_PARAMS = {
+      weight: 70,           // kg (45–120)
+      glycocalyx: 100,      // % (10–100)
+      autoCoupleGlyc: true, // Auto-couple sigma & Lp to Glycocalyx G
+      lpManual: 1.0,        // Manual Lp multiplier (0.5–5.5x)
+      sigmaManual: 0.92,    // Manual reflection coefficient
+      lymphCap: 100,        // % (10–200)
+      pArt: 31.0,           // Baseline Arteriolar Capillary Pressure (mmHg)
+      cvp: 5.0,             // Central Venous Pressure (mmHg; P_ven0 = 7 + CVP = 12 mmHg)
+      albumin: 42,          // Initial Plasma Albumin (g/L)
+      waterBalance: 0.0,    // Initial Total Body Water shift (L, -6 to +6)
+      naBalance: 0.0,       // Initial Total Body Na+ shift (mmol, -600 to +600)
+      bloodLoss: 0.0,       // Acute Blood Loss at t=0 (L, 0 to 2.5)
+      glucose: 5.0,         // Serum Glucose (mmol/L, 4 to 45)
+      egfr: 100,            // Renal Function / eGFR (% of normal, 5 to 120)
+      adh: 100,             // ADH Activity (% of normal, 0 to 300)
+      adhClamped: false,    // Fixed inappropriate ADH (SIADH) or absent ADH (DI)
+      chronicDysnatremia: false
+    };
+
+    const PATHOLOGIES = [
+      {
+        id: 'normal',
+        name: 'Normal Physiology (70 kg)',
+        tag: 'Baseline',
+        desc: 'TBW 42 L (ICF 28, ISF 11, PV 3), Osm 285, intact glycocalyx, J_v = J_lymph = 2.4 mL/min.',
+        params: {}
+      },
+      {
+        id: 'hemorrhage',
+        name: 'Acute Hemorrhage (Class III)',
+        tag: '−1.5 L Blood',
+        desc: 'Acute 1.5 L blood loss lowers P_c -> transient transcapillary autotransfusion & falling Hct.',
+        params: { bloodLoss: 1.5, pArt: 24.0, cvp: 1.5, adh: 190 }
+      },
+      {
+        id: 'septic_shock',
+        name: 'Septic Shock (Capillary Leak)',
+        tag: 'G 25% · ↑↑Lp',
+        desc: 'Endothelial glycocalyx shedding (↓σ, ↑Lp): rapid albumin & fluid extravasation into ISF.',
+        params: { glycocalyx: 25, pArt: 28.0, cvp: 6.0, albumin: 28, adh: 170, egfr: 55 }
+      },
+      {
+        id: 'nephrotic',
+        name: 'Nephrotic Syndrome',
+        tag: 'Alb 16 g/L',
+        desc: 'Severe hypoalbuminemia slashes plasma π_p (~12 mmHg) -> widespread low-oncotic pitting edema.',
+        params: { albumin: 16, waterBalance: 2.8, naBalance: 380, adh: 130, egfr: 75 }
+      },
+      {
+        id: 'heart_failure',
+        name: 'Decompensated Heart Failure',
+        tag: 'CVP 22 mmHg',
+        desc: 'Elevated venous pressure raises P_c along entire capillary -> hydrostatic filtration overwhelms lymphatics.',
+        params: { cvp: 22.0, pArt: 32.0, waterBalance: 3.5, naBalance: 480, adh: 160, egfr: 55 }
+      },
+      {
+        id: 'siadh',
+        name: 'SIADH (Chronic Hyponatremia)',
+        tag: 'Na 118 · ODS',
+        desc: 'Fixed high ADH retains free water -> Na⁺ ~118 mmol/L, swollen ICF. Watch +8 mmol/L/24h ODS limit!',
+        params: { waterBalance: 5.2, naBalance: -160, adh: 260, adhClamped: true, chronicDysnatremia: true }
+      },
+      {
+        id: 'diabetes_insipidus',
+        name: 'Diabetes Insipidus / Dehydration',
+        tag: 'Na 156 · ↓ADH',
+        desc: 'Absent ADH (5%) causes severe free-water loss -> hypernatremia (~156 mmol/L) & shrunken ICF.',
+        params: { waterBalance: -4.2, naBalance: 0, adh: 5, adhClamped: true, chronicDysnatremia: true }
+      },
+      {
+        id: 'diarrhea',
+        name: 'Secretory Diarrhea',
+        tag: '−3.0 L Isotonic',
+        desc: 'Pure isotonic ECF depletion (−3.0 L, −420 mmol Na⁺): ECF contracts & Hct rises while ICF stays unchanged.',
+        params: { waterBalance: -3.0, naBalance: -420, pArt: 26.0, cvp: 2.0, adh: 190 }
+      },
+      {
+        id: 'dka',
+        name: 'DKA / Severe Hyperglycemia',
+        tag: 'Gluc 38 mmol',
+        desc: 'Hyperglycemia draws water out of ICF into ECF -> translocational hyponatremia with high effective Osm.',
+        params: { glucose: 38.0, waterBalance: -2.2, naBalance: -210, pArt: 27.0, cvp: 2.5, adh: 190 }
+      },
+      {
+        id: 'cirrhosis',
+        name: 'Cirrhosis & Portal Hypertension',
+        tag: '↓Alb · ↑Ven P',
+        desc: 'Dual hit: hypoalbuminemia (22 g/L) + high venous hydrostatic pressure (CVP 16) -> severe third-spacing.',
+        params: { albumin: 22, cvp: 16.0, glycocalyx: 72, waterBalance: 3.2, naBalance: 410, adh: 170, egfr: 65 }
+      },
+      {
+        id: 'lymphedema',
+        name: 'Lymphedema (Impaired Drainage)',
+        tag: 'Lymph 15%',
+        desc: 'Normal capillary filtration exceeds crippled lymphatic ceiling (15%) -> slow protein-rich ISF edema.',
+        params: { lymphCap: 15, waterBalance: 1.8, naBalance: 240 }
+      },
+      {
+        id: 'anaphylaxis',
+        name: 'Anaphylaxis (Acute Leak)',
+        tag: 'G 20% · ↑Hct',
+        desc: 'Sudden histamine-mediated endothelial permeability surge -> rapid plasma shift into ISF & hemoconcentration.',
+        params: { glycocalyx: 20, pArt: 25.0, cvp: 2.0, adh: 180 }
+      }
+    ];
+
+    const FLUID_CATALOG = [
+      { id: 'ns_500',   label: '0.9% NaCl',         volText: '500 mL',  meta: '308 mOsm · Na 154', volL: 0.5,  naConc: 154, alb_gL: 0,   hct: 0,    furo: 0, accent: 'cyan' },
+      { id: 'ns_1000',  label: '0.9% NaCl',         volText: '1000 mL', meta: '308 mOsm · Na 154', volL: 1.0,  naConc: 154, alb_gL: 0,   hct: 0,    furo: 0, accent: 'cyan' },
+      { id: 'rl_500',   label: "Ringer's Lactate",  volText: '500 mL',  meta: '273 mOsm · Na 130', volL: 0.5,  naConc: 130, alb_gL: 0,   hct: 0,    furo: 0, accent: 'teal' },
+      { id: 'rl_1000',  label: "Ringer's Lactate",  volText: '1000 mL', meta: '273 mOsm · Na 130', volL: 1.0,  naConc: 130, alb_gL: 0,   hct: 0,    furo: 0, accent: 'teal' },
+      { id: 'd5w_500',  label: 'D5W (Free Water)',  volText: '500 mL',  meta: '0 eff. mOsm · Na 0', volL: 0.5, naConc: 0,   alb_gL: 0,   hct: 0,    furo: 0, accent: 'emerald' },
+      { id: 'd5w_1000', label: 'D5W (Free Water)',  volText: '1000 mL', meta: '0 eff. mOsm · Na 0', volL: 1.0, naConc: 0,   alb_gL: 0,   hct: 0,    furo: 0, accent: 'emerald' },
+      { id: 'hs_100',   label: '3% Hypertonic NaCl',volText: '100 mL',  meta: '1026 mOsm · Na 513',volL: 0.1,  naConc: 513, alb_gL: 0,   hct: 0,    furo: 0, accent: 'rose' },
+      { id: 'hs_250',   label: '3% Hypertonic NaCl',volText: '250 mL',  meta: '1026 mOsm · Na 513',volL: 0.25, naConc: 513, alb_gL: 0,   hct: 0,    furo: 0, accent: 'rose' },
+      { id: 'alb5_250', label: '5% Albumin',        volText: '250 mL',  meta: '50 g/L Alb · Na 145',volL: 0.25,naConc: 145, alb_gL: 50,  hct: 0,    furo: 0, accent: 'violet' },
+      { id: 'alb5_500', label: '5% Albumin',        volText: '500 mL',  meta: '50 g/L Alb · Na 145',volL: 0.5, naConc: 145, alb_gL: 50,  hct: 0,    furo: 0, accent: 'violet' },
+      { id: 'alb20_100',label: '20% Albumin',       volText: '100 mL',  meta: '200 g/L Alb · Hyper',volL: 0.1, naConc: 130, alb_gL: 200, hct: 0,    furo: 0, accent: 'violet' },
+      { id: 'prbc_300', label: 'Packed RBCs (1 U)', volText: '300 mL',  meta: 'Hct 65% · Intravasc',volL: 0.3, naConc: 140, alb_gL: 15,  hct: 0.65, furo: 0, accent: 'rose' },
+      { id: 'furo_40',  label: 'Furosemide 40 mg',  volText: 'IV Bolus',meta: 'Loop Diuresis (NKCC2)',volL: 0,  naConc: 0,   alb_gL: 0,   hct: 0,    furo: 1, accent: 'amber' }
+    ];
+
+    const INFUSION_DURATIONS = [
+      { min: 15,  label: '15 min' },
+      { min: 30,  label: '30 min' },
+      { min: 60,  label: '60 min' },
+      { min: 240, label: '4 h' },
+      { min: 720, label: '12 h' }
+    ];
+
+    const EXPERIMENTS = [
+      {
+        id: 'ns_vs_d5w',
+        name: '1 L 0.9% NaCl vs 1 L D5W',
+        tag: 'Distribution',
+        desc: 'Compare why isotonic 0.9% NaCl expands Plasma ~3× more than free-water D5W (which distributes 2/3 into ICF).',
+        hasToggle: true
+      },
+      {
+        id: 'septic_colloid',
+        name: 'Colloid Failure in Septic Leak',
+        tag: 'Glycocalyx G 25%',
+        desc: '500 mL 5% Albumin in Septic Shock: shed glycocalyx lets albumin leak into ISF, collapsing intravascular retention.'
+      },
+      {
+        id: 'hemorrhage_auto',
+        name: 'Hemorrhage Autotransfusion',
+        tag: 'No Steady Reabs.',
+        desc: '−1.5 L Blood Loss with 0 fluids: watch transient transcapillary refill & Hct drop plateau as π_g rises toward π_i.'
+      },
+      {
+        id: 'siadh_ods',
+        name: 'ODS Hazard in Chronic SIADH',
+        tag: '3% NaCl Overcorr.',
+        desc: 'Chronic SIADH (Na 118) + 250 mL 3% NaCl over 30 min -> breaches the +8 mmol/L/24h ODS safety ceiling!'
+      },
+      {
+        id: 'nephrotic_mob',
+        name: 'Nephrotic Edema Mobilization',
+        tag: '20% Alb + Furo',
+        desc: 'Nephrotic Syndrome + 100 mL 20% Albumin + Furosemide 40 mg IV -> restores π_p and mobilizes ISF edema.'
+      }
+    ];
+
+    /* =========================================================================
+       3. APPLICATION STATE
+       ========================================================================= */
+    const state = {
+      presetId: 'normal',
+      params: { ...NORMAL_PARAMS },
+      infusionDurationMin: 30,
+      regimen: [],              // [{ uid, fluidId, durationMin }]
+      nextUid: 1,
+      // UI View Toggles
+      activeTab: 'pathologies',
+      selectedZone: 'glycocalyx', // 'icf' | 'isf' | 'glycocalyx' | 'capillary' | 'lymph'
+      starlingMode: 'revised',    // 'revised' | 'classic'
+      kineticsView: 'volumes',    // 'volumes' | 'chemistry'
+      horizonMin: 240,            // 240 (4h) | 1440 (24h)
+      // Hover & Baseline Pin
+      dyHoverComp: null,
+      starlingHoverX: null,
+      kineticsHoverIdx: null,
+      pinnedSim: null,
+      sim: null,
+      // Experiment state
+      expVariantNS: true,
+      experimentLog: []
+    };
+
+    /* =========================================================================
+       4. COUPLED MULTI-COMPARTMENT RK4 ODE ENGINE
+       ========================================================================= */
+    function runFluidSimulation(params, regimen, horizonMin) {
+      const p = params;
+      const bwScale = clamp(p.weight / 70.0, 0.55, 1.85);
+
+      // 1. Reference Normal Geometry for Patient Weight
+      const TBW0 = 0.60 * p.weight;         // 42.0 L @ 70 kg
+      const V_ICF0 = (2 / 3) * TBW0;        // 28.0 L
+      const V_ECF0 = (1 / 3) * TBW0;        // 14.0 L
+      const V_ISF0 = (11 / 14) * V_ECF0;    // 11.0 L
+      const V_PV0 = (3 / 14) * V_ECF0;      // 3.0 L
+      const V_RBC0 = 2.0 * bwScale;         // 2.0 L (Hct = 40.0%)
+
+      const OSM0 = 285.0;                   // 2*140 + 5.0
+      const N_ICF0 = OSM0 * V_ICF0;         // 7980 mOsm
+      const N_NA_ECF0 = 140.0 * V_ECF0;     // 1960 mmol
+
+      // Glycocalyx & Starling parameters
+      const G = clamp(p.glycocalyx / 100.0, 0.10, 1.0);
+      const coup = coupledGlycocalyx(G);
+      const sigma = p.autoCoupleGlyc ? coup.sigma : clamp(p.sigmaManual, 0.30, 0.96);
+      const lpMult = p.autoCoupleGlyc ? coup.lpMult : clamp(p.lpManual, 0.5, 5.5);
+
+      // Exact baseline calibration constants (ensures baseline J_v = J_lymph = 2.40 mL/min)
+      const pi_p_ref = computeOncoticPressure(42.0, 26.0); // 24.66 mmHg
+      const pi_i_ref = computeOncoticPressure(24.0, 16.5); // 11.61 mmHg
+      const pi_g_ref = 3.20;
+      const pVen0 = 12.0; // 7 + CVP(5)
+      const pArt0 = 31.0;
+      const pC_ref = pVen0 + (pArt0 - pVen0) / 2.55; // 19.451 mmHg
+      const pI_ref = -1.5;
+      const netDrive_ref = (pC_ref - pI_ref) - 0.92 * (pi_p_ref - pi_g_ref); // ~1.21 mmHg
+      const LpS0 = (2.40 * bwScale) / Math.max(0.4, netDrive_ref); // mL / (min * mmHg)
+      const LpS = LpS0 * lpMult;
+
+      // Exact baseline albumin mass balance (TER out = Lymphatic return in = 0.0576 g/min @ 70 kg)
+      const albLymph0 = (2.40 * bwScale / 1000.0) * 24.0; // g/min
+      const albConv0 = (2.40 * bwScale / 1000.0) * (1 - 0.92) * 42.0;
+      const PS_alb0 = Math.max(0.0005, (albLymph0 - albConv0) / (42.0 - 24.0));
+      const PS_alb = PS_alb0 * Math.pow(lpMult, 1.25);
+
+      // 2. Initialize t = 0 Patient State from Pathophysiology Parameters
+      // First apply waterBalance, naBalance, and hyperglycemia to ECF and equilibrate ICF<->ECF osmotically (Darrow-Yannet)
+      const N_Na_init = Math.max(400 * bwScale, N_NA_ECF0 + p.naBalance);
+      const TBW_init = clamp(TBW0 + p.waterBalance, 0.55 * TBW0, 1.55 * TBW0);
+      const gluEx = Math.max(0, p.glucose - 5.0);
+      // Total effective osmoles = N_ICF0 + 2 * N_Na_init + p.glucose * V_ECF
+      // Solve quadratic for exact osmotic equilibrium V_ECF_eq:
+      // Osm_eq = N_ICF0 / (TBW_init - V_ECF) = (2 * N_Na_init + p.glucose * V_ECF) / V_ECF
+      //Wait: (N_ICF0 + 2*N_Na_init) / TBW_init if glu constant; with glu*V_ECF:
+      // p.glucose * V_ECF^2 + (2*N_Na_init + N_ICF0 - p.glucose*TBW_init)*V_ECF - 2*N_Na_init*TBW_init = 0
+      const qa = p.glucose;
+      const qb = 2 * N_Na_init + N_ICF0 - p.glucose * TBW_init;
+      const qc = -2 * N_Na_init * TBW_init;
+      const disc = Math.max(0, qb * qb - 4 * qa * qc);
+      let V_ECF_init = qa > 1e-6 ? (-qb + Math.sqrt(disc)) / (2 * qa) : (TBW_init * (2 * N_Na_init)) / (2 * N_Na_init + N_ICF0);
+      V_ECF_init = clamp(V_ECF_init, 0.35 * V_ECF0, 2.2 * V_ECF0);
+      let V_ICF_init = clamp(TBW_init - V_ECF_init, 0.55 * V_ICF0, 1.5 * V_ICF0);
+
+      // Partition initial ECF into PV & ISF (excess edema predominantly loads ISF; deficit depletes both)
+      const dECF0 = V_ECF_init - V_ECF0;
+      let V_PV_init = V_PV0 + (dECF0 >= 0 ? dECF0 * 0.16 : dECF0 * 0.24);
+      let V_ISF_init = V_ECF_init - V_PV_init;
+      let V_RBC_init = V_RBC0;
+
+      // Apply acute blood loss immediately at t=0 (60% Plasma, 40% RBC)
+      const loss = clamp(p.bloodLoss, 0, Math.min(2.6, (V_PV_init + V_RBC_init) * 0.58));
+      const pvLoss = loss * 0.60;
+      const rbcLoss = loss * 0.40;
+      const naBeforeLoss = N_Na_init / Math.max(1, V_ECF_init);
+      V_PV_init = Math.max(0.8 * bwScale, V_PV_init - pvLoss);
+      V_RBC_init = Math.max(0.5 * bwScale, V_RBC_init - rbcLoss);
+      let N_Na_ECF = Math.max(300 * bwScale, N_Na_init - pvLoss * naBeforeLoss);
+
+      // Protein masses (grams)
+      const albRatio = clamp(p.albumin / 42.0, 0.20, 1.5);
+      let m_alb_p = p.albumin * V_PV_init;
+      let m_alb_i = (24.0 * albRatio) * V_ISF_init;
+      const m_glob_p = 26.0 * V_PV_init;
+      const m_glob_i = 16.5 * V_ISF_init;
+
+      // Initial subglycocalyx oncotic pressure pi_g
+      const pi_i_init = computeOncoticPressure(m_alb_i / Math.max(1, V_ISF_init), m_glob_i / Math.max(1, V_ISF_init));
+      let pi_g = clamp(pi_i_init * ((1 - G) * 0.88 + G * 0.276), 1.0, pi_i_init);
+
+      // Initial Furosemide impulse & Urine output accumulator
+      let furoLevel = 0;
+      for (const item of regimen) {
+        const fl = FLUID_CATALOG.find(f => f.id === item.fluidId);
+        if (fl && fl.furo > 0) furoLevel += fl.furo;
+      }
+
+      // Compute total infused volumes/solutes for summary & partitioning
+      let totalInfVolL = 0, totalInfNa = 0, totalInfAlb = 0, maxInfDur = 0;
+      const fluidSpecs = regimen.map(item => {
+        const fl = FLUID_CATALOG.find(f => f.id === item.fluidId);
+        if (!fl) return null;
+        if (fl.volL > 0) {
+          totalInfVolL += fl.volL;
+          totalInfNa += fl.volL * (1 - fl.hct) * fl.naConc;
+          totalInfAlb += fl.volL * (1 - fl.hct) * fl.alb_gL;
+          if (item.durationMin > maxInfDur) maxInfDur = item.durationMin;
+        }
+        return { fl, dur: Math.max(1, item.durationMin) };
+      }).filter(Boolean);
+
+      // Helper: instantaneous IV infusion rates at time t (in L/min, mmol/min, g/min)
+      function getInfusionRates(t) {
+        let rPV = 0, rRBC = 0, rNa = 0, rAlb = 0;
+        for (let i = 0; i < fluidSpecs.length; i++) {
+          const { fl, dur } = fluidSpecs[i];
+          if (fl.volL <= 0 || t > dur) continue;
+          const vRate = fl.volL / dur; // L/min
+          const plRate = vRate * (1 - fl.hct);
+          rPV += plRate;
+          rRBC += vRate * fl.hct;
+          rNa += plRate * fl.naConc;
+          rAlb += plRate * fl.alb_gL;
+        }
+        return { rPV, rRBC, rNa, rAlb };
+      }
+
+      // Helper: evaluate all instantaneous Starling & compartment observables
+      function evalState(st, t) {
+        const vICF = Math.max(8, st.vICF);
+        const vISF = Math.max(3, st.vISF);
+        const vPV = Math.max(0.7, st.vPV);
+        const vRBC = Math.max(0.4, st.vRBC);
+        const vECF = vISF + vPV;
+        const vBV = vPV + vRBC;
+        const hct = clamp((vRBC / vBV) * 100, 10, 75);
+        const hgb = hct / 3.0;
+
+        // Effective Osmolalities & Measured/Corrected Serum Na+
+        const naConc = clamp(st.nNa / vECF, 95, 190);
+        const osmECF = 2.0 * naConc + p.glucose;
+        const osmICF = N_ICF0 / vICF;
+        // Corrected Na+ (Katz 1.6 mmol/L per 5.5 mmol/L glucose above 5.5)
+        const corrNa = p.glucose > 5.5 ? naConc + 1.6 * ((p.glucose - 5.5) / 5.5) : naConc;
+
+        // Protein concentrations & Landis-Pappenheimer Oncotic Pressures
+        const albP = clamp(st.mAlbP / vPV, 4, 85);
+        const globP = clamp(m_glob_p / vPV, 6, 55);
+        const albI = clamp(st.mAlbI / vISF, 2, 65);
+        const globI = clamp(m_glob_i / vISF, 4, 45);
+        const piP = computeOncoticPressure(albP, globP);
+        const piI = computeOncoticPressure(albI, globI);
+        const piG = clamp(st.piG, 0.8, Math.max(piI * 1.15, piP));
+
+        // Dynamic Vascular Pressures coupled to Plasma Volume deviation
+        const dPVRel = clamp((vPV - V_PV0) / V_PV0, -0.55, 1.10);
+        const pVen = clamp((7.0 + p.cvp) + 9.5 * dPVRel, 4.0, 38.0);
+        const pArt = clamp(p.pArt + 11.0 * dPVRel, 14.0, 48.0);
+        const pC = pVen + (pArt - pVen) / 2.55; // Weighted mean capillary hydrostatic pressure
+        const pI = computePi(vISF, V_ISF0, bwScale);
+
+        // Revised Starling Net Filtration J_v (mL/min)
+        const netDrive = (pC - pI) - sigma * (piP - piG);
+        const Jv_mL = LpS * netDrive;
+        const Jv_L = Jv_mL / 1000.0;
+
+        // Classic Starling Comparison J_v_classic (mL/min)
+        const netDriveClassic = (pC - pI) - sigma * (piP - piI);
+        const JvClassic_mL = LpS * netDriveClassic;
+
+        // Lymphatic Drainage (mL/min)
+        const Jlymph_mL = computeLymphFlow(pI, p.lymphCap, bwScale);
+        const Jlymph_L = Jlymph_mL / 1000.0;
+
+        // Subglycocalyx steady-state target pi_g* (Michel-Weinbaum cleft washout vs back-diffusion)
+        let piG_target;
+        if (Jv_mL > 0.05) {
+          const washFrac = 0.14 + 0.86 * Math.exp(-Jv_mL / (1.30 * bwScale));
+          piG_target = piI * ((1 - G) * 0.88 + G * washFrac);
+        } else {
+          // Negative or zero filtration: proteins diffuse backward from ISF into subglycocalyx cleft -> kills steady reabsorption!
+          piG_target = piI;
+        }
+        const tauG = Jv_mL <= 0 ? 15.0 : 10.0; // ~15 min autotransfusion decay constant
+        const dPiG = (piG_target - piG) / tauG;
+
+        // Transcellular Osmotic Water Flux J_osm (L/min, positive = ICF -> ECF when Osm_ECF > Osm_ICF)
+        const kOsm = 0.016 * bwScale; // ~6 min equilibration time constant
+        const J_osm_L = kOsm * (osmECF - osmICF);
+
+        // Albumin Fluxes (g/min)
+        const albOutConv = Jv_L > 0 ? Jv_L * (1 - sigma) * albP : 0;
+        const albOutDiff = PS_alb * (albP - albI);
+        const albReturnLymph = Jlymph_L * albI;
+        const netAlbToISF = albOutConv + albOutDiff - albReturnLymph;
+
+        // Renal Excretion Q_u (L/min) & Natriuresis (mmol/min)
+        // Only net excess/deficit excretion beyond matched basal intake so Normal baseline stays rock-solid flat!
+        const renFrac = clamp(p.egfr / 100.0, 0.05, 1.35);
+        // Dynamic ADH modulation (unless clamped in SIADH/DI)
+        let effADH = p.adh / 100.0;
+        if (!p.adhClamped) {
+          const osmADH = clamp(1.0 + (osmECF - 285.0) * 0.14, 0.05, 3.5);
+          const volADH = dPVRel < -0.05 ? Math.min(1.8, -dPVRel * 4.0) : (dPVRel > 0.05 ? -Math.min(0.65, dPVRel * 1.8) : 0);
+          effADH = clamp(effADH * osmADH + volADH, 0.04, 3.8);
+        }
+
+        // 1) Volume-driven pressure natriuresis (excretes excess PV/ECF slowly)
+        const pvExcess = Math.max(0, vPV - V_PV0);
+        const qVol_L = renFrac * 0.0085 * pvExcess; // ~4.2 mL/min per +0.5 L PV excess
+
+        // 2) Free-water aquaresis when ADH is suppressed (D5W / Diabetes Insipidus)
+        const qFreeWater_L = effADH < 0.75 ? renFrac * bwScale * 0.0042 * Math.pow((0.75 - effADH) / 0.75, 1.35) : 0;
+
+        // 3) Loop Diuretic (Furosemide) brisk natriuresis & diuresis
+        const qFuro_L = renFrac * bwScale * 0.0082 * st.furo;
+
+        const qUrine_L = Math.max(0, qVol_L + qFreeWater_L + qFuro_L);
+        const uNaConc = qUrine_L > 1e-7
+          ? clamp((qVol_L * naConc * 0.88 + qFreeWater_L * 18.0 + qFuro_L * 92.0) / qUrine_L, 12, 160)
+          : 0;
+        const naExcr = qUrine_L * uNaConc;
+
+        // Infusion rates at time t
+        const inf = getInfusionRates(t);
+
+        return {
+          vICF, vISF, vPV, vRBC, vECF, vBV, hct, hgb,
+          naConc, corrNa, osmECF, osmICF,
+          albP, globP, albI, piP, piI, piG,
+          pArt, pVen, pC, pI, netDrive, Jv_mL, JvClassic_mL, Jlymph_mL,
+          J_osm_L, qUrine_L, uNaConc, effADH,
+          // Derivatives
+          d_vICF: -J_osm_L,
+          d_vISF: Jv_L - Jlymph_L + J_osm_L,
+          d_vPV: inf.rPV - Jv_L + Jlymph_L - qUrine_L,
+          d_vRBC: inf.rRBC,
+          d_nNa: inf.rNa - naExcr,
+          d_mAlbP: inf.rAlb - netAlbToISF,
+          d_mAlbI: netAlbToISF,
+          d_piG: dPiG,
+          d_vUrine: qUrine_L,
+          d_furo: -st.furo / 95.0 // ~66 min half-life loop diuretic effect
+        };
+      }
+
+      // 3. RK4 Integration across [0, horizonMin]
+      const dt = horizonMin <= 240 ? 0.5 : 2.0;
+      const nSteps = Math.round(horizonMin / dt);
+      const recordEvery = Math.max(1, Math.round(nSteps / 240));
+
+      let st = {
+        vICF: V_ICF_init,
+        vISF: V_ISF_init,
+        vPV: V_PV_init,
+        vRBC: V_RBC_init,
+        nNa: N_Na_ECF,
+        mAlbP: m_alb_p,
+        mAlbI: m_alb_i,
+        piG: pi_g,
+        vUrine: 0,
+        furo: furoLevel
+      };
+
+      const series = {
+        t: [], vICF: [], vISF: [], vPV: [], vUrine: [],
+        dICF: [], dISF: [], dPV: [],
+        na: [], corrNa: [], osm: [], hct: [],
+        jv: [], jlymph: [], piG: [], piP: [], albP: []
+      };
+
+      const pushSnap = (obs, tVal) => {
+        series.t.push(tVal);
+        series.vICF.push(obs.vICF);
+        series.vISF.push(obs.vISF);
+        series.vPV.push(obs.vPV);
+        series.vUrine.push(st.vUrine);
+        series.dICF.push(obs.vICF - V_ICF_init);
+        series.dISF.push(obs.vISF - V_ISF_init);
+        series.dPV.push(obs.vPV - V_PV_init);
+        series.na.push(obs.naConc);
+        series.corrNa.push(obs.corrNa);
+        series.osm.push(obs.osmECF);
+        series.hct.push(obs.hct);
+        series.jv.push(obs.Jv_mL);
+        series.jlymph.push(obs.Jlymph_mL);
+        series.piG.push(obs.piG);
+        series.piP.push(obs.piP);
+        series.albP.push(obs.albP);
+      };
+
+      const initialObs = evalState(st, 0);
+      pushSnap(initialObs, 0);
+
+      const stateKeys = ['vICF', 'vISF', 'vPV', 'vRBC', 'nNa', 'mAlbP', 'mAlbI', 'piG', 'vUrine', 'furo'];
+      const derivMap = {
+        vICF: 'd_vICF', vISF: 'd_vISF', vPV: 'd_vPV', vRBC: 'd_vRBC',
+        nNa: 'd_nNa', mAlbP: 'd_mAlbP', mAlbI: 'd_mAlbI', piG: 'd_piG',
+        vUrine: 'd_vUrine', furo: 'd_furo'
+      };
+
+      const addScaled = (base, obs, sc) => {
+        const out = {};
+        for (let i = 0; i < stateKeys.length; i++) {
+          const k = stateKeys[i];
+          out[k] = Math.max(k === 'piG' ? 0.5 : 0, base[k] + obs[derivMap[k]] * sc);
+        }
+        return out;
+      };
+
+      for (let step = 1; step <= nSteps; step++) {
+        const t0 = (step - 1) * dt;
+        const k1 = evalState(st, t0);
+        const k2 = evalState(addScaled(st, k1, 0.5 * dt), t0 + 0.5 * dt);
+        const k3 = evalState(addScaled(st, k2, 0.5 * dt), t0 + 0.5 * dt);
+        const k4 = evalState(addScaled(st, k3, dt), t0 + dt);
+
+        const next = {};
+        for (let i = 0; i < stateKeys.length; i++) {
+          const k = stateKeys[i];
+          const dk = derivMap[k];
+          const val = st[k] + (dt / 6.0) * (k1[dk] + 2 * k2[dk] + 2 * k3[dk] + k4[dk]);
+          next[k] = Number.isFinite(val) ? Math.max(k === 'piG' ? 0.5 : 0, val) : st[k];
+        }
+        next.vICF = clamp(next.vICF, 10, 60);
+        next.vISF = clamp(next.vISF, 3.5, 40);
+        next.vPV = clamp(next.vPV, 0.8, 12);
+        st = next;
+
+        if (step % recordEvery === 0 || step === nSteps) {
+          pushSnap(evalState(st, step * dt), step * dt);
+        }
+      }
+
+      const finalObs = evalState(st, horizonMin);
+
+      // Compute 24h projected delta Na+ rate (mmol/L per 24h)
+      const deltaNaTotal = finalObs.naConc - initialObs.naConc;
+      const na24hRate = horizonMin >= 1440 ? deltaNaTotal : deltaNaTotal * Math.min(3.0, 1440 / horizonMin);
+
+      // Compute Infused Fluid Partitioning % (when fluids were infused)
+      let partPV = 0, partISF = 0, partICF = 0, partUrine = 0;
+      if (totalInfVolL > 0.01) {
+        const dPV = Math.max(0, finalObs.vPV - V_PV_init + (finalObs.vRBC - V_RBC_init));
+        const dISF = Math.max(0, finalObs.vISF - V_ISF_init);
+        const dICF = Math.max(0, finalObs.vICF - V_ICF_init);
+        const dU = Math.max(0, st.vUrine);
+        const sumPos = Math.max(0.01, dPV + dISF + dICF + dU);
+        partPV = (dPV / sumPos) * 100;
+        partISF = (dISF / sumPos) * 100;
+        partICF = (dICF / sumPos) * 100;
+        partUrine = (dU / sumPos) * 100;
+      }
+
+      return {
+        horizonMin, bwScale,
+        baselineRef: { V_ICF0, V_ISF0, V_PV0, V_RBC0, OSM0 },
+        initObs: initialObs,
+        finalObs,
+        starlingMeta: { G, sigma, lpMult, LpS },
+        infusionMeta: { totalInfVolL, totalInfNa, totalInfAlb, maxInfDur, partPV, partISF, partICF, partUrine },
+        deltaNaTotal,
+        na24hRate,
+        series
+      };
+    }
+
+    function recompute() {
+      try {
+        state.sim = runFluidSimulation(state.params, state.regimen, state.horizonMin);
+        renderKPIStrip();
+        renderDiagnosticStrip();
+        renderMicroSchematic();
+        renderCompartmentInspector();
+        renderInfusionPartitionBar();
+        drawDarrowYannet();
+        drawStarlingProfile();
+        drawKineticsChart();
+      } catch (err) {
+        console.error('FluidSim engine error:', err);
+      }
+    }
+
+    /* =========================================================================
+       5. KPI TELEMETRY STRIP & CLINICAL DIAGNOSTICS
+       ========================================================================= */
+    function formatDeltaBadge(curr, ref, dec = 2, unit = '') {
+      if (!Number.isFinite(curr) || !Number.isFinite(ref)) return '';
+      const diff = curr - ref;
+      const eps = dec === 0 ? 0.5 : (dec === 1 ? 0.05 : 0.015);
+      if (Math.abs(diff) < eps) return '<span class="font-mono text-[9.5px] text-zinc-400">&mdash;</span>';
+      const sign = diff > 0 ? '+' : '';
+      const cls = diff > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-sky-600 dark:text-sky-400';
+      return `<span class="font-mono text-[9.5px] tabular-nums ${cls}">${sign}${diff.toFixed(dec)}${unit}</span>`;
+    }
+
+    function renderKPIStrip() {
+      const sim = state.sim;
+      if (!sim) return;
+      const f = sim.finalObs;
+      const b = sim.baselineRef;
+      const refF = state.pinnedSim ? state.pinnedSim.finalObs : null;
+
+      const dISF_norm = f.vISF - b.V_ISF0;
+      const dICF_pct = ((f.vICF - b.V_ICF0) / b.V_ICF0) * 100;
+      const netEdemaRate = f.Jv_mL - f.Jlymph_mL;
+
+      const tiles = [
+        {
+          label: 'Plasma Vol (PV)',
+          delta: refF ? formatDeltaBadge(f.vPV, refF.vPV, 2, 'L') : '',
+          val: `${f.vPV.toFixed(2)}`,
+          unit: 'L',
+          sub: `Blood Vol ${f.vBV.toFixed(2)} L`,
+          cls: f.vPV < b.V_PV0 * 0.82 ? 'text-rose-600 dark:text-rose-400' : 'text-sky-600 dark:text-sky-400'
+        },
+        {
+          label: 'ISF Volume',
+          delta: refF ? formatDeltaBadge(f.vISF, refF.vISF, 2, 'L') : '',
+          val: `${f.vISF.toFixed(2)}`,
+          unit: 'L',
+          sub: `Edema ${dISF_norm >= 0 ? '+' : ''}${dISF_norm.toFixed(2)} L · Pᵢ ${f.pI.toFixed(1)}`,
+          cls: dISF_norm > 2.2 ? 'text-amber-600 dark:text-amber-400' : 'text-[#09090b] dark:text-[#fafafa]'
+        },
+        {
+          label: 'ICF Volume',
+          delta: refF ? formatDeltaBadge(f.vICF, refF.vICF, 2, 'L') : '',
+          val: `${f.vICF.toFixed(2)}`,
+          unit: 'L',
+          sub: `Cell Δ ${dICF_pct >= 0 ? '+' : ''}${dICF_pct.toFixed(1)}%`,
+          cls: Math.abs(dICF_pct) > 6 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
+        },
+        {
+          label: 'Serum Na⁺ & Osm',
+          delta: refF ? formatDeltaBadge(f.naConc, refF.naConc, 1) : '',
+          val: `${f.naConc.toFixed(1)}`,
+          unit: 'mmol/L',
+          sub: `Osm ${Math.round(f.osmECF)} mOsm${state.params.glucose > 8 ? ' · cNa ' + f.corrNa.toFixed(0) : ''}`,
+          cls: (f.naConc < 134 || f.naConc > 146) ? 'text-rose-600 dark:text-rose-400' : 'text-tealLight dark:text-tealDark'
+        },
+        {
+          label: 'Starling Jᵥ / Lymph',
+          delta: refF ? formatDeltaBadge(f.Jv_mL, refF.Jv_mL, 1) : '',
+          val: `${f.Jv_mL >= 0 ? '+' : ''}${f.Jv_mL.toFixed(1)}`,
+          unit: `/ ${f.Jlymph_mL.toFixed(1)}`,
+          sub: `mL/m · Net ${netEdemaRate >= 0 ? '+' : ''}${netEdemaRate.toFixed(1)} mL/m`,
+          cls: netEdemaRate > 2.0 ? 'text-amber-600 dark:text-amber-400' : (f.Jv_mL < -0.5 ? 'text-emerald-600 dark:text-emerald-400' : 'text-[#09090b] dark:text-[#fafafa]')
+        },
+        {
+          label: 'Hct & Plasma πₚ',
+          delta: refF ? formatDeltaBadge(f.hct, refF.hct, 1, '%') : '',
+          val: `${f.hct.toFixed(1)}%`,
+          unit: `· ${f.piP.toFixed(1)}`,
+          sub: `Alb ${f.albP.toFixed(0)} g/L · π_g ${f.piG.toFixed(1)} mmHg`,
+          cls: (f.hct < 30 || f.hct > 49 || f.albP < 25) ? 'text-rose-600 dark:text-rose-400' : 'text-violet-700 dark:text-violet-300'
+        }
+      ];
+
+      document.getElementById('kpi-strip').innerHTML = tiles.map(t => `
+        <div class="px-3.5 py-2.5 flex flex-col justify-between min-w-0">
+          <div class="flex items-center justify-between gap-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span class="truncate">${t.label}</span>
+            ${t.delta}
+          </div>
+          <div class="flex items-baseline gap-1 mt-1 min-w-0">
+            <span class="font-mono text-[15px] font-semibold tabular-nums leading-tight truncate ${t.cls}">${t.val}</span>
+            <span class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 shrink-0">${t.unit}</span>
+          </div>
+          <div class="text-[9.5px] font-mono text-zinc-400 dark:text-zinc-500 mt-0.5 truncate tabular-nums">${t.sub}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderDiagnosticStrip() {
+      const sim = state.sim;
+      if (!sim) return;
+      const f = sim.finalObs;
+      const init = sim.initObs;
+      const b = sim.baselineRef;
+      const inf = sim.infusionMeta;
+
+      const badges = [];
+      const msgs = [];
+
+      // 1. ODS / Cerebral Edema Safety Checks
+      const naRise24 = sim.na24hRate;
+      const naDrop = init.naConc - f.naConc;
+      if (state.params.chronicDysnatremia && init.naConc < 130 && naRise24 > 8.0) {
+        badges.push({ text: `ODS HAZARD (+${naRise24.toFixed(1)} mmol/L/24h)`, lvl: 'rose' });
+        msgs.push(`Chronic hyponatremia overcorrection exceeds the +8 mmol/L/24h osmotic demyelination ceiling—slow hypertonic infusion or add D5W/DDAVP.`);
+      } else if (naDrop > 8.0 && !state.params.chronicDysnatremia) {
+        badges.push({ text: `CEREBRAL EDEMA RISK (−${naDrop.toFixed(1)} mmol/L)`, lvl: 'rose' });
+        msgs.push(`Acute serum Na⁺ drop drives rapid water entry into brain ICF (cell volume +${(((f.vICF - b.V_ICF0) / b.V_ICF0) * 100).toFixed(1)}%).`);
+      }
+
+      // 2. Volume & Starling State
+      const minJv = Math.min(...sim.series.jv);
+      if (minJv < -1.2 && state.params.bloodLoss > 0.3 && inf.totalInfVolL < 0.1) {
+        const refillL = f.vPV - init.vPV;
+        badges.push({ text: `Transient Autotransfusion (+${Math.round(refillL * 1000)} mL)`, lvl: 'emerald' });
+        msgs.push(`Dropped P_c triggered transient transcapillary refill (Hct ${init.hct.toFixed(1)}%→${f.hct.toFixed(1)}%) before back-diffusion raised π_g (${init.piG.toFixed(1)}→${f.piG.toFixed(1)} mmHg) per Revised Starling.`);
+      } else if (f.Jv_mL - f.Jlymph_mL > 1.8) {
+        badges.push({ text: 'Progressive Edema (Jᵥ > Lymph)', lvl: 'amber' });
+        msgs.push(`Capillary filtration (${f.Jv_mL.toFixed(1)} mL/min) exceeds lymphatic ceiling (${f.Jlymph_mL.toFixed(1)} mL/min), expanding ISF (${(f.vISF - b.V_ISF0 >= 0 ? '+' : '')}${(f.vISF - b.V_ISF0).toFixed(1)} L).`);
+      } else if (f.vPV < b.V_PV0 * 0.84) {
+        badges.push({ text: 'Intravascular Hypovolemia', lvl: 'rose' });
+      } else if (f.vISF - b.V_ISF0 > 2.4) {
+        badges.push({ text: `Overt ISF Edema (+${(f.vISF - b.V_ISF0).toFixed(1)} L)`, lvl: 'amber' });
+      }
+
+      // 3. Tonicity & Glycocalyx
+      if (state.params.glycocalyx < 45) {
+        badges.push({ text: `Glycocalyx Shed (G ${state.params.glycocalyx}% · σ ${sim.starlingMeta.sigma.toFixed(2)})`, lvl: 'rose' });
+      }
+      if (state.params.glucose > 15) {
+        badges.push({ text: `Translocational ↓Na⁺ (cNa ${f.corrNa.toFixed(0)})`, lvl: 'amber' });
+      }
+
+      // 4. IV Fluid Retention Efficiency
+      if (inf.totalInfVolL > 0.01) {
+        badges.push({ text: `IV Plasma Retention: ${Math.round(inf.partPV)}%`, lvl: inf.partPV >= 35 ? 'cyan' : 'amber' });
+        msgs.push(`Of ${(inf.totalInfVolL * 1000).toFixed(0)} mL infused, ${Math.round(inf.partPV)}% remains in Plasma, ${Math.round(inf.partISF)}% in ISF, ${Math.round(inf.partICF)}% in ICF, and ${Math.round(inf.partUrine)}% excreted.`);
+      }
+
+      if (badges.length === 0) {
+        badges.push({ text: 'Euvolemic · Isotonic · Starling Balanced', lvl: 'emerald' });
+      }
+      if (msgs.length === 0) {
+        msgs.push(`Steady-state Revised Starling filtration (Jᵥ ${f.Jv_mL.toFixed(1)} mL/min) matched by lymphatic return (${f.Jlymph_mL.toFixed(1)} mL/min); Osm ${Math.round(f.osmECF)} mOsm/kg.`);
+      }
+
+      const clsMap = {
+        emerald: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        cyan: 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300',
+        amber: 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+        rose: 'border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-400'
+      };
+      document.getElementById('diagnostic-badges').innerHTML = badges.map(b =>
+        `<span class="font-mono text-[10px] font-medium px-2 py-0.5 rounded-md border ${clsMap[b.lvl]}">${b.text}</span>`
+      ).join('');
+      document.getElementById('diagnostic-summary').textContent = msgs.join(' ');
+    }
+
+    /* =========================================================================
+       6. INTERACTIVE MICROVASCULAR & COMPARTMENT SCHEMATIC (SVG)
+       ========================================================================= */
+    function renderMicroSchematic() {
+      const svg = document.getElementById('micro-svg');
+      const sim = state.sim;
+      if (!svg || !sim) return;
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const useIdx = state.kineticsHoverIdx !== null ? clamp(state.kineticsHoverIdx, 0, sim.series.t.length - 1) : null;
+
+      // Get inspected point (either final state or scrubbed time point)
+      const f = sim.finalObs;
+      const tShown = useIdx !== null ? sim.series.t[useIdx] : sim.horizonMin;
+      const vICF = useIdx !== null ? sim.series.vICF[useIdx] : f.vICF;
+      const vISF = useIdx !== null ? sim.series.vISF[useIdx] : f.vISF;
+      const vPV = useIdx !== null ? sim.series.vPV[useIdx] : f.vPV;
+      const osm = useIdx !== null ? sim.series.osm[useIdx] : f.osmECF;
+      const jv = useIdx !== null ? sim.series.jv[useIdx] : f.Jv_mL;
+      const jlym = useIdx !== null ? sim.series.jlymph[useIdx] : f.Jlymph_mL;
+      const piG = useIdx !== null ? sim.series.piG[useIdx] : f.piG;
+      const piP = useIdx !== null ? sim.series.piP[useIdx] : f.piP;
+      const albP = useIdx !== null ? sim.series.albP[useIdx] : f.albP;
+
+      document.getElementById('svg-time-pill').textContent = tShown >= 60 ? `t = ${(tShown / 60).toFixed(1)} h` : `t = ${Math.round(tShown)} m`;
+
+      const G = sim.starlingMeta.G;
+      const b = sim.baselineRef;
+      const dICF_rel = clamp((vICF - b.V_ICF0) / b.V_ICF0, -0.25, 0.25);
+      const dISF_L = vISF - b.V_ISF0;
+
+      const bgCard = isDark ? '#141418' : '#ffffff';
+      const borderCol = isDark ? '#2e2e36' : '#d4d4d8';
+      const txtMain = isDark ? '#fafafa' : '#09090b';
+      const txtSub = isDark ? '#a1a1aa' : '#52525b';
+      const teal = isDark ? '#2dd4bf' : '#0f766e';
+      const cyan = isDark ? '#38bdf8' : '#0284c7';
+      const amber = isDark ? '#fbbf24' : '#d97706';
+      const emerald = isDark ? '#34d399' : '#059669';
+      const rose = isDark ? '#fb7185' : '#e11d48';
+      const violet = isDark ? '#a78bfa' : '#7c3aed';
+
+      // Glycocalyx color & cilia density
+      const glycCol = G > 0.75 ? teal : (G >= 0.40 ? amber : rose);
+      const ciliaCount = Math.max(3, Math.round(G * 13));
+      const ciliaLen = 6 + G * 12;
+      let ciliaSVG = '';
+      for (let i = 0; i < ciliaCount; i++) {
+        const cy = 42 + (i + 0.5) * (102 / ciliaCount);
+        ciliaSVG += `<path d="M 556 ${cy.toFixed(1)} Q ${(556 + ciliaLen * 0.55).toFixed(1)} ${(cy - 2.5).toFixed(1)}, ${(556 + ciliaLen).toFixed(1)} ${cy.toFixed(1)}" fill="none" stroke="${glycCol}" stroke-width="${G > 0.4 ? 1.8 : 1.3}" stroke-linecap="round" opacity="${G > 0.4 ? 0.9 : 0.75}" />`;
+      }
+
+      // ICF cell dynamic scaling
+      const cellR = 54 * (1 + dICF_rel * 0.55);
+
+      // ISF edema matrix opacity & water droplets
+      const isfAlpha = clamp(0.06 + Math.max(0, dISF_L) * 0.045, 0.05, 0.30).toFixed(3);
+      const dropCount = clamp(Math.round(4 + Math.max(0, dISF_L) * 3.5), 3, 22);
+      let dropsSVG = '';
+      for (let i = 0; i < dropCount; i++) {
+        const dx = 258 + ((i * 37) % 162);
+        const dy = 46 + ((i * 29) % 96);
+        dropsSVG += `<circle cx="${dx}" cy="${dy}" r="2.2" fill="${amber}" opacity="${(0.20 + Math.min(0.5, Math.max(0, dISF_L) * 0.08)).toFixed(2)}" />`;
+      }
+
+      // Zone highlight helper
+      const zStroke = (zone, defCol) => state.selectedZone === zone ? defCol : borderCol;
+      const zWidth = zone => state.selectedZone === zone ? 2.1 : 1.15;
+
+      // J_v arrow direction (positive = Capillary -> ISF, negative = Autotransfusion ISF -> Capillary)
+      const jvPos = jv >= 0;
+      const jvCol = jvPos ? (jv > jlym + 1.5 ? amber : rose) : emerald;
+      const jvSpeed = clamp(2.4 / Math.max(0.35, Math.abs(jv) / 2.4), 0.5, 3.2).toFixed(2) + 's';
+      const lySpeed = clamp(2.4 / Math.max(0.35, jlym / 2.4), 0.5, 3.4).toFixed(2) + 's';
+
+      // Osmotic shift indicator (J_osm at t=0 or subtle direction)
+      const osmDiff = f.osmECF - f.osmICF;
+      const osmArrowDir = Math.abs(osmDiff) < 0.4 ? 0 : (osmDiff > 0 ? 1 : -1); // 1: ICF->ISF, -1: ISF->ICF
+
+      svg.innerHTML = `
+        <defs>
+          <marker id="m-arr-jv" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto">
+            <path d="M 1 2 L 8 5 L 1 8 z" fill="${jvCol}" />
+          </marker>
+          <marker id="m-arr-ly" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto">
+            <path d="M 1 2 L 8 5 L 1 8 z" fill="${emerald}" />
+          </marker>
+          <marker id="m-arr-osm" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 1 2 L 8 5 L 1 8 z" fill="${teal}" />
+          </marker>
+        </defs>
+
+        <!-- ZONE 1: ICF CELL (Left) -->
+        <g data-zone="icf" class="cursor-pointer">
+          <rect x="18" y="18" width="184" height="148" rx="10" fill="${bgCard}" stroke="${zStroke('icf', emerald)}" stroke-width="${zWidth('icf')}" />
+          <text x="110" y="34" text-anchor="middle" fill="${emerald}" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600">INTRACELLULAR (ICF)</text>
+          <circle cx="110" cy="96" r="${cellR.toFixed(1)}" fill="${emerald}" fill-opacity="${isDark ? 0.14 : 0.10}" stroke="${emerald}" stroke-width="1.5" stroke-opacity="0.75" />
+          <text x="110" y="93" text-anchor="middle" fill="${txtMain}" font-family="JetBrains Mono, monospace" font-size="13" font-weight="600">${vICF.toFixed(1)} L</text>
+          <text x="110" y="109" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8.5">${Math.round(osm)} mOsm/kg</text>
+          <text x="110" y="156" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8">${dICF_rel >= 0 ? '+' : ''}${(dICF_rel * 100).toFixed(1)}% cell vol</text>
+        </g>
+
+        <!-- OSMOTIC FLUX ARROW (ICF <-> ISF) -->
+        <g class="pointer-events-none">
+          <line x1="204" y1="92" x2="240" y2="92" stroke="${teal}" stroke-width="1.5" marker-end="url(#m-arr-osm)" marker-start="url(#m-arr-osm)" opacity="0.85" />
+          <text x="222" y="82" text-anchor="middle" fill="${teal}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">J_osm</text>
+          <text x="222" y="106" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="7.5">${osmArrowDir === 0 ? 'Equil.' : (osmArrowDir > 0 ? 'Shrink' : 'Swell')}</text>
+        </g>
+
+        <!-- ZONE 2: ISF MATRIX (Center) -->
+        <g data-zone="isf" class="cursor-pointer">
+          <rect x="244" y="18" width="194" height="148" rx="10" fill="${bgCard}" stroke="${zStroke('isf', amber)}" stroke-width="${zWidth('isf')}" />
+          <rect x="246" y="20" width="190" height="144" rx="8" fill="${amber}" fill-opacity="${isfAlpha}" />
+          ${dropsSVG}
+          <text x="341" y="34" text-anchor="middle" fill="${amber}" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600">INTERSTITIUM (ISF)</text>
+          <text x="341" y="88" text-anchor="middle" fill="${txtMain}" font-family="JetBrains Mono, monospace" font-size="14" font-weight="600">${vISF.toFixed(1)} L</text>
+          <text x="341" y="105" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="9">Pᵢ ${f.pI.toFixed(1)} mmHg · πᵢ ${f.piI.toFixed(1)}</text>
+          <text x="341" y="156" text-anchor="middle" fill="${dISF_L > 2 ? amber : txtSub}" font-family="JetBrains Mono, monospace" font-size="8.5">ΔISF ${dISF_L >= 0 ? '+' : ''}${dISF_L.toFixed(2)} L</text>
+        </g>
+
+        <!-- ZONE 3: ENDOTHELIAL GLYCOCALYX & SUBGLYCOCALYX CLEFT (π_g) -->
+        <g data-zone="glycocalyx" class="cursor-pointer">
+          <rect x="476" y="18" width="114" height="148" rx="10" fill="${bgCard}" stroke="${zStroke('glycocalyx', glycCol)}" stroke-width="${zWidth('glycocalyx')}" />
+          <text x="533" y="32" text-anchor="middle" fill="${glycCol}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">GLYCOCALYX</text>
+          <!-- Endothelial Wall & Cleft -->
+          <rect x="536" y="40" width="18" height="44" rx="4" fill="${isDark ? '#27272a' : '#e4e4e7'}" stroke="${borderCol}" stroke-width="1" />
+          <rect x="536" y="100" width="18" height="44" rx="4" fill="${isDark ? '#27272a' : '#e4e4e7'}" stroke="${borderCol}" stroke-width="1" />
+          <!-- Subglycocalyx Cleft Box -->
+          <rect x="484" y="76" width="50" height="32" rx="5" fill="${violet}" fill-opacity="${isDark ? 0.16 : 0.11}" stroke="${violet}" stroke-width="1" />
+          <text x="509" y="90" text-anchor="middle" fill="${violet}" font-family="JetBrains Mono, monospace" font-size="8" font-weight="600">π_g</text>
+          <text x="509" y="102" text-anchor="middle" fill="${txtMain}" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="600">${piG.toFixed(1)}</text>
+          <!-- Brush Border Cilia -->
+          ${ciliaSVG}
+          <text x="533" y="157" text-anchor="middle" fill="${glycCol}" font-family="JetBrains Mono, monospace" font-size="8.5">G ${Math.round(G * 100)}% · σ ${sim.starlingMeta.sigma.toFixed(2)}</text>
+        </g>
+
+        <!-- STARLING J_v ARROW (Capillary <-> ISF across Glycocalyx) -->
+        <g class="pointer-events-none">
+          ${jvPos
+            ? `<line x1="636" y1="92" x2="444" y2="92" stroke="${jvCol}" stroke-width="2.1" class="svg-flux-anim" style="--flux-dur:${jvSpeed}" marker-end="url(#m-arr-jv)" />`
+            : `<line x1="444" y1="92" x2="636" y2="92" stroke="${jvCol}" stroke-width="2.1" class="svg-flux-anim" style="--flux-dur:${jvSpeed}" marker-end="url(#m-arr-jv)" />`
+          }
+          <rect x="580" y="64" width="60" height="20" rx="4" fill="${bgCard}" stroke="${jvCol}" stroke-width="0.9" />
+          <text x="610" y="77" text-anchor="middle" fill="${jvCol}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">Jᵥ ${jv >= 0 ? '+' : ''}${jv.toFixed(1)}</text>
+        </g>
+
+        <!-- ZONE 4: CAPILLARY LUMEN / PLASMA (Right) -->
+        <g data-zone="capillary" class="cursor-pointer">
+          <rect x="646" y="18" width="216" height="148" rx="10" fill="${bgCard}" stroke="${zStroke('capillary', cyan)}" stroke-width="${zWidth('capillary')}" />
+          <rect x="648" y="20" width="212" height="144" rx="8" fill="${cyan}" fill-opacity="${isDark ? 0.08 : 0.06}" />
+          <text x="754" y="34" text-anchor="middle" fill="${cyan}" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600">CAPILLARY LUMEN / PLASMA</text>
+          <text x="754" y="74" text-anchor="middle" fill="${txtMain}" font-family="JetBrains Mono, monospace" font-size="14" font-weight="600">PV ${vPV.toFixed(2)} L</text>
+          <text x="754" y="92" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="9">P_c ${f.pC.toFixed(1)} mmHg (Pₐ ${f.pArt.toFixed(0)} → Pᵥ ${f.pVen.toFixed(0)})</text>
+          <text x="754" y="110" text-anchor="middle" fill="${violet}" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600">πₚ ${piP.toFixed(1)} mmHg · Alb ${albP.toFixed(0)} g/L</text>
+          <text x="754" y="130" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8.5">Hct ${f.hct.toFixed(1)}% · BV ${f.vBV.toFixed(2)} L</text>
+          <text x="754" y="156" text-anchor="middle" fill="${cyan}" font-family="JetBrains Mono, monospace" font-size="8.5">Na⁺ ${f.naConc.toFixed(1)} mmol/L</text>
+        </g>
+
+        <!-- ZONE 5: LYMPHATIC DUCT LOOP (Bottom: ISF -> Plasma) -->
+        <g data-zone="lymph" class="cursor-pointer">
+          <path d="M 341 166 L 341 188 L 754 188 L 754 170" fill="none" stroke="${zStroke('lymph', emerald)}" stroke-width="${state.selectedZone === 'lymph' ? 5.5 : 4.0}" stroke-linecap="round" stroke-linejoin="round" opacity="0.35" />
+          <path d="M 341 166 L 341 188 L 754 188 L 754 170" fill="none" stroke="${emerald}" stroke-width="1.8" class="svg-flux-anim" style="--flux-dur:${lySpeed}" marker-end="url(#m-arr-ly)" />
+          <rect x="466" y="177" width="166" height="20" rx="5" fill="${bgCard}" stroke="${zStroke('lymph', emerald)}" stroke-width="${state.selectedZone === 'lymph' ? 1.5 : 1.0}" />
+          <text x="549" y="190" text-anchor="middle" fill="${emerald}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">LYMPH RETURN: ${jlym.toFixed(1)} mL/min (${state.params.lymphCap}%)</text>
+        </g>
+      `;
+    }
+
+    function renderCompartmentInspector() {
+      const el = document.getElementById('compartment-inspector');
+      const sim = state.sim;
+      if (!el || !sim) return;
+      const f = sim.finalObs;
+      const b = sim.baselineRef;
+      const m = sim.starlingMeta;
+
+      const info = {
+        icf: {
+          title: 'ICF Compartment',
+          col: 'text-emerald-600 dark:text-emerald-400',
+          stats: `Vol ${f.vICF.toFixed(2)} L (Δ ${(f.vICF - b.V_ICF0 >= 0 ? '+' : '')}${(f.vICF - b.V_ICF0).toFixed(2)} L) · Osm ${Math.round(f.osmICF)} mOsm/kg`,
+          note: 'Driven solely by effective ECF osmolarity gradients across water-permeable cell membranes.'
+        },
+        isf: {
+          title: 'Interstitial Matrix (ISF)',
+          col: 'text-amber-600 dark:text-amber-400',
+          stats: `Vol ${f.vISF.toFixed(2)} L (Δ ${(f.vISF - b.V_ISF0 >= 0 ? '+' : '')}${(f.vISF - b.V_ISF0).toFixed(2)} L) · Pᵢ ${f.pI.toFixed(1)} mmHg · Alb ${f.albI.toFixed(1)} g/L (πᵢ ${f.piI.toFixed(1)})`,
+          note: 'Guyton compliance curve resists early edema (+3.3 mmHg over first 2.5 L), then yields in overt pitting edema.'
+        },
+        glycocalyx: {
+          title: 'Endothelial Glycocalyx & Cleft',
+          col: 'text-violet-700 dark:text-violet-300',
+          stats: `Integrity G ${Math.round(m.G * 100)}% · σ ${m.sigma.toFixed(2)} · Lp ${m.lpMult.toFixed(2)}× · π_g ${f.piG.toFixed(1)} vs πᵢ ${f.piI.toFixed(1)} mmHg`,
+          note: 'Michel-Weinbaum barrier: intact cleft washout holds π_g low (~3.2 mmHg), opposing capillary filtration.'
+        },
+        capillary: {
+          title: 'Capillary Lumen & Plasma',
+          col: 'text-sky-600 dark:text-sky-400',
+          stats: `PV ${f.vPV.toFixed(2)} L · BV ${f.vBV.toFixed(2)} L · Hct ${f.hct.toFixed(1)}% · Mean P_c ${f.pC.toFixed(1)} mmHg · πₚ ${f.piP.toFixed(1)} mmHg`,
+          note: 'Effective Starling drive = (P_c − Pᵢ) − σ(πₚ − π_g) = ' + (f.netDrive >= 0 ? '+' : '') + f.netDrive.toFixed(2) + ' mmHg.'
+        },
+        lymph: {
+          title: 'Lymphatic Drainage System',
+          col: 'text-emerald-600 dark:text-emerald-400',
+          stats: `Flow ${f.Jlymph_mL.toFixed(1)} mL/min · Capacity ${state.params.lymphCap}% · Net Edema Rate ${(f.Jv_mL - f.Jlymph_mL >= 0 ? '+' : '')}${(f.Jv_mL - f.Jlymph_mL).toFixed(1)} mL/min`,
+          note: 'Returns filtered water & escaped interstitial albumin back to central venous plasma; saturates at high Pᵢ.'
+        }
+      }[state.selectedZone] || {};
+
+      el.innerHTML = `
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+          <span class="font-semibold ${info.col}">${info.title}</span>
+          <span class="font-mono text-[11px] text-zinc-700 dark:text-zinc-200 tabular-nums">${info.stats}</span>
+        </div>
+        <span class="text-[11px] text-zinc-500 dark:text-zinc-400">${info.note}</span>
+      `;
+    }
+
+    /* =========================================================================
+       7. STRICT ZERO-STRETCH HI-DPI CANVAS RENDERERS (3 CANVASES)
+       ========================================================================= */
+    const dyWrap = document.getElementById('dy-wrap');
+    const dyCanvas = document.getElementById('dy-canvas');
+    const dyCtx = dyCanvas.getContext('2d');
+
+    const starlingWrap = document.getElementById('starling-wrap');
+    const starlingCanvas = document.getElementById('starling-canvas');
+    const starlingCtx = starlingCanvas.getContext('2d');
+
+    const kinWrap = document.getElementById('kinetics-wrap');
+    const kinCanvas = document.getElementById('kinetics-canvas');
+    const kinCtx = kinCanvas.getContext('2d');
+
+    // STRICT ANTI-STRETCH CANVAS RESIZE GUARD
+    function syncCanvas(wrapper, canvas) {
+      if (!wrapper || !canvas) return false;
+      const w = wrapper.clientWidth;
+      const h = wrapper.clientHeight;
+      if (w < 10 || h < 10 || w > 4000 || h > 2000) return false;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const tw = Math.round(w * dpr);
+      const th = Math.round(h * dpr);
+      if (canvas.width !== tw || canvas.height !== th) {
+        canvas.width = tw;
+        canvas.height = th;
+        return true;
+      }
+      return false;
+    }
+
+    function getPalette() {
+      const isDark = document.documentElement.classList.contains('dark');
+      return {
+        isDark,
+        bg: isDark ? '#0b0b0e' : '#ffffff',
+        grid: isDark ? 'rgba(63, 63, 70, 0.35)' : '#e4e4e7',
+        gridFaint: isDark ? 'rgba(63, 63, 70, 0.22)' : '#f4f4f5',
+        axis: isDark ? '#3f3f46' : '#a1a1aa',
+        tick: '#71717a',
+        label: isDark ? '#a1a1aa' : '#52525b',
+        teal: isDark ? '#2dd4bf' : '#0f766e',
+        cyan: isDark ? '#38bdf8' : '#0284c7',
+        cyanRGB: isDark ? '56, 189, 248' : '2, 132, 199',
+        amber: isDark ? '#fbbf24' : '#d97706',
+        amberRGB: isDark ? '251, 191, 36' : '217, 119, 6',
+        emerald: isDark ? '#34d399' : '#059669',
+        emeraldRGB: isDark ? '52, 211, 153' : '5, 150, 105',
+        rose: isDark ? '#fb7185' : '#e11d48',
+        roseRGB: isDark ? '251, 113, 133' : '225, 29, 72',
+        violet: isDark ? '#a78bfa' : '#7c3aed',
+        ghost: isDark ? 'rgba(212, 212, 216, 0.52)' : 'rgba(63, 63, 70, 0.48)',
+        dotCore: isDark ? '#ffffff' : '#09090b'
+      };
+    }
+
+    /* --- A. DARROW-YANNET FLUID COMPARTMENT DIAGRAM --- */
+    function drawDarrowYannet() {
+      if (!dyCanvas.width || !dyCanvas.height || !state.sim) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = dyCanvas.width / dpr;
+      const H = dyCanvas.height / dpr;
+      const C = getPalette();
+      const ctx = dyCtx;
+      const sim = state.sim;
+      const f = sim.finalObs;
+      const b = sim.baselineRef;
+
+      // Reference Ghost = Pinned Snapshot if active, else Normal Baseline
+      const refObj = state.pinnedSim
+        ? { icf: state.pinnedSim.finalObs.vICF, isf: state.pinnedSim.finalObs.vISF, pv: state.pinnedSim.finalObs.vPV, osm: state.pinnedSim.finalObs.osmECF, label: 'Pinned' }
+        : { icf: b.V_ICF0, isf: b.V_ISF0, pv: b.V_PV0, osm: b.OSM0, label: 'Baseline' };
+      document.getElementById('dy-ref-tag').textContent = `Ghost: ${refObj.label}`;
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      const pad = { l: 44, r: 14, t: 16, b: 32 };
+      const pw = Math.max(40, W - pad.l - pad.r);
+      const ph = Math.max(40, H - pad.t - pad.b);
+
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(pad.l, pad.t, pw, ph);
+
+      const totalVol = f.vICF + f.vISF + f.vPV;
+      const refTotal = refObj.icf + refObj.isf + refObj.pv;
+      const maxV = Math.max(56, Math.ceil(Math.max(totalVol, refTotal) / 10) * 10 + 4);
+      const osmMin = 220, osmMax = 360;
+
+      const xOfV = v => pad.l + (clamp(v, 0, maxV) / maxV) * pw;
+      const yOfOsm = o => pad.t + ph - ((clamp(o, osmMin, osmMax) - osmMin) / (osmMax - osmMin)) * ph;
+
+      // Grid
+      ctx.strokeStyle = C.grid;
+      ctx.lineWidth = 1;
+      for (let o = 240; o <= 340; o += 20) {
+        const gy = Math.round(yOfOsm(o)) + 0.5;
+        ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l + pw, gy); ctx.stroke();
+      }
+      const vStep = maxV > 70 ? 20 : 10;
+      for (let v = vStep; v < maxV; v += vStep) {
+        const gx = Math.round(xOfV(v)) + 0.5;
+        ctx.beginPath(); ctx.moveTo(gx, pad.t); ctx.lineTo(gx, pad.t + ph); ctx.stroke();
+      }
+
+      // Clip interior
+      ctx.save();
+      ctx.beginPath(); ctx.rect(pad.l, pad.t, pw, ph); ctx.clip();
+
+      // Current Equilibrated Blocks: [ICF] [ISF] [PV]
+      const curTopY = yOfOsm(f.osmECF);
+      const curBotY = pad.t + ph;
+      const curH = Math.max(4, curBotY - curTopY);
+
+      const blocks = [
+        { id: 'icf', name: 'ICF', x0: 0, x1: f.vICF, vol: f.vICF, refVol: refObj.icf, rgb: C.emeraldRGB, col: C.emerald },
+        { id: 'isf', name: 'ISF', x0: f.vICF, x1: f.vICF + f.vISF, vol: f.vISF, refVol: refObj.isf, rgb: C.amberRGB, col: C.amber },
+        { id: 'pv',  name: 'PV',  x0: f.vICF + f.vISF, x1: totalVol, vol: f.vPV, refVol: refObj.pv, rgb: C.cyanRGB, col: C.cyan }
+      ];
+
+      for (const blk of blocks) {
+        const bx = xOfV(blk.x0);
+        const bw = Math.max(2, xOfV(blk.x1) - bx);
+        const isHov = state.dyHoverComp === blk.id;
+        ctx.fillStyle = `rgba(${blk.rgb}, ${isHov ? (C.isDark ? 0.34 : 0.26) : (C.isDark ? 0.22 : 0.16)})`;
+        ctx.fillRect(bx, curTopY, bw, curH);
+
+        ctx.strokeStyle = blk.col;
+        ctx.lineWidth = isHov ? 2.0 : 1.35;
+        ctx.strokeRect(bx + 0.5, curTopY + 0.5, bw - 1, curH - 1);
+
+        // Inside labels
+        if (bw > 24) {
+          ctx.fillStyle = blk.col;
+          ctx.font = '600 10px "JetBrains Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(blk.name, bx + bw / 2, curTopY + Math.min(20, curH * 0.4));
+          if (bw > 34 && curH > 34) {
+            ctx.fillStyle = C.isDark ? '#e4e4e7' : '#27272a';
+            ctx.font = '500 9px "JetBrains Mono", monospace';
+            ctx.fillText(`${blk.vol.toFixed(1)}L`, bx + bw / 2, curTopY + Math.min(34, curH * 0.65));
+          }
+        }
+      }
+
+      // Dashed Ghost Outline of Baseline / Pinned Reference
+      const refTopY = yOfOsm(refObj.osm);
+      const refH = curBotY - refTopY;
+      ctx.save();
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = C.ghost;
+      ctx.lineWidth = 1.4;
+      const rxICF = xOfV(refObj.icf);
+      const rxISF = xOfV(refObj.icf + refObj.isf);
+      const rxPV = xOfV(refTotal);
+      ctx.strokeRect(pad.l + 0.5, refTopY + 0.5, rxPV - pad.l - 1, refH - 1);
+      ctx.beginPath();
+      ctx.moveTo(rxICF + 0.5, refTopY); ctx.lineTo(rxICF + 0.5, curBotY);
+      ctx.moveTo(rxISF + 0.5, refTopY); ctx.lineTo(rxISF + 0.5, curBotY);
+      ctx.stroke();
+      ctx.restore();
+
+      // Subtle Horizontal Cell Membrane Shift Arrow if ICF shifted > 0.35 L
+      const dICF = f.vICF - refObj.icf;
+      if (Math.abs(dICF) > 0.35) {
+        const yArr = curTopY + curH * 0.55;
+        const xFrom = rxICF;
+        const xTo = xOfV(f.vICF);
+        ctx.save();
+        ctx.strokeStyle = C.isDark ? '#fafafa' : '#09090b';
+        ctx.fillStyle = C.isDark ? '#fafafa' : '#09090b';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(xFrom, yArr); ctx.lineTo(xTo, yArr); ctx.stroke();
+        const dir = xTo > xFrom ? 1 : -1;
+        ctx.beginPath();
+        ctx.moveTo(xTo, yArr);
+        ctx.lineTo(xTo - dir * 5, yArr - 3.5);
+        ctx.lineTo(xTo - dir * 5, yArr + 3.5);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+
+      // Current Osmolality Top Tag
+      ctx.fillStyle = C.teal;
+      ctx.font = '600 9px "JetBrains Mono", monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${Math.round(f.osmECF)} mOsm/kg`, xOfV(totalVol) - 2, Math.max(pad.t + 10, curTopY - 5));
+
+      ctx.restore(); // End clip
+
+      // Tooltip Update
+      const tipEl = document.getElementById('dy-tooltip');
+      if (state.dyHoverComp) {
+        const blk = blocks.find(bk => bk.id === state.dyHoverComp);
+        if (blk && tipEl) {
+          const dv = blk.vol - blk.refVol;
+          tipEl.innerHTML = `
+            <div class="font-semibold pb-1 mb-1 border-b border-zinc-200 dark:border-zinc-800" style="color:${blk.col}">${blk.name} Compartment</div>
+            <div class="space-y-0.5 text-zinc-700 dark:text-zinc-200 tabular-nums">
+              <div class="flex justify-between gap-3"><span>Volume</span><strong>${blk.vol.toFixed(2)} L</strong></div>
+              <div class="flex justify-between gap-3"><span>Δ vs ${refObj.label}</span><strong>${dv >= 0 ? '+' : ''}${dv.toFixed(2)} L</strong></div>
+              <div class="flex justify-between gap-3"><span>Osmolality</span><strong>${Math.round(f.osmECF)} mOsm</strong></div>
+              <div class="flex justify-between gap-3"><span>Serum Na⁺</span><strong>${f.naConc.toFixed(1)} mmol/L</strong></div>
+            </div>
+          `;
+          tipEl.classList.remove('hidden');
+        }
+      } else if (tipEl) {
+        tipEl.classList.add('hidden');
+      }
+
+      // Frame & Ticks
+      ctx.strokeStyle = C.axis;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pad.l + 0.5, pad.t + 0.5, pw - 1, ph - 1);
+
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = C.tick;
+      ctx.textAlign = 'center';
+      for (let v = 0; v <= maxV; v += vStep) {
+        ctx.fillText(`${v}L`, xOfV(v), pad.t + ph + 12);
+      }
+      ctx.textAlign = 'right';
+      for (let o = 240; o <= 340; o += 20) {
+        ctx.fillText(String(o), pad.l - 5, yOfOsm(o) + 3);
+      }
+
+      ctx.fillStyle = C.label;
+      ctx.font = '500 9px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Total Body Water Volume (L)', pad.l + pw / 2, H - 6);
+
+      ctx.save();
+      ctx.translate(11, pad.t + ph / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('Osmolality (mOsm/kg)', 0, 0);
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    /* --- B. REVISED STARLING CAPILLARY PROFILE CANVAS --- */
+    function drawStarlingProfile() {
+      if (!starlingCanvas.width || !starlingCanvas.height || !state.sim) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = starlingCanvas.width / dpr;
+      const H = starlingCanvas.height / dpr;
+      const C = getPalette();
+      const ctx = starlingCtx;
+      const sim = state.sim;
+      const f = sim.finalObs;
+      const sigma = sim.starlingMeta.sigma;
+      const isRevised = state.starlingMode === 'revised';
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      const pad = { l: 40, r: 14, t: 18, b: 32 };
+      const pw = Math.max(40, W - pad.l - pad.r);
+      const ph = Math.max(40, H - pad.t - pad.b);
+
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(pad.l, pad.t, pw, ph);
+
+      const pMin = -5, pMax = 45;
+      const xOfU = u => pad.l + clamp(u, 0, 1) * pw;
+      const yOfP = p => pad.t + ph - ((clamp(p, pMin, pMax) - pMin) / (pMax - pMin)) * ph;
+
+      // Gridlines
+      ctx.strokeStyle = C.grid;
+      ctx.lineWidth = 1;
+      for (let pTick = 0; pTick <= 40; pTick += 10) {
+        const gy = Math.round(yOfP(pTick)) + 0.5;
+        ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l + pw, gy); ctx.stroke();
+      }
+      for (const u of [0.25, 0.5, 0.75]) {
+        const gx = Math.round(xOfU(u)) + 0.5;
+        ctx.beginPath(); ctx.moveTo(gx, pad.t); ctx.lineTo(gx, pad.t + ph); ctx.stroke();
+      }
+
+      // Compute capillary profiles along u in [0, 1]
+      const N = 80;
+      const pHydro = new Float32Array(N + 1); // P_c(u) - P_i
+      const pOnc = new Float32Array(N + 1);   // sigma * (pi_p - pi_g or pi_i)
+      const piSecond = isRevised ? f.piG : f.piI;
+      const oncVal = sigma * (f.piP - piSecond);
+
+      for (let i = 0; i <= N; i++) {
+        const u = i / N;
+        const pcLocal = f.pVen + (f.pArt - f.pVen) * Math.pow(1 - u, 1.55);
+        pHydro[i] = pcLocal - f.pI;
+        // In Revised Starling, slight filtration gradient makes pi_g very slightly higher toward venular end
+        const localPiG = isRevised ? clamp(f.piG + u * 0.6 * (1 - sim.starlingMeta.G + 0.15), 0.8, f.piI) : f.piI;
+        pOnc[i] = sigma * (f.piP - localPiG);
+      }
+
+      // Clip interior
+      ctx.save();
+      ctx.beginPath(); ctx.rect(pad.l, pad.t, pw, ph); ctx.clip();
+
+      // Zero line
+      ctx.strokeStyle = C.axis;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pad.l, Math.round(yOfP(0)) + 0.5); ctx.lineTo(pad.l + pw, Math.round(yOfP(0)) + 0.5); ctx.stroke();
+
+      // Shade Filtration (Hydro > Onc, soft amber/rose) & Absorption (Onc > Hydro, soft emerald)
+      for (let i = 0; i < N; i++) {
+        const x0 = xOfU(i / N), x1 = xOfU((i + 1) / N);
+        const yh0 = yOfP(pHydro[i]), yh1 = yOfP(pHydro[i + 1]);
+        const yo0 = yOfP(pOnc[i]), yo1 = yOfP(pOnc[i + 1]);
+        const isFilt = (pHydro[i] + pHydro[i + 1]) >= (pOnc[i] + pOnc[i + 1]);
+        ctx.fillStyle = isFilt
+          ? `rgba(${C.amberRGB}, ${C.isDark ? 0.18 : 0.15})`
+          : `rgba(${C.emeraldRGB}, ${C.isDark ? 0.18 : 0.14})`;
+        ctx.beginPath();
+        ctx.moveTo(x0, yh0); ctx.lineTo(x1, yh1);
+        ctx.lineTo(x1, yo1); ctx.lineTo(x0, yo0);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Lymphatic Clearance Equivalent Reference Line (oncotic + J_lymph / LpS)
+      const lymphEquivP = oncVal + (f.Jlymph_mL / Math.max(0.2, sim.starlingMeta.LpS));
+      if (lymphEquivP >= pMin && lymphEquivP <= pMax) {
+        const ly = Math.round(yOfP(lymphEquivP)) + 0.5;
+        ctx.save();
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = C.emerald;
+        ctx.lineWidth = 1.1;
+        ctx.beginPath(); ctx.moveTo(pad.l, ly); ctx.lineTo(pad.l + pw, ly); ctx.stroke();
+        ctx.fillStyle = C.emerald;
+        ctx.font = '500 8px "JetBrains Mono", monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText('Lymph Cap', pad.l + pw - 4, Math.max(pad.t + 10, ly - 3));
+        ctx.restore();
+      }
+
+      // Plot Net Hydrostatic Pressure P_c(x) - P_i (Rose)
+      ctx.beginPath();
+      for (let i = 0; i <= N; i++) {
+        const x = xOfU(i / N), y = yOfP(pHydro[i]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = C.rose;
+      ctx.lineWidth = 2.1;
+      ctx.stroke();
+
+      // Plot Effective Oncotic Pressure sigma*(pi_p - pi_g/i) (Teal)
+      ctx.beginPath();
+      for (let i = 0; i <= N; i++) {
+        const x = xOfU(i / N), y = yOfP(pOnc[i]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = C.teal;
+      ctx.lineWidth = 2.0;
+      ctx.stroke();
+
+      // Inline Curve Labels
+      ctx.font = '500 8.5px "JetBrains Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = C.rose;
+      ctx.fillText('P_c − Pᵢ', pad.l + 5, clamp(yOfP(pHydro[4]) - 5, pad.t + 11, pad.t + ph - 6));
+      ctx.fillStyle = C.teal;
+      ctx.fillText(isRevised ? 'σ(πₚ − π_g)' : 'σ(πₚ − πᵢ)', pad.l + 5, clamp(yOfP(pOnc[4]) + 12, pad.t + 12, pad.t + ph - 4));
+
+      // Hover Crosshair
+      const tipEl = document.getElementById('starling-tooltip');
+      if (state.starlingHoverX !== null) {
+        const u = clamp(state.starlingHoverX, 0, 1);
+        const hx = Math.round(xOfU(u)) + 0.5;
+        const pcLoc = f.pVen + (f.pArt - f.pVen) * Math.pow(1 - u, 1.55);
+        const piGLoc = isRevised ? clamp(f.piG + u * 0.6 * (1 - sim.starlingMeta.G + 0.15), 0.8, f.piI) : f.piI;
+        const hLoc = pcLoc - f.pI;
+        const oLoc = sigma * (f.piP - piGLoc);
+        const netLoc = hLoc - oLoc;
+
+        ctx.save();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = C.isDark ? 'rgba(244,244,245,0.45)' : 'rgba(24,24,27,0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, pad.t + ph); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(hx, yOfP(hLoc), 3.6, 0, Math.PI * 2); ctx.fillStyle = C.rose; ctx.fill();
+        ctx.beginPath(); ctx.arc(hx, yOfP(oLoc), 3.6, 0, Math.PI * 2); ctx.fillStyle = C.teal; ctx.fill();
+        ctx.restore();
+
+        if (tipEl) {
+          tipEl.innerHTML = `
+            <div class="text-[9.5px] text-zinc-500 dark:text-zinc-400 pb-1 mb-1 border-b border-zinc-200 dark:border-zinc-800">Capillary Pos: ${Math.round(u * 100)}%</div>
+            <div class="space-y-0.5 text-zinc-700 dark:text-zinc-200 tabular-nums">
+              <div class="flex justify-between gap-3"><span>P_c / Pᵢ</span><strong>${pcLoc.toFixed(1)} / ${f.pI.toFixed(1)}</strong></div>
+              <div class="flex justify-between gap-3"><span>πₚ / ${isRevised ? 'π_g' : 'πᵢ'}</span><strong>${f.piP.toFixed(1)} / ${piGLoc.toFixed(1)}</strong></div>
+              <div class="flex justify-between gap-3"><span>σ</span><strong>${sigma.toFixed(2)}</strong></div>
+              <div class="flex justify-between gap-3"><span style="color:${netLoc >= 0 ? C.amber : C.emerald}">Net Drive</span><strong>${netLoc >= 0 ? '+' : ''}${netLoc.toFixed(1)} mmHg</strong></div>
+            </div>
+          `;
+          tipEl.classList.remove('hidden');
+        }
+      } else if (tipEl) {
+        tipEl.classList.add('hidden');
+      }
+
+      ctx.restore(); // End clip
+
+      // Frame & Ticks
+      ctx.strokeStyle = C.axis;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pad.l + 0.5, pad.t + 0.5, pw - 1, ph - 1);
+
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = C.tick;
+      ctx.textAlign = 'center';
+      ctx.fillText('Arteriolar', pad.l + 22, pad.t + ph + 12);
+      ctx.fillText('50%', pad.l + pw / 2, pad.t + ph + 12);
+      ctx.fillText('Venular', pad.l + pw - 20, pad.t + ph + 12);
+
+      ctx.textAlign = 'right';
+      for (let pTick = 0; pTick <= 40; pTick += 10) {
+        ctx.fillText(String(pTick), pad.l - 5, yOfP(pTick) + 3);
+      }
+
+      ctx.save();
+      ctx.fillStyle = C.label;
+      ctx.font = '500 9px Inter, sans-serif';
+      ctx.translate(11, pad.t + ph / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.fillText('Pressure (mmHg)', 0, 0);
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    /* --- C. RESUSCITATION & REDISTRIBUTION KINETICS CANVAS --- */
+    function drawKineticsChart() {
+      if (!kinCanvas.width || !kinCanvas.height || !state.sim) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = kinCanvas.width / dpr;
+      const H = kinCanvas.height / dpr;
+      const C = getPalette();
+      const ctx = kinCtx;
+      const sim = state.sim;
+      const s = sim.series;
+      const refSim = state.pinnedSim && state.pinnedSim.horizonMin === sim.horizonMin ? state.pinnedSim : null;
+
+      // Update inline header legend
+      const legEl = document.getElementById('kinetics-legend');
+      if (legEl) {
+        legEl.innerHTML = state.kineticsView === 'volumes'
+          ? `
+            <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-sky-500 inline-block"></span>&Delta;PV</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-amber-500 inline-block"></span>&Delta;ISF</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-emerald-500 inline-block"></span>&Delta;ICF</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-zinc-400 inline-block"></span>Urine</span>
+          `
+          : `
+            <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-tealLight dark:bg-tealDark inline-block"></span>Na⁺</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-rose-500 inline-block"></span>Hct %</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-violet-500 inline-block"></span>Osm</span>
+          `;
+      }
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      const isChem = state.kineticsView === 'chemistry';
+      const pad = { l: 46, r: isChem ? 42 : 16, t: 18, b: 30 };
+      const pw = Math.max(40, W - pad.l - pad.r);
+      const ph = Math.max(40, H - pad.t - pad.b);
+
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(pad.l, pad.t, pw, ph);
+
+      const hor = sim.horizonMin;
+      const xOfT = t => pad.l + (t / hor) * pw;
+
+      // Grid
+      ctx.strokeStyle = C.grid;
+      ctx.lineWidth = 1;
+      for (let k = 0; k <= 4; k++) {
+        const gy = Math.round(pad.t + (k / 4) * ph) + 0.5;
+        ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l + pw, gy); ctx.stroke();
+      }
+      const xTicks = hor <= 240 ? [0, 60, 120, 180, 240] : [0, 360, 720, 1080, 1440];
+      for (const xt of xTicks) {
+        const gx = Math.round(xOfT(xt)) + 0.5;
+        ctx.strokeStyle = C.gridFaint;
+        ctx.beginPath(); ctx.moveTo(gx, pad.t); ctx.lineTo(gx, pad.t + ph); ctx.stroke();
+      }
+
+      ctx.save();
+      ctx.beginPath(); ctx.rect(pad.l, pad.t, pw, ph); ctx.clip();
+
+      // Active IV Infusion Shaded Band
+      if (sim.infusionMeta.maxInfDur > 0) {
+        const infEndX = Math.min(pad.l + pw, xOfT(sim.infusionMeta.maxInfDur));
+        ctx.fillStyle = `rgba(${C.cyanRGB}, ${C.isDark ? 0.08 : 0.06})`;
+        ctx.fillRect(pad.l, pad.t, Math.max(2, infEndX - pad.l), ph);
+        ctx.fillStyle = C.cyan;
+        ctx.font = '500 8.5px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`IV Infusion (${sim.infusionMeta.maxInfDur >= 60 ? (sim.infusionMeta.maxInfDur / 60) + 'h' : sim.infusionMeta.maxInfDur + 'm'})`, pad.l + 5, pad.t + 11);
+      }
+
+      const strokeSeries = (arr, mapY, col, width, dash = null, tArr = s.t) => {
+        ctx.save();
+        ctx.strokeStyle = col;
+        ctx.lineWidth = width;
+        ctx.lineJoin = 'round';
+        if (dash) ctx.setLineDash(dash);
+        ctx.beginPath();
+        for (let i = 0; i < arr.length; i++) {
+          const x = xOfT(tArr[i]), y = mapY(arr[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      };
+
+      let yMapMain, yMapSec = null;
+
+      if (!isChem) {
+        // ΔVolumes (L)
+        let lo = -0.6, hi = 1.2;
+        const allArrs = [s.dPV, s.dISF, s.dICF, s.vUrine];
+        if (refSim) allArrs.push(refSim.series.dPV, refSim.series.dISF);
+        for (const a of allArrs) {
+          for (let i = 0; i < a.length; i++) {
+            if (a[i] < lo) lo = a[i];
+            if (a[i] > hi) hi = a[i];
+          }
+        }
+        const padRange = Math.max(0.25, (hi - lo) * 0.14);
+        lo = Math.floor((lo - padRange) * 4) / 4;
+        hi = Math.ceil((hi + padRange) * 4) / 4;
+        yMapMain = v => pad.t + ph - ((v - lo) / (hi - lo)) * ph;
+
+        // Zero reference line
+        const y0 = Math.round(yMapMain(0)) + 0.5;
+        ctx.strokeStyle = C.axis;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(pad.l, y0); ctx.lineTo(pad.l + pw, y0); ctx.stroke();
+
+        // Pinned Baseline Ghost ΔPV
+        if (refSim) {
+          strokeSeries(refSim.series.dPV, yMapMain, C.ghost, 1.4, [4, 4], refSim.series.t);
+        }
+
+        strokeSeries(s.vUrine, yMapMain, C.isDark ? '#71717a' : '#71717a', 1.4, [4, 3]);
+        strokeSeries(s.dICF, yMapMain, C.emerald, 1.85);
+        strokeSeries(s.dISF, yMapMain, C.amber, 1.95);
+        strokeSeries(s.dPV, yMapMain, C.cyan, 2.25);
+
+        // Save bounds for Y-axis ticks outside clip
+        ctx._kinYBounds = { lo, hi };
+      } else {
+        // Na+ (Left Axis) + Hct % & Osm (Right Normalized Axis)
+        let naLo = Math.min(115, ...s.na) - 3;
+        let naHi = Math.max(152, ...s.na) + 4;
+        if (state.params.chronicDysnatremia && sim.initObs.naConc < 130) {
+          naHi = Math.max(naHi, sim.initObs.naConc + 14);
+        }
+        naLo = Math.floor(naLo / 5) * 5;
+        naHi = Math.ceil(naHi / 5) * 5;
+
+        yMapMain = v => pad.t + ph - ((clamp(v, naLo, naHi) - naLo) / (naHi - naLo)) * ph;
+        yMapSec = hct => pad.t + ph - ((clamp(hct, 15, 65) - 15) / 50) * ph;
+        const yMapOsm = osm => pad.t + ph - ((clamp(osm, 230, 350) - 230) / 120) * ph;
+
+        // ODS +8 mmol/L/24h Safety Ceiling when Chronic Hyponatremia is active!
+        if (state.params.chronicDysnatremia && sim.initObs.naConc < 130) {
+          const odsLimit = sim.initObs.naConc + 8.0;
+          const yODS = Math.round(yMapMain(odsLimit)) + 0.5;
+          ctx.fillStyle = `rgba(${C.roseRGB}, ${C.isDark ? 0.11 : 0.08})`;
+          ctx.fillRect(pad.l, pad.t, pw, Math.max(0, yODS - pad.t));
+          ctx.save();
+          ctx.setLineDash([5, 4]);
+          ctx.strokeStyle = C.rose;
+          ctx.lineWidth = 1.4;
+          ctx.beginPath(); ctx.moveTo(pad.l, yODS); ctx.lineTo(pad.l + pw, yODS); ctx.stroke();
+          ctx.fillStyle = C.rose;
+          ctx.font = '600 8.5px "JetBrains Mono", monospace';
+          ctx.textAlign = 'right';
+          ctx.fillText(`ODS Safety Limit (+8 -> ${odsLimit.toFixed(0)} mmol/L)`, pad.l + pw - 5, Math.max(pad.t + 11, yODS - 4));
+          ctx.restore();
+        }
+
+        if (refSim) {
+          strokeSeries(refSim.series.na, yMapMain, C.ghost, 1.4, [4, 4], refSim.series.t);
+        }
+
+        strokeSeries(s.osm, yMapOsm, C.violet, 1.5, [3, 3]);
+        strokeSeries(s.hct, yMapSec, C.rose, 1.85);
+        strokeSeries(s.na, yMapMain, C.teal, 2.25);
+
+        ctx._kinYBounds = { lo: naLo, hi: naHi };
+      }
+
+      // Hover Crosshair
+      const tipEl = document.getElementById('kinetics-tooltip');
+      if (state.kineticsHoverIdx !== null) {
+        const idx = clamp(state.kineticsHoverIdx, 0, s.t.length - 1);
+        const hx = Math.round(xOfT(s.t[idx])) + 0.5;
+        ctx.save();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = C.isDark ? 'rgba(244,244,245,0.45)' : 'rgba(24,24,27,0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, pad.t + ph); ctx.stroke();
+        ctx.setLineDash([]);
+
+        const dots = !isChem
+          ? [
+              { y: yMapMain(s.dPV[idx]), col: C.cyan },
+              { y: yMapMain(s.dISF[idx]), col: C.amber },
+              { y: yMapMain(s.dICF[idx]), col: C.emerald }
+            ]
+          : [
+              { y: yMapMain(s.na[idx]), col: C.teal },
+              { y: yMapSec(s.hct[idx]), col: C.rose }
+            ];
+        for (const dtDot of dots) {
+          ctx.beginPath(); ctx.arc(hx, dtDot.y, 3.6, 0, Math.PI * 2);
+          ctx.fillStyle = dtDot.col; ctx.fill();
+          ctx.strokeStyle = C.bg; ctx.lineWidth = 1.2; ctx.stroke();
+        }
+        ctx.restore();
+
+        if (tipEl) {
+          const tStr = s.t[idx] >= 60 ? `${(s.t[idx] / 60).toFixed(2)} h` : `${Math.round(s.t[idx])} min`;
+          tipEl.innerHTML = !isChem
+            ? `
+              <div class="text-[9.5px] text-zinc-500 dark:text-zinc-400 pb-1 mb-1 border-b border-zinc-200 dark:border-zinc-800">t = ${tStr}</div>
+              <div class="space-y-0.5 tabular-nums">
+                <div class="flex justify-between gap-3"><span style="color:${C.cyan}">ΔPV</span><strong>${s.dPV[idx] >= 0 ? '+' : ''}${s.dPV[idx].toFixed(2)} L (${s.vPV[idx].toFixed(2)})</strong></div>
+                <div class="flex justify-between gap-3"><span style="color:${C.amber}">ΔISF</span><strong>${s.dISF[idx] >= 0 ? '+' : ''}${s.dISF[idx].toFixed(2)} L (${s.vISF[idx].toFixed(2)})</strong></div>
+                <div class="flex justify-between gap-3"><span style="color:${C.emerald}">ΔICF</span><strong>${s.dICF[idx] >= 0 ? '+' : ''}${s.dICF[idx].toFixed(2)} L (${s.vICF[idx].toFixed(2)})</strong></div>
+                <div class="flex justify-between gap-3 text-zinc-500 dark:text-zinc-400"><span>Cum. Urine</span><strong>${s.vUrine[idx].toFixed(2)} L</strong></div>
+              </div>
+            `
+            : `
+              <div class="text-[9.5px] text-zinc-500 dark:text-zinc-400 pb-1 mb-1 border-b border-zinc-200 dark:border-zinc-800">t = ${tStr}</div>
+              <div class="space-y-0.5 tabular-nums">
+                <div class="flex justify-between gap-3"><span style="color:${C.teal}">Serum Na⁺</span><strong>${s.na[idx].toFixed(1)} mmol/L</strong></div>
+                <div class="flex justify-between gap-3"><span style="color:${C.rose}">Hematocrit</span><strong>${s.hct[idx].toFixed(1)}%</strong></div>
+                <div class="flex justify-between gap-3"><span style="color:${C.violet}">Osmolality</span><strong>${Math.round(s.osm[idx])} mOsm/kg</strong></div>
+                <div class="flex justify-between gap-3 text-zinc-500 dark:text-zinc-400"><span>Jᵥ / π_g</span><strong>${s.jv[idx].toFixed(1)} / ${s.piG[idx].toFixed(1)}</strong></div>
+              </div>
+            `;
+          tipEl.classList.remove('hidden');
+          const tipLeft = hx > W * 0.62 ? Math.max(10, hx - 205) : Math.min(W - 200, hx + 12);
+          tipEl.style.left = `${tipLeft}px`;
+        }
+      } else if (tipEl) {
+        tipEl.classList.add('hidden');
+      }
+
+      ctx.restore(); // End clip
+
+      // Frame & Ticks
+      ctx.strokeStyle = C.axis;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pad.l + 0.5, pad.t + 0.5, pw - 1, ph - 1);
+
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = C.tick;
+      ctx.textAlign = 'center';
+      for (const xt of xTicks) {
+        const lbl = hor <= 240 ? `${xt}m` : `${xt / 60}h`;
+        ctx.fillText(lbl, xOfT(xt), pad.t + ph + 13);
+      }
+
+      const { lo, hi } = ctx._kinYBounds || { lo: 0, hi: 1 };
+      ctx.textAlign = 'right';
+      ctx.fillStyle = isChem ? C.teal : C.tick;
+      for (let k = 0; k <= 4; k++) {
+        const v = lo + (k / 4) * (hi - lo);
+        const y = pad.t + ph - (k / 4) * ph;
+        ctx.fillText(isChem ? String(Math.round(v)) : `${v >= 0 ? '+' : ''}${v.toFixed(1)}`, pad.l - 5, y + 3);
+      }
+
+      if (isChem) {
+        ctx.textAlign = 'left';
+        ctx.fillStyle = C.rose;
+        for (const hTick of [15, 28, 40, 52, 65]) {
+          const y = pad.t + ph - ((hTick - 15) / 50) * ph;
+          ctx.fillText(`${hTick}%`, pad.l + pw + 5, y + 3);
+        }
+      }
+
+      ctx.save();
+      ctx.fillStyle = C.label;
+      ctx.font = '500 9px Inter, sans-serif';
+      ctx.translate(11, pad.t + ph / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.fillText(isChem ? 'Serum Na⁺ (mmol/L)' : 'Volume Shift ΔV (L)', 0, 0);
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    function drawAllCanvases() {
+      drawDarrowYannet();
+      drawStarlingProfile();
+      drawKineticsChart();
+    }
+
+    /* =========================================================================
+       8. RIGHT CONTROL PANEL BUILDERS (4 TABS)
+       ========================================================================= */
+    function buildPathologiesTab() {
+      const el = document.getElementById('tab-pathologies');
+      el.innerHTML = PATHOLOGIES.map(pr => `
+        <button data-preset="${pr.id}" type="button" class="preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1">
+          <div class="flex items-center justify-between gap-2 w-full">
+            <span class="text-xs font-medium text-[#09090b] dark:text-[#fafafa]">${pr.name}</span>
+            <span class="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/70 shrink-0">${pr.tag}</span>
+          </div>
+          <p class="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug">${pr.desc}</p>
+        </button>
+      `).join('');
+
+      el.querySelectorAll('.preset-card').forEach(btn => {
+        btn.addEventListener('click', () => applyPreset(btn.dataset.preset, true));
+      });
+      highlightActivePreset();
+    }
+
+    function applyPreset(presetId, clearFluids = false) {
+      const pr = PATHOLOGIES.find(p => p.id === presetId);
+      if (!pr) return;
+      state.presetId = pr.id;
+      state.params = { ...NORMAL_PARAMS, ...(pr.params || {}) };
+      if (clearFluids) {
+        state.regimen = [];
+        renderRegimenList();
+        updateFluidCountBadge();
+      }
+      document.getElementById('hdr-preset-label').textContent = pr.name;
+      highlightActivePreset();
+      buildParametersTab();
+      recompute();
+    }
+
+    function highlightActivePreset() {
+      document.querySelectorAll('.preset-card').forEach(btn => {
+        const active = btn.dataset.preset === state.presetId;
+        btn.className = `preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1 ${
+          active
+            ? 'border-tealLight/60 dark:border-tealDark/50 bg-teal-500/[0.06] dark:bg-teal-400/[0.08]'
+            : 'border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 hover:border-zinc-300 dark:hover:border-zinc-700'
+        }`;
+      });
+    }
+
+    /* --- TAB 2: RESUSCITATION (IV FLUID BUILDER) --- */
+    function buildResuscitationTab() {
+      const el = document.getElementById('tab-resuscitation');
+      el.innerHTML = `
+        <!-- Infusion Duration Selector -->
+        <div class="space-y-1.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Infusion Rate / Duration</div>
+          <div class="grid grid-cols-5 rounded-lg bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5 gap-0.5 text-[10px] font-mono">
+            ${INFUSION_DURATIONS.map(d => `
+              <button data-infdur="${d.min}" type="button" class="infdur-btn py-1 rounded transition-colors">${d.label}</button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- 2-Column Quick-Add IV Grid -->
+        <div class="space-y-1.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Add IV Intervention</div>
+          <div class="grid grid-cols-2 gap-1.5">
+            ${FLUID_CATALOG.map(fl => `
+              <button data-add-fluid="${fl.id}" type="button" class="text-left p-2 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50/50 dark:bg-zinc-900/35 hover:border-tealLight/60 dark:hover:border-tealDark/60 hover:bg-teal-500/[0.04] transition-colors">
+                <div class="flex items-center justify-between gap-1">
+                  <span class="text-[11px] font-medium text-[#09090b] dark:text-[#fafafa] truncate">${fl.label}</span>
+                  <span class="font-mono text-[9.5px] font-semibold text-tealLight dark:text-tealDark shrink-0">${fl.volText}</span>
+                </div>
+                <div class="font-mono text-[9.5px] text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">${fl.meta}</div>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Active Regimen List -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Active IV Regimen</span>
+            <button id="btn-clear-fluids" type="button" class="text-[10.5px] font-medium text-rose-600 dark:text-rose-400 hover:underline">Clear All</button>
+          </div>
+          <div id="active-regimen-list" class="space-y-1.5"></div>
+          <div id="active-regimen-totals" class="pt-1.5 border-t border-[#e4e4e7]/70 dark:border-borderDark/70 font-mono text-[10px] text-zinc-500 dark:text-zinc-400"></div>
+        </div>
+
+        <!-- Live Infused Fluid Partitioning Bar -->
+        <div id="fluid-partition-card" class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Infused Fluid Partitioning</span>
+            <span id="part-horizon-lbl" class="font-mono text-[9.5px] text-zinc-400">@ 4 h</span>
+          </div>
+          <div id="part-bar-wrap" class="w-full h-3 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden flex"></div>
+          <div id="part-legend" class="grid grid-cols-4 gap-1 text-[9.5px] font-mono tabular-nums pt-0.5"></div>
+        </div>
+      `;
+
+      el.querySelectorAll('.infdur-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.infusionDurationMin = parseInt(btn.dataset.infdur, 10);
+          syncInfusionDurButtons();
+        });
+      });
+
+      el.querySelectorAll('[data-add-fluid]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          addFluidToRegimen(btn.dataset.addFluid, state.infusionDurationMin);
+        });
+      });
+
+      document.getElementById('btn-clear-fluids').addEventListener('click', () => {
+        state.regimen = [];
+        renderRegimenList();
+        updateFluidCountBadge();
+        recompute();
+      });
+
+      syncInfusionDurButtons();
+      renderRegimenList();
+      updateFluidCountBadge();
+    }
+
+    function syncInfusionDurButtons() {
+      document.querySelectorAll('.infdur-btn').forEach(btn => {
+        const active = parseInt(btn.dataset.infdur, 10) === state.infusionDurationMin;
+        btn.className = `infdur-btn py-1 rounded transition-colors ${
+          active
+            ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm'
+            : 'text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-zinc-200'
+        }`;
+      });
+    }
+
+    function addFluidToRegimen(fluidId, durationMin) {
+      state.regimen.push({ uid: state.nextUid++, fluidId, durationMin });
+      renderRegimenList();
+      updateFluidCountBadge();
+      recompute();
+    }
+
+    function renderRegimenList() {
+      const listEl = document.getElementById('active-regimen-list');
+      const totEl = document.getElementById('active-regimen-totals');
+      if (!listEl || !totEl) return;
+
+      if (state.regimen.length === 0) {
+        listEl.innerHTML = '<div class="text-[11px] text-zinc-400 dark:text-zinc-500">No active IV fluids. Select an intervention above.</div>';
+        totEl.textContent = 'Total: 0 mL · 0 mmol Na⁺ · 0 g Albumin';
+        return;
+      }
+
+      let totML = 0, totNa = 0, totAlb = 0;
+      listEl.innerHTML = state.regimen.map(item => {
+        const fl = FLUID_CATALOG.find(f => f.id === item.fluidId);
+        if (!fl) return '';
+        totML += fl.volL * 1000;
+        totNa += fl.volL * (1 - fl.hct) * fl.naConc;
+        totAlb += fl.volL * (1 - fl.hct) * fl.alb_gL;
+        const durLbl = fl.furo > 0 ? 'IV Bolus' : (item.durationMin >= 60 ? `${item.durationMin / 60} h` : `${item.durationMin} min`);
+        return `
+          <div class="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-white dark:bg-zinc-900/70 border border-[#e4e4e7]/80 dark:border-borderDark/80 text-[11px]">
+            <div class="min-w-0 truncate">
+              <span class="font-medium text-[#09090b] dark:text-[#fafafa]">${fl.label}</span>
+              <span class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 ml-1">${fl.volText} (${durLbl})</span>
+            </div>
+            <button data-rem-uid="${item.uid}" type="button" class="text-zinc-400 hover:text-rose-500 font-mono text-xs px-1 leading-none">&times;</button>
+          </div>
+        `;
+      }).join('');
+
+      totEl.textContent = `Total: ${Math.round(totML)} mL · ${Math.round(totNa)} mmol Na⁺ · ${Math.round(totAlb)} g Alb`;
+
+      listEl.querySelectorAll('[data-rem-uid]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const uid = parseInt(btn.dataset.remUid, 10);
+          state.regimen = state.regimen.filter(r => r.uid !== uid);
+          renderRegimenList();
+          updateFluidCountBadge();
+          recompute();
+        });
+      });
+    }
+
+    function updateFluidCountBadge() {
+      const b = document.getElementById('tab-fluid-badge');
+      if (!b) return;
+      b.textContent = String(state.regimen.length);
+      b.classList.toggle('hidden', state.regimen.length === 0);
+    }
+
+    function renderInfusionPartitionBar() {
+      const barWrap = document.getElementById('part-bar-wrap');
+      const leg = document.getElementById('part-legend');
+      const horLbl = document.getElementById('part-horizon-lbl');
+      if (!barWrap || !leg || !state.sim) return;
+      const inf = state.sim.infusionMeta;
+      if (horLbl) horLbl.textContent = `@ ${state.horizonMin / 60} h`;
+
+      if (inf.totalInfVolL <= 0.01) {
+        barWrap.innerHTML = '<div class="w-full h-full bg-zinc-200 dark:bg-zinc-800"></div>';
+        leg.innerHTML = '<div class="col-span-4 text-zinc-400 dark:text-zinc-500 font-sans text-[10.5px]">Infuse an IV fluid to track exact Plasma / ISF / ICF / Urine partitioning.</div>';
+        return;
+      }
+
+      barWrap.innerHTML = `
+        <div style="width:${inf.partPV.toFixed(1)}%" class="h-full bg-sky-500 transition-all duration-200" title="Plasma"></div>
+        <div style="width:${inf.partISF.toFixed(1)}%" class="h-full bg-amber-500 transition-all duration-200" title="ISF"></div>
+        <div style="width:${inf.partICF.toFixed(1)}%" class="h-full bg-emerald-500 transition-all duration-200" title="ICF"></div>
+        <div style="width:${inf.partUrine.toFixed(1)}%" class="h-full bg-zinc-500 transition-all duration-200" title="Urine"></div>
+      `;
+      leg.innerHTML = `
+        <div class="text-sky-600 dark:text-sky-400">PV ${Math.round(inf.partPV)}%</div>
+        <div class="text-amber-600 dark:text-amber-400">ISF ${Math.round(inf.partISF)}%</div>
+        <div class="text-emerald-600 dark:text-emerald-400">ICF ${Math.round(inf.partICF)}%</div>
+        <div class="text-zinc-500 dark:text-zinc-400">Urine ${Math.round(inf.partUrine)}%</div>
+      `;
+    }
+
+    /* --- TAB 3: GROUPED PHYSIOLOGICAL PARAMETERS --- */
+    function buildParametersTab() {
+      const el = document.getElementById('tab-parameters');
+      const p = state.params;
+      const coup = coupledGlycocalyx(p.glycocalyx / 100);
+      const effLp = p.autoCoupleGlyc ? coup.lpMult : p.lpManual;
+      const effSig = p.autoCoupleGlyc ? coup.sigma : p.sigmaManual;
+
+      const sRow = (key, label, val, unit, min, max, step, dec, disabled = false) => `
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-[11.5px] gap-2">
+            <span class="font-medium text-zinc-700 dark:text-zinc-300 truncate">${label}</span>
+            <span class="font-mono tabular-nums text-[#09090b] dark:text-[#fafafa] shrink-0">
+              <span id="pv-${key}">${Number(val).toFixed(dec)}</span>
+              <span class="text-[10px] text-zinc-400 dark:text-zinc-500">${unit}</span>
+            </span>
+          </div>
+          <input id="ps-${key}" data-pkey="${key}" data-dec="${dec}" type="range" class="clinical-slider" min="${min}" max="${max}" step="${step}" value="${val}" ${disabled ? 'disabled' : ''} />
+        </div>
+      `;
+
+      el.innerHTML = `
+        <!-- Group 1: Microvascular & Glycocalyx -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-2.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">Microvascular &amp; Glycocalyx</div>
+          ${sRow('glycocalyx', 'Glycocalyx Integrity (G)', p.glycocalyx, '%', 10, 100, 1, 0)}
+          <label class="flex items-center justify-between gap-2 text-[11px] text-zinc-600 dark:text-zinc-400 cursor-pointer pt-0.5">
+            <span>Auto-couple σ &amp; Lₚ to Glycocalyx</span>
+            <input id="chk-autocouple" type="checkbox" class="accent-teal-600 rounded" ${p.autoCoupleGlyc ? 'checked' : ''} />
+          </label>
+          ${sRow('lpManual', 'Permeability (Lₚ)', effLp, '×', 0.5, 5.5, 0.1, 1, p.autoCoupleGlyc)}
+          ${sRow('sigmaManual', 'Reflection Coeff. (σ)', effSig, '', 0.35, 0.96, 0.01, 2, p.autoCoupleGlyc)}
+          ${sRow('lymphCap', 'Lymphatic Capacity', p.lymphCap, '%', 10, 200, 5, 0)}
+        </div>
+
+        <!-- Group 2: Hemodynamics & Oncotic -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-2.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">Hemodynamics &amp; Oncotic</div>
+          ${sRow('pArt', 'Arteriolar Pressure (Pₐ)', p.pArt, 'mmHg', 18, 45, 0.5, 1)}
+          ${sRow('cvp', 'Venous Pressure / CVP', p.cvp, 'mmHg', 0, 28, 0.5, 1)}
+          ${sRow('albumin', 'Plasma Albumin', p.albumin, 'g/L', 10, 55, 1, 0)}
+        </div>
+
+        <!-- Group 3: Volume, Tonicity & Renal -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-2.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">Volume, Tonicity &amp; Renal</div>
+          ${sRow('waterBalance', 'Water Balance', p.waterBalance, 'L', -6, 6, 0.2, 1)}
+          ${sRow('naBalance', 'Sodium Balance', p.naBalance, 'mmol', -600, 600, 10, 0)}
+          ${sRow('bloodLoss', 'Acute Blood Loss', p.bloodLoss, 'L', 0, 2.5, 0.1, 1)}
+          ${sRow('glucose', 'Serum Glucose', p.glucose, 'mmol/L', 4, 45, 0.5, 1)}
+          ${sRow('egfr', 'Renal Function / eGFR', p.egfr, '%', 5, 120, 5, 0)}
+          ${sRow('adh', 'ADH Activity', p.adh, '%', 0, 300, 5, 0)}
+          ${sRow('weight', 'Body Weight', p.weight, 'kg', 45, 120, 1, 0)}
+          <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-[#e4e4e7]/70 dark:border-borderDark/70">
+            <div>
+              <div class="text-[11.5px] font-medium text-[#09090b] dark:text-[#fafafa]">Chronic Dysnatremia (&gt;48h)</div>
+              <div class="text-[10px] text-zinc-500 dark:text-zinc-400">Enables +8 mmol/L/24h ODS safety alert</div>
+            </div>
+            <button id="toggle-chronic-na" type="button" role="switch" aria-checked="${p.chronicDysnatremia}" class="relative w-9 h-5 rounded-full transition-colors shrink-0 ${p.chronicDysnatremia ? 'bg-rose-500' : 'bg-zinc-300 dark:bg-zinc-700'}">
+              <span class="block w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform ${p.chronicDysnatremia ? 'translate-x-4' : 'translate-x-0.5'}"></span>
+            </button>
+          </div>
+        </div>
+      `;
+
+      el.querySelectorAll('input[data-pkey]').forEach(inp => {
+        inp.addEventListener('input', () => {
+          const key = inp.dataset.pkey;
+          const dec = parseInt(inp.dataset.dec, 10);
+          const v = parseFloat(inp.value);
+          state.params[key] = v;
+          if (key === 'adh') state.params.adhClamped = (v < 20 || v > 200);
+          state.presetId = 'custom';
+          document.getElementById('hdr-preset-label').textContent = 'Custom Physiology';
+          const lbl = document.getElementById(`pv-${key}`);
+          if (lbl) lbl.textContent = v.toFixed(dec);
+
+          if (key === 'glycocalyx' && state.params.autoCoupleGlyc) {
+            const c = coupledGlycocalyx(v / 100);
+            const slLp = document.getElementById('ps-lpManual'), lbLp = document.getElementById('pv-lpManual');
+            const slSg = document.getElementById('ps-sigmaManual'), lbSg = document.getElementById('pv-sigmaManual');
+            if (slLp) slLp.value = c.lpMult;
+            if (lbLp) lbLp.textContent = c.lpMult.toFixed(1);
+            if (slSg) slSg.value = c.sigma;
+            if (lbSg) lbSg.textContent = c.sigma.toFixed(2);
+          }
+
+          highlightActivePreset();
+          recompute();
+        });
+      });
+
+      document.getElementById('chk-autocouple').addEventListener('change', e => {
+        state.params.autoCoupleGlyc = e.target.checked;
+        if (!e.target.checked) {
+          const c = coupledGlycocalyx(state.params.glycocalyx / 100);
+          state.params.lpManual = c.lpMult;
+          state.params.sigmaManual = c.sigma;
+        }
+        buildParametersTab();
+        recompute();
+      });
+
+      document.getElementById('toggle-chronic-na').addEventListener('click', () => {
+        state.params.chronicDysnatremia = !state.params.chronicDysnatremia;
+        buildParametersTab();
+        recompute();
+      });
+    }
+
+    /* --- TAB 4: TEACHING EXPERIMENTS (5 CHALLENGES + COMPARISON LOG) --- */
+    function buildExperimentsTab() {
+      const el = document.getElementById('tab-experiments');
+      el.innerHTML = `
+        <div class="space-y-2">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">One-Click Physiology Challenges</div>
+          ${EXPERIMENTS.map(ex => `
+            <div class="p-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50/40 dark:bg-zinc-900/30 space-y-1.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-medium text-[#09090b] dark:text-[#fafafa]">${ex.name}</span>
+                <span class="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/25 shrink-0">${ex.tag}</span>
+              </div>
+              <p class="text-[10.5px] text-zinc-500 dark:text-zinc-400 leading-snug">${ex.desc}</p>
+              <div class="flex items-center gap-1.5 pt-0.5">
+                <button data-run-exp="${ex.id}" type="button" class="px-2.5 py-1 rounded-md border border-tealLight/50 dark:border-tealDark/50 bg-teal-500/10 text-[10.5px] font-medium text-tealLight dark:text-tealDark hover:bg-teal-500/20 transition-colors">
+                  ${ex.hasToggle ? 'Run 1L 0.9% NaCl' : 'Run Experiment'}
+                </button>
+                ${ex.hasToggle ? `
+                  <button id="btn-switch-d5w" type="button" class="px-2.5 py-1 rounded-md border border-emerald-500/45 bg-emerald-500/10 text-[10.5px] font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 transition-colors">
+                    Switch to 1L D5W
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Live Comparison Box for 1L NaCl vs D5W -->
+        <div id="ns-d5w-compare" class="hidden p-2.5 rounded-lg border border-tealLight/40 dark:border-tealDark/40 bg-teal-500/[0.06] text-[11px] leading-snug space-y-1">
+          <div class="font-mono text-[10px] font-semibold uppercase tracking-wider text-tealLight dark:text-tealDark">Crystalloid vs Free Water Partitioning</div>
+          <div id="ns-d5w-compare-body" class="text-zinc-700 dark:text-zinc-200 font-mono text-[10.5px] tabular-nums"></div>
+        </div>
+
+        <!-- Before -> After Readout Log -->
+        <div class="pt-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Experiment Readout Log</span>
+            <button id="btn-clear-explog" type="button" class="text-[10px] font-mono text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">clear</button>
+          </div>
+          <div id="exp-log-list" class="space-y-1.5"></div>
+        </div>
+      `;
+
+      el.querySelectorAll('[data-run-exp]').forEach(btn => {
+        btn.addEventListener('click', () => runExperiment(btn.dataset.runExp, 'primary'));
+      });
+      document.getElementById('btn-switch-d5w').addEventListener('click', () => runExperiment('ns_vs_d5w', 'd5w'));
+      document.getElementById('btn-clear-explog').addEventListener('click', () => {
+        state.experimentLog = [];
+        renderExperimentLog();
+      });
+      renderExperimentLog();
+    }
+
+    function runExperiment(expId, variant = 'primary') {
+      const cmpBox = document.getElementById('ns-d5w-compare');
+      let title = '', summary = '';
+
+      if (expId === 'ns_vs_d5w') {
+        state.horizonMin = 240;
+        state.kineticsView = 'volumes';
+        syncKineticsButtons();
+        applyPreset('normal', true);
+
+        // Pin 1L 0.9% NaCl when switching to D5W for direct ghost comparison!
+        const simNS = runFluidSimulation(state.params, [{ uid: 1, fluidId: 'ns_1000', durationMin: 30 }], 240);
+        const simD5 = runFluidSimulation(state.params, [{ uid: 2, fluidId: 'd5w_1000', durationMin: 30 }], 240);
+
+        if (variant === 'd5w') {
+          state.pinnedSim = simNS;
+          syncPinUI();
+          addFluidToRegimen('d5w_1000', 30);
+          title = '1 L D5W (vs Pinned 0.9% NaCl)';
+        } else {
+          state.pinnedSim = null;
+          syncPinUI();
+          addFluidToRegimen('ns_1000', 30);
+          title = '1 L 0.9% NaCl in Normal 70 kg';
+        }
+
+        if (cmpBox) {
+          cmpBox.classList.remove('hidden');
+          document.getElementById('ns-d5w-compare-body').innerHTML =
+            `0.9% NaCl: PV +${Math.round((simNS.finalObs.vPV - simNS.initObs.vPV) * 1000)} mL · ISF +${Math.round((simNS.finalObs.vISF - simNS.initObs.vISF) * 1000)} mL · ICF ${Math.round((simNS.finalObs.vICF - simNS.initObs.vICF) * 1000)} mL<br/>` +
+            `1 L D5W:   PV +${Math.round((simD5.finalObs.vPV - simD5.initObs.vPV) * 1000)} mL · ISF +${Math.round((simD5.finalObs.vISF - simD5.initObs.vISF) * 1000)} mL · ICF +${Math.round((simD5.finalObs.vICF - simD5.initObs.vICF) * 1000)} mL`;
+        }
+        const f = state.sim.finalObs, i0 = state.sim.initObs;
+        summary = `PV ${i0.vPV.toFixed(2)}→${f.vPV.toFixed(2)} L · ISF ${i0.vISF.toFixed(2)}→${f.vISF.toFixed(2)} L · ICF ${i0.vICF.toFixed(2)}→${f.vICF.toFixed(2)} L`;
+      } else {
+        if (cmpBox) cmpBox.classList.add('hidden');
+        if (expId === 'septic_colloid') {
+          state.horizonMin = 240;
+          state.kineticsView = 'volumes';
+          syncKineticsButtons();
+          // Pin Normal + 500 mL 5% Albumin as ghost reference
+          const normAlb = runFluidSimulation({ ...NORMAL_PARAMS }, [{ uid: 1, fluidId: 'alb5_500', durationMin: 30 }], 240);
+          state.pinnedSim = normAlb;
+          syncPinUI();
+          applyPreset('septic_shock', true);
+          addFluidToRegimen('alb5_500', 30);
+          title = 'Colloid Failure in Septic Leak';
+          summary = `Septic PV retention ${Math.round(state.sim.infusionMeta.partPV)}% vs Intact Glycocalyx ${Math.round(normAlb.infusionMeta.partPV)}% · ISF Δ +${(state.sim.finalObs.vISF - state.sim.initObs.vISF).toFixed(2)} L`;
+        } else if (expId === 'hemorrhage_auto') {
+          state.horizonMin = 240;
+          state.kineticsView = 'volumes';
+          syncKineticsButtons();
+          state.pinnedSim = null;
+          syncPinUI();
+          applyPreset('hemorrhage', true);
+          title = 'Hemorrhage Autotransfusion (No IV)';
+          const i0 = state.sim.initObs, f = state.sim.finalObs;
+          summary = `PV ${i0.vPV.toFixed(2)}→${f.vPV.toFixed(2)} L · Hct ${i0.hct.toFixed(1)}→${f.hct.toFixed(1)}% · π_g ${i0.piG.toFixed(1)}→${f.piG.toFixed(1)} mmHg`;
+        } else if (expId === 'siadh_ods') {
+          state.horizonMin = 1440;
+          state.kineticsView = 'chemistry';
+          syncKineticsButtons();
+          state.pinnedSim = null;
+          syncPinUI();
+          applyPreset('siadh', true);
+          addFluidToRegimen('hs_250', 30);
+          title = 'ODS Hazard: SIADH + 250 mL 3% NaCl';
+          const i0 = state.sim.initObs, f = state.sim.finalObs;
+          summary = `Na⁺ ${i0.naConc.toFixed(1)}→${f.naConc.toFixed(1)} mmol/L (+${state.sim.na24hRate.toFixed(1)}/24h > +8 limit!)`;
+        } else if (expId === 'nephrotic_mob') {
+          state.horizonMin = 240;
+          state.kineticsView = 'volumes';
+          syncKineticsButtons();
+          state.pinnedSim = null;
+          syncPinUI();
+          applyPreset('nephrotic', true);
+          addFluidToRegimen('alb20_100', 30);
+          addFluidToRegimen('furo_40', 15);
+          title = 'Nephrotic: 20% Albumin + Furosemide';
+          const i0 = state.sim.initObs, f = state.sim.finalObs;
+          summary = `πₚ ${i0.piP.toFixed(1)}→${f.piP.toFixed(1)} mmHg · ISF ${i0.vISF.toFixed(2)}→${f.vISF.toFixed(2)} L · Urine ${state.sim.series.vUrine[state.sim.series.vUrine.length - 1].toFixed(2)} L`;
+        }
+      }
+
+      state.experimentLog.unshift({ title, summary });
+      if (state.experimentLog.length > 5) state.experimentLog.pop();
+      renderExperimentLog();
+    }
+
+    function renderExperimentLog() {
+      const el = document.getElementById('exp-log-list');
+      if (!el) return;
+      if (state.experimentLog.length === 0) {
+        el.innerHTML = '<div class="text-[11px] text-zinc-400 dark:text-zinc-500">Run a challenge above to log Before &rarr; After compartment shifts.</div>';
+        return;
+      }
+      el.innerHTML = state.experimentLog.map(item => `
+        <div class="p-2 rounded-md border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-white dark:bg-zinc-900/50">
+          <div class="text-[10.5px] font-medium text-tealLight dark:text-tealDark">${item.title}</div>
+          <div class="font-mono text-[10px] text-zinc-600 dark:text-zinc-300 mt-0.5 tabular-nums">${item.summary}</div>
+        </div>
+      `).join('');
+    }
+
+    /* =========================================================================
+       9. UI STATE SYNC, EVENT WIRING & STRICT RESIZE OBSERVER
+       ========================================================================= */
+    function switchSidebarTab(tabId) {
+      state.activeTab = tabId;
+      document.querySelectorAll('.side-tab').forEach(btn => {
+        const active = btn.dataset.tab === tabId;
+        btn.className = `side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center gap-1 ${
+          active
+            ? 'bg-white dark:bg-zinc-800 text-[#09090b] dark:text-[#fafafa] shadow-sm'
+            : 'text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-zinc-200'
+        }`;
+      });
+      ['pathologies', 'resuscitation', 'parameters', 'experiments'].forEach(id => {
+        document.getElementById(`tab-${id}`).classList.toggle('hidden', id !== tabId);
+      });
+    }
+
+    function syncStarlingButtons() {
+      document.querySelectorAll('.smode-btn').forEach(b => {
+        const on = b.dataset.smode === state.starlingMode;
+        b.className = `smode-btn px-2 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+    }
+
+    function syncKineticsButtons() {
+      document.querySelectorAll('.kview-btn').forEach(b => {
+        const on = b.dataset.kview === state.kineticsView;
+        b.className = `kview-btn px-2 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+      document.querySelectorAll('.khor-btn').forEach(b => {
+        const on = parseInt(b.dataset.horizon, 10) === state.horizonMin;
+        b.className = `khor-btn px-2 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+    }
+
+    function syncPinUI() {
+      const btn = document.getElementById('btn-pin-baseline');
+      const pinned = Boolean(state.pinnedSim);
+      btn.textContent = pinned ? 'Pinned ✓' : 'Pin Baseline';
+      btn.className = `h-8 px-2.5 rounded-lg border text-xs font-medium transition-colors ${
+        pinned
+          ? 'border-tealLight/60 dark:border-tealDark/60 bg-teal-500/10 text-tealLight dark:text-tealDark'
+          : 'bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border-[#e4e4e7] dark:border-borderDark text-zinc-700 dark:text-zinc-200'
+      }`;
+    }
+
+    function wireEvents() {
+      // Theme toggle (synced to medlab-theme & theme)
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        const val = isDark ? 'dark' : 'light';
+        try {
+          localStorage.setItem('medlab-theme', val);
+          localStorage.setItem('theme', val);
+        } catch (_) {}
+        renderMicroSchematic();
+        drawAllCanvases();
+      });
+
+      // Pin Baseline toggle
+      document.getElementById('btn-pin-baseline').addEventListener('click', () => {
+        state.pinnedSim = state.pinnedSim ? null : state.sim;
+        syncPinUI();
+        renderKPIStrip();
+        drawAllCanvases();
+      });
+
+      // Reset
+      document.getElementById('btn-reset').addEventListener('click', () => {
+        state.pinnedSim = null;
+        state.horizonMin = 240;
+        state.kineticsView = 'volumes';
+        syncPinUI();
+        syncKineticsButtons();
+        applyPreset('normal', true);
+      });
+
+      // Sidebar tabs
+      document.querySelectorAll('.side-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchSidebarTab(btn.dataset.tab));
+      });
+
+      // Starling Revised vs Classic toggle
+      document.querySelectorAll('.smode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.starlingMode = btn.dataset.smode;
+          syncStarlingButtons();
+          drawStarlingProfile();
+        });
+      });
+
+      // Kinetics View & Horizon toggles
+      document.querySelectorAll('.kview-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.kineticsView = btn.dataset.kview;
+          syncKineticsButtons();
+          drawKineticsChart();
+        });
+      });
+      document.querySelectorAll('.khor-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.horizonMin = parseInt(btn.dataset.horizon, 10);
+          state.kineticsHoverIdx = null;
+          syncKineticsButtons();
+          recompute();
+        });
+      });
+
+      // Clickable SVG Anatomical Zones
+      document.getElementById('micro-svg').addEventListener('click', e => {
+        const g = e.target.closest('[data-zone]');
+        if (!g) return;
+        state.selectedZone = g.getAttribute('data-zone');
+        renderMicroSchematic();
+        renderCompartmentInspector();
+      });
+
+      // Darrow-Yannet Hover
+      const handleDYMove = clientX => {
+        if (!state.sim) return;
+        const rect = dyWrap.getBoundingClientRect();
+        const padL = 44, padR = 14;
+        const pw = Math.max(40, rect.width - padL - padR);
+        const f = state.sim.finalObs;
+        const refTotal = state.pinnedSim
+          ? (state.pinnedSim.finalObs.vICF + state.pinnedSim.finalObs.vISF + state.pinnedSim.finalObs.vPV)
+          : (state.sim.baselineRef.V_ICF0 + state.sim.baselineRef.V_ISF0 + state.sim.baselineRef.V_PV0);
+        const tot = f.vICF + f.vISF + f.vPV;
+        const maxV = Math.max(56, Math.ceil(Math.max(tot, refTotal) / 10) * 10 + 4);
+        const vAtX = ((clientX - rect.left - padL) / pw) * maxV;
+        if (vAtX >= 0 && vAtX <= f.vICF) state.dyHoverComp = 'icf';
+        else if (vAtX > f.vICF && vAtX <= f.vICF + f.vISF) state.dyHoverComp = 'isf';
+        else if (vAtX > f.vICF + f.vISF && vAtX <= tot) state.dyHoverComp = 'pv';
+        else state.dyHoverComp = null;
+        drawDarrowYannet();
+      };
+      dyWrap.addEventListener('mousemove', e => handleDYMove(e.clientX));
+      dyWrap.addEventListener('mouseleave', () => { state.dyHoverComp = null; drawDarrowYannet(); });
+
+      // Starling Hover
+      const handleStarlingMove = clientX => {
+        const rect = starlingWrap.getBoundingClientRect();
+        const padL = 40, padR = 14;
+        const pw = Math.max(40, rect.width - padL - padR);
+        const u = (clientX - rect.left - padL) / pw;
+        state.starlingHoverX = (u >= 0 && u <= 1) ? u : null;
+        drawStarlingProfile();
+      };
+      starlingWrap.addEventListener('mousemove', e => handleStarlingMove(e.clientX));
+      starlingWrap.addEventListener('mouseleave', () => { state.starlingHoverX = null; drawStarlingProfile(); });
+
+      // Kinetics Hover (also scrubs SVG schematic live!)
+      const handleKinMove = clientX => {
+        if (!state.sim) return;
+        const rect = kinWrap.getBoundingClientRect();
+        const padL = 46, padR = state.kineticsView === 'chemistry' ? 42 : 16;
+        const pw = Math.max(40, rect.width - padL - padR);
+        const rel = (clientX - rect.left - padL) / pw;
+        if (rel >= 0 && rel <= 1) {
+          state.kineticsHoverIdx = Math.round(rel * (state.sim.series.t.length - 1));
+        } else {
+          state.kineticsHoverIdx = null;
+        }
+        renderMicroSchematic();
+        drawKineticsChart();
+      };
+      kinWrap.addEventListener('mousemove', e => handleKinMove(e.clientX));
+      kinWrap.addEventListener('mouseleave', () => {
+        state.kineticsHoverIdx = null;
+        renderMicroSchematic();
+        drawKineticsChart();
+      });
+      kinWrap.addEventListener('touchmove', e => { if (e.touches[0]) handleKinMove(e.touches[0].clientX); }, { passive: true });
+      kinWrap.addEventListener('touchend', () => {
+        state.kineticsHoverIdx = null;
+        renderMicroSchematic();
+        drawKineticsChart();
+      });
+
+      // STRICT ANTI-STRETCH RESIZE OBSERVER: Observe WRAPPERS ONLY!
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(entries => {
+          for (const entry of entries) {
+            if (entry.target === dyWrap && syncCanvas(dyWrap, dyCanvas)) drawDarrowYannet();
+            if (entry.target === starlingWrap && syncCanvas(starlingWrap, starlingCanvas)) drawStarlingProfile();
+            if (entry.target === kinWrap && syncCanvas(kinWrap, kinCanvas)) drawKineticsChart();
+          }
+        });
+        ro.observe(dyWrap);
+        ro.observe(starlingWrap);
+        ro.observe(kinWrap);
+      }
+
+      window.addEventListener('resize', () => {
+        if (syncCanvas(dyWrap, dyCanvas)) drawDarrowYannet();
+        if (syncCanvas(starlingWrap, starlingCanvas)) drawStarlingProfile();
+        if (syncCanvas(kinWrap, kinCanvas)) drawKineticsChart();
+      });
+    }
+
+    // Bootstrap cleanly on window load
+    window.addEventListener('load', () => {
+      buildPathologiesTab();
+      buildResuscitationTab();
+      buildParametersTab();
+      buildExperimentsTab();
+      wireEvents();
+
+      switchSidebarTab('pathologies');
+      syncStarlingButtons();
+      syncKineticsButtons();
+      syncPinUI();
+
+      syncCanvas(dyWrap, dyCanvas);
+      syncCanvas(starlingWrap, starlingCanvas);
+      syncCanvas(kinWrap, kinCanvas);
+
+      recompute();
+    });
+  })();
+  </script>
+</body>
+</html>
