@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MedLab — Quantitative Physiology & Clinical Computation</title>
+  <title>MedLab — Quantitative Physiology &amp; Clinical Simulation</title>
 
-  <!-- Prevent flash of wrong theme before paint -->
+  <!-- Prevent theme flash before initial paint (defaults to dark unless 'light' is saved) -->
   <script>
     (function () {
       try {
-        const saved = localStorage.getItem('medlab-theme');
-        if (saved === 'light') {
+        if (localStorage.getItem('medlab-theme') === 'light') {
           document.documentElement.classList.remove('dark');
         } else {
           document.documentElement.classList.add('dark');
@@ -19,13 +18,13 @@
     })();
   </script>
 
-  <!-- Tailwind CSS CDN -->
+  <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Typography: Inter (UI) & JetBrains Mono (Routes & Metadata) -->
+  <!-- Google Fonts: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <script>
     tailwind.config = {
@@ -38,10 +37,9 @@
           },
           colors: {
             obsidian: '#09090b',
-            cardDark: '#111114',
             canvasLight: '#fafafa',
-            accentDark: '#2dd4bf',
-            accentLight: '#0f766e',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
           },
         },
       },
@@ -49,7 +47,6 @@
   </script>
 
   <style>
-    /* Swiss-precision typography & subtle micro-polish */
     html, body {
       overflow-x: hidden;
       font-feature-settings: "cv02", "cv03", "cv04", "cv11";
@@ -57,7 +54,26 @@
       -moz-osx-font-smoothing: grayscale;
     }
 
-    /* Custom ultra-thin scrollbars */
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Subtle status pulse for live simulator indicator */
+    @keyframes livePulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.4;
+        transform: scale(0.82);
+      }
+    }
+    .dot-pulse {
+      animation: livePulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    /* Minimal thin scrollbar */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -70,92 +86,47 @@
       border-radius: 9999px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: rgba(113, 113, 122, 0.5);
-    }
-
-    /* Subtle live indicator pulse for CardioSim */
-    @keyframes livePulse {
-      0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 0.45;
-        transform: scale(0.8);
-      }
-    }
-    .dot-pulse {
-      animation: livePulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-
-    /* Smooth radial fade mask for borderless hero canvas */
-    .canvas-fade-mask {
-      -webkit-mask-image: radial-gradient(ellipse 76% 74% at 50% 50%, #000 58%, transparent 100%);
-      mask-image: radial-gradient(ellipse 76% 74% at 50% 50%, #000 58%, transparent 100%);
+      background: rgba(113, 113, 122, 0.48);
     }
   </style>
 </head>
 
 <body class="min-h-screen flex flex-col bg-canvasLight text-zinc-900 dark:bg-obsidian dark:text-zinc-100 transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
 
-  <!-- ==================== 1. MINIMAL STICKY HEADER (60px) ==================== -->
-  <header class="sticky top-0 z-40 h-[60px] w-full border-b border-zinc-200/90 dark:border-white/[0.08] bg-canvasLight/80 dark:bg-obsidian/80 backdrop-blur-md">
+  <!-- ==================== 1. STICKY MINIMAL HEADER ==================== -->
+  <header class="sticky top-0 z-40 h-14 w-full border-b border-zinc-200/80 dark:border-zinc-800/80 bg-canvasLight/85 dark:bg-obsidian/85 backdrop-blur-md">
     <div class="max-w-6xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between gap-4">
 
-      <!-- Left: Minimalist Geometric Mark + Wordmark -->
+      <!-- Left: Minimal SVG Pulse Mark + MedLab Wordmark -->
       <a href="#" class="flex items-center gap-2.5 shrink-0 group focus:outline-none">
-        <span class="w-7 h-7 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-white/[0.1] bg-white dark:bg-cardDark group-hover:border-teal-600/50 dark:group-hover:border-teal-400/50 transition-colors">
-          <!-- Geometric waveform / node mark -->
-          <svg class="w-4 h-4 text-accentLight dark:text-accentDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 12h4l2.5-6 4 12 2.5-6h2.5" />
-            <circle cx="20.2" cy="12" r="1.4" fill="currentColor" stroke="none" />
+        <span class="w-7 h-7 rounded-lg flex items-center justify-center border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950 group-hover:border-tealLight/50 dark:group-hover:border-tealDark/50 transition-colors">
+          <svg class="w-4 h-4 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2.5 13h4.2l2.2-6.5 3.6 11.5 2.4-5h6.6" />
           </svg>
         </span>
-        <span class="text-[15px] font-semibold tracking-tight text-zinc-950 dark:text-white">MedLab</span>
+        <span class="text-[15px] font-semibold tracking-tight text-zinc-950 dark:text-zinc-100">MedLab</span>
       </a>
 
-      <!-- Center / Right: Anchor Links, Compact Search, Theme Toggle -->
-      <div class="flex items-center gap-2 sm:gap-5 flex-1 justify-end">
-        <nav class="hidden md:flex items-center gap-5 text-[13px] font-medium text-zinc-500 dark:text-zinc-400">
+      <!-- Right: Anchor Navigation & Dark/Light Theme Toggle -->
+      <div class="flex items-center gap-5 sm:gap-6">
+        <nav class="flex items-center gap-4 sm:gap-6 text-[13px] font-medium text-zinc-500 dark:text-zinc-400">
           <a href="#simulators" class="hover:text-zinc-950 dark:hover:text-white transition-colors">Simulators</a>
           <a href="#calculators" class="hover:text-zinc-950 dark:hover:text-white transition-colors">Calculators</a>
         </nav>
 
-        <!-- Sleek Compact Search Input -->
-        <div class="relative w-full max-w-[200px] sm:max-w-[240px]">
-          <svg class="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="7.5" />
-            <path d="m20.5 20.5-3.8-3.8" />
-          </svg>
-          <input
-            id="search-input"
-            type="text"
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="Search..."
-            aria-label="Filter simulators and calculators"
-            class="w-full h-8 pl-8 pr-8 rounded-lg text-[13px] bg-white dark:bg-cardDark border border-zinc-200 dark:border-white/[0.08] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-accentLight/60 dark:focus:border-accentDark/50 transition-colors"
-          />
-          <kbd id="search-shortcut" class="hidden sm:inline-flex items-center justify-center absolute right-2 top-1/2 -translate-y-1/2 h-4.5 px-1.5 font-mono text-[10px] text-zinc-400 dark:text-zinc-500 border border-zinc-200 dark:border-white/[0.08] rounded pointer-events-none">/</kbd>
-          <button id="search-clear" type="button" aria-label="Clear search" class="hidden absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        <!-- Dark / Light Theme Toggle -->
         <button
           id="theme-toggle"
           type="button"
-          aria-label="Toggle theme"
+          aria-label="Toggle dark and light theme"
           title="Switch Light / Dark mode"
-          class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center border border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-cardDark text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300 dark:hover:border-white/[0.16] transition-colors"
+          class="w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
         >
-          <!-- Sun (shown in dark mode) -->
+          <!-- Sun icon (visible in dark mode) -->
           <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="4" />
             <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
           </svg>
-          <!-- Moon (shown in light mode) -->
+          <!-- Moon icon (visible in light mode) -->
           <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
           </svg>
@@ -167,754 +138,480 @@
   <!-- ==================== MAIN CONTENT ==================== -->
   <main class="flex-1 w-full">
 
-    <!-- ==================== 2. ASYMMETRIC HERO + GENERATIVE HARMONIC MANIFOLD ==================== -->
-    <section class="relative max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-14 sm:pt-20 sm:pb-20 lg:pt-24 lg:pb-24">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+    <!-- ==================== 2. HERO SECTION + CLINICAL LEAD II ECG ==================== -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-14 sm:pt-18 sm:pb-20 lg:pt-20 lg:pb-24">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-10 items-center">
 
-        <!-- Left Column: Crisp Swiss Typography -->
-        <div class="lg:col-span-6 space-y-6">
-          <div class="inline-flex items-center gap-2">
-            <span class="w-1.5 h-1.5 rounded-full bg-accentLight dark:bg-accentDark"></span>
-            <span class="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
-              Quantitative Physiology
-            </span>
-          </div>
-
-          <h1 class="text-4xl sm:text-5xl lg:text-[52px] font-semibold tracking-[-0.035em] leading-[1.06] text-zinc-950 dark:text-white">
-            Interactive models for clinical medicine.
+        <!-- Left: Editorial Typography & Understated Actions -->
+        <div class="lg:col-span-6 space-y-5">
+          <h1 class="text-3xl sm:text-4xl lg:text-[42px] font-semibold tracking-[-0.03em] leading-[1.1] text-zinc-950 dark:text-white">
+            Quantitative Physiology &amp; Clinical Simulation
           </h1>
 
-          <p class="text-[15px] sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-lg">
-            First-principles physiological simulations and rapid bedside equations—built to run locally in the browser.
+          <p class="text-[15px] sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-xl">
+            Interactive mechanistic organ models and rapid bedside clinical calculators built for intuitive physiological reasoning.
           </p>
 
           <div class="flex flex-wrap items-center gap-3 pt-2">
             <a
               href="#simulators"
-              class="inline-flex items-center justify-center h-10 px-4 rounded-lg text-[13px] font-medium bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-obsidian dark:hover:bg-zinc-200 transition-colors"
+              class="inline-flex items-center justify-center h-9 px-4 rounded-lg text-[13px] font-medium bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-obsidian dark:hover:bg-white transition-colors"
             >
-              Explore Simulators
+              Simulators
             </a>
             <a
               href="calculators.html"
-              class="group inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-[13px] font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white border border-transparent hover:border-zinc-200 dark:hover:border-white/[0.1] hover:bg-white dark:hover:bg-cardDark transition-all"
+              class="group inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-[13px] font-medium text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-800/80 hover:border-tealLight/50 dark:hover:border-tealDark/50 hover:text-zinc-950 dark:hover:text-white transition-colors"
             >
-              <span>Open Calculators</span>
-              <span class="inline-block transition-transform duration-150 group-hover:translate-x-0.5">&rarr;</span>
+              <span>Calculators</span>
+              <span class="inline-block transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true">&rarr;</span>
             </a>
           </div>
         </div>
 
-        <!-- Right Column: Borderless Interactive 3D Harmonic Flow-Field Canvas -->
+        <!-- Right: Live Clinical Lead II ECG Monitor Canvas -->
         <div class="lg:col-span-6">
           <div
-            id="manifold-wrap"
-            class="relative w-full h-[270px] sm:h-[340px] lg:h-[380px] canvas-fade-mask cursor-crosshair select-none touch-none"
-            aria-label="Interactive 3D harmonic phase-space visualization"
+            id="ecg-wrapper"
+            role="button"
+            tabindex="0"
+            aria-label="Live Lead II ECG monitor. Click or press Enter to trigger a premature ventricular contraction."
+            title="Click to trigger PVC"
+            class="relative w-full h-56 sm:h-64 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/60 overflow-hidden select-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-500/40 transition-colors"
           >
-            <canvas id="manifold-canvas" class="block w-full h-full"></canvas>
+            <canvas id="ecg-canvas" class="w-full h-full block"></canvas>
+
+            <!-- Top-left: Lead & Paper Speed Calibration -->
+            <div class="pointer-events-none absolute top-2.5 left-3.5 flex items-center gap-2 font-mono text-[11px] tracking-wider text-zinc-500 dark:text-zinc-500">
+              <span class="font-semibold text-tealLight dark:text-tealDark">II</span>
+              <span class="opacity-70">25 mm/s &middot; 10 mm/mV</span>
+            </div>
+
+            <!-- Top-right: Pulsing Beat Indicator & Live HR -->
+            <div class="pointer-events-none absolute top-2.5 right-3.5 flex items-center gap-2 font-mono text-xs tabular-nums">
+              <span id="ecg-pulse-dot" class="h-1.5 w-1.5 rounded-full bg-tealLight dark:bg-tealDark opacity-30 transition-opacity duration-150"></span>
+              <span class="text-zinc-500 dark:text-zinc-500 text-[10px] tracking-wider">HR</span>
+              <span id="ecg-hr" class="font-medium text-zinc-800 dark:text-zinc-200">68</span>
+            </div>
+
+            <!-- Bottom-right: Subtle Interaction Cue -->
+            <div class="pointer-events-none absolute bottom-2 right-3.5 font-mono text-[10px] tracking-wide text-zinc-400/80 dark:text-zinc-600">
+              Click trace &middot; PVC
+            </div>
           </div>
         </div>
 
       </div>
     </section>
 
-    <!-- Subtle Hairline Divider -->
+    <!-- Hairline Section Divider -->
     <div class="max-w-6xl mx-auto px-4 sm:px-6">
-      <div class="h-px w-full bg-zinc-200/80 dark:bg-white/[0.07]"></div>
+      <div class="h-px w-full bg-zinc-200/80 dark:bg-zinc-800/80"></div>
     </div>
 
-    <!-- ==================== 3. SIMULATORS SECTION (#simulators) ==================== -->
-    <section id="simulators" class="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20 scroll-mt-16">
-      <!-- Header + Minimal Horizontal Filter Tabs -->
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
-        <div>
-          <h2 class="text-xl sm:text-2xl font-semibold tracking-[-0.025em] text-zinc-950 dark:text-white">Simulators</h2>
+    <!-- ==================== 3. INTERACTIVE SIMULATORS GRID (#simulators) ==================== -->
+    <section id="simulators" class="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20 scroll-mt-14">
+      <!-- Minimal Section Header -->
+      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-8">
+        <div class="flex items-baseline gap-2.5">
+          <h2 class="text-xl sm:text-2xl font-semibold tracking-[-0.02em] text-zinc-950 dark:text-white">Simulators</h2>
+          <span class="font-mono text-xs text-zinc-400 dark:text-zinc-500">09</span>
         </div>
-
-        <div id="sim-tabs" class="flex flex-wrap items-center gap-1" role="tablist" aria-label="Filter simulators by discipline">
-          <!-- Rendered from JS -->
-        </div>
+        <p class="text-[13px] text-zinc-500 dark:text-zinc-400">
+          Real-time coupled ODE and compartmental physiology modules.
+        </p>
       </div>
 
-      <!-- 3-Column Spacious Card Grid -->
-      <div id="simulators-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
-        <!-- Rendered from JS -->
+      <!-- 3-Column Direct-Link Simulator Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        <!-- 01. CardioSim (Live) -->
+        <a
+          href="cardiosim.html"
+          class="group flex flex-col justify-between p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/45 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+        >
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">01</span>
+              <span class="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 dot-pulse"></span>
+                Live
+              </span>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">CardioSim</h3>
+              <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-tealLight dark:group-hover:text-tealDark transition-all duration-150 group-hover:translate-x-0.5 text-sm" aria-hidden="true">&rarr;</span>
+            </div>
+            <div class="mt-0.5 font-mono text-[11px] text-tealLight dark:text-tealDark">Cardiovascular Hemodynamics</div>
+            <p class="mt-2.5 text-[13px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Suga-Sagawa PV loops, Wiggers diagram, baroreflex, pathologies &amp; ICU pharmacology.
+            </p>
+          </div>
+        </a>
+
+        <!-- 02. VentSim -->
+        <a
+          href="ventsim.html"
+          class="group flex flex-col justify-between p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/45 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+        >
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">02</span>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">VentSim</h3>
+              <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-tealLight dark:group-hover:text-tealDark transition-all duration-150 group-hover:translate-x-0.5 text-sm" aria-hidden="true">&rarr;</span>
+            </div>
+            <div class="mt-0.5 font-mono text-[11px] text-tealLight dark:text-tealDark">Respiratory Mechanics</div>
+            <p class="mt-2.5 text-[13px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              VCV/PCV ventilation, two-compartment equation of motion, PV/FV loops &amp; live ABG.
+            </p>
+          </div>
+        </a>
+
+        <!-- 03. NephroSim -->
+        <a
+          href="nephrosim.html"
+          class="group flex flex-col justify-between p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/45 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+        >
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">03</span>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">NephroSim</h3>
+              <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-tealLight dark:group-hover:text-tealDark transition-all duration-150 group-hover:translate-x-0.5 text-sm" aria-hidden="true">&rarr;</span>
+            </div>
+            <div class="mt-0.5 font-mono text-[11px] text-tealLight dark:text-tealDark">Renal &amp; Acid-Base</div>
+            <p class="mt-2.5 text-[13px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Segmental nephron transport, diuretics, electrolyte panels &amp; Davenport diagram.
+            </p>
+          </div>
+        </a>
+
+        <!-- 04. PK/PD Lab -->
+        <a
+          href="pkpd.html"
+          class="group flex flex-col justify-between p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/45 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+        >
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">04</span>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">PK/PD Lab</h3>
+              <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-tealLight dark:group-hover:text-tealDark transition-all duration-150 group-hover:translate-x-0.5 text-sm" aria-hidden="true">&rarr;</span>
+            </div>
+            <div class="mt-0.5 font-mono text-[11px] text-tealLight dark:text-tealDark">Pharmacokinetics &amp; Anesthesia</div>
+            <p class="mt-2.5 text-[13px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Multi-compartment ODEs, effect-site equilibration, context-sensitive half-time &amp; Hill plots.
+            </p>
+          </div>
+        </a>
+
+        <!-- 05. ElectroSim -->
+        <a
+          href="electrosim.html"
+          class="group flex flex-col justify-between p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/45 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+        >
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">05</span>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">ElectroSim</h3>
+              <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-tealLight dark:group-hover:text-tealDark transition-all duration-150 group-hover:translate-x-0.5 text-sm" aria-hidden="true">&rarr;</span>
+            </div>
+            <div class="mt-0.5 font-mono text-[11px] text-tealLight dark:text-tealDark">Cardiac Electrophysiology</div>
+            <p class="mt-2.5 text-[13px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Myocyte action potentials, ion currents, Vaughan Williams classes &amp; re-entry arrhythmias.
+            </p>
+          </div>
+        </a>
+
+        <!-- 06. FluidSim -->
+        <a
+          href="fluidsim.html"
+          class="group flex flex-col justify-between p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/45 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+        >
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">06</span>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">FluidSim</h3>
+              <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-tealLight dark:group-hover:text-tealDark transition-all duration-150 group-hover:translate-x-0.5 text-sm" aria-hidden="true">&rarr;</span>
+            </div>
+            <div class="mt-0.5 font-mono text-[11px] text-tealLight dark:text-tealDark">Fluid Compartments &amp; Starling</div>
+            <p class="mt-2.5 text-[13px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Darrow-Yannet shifts, endothelial glycocalyx &amp; crystalloid/colloid resuscitation.
+            </p>
+          </div>
+        </a>
+
+        <!-- 07. CoagSim -->
+        <a
+          href="coagsim.html"
+          class="group flex flex-col justify-between p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/45 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+        >
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">07</span>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">CoagSim</h3>
+              <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-tealLight dark:group-hover:text-tealDark transition-all duration-150 group-hover:translate-x-0.5 text-sm" aria-hidden="true">&rarr;</span>
+            </div>
+            <div class="mt-0.5 font-mono text-[11px] text-tealLight dark:text-tealDark">Hemostasis &amp; Coagulation</div>
+            <p class="mt-2.5 text-[13px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Cell-based thrombin burst, TEG/ROTEM waveforms, anticoagulants &amp; reversal agents.
+            </p>
+          </div>
+        </a>
+
+        <!-- 08. NeuroOphtho -->
+        <a
+          href="neuroophtho.html"
+          class="group flex flex-col justify-between p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/45 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+        >
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">08</span>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">NeuroOphtho</h3>
+              <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-tealLight dark:group-hover:text-tealDark transition-all duration-150 group-hover:translate-x-0.5 text-sm" aria-hidden="true">&rarr;</span>
+            </div>
+            <div class="mt-0.5 font-mono text-[11px] text-tealLight dark:text-tealDark">Neuro-Ophthalmology</div>
+            <p class="mt-2.5 text-[13px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Neural pathway lesion graph, pupillary reflexes, perimetry &amp; aqueous IOP dynamics.
+            </p>
+          </div>
+        </a>
+
+        <!-- 09. EndoSim -->
+        <a
+          href="endosim.html"
+          class="group flex flex-col justify-between p-5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/45 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+        >
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">09</span>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">EndoSim</h3>
+              <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-tealLight dark:group-hover:text-tealDark transition-all duration-150 group-hover:translate-x-0.5 text-sm" aria-hidden="true">&rarr;</span>
+            </div>
+            <div class="mt-0.5 font-mono text-[11px] text-tealLight dark:text-tealDark">Endocrine Feedback Loops</div>
+            <p class="mt-2.5 text-[13px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Bergman glucose-insulin model, HPA/HPT axes &amp; dynamic suppression testing.
+            </p>
+          </div>
+        </a>
+
       </div>
     </section>
 
-    <!-- ==================== 4. COMPACT CLINICAL CALCULATORS SECTION (#calculators) ==================== -->
-    <section id="calculators" class="max-w-6xl mx-auto px-4 sm:px-6 pb-20 sm:pb-24 scroll-mt-16">
-      <div class="rounded-2xl border border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-cardDark overflow-hidden">
-        <!-- Compact Panel Header Row -->
-        <div class="px-5 py-4 border-b border-zinc-200/80 dark:border-white/[0.07] flex flex-wrap items-center justify-between gap-3">
-          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-            <h2 class="text-base font-semibold tracking-[-0.02em] text-zinc-950 dark:text-white">Clinical Calculators</h2>
-            <span id="calc-meta" class="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">20 tools &middot; single unified workspace</span>
+    <!-- ==================== 4. COMPACT CLINICAL CALCULATORS INDEX (#calculators) ==================== -->
+    <section id="calculators" class="max-w-6xl mx-auto px-4 sm:px-6 pb-20 sm:pb-24 scroll-mt-14">
+      <!-- Header Row -->
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <h2 class="text-xl sm:text-2xl font-semibold tracking-[-0.02em] text-zinc-950 dark:text-white">
+          Clinical Calculators
+        </h2>
+        <a
+          href="calculators.html"
+          class="group inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-tealLight dark:text-tealDark border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors"
+        >
+          <span>Open Calculators</span>
+          <span class="inline-block transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true">&rarr;</span>
+        </a>
+      </div>
+
+      <!-- Compact 4-Column Hairline Panel (all links route to calculators.html#<slug>) -->
+      <div class="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-4 sm:p-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-5">
+
+          <!-- Column 1: Acid-Base & Electrolytes -->
+          <div>
+            <h3 class="px-2 pb-2 mb-1.5 border-b border-zinc-200/70 dark:border-zinc-800/70 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
+              Acid-Base &amp; Electrolytes
+            </h3>
+            <ul class="space-y-0.5">
+              <li>
+                <a href="calculators.html#anion-gap" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">Anion Gap &amp; Delta-Delta</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#winters-formula" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">Winter's Formula</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#corrected-sodium" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">Corrected Sodium</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#free-water-deficit" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">Free Water Deficit</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#osmolality" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">Serum Osmolality</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+            </ul>
           </div>
 
-          <a
-            href="calculators.html"
-            class="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-accentLight dark:text-accentDark bg-teal-500/[0.07] hover:bg-teal-500/[0.14] border border-teal-600/20 dark:border-teal-400/20 transition-colors"
-          >
-            <span>Open Calculators</span>
-            <span class="inline-block transition-transform duration-150 group-hover:translate-x-0.5">&rarr;</span>
-          </a>
-        </div>
+          <!-- Column 2: Cardiology & Hemodynamics -->
+          <div>
+            <h3 class="px-2 pb-2 mb-1.5 border-b border-zinc-200/70 dark:border-zinc-800/70 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
+              Cardiology &amp; Hemodynamics
+            </h3>
+            <ul class="space-y-0.5">
+              <li>
+                <a href="calculators.html#qtc" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">QTc &mdash; Bazett / Fridericia</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#map" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">Mean Arterial Pressure</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#cha2ds2-vasc" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">CHA&#8322;DS&#8322;-VASc</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#has-bled" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">HAS-BLED</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#wells" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">Wells Score &mdash; PE / DVT</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+            </ul>
+          </div>
 
-        <!-- 4-Column Tight Categorized Index -->
-        <div id="calculators-grid" class="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-5">
-          <!-- Rendered from JS -->
+          <!-- Column 3: Renal & Dosing -->
+          <div>
+            <h3 class="px-2 pb-2 mb-1.5 border-b border-zinc-200/70 dark:border-zinc-800/70 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
+              Renal &amp; Dosing
+            </h3>
+            <ul class="space-y-0.5">
+              <li>
+                <a href="calculators.html#ckd-epi" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">CKD-EPI eGFR 2021</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#cockcroft-gault" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">Cockcroft-Gault CrCl</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#fena" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">FENa &amp; FEUrea</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#corrected-calcium" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">Corrected Calcium</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#ibw" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">Ideal Body Weight &amp; Vt</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Column 4: Critical Care & Risk -->
+          <div>
+            <h3 class="px-2 pb-2 mb-1.5 border-b border-zinc-200/70 dark:border-zinc-800/70 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
+              Critical Care &amp; Risk
+            </h3>
+            <ul class="space-y-0.5">
+              <li>
+                <a href="calculators.html#aa-gradient" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">A-a Gradient</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#pf-ratio" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">PaO&#8322; / FiO&#8322; Ratio</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#sofa" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">SOFA / qSOFA Score</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#curb-65" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">CURB-65</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+              <li>
+                <a href="calculators.html#gcs" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
+                  <span class="truncate">Glasgow Coma Scale</span>
+                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+
         </div>
       </div>
-    </section>
-
-    <!-- ==================== GLOBAL SEARCH EMPTY STATE (ONLY WHEN ZERO MATCHES TOTAL) ==================== -->
-    <section id="global-empty-state" class="hidden max-w-6xl mx-auto px-4 sm:px-6 py-20 text-center">
-      <p class="text-sm font-medium text-zinc-700 dark:text-zinc-300">No models or calculators match "<span id="empty-query" class="font-mono text-accentLight dark:text-accentDark"></span>".</p>
-      <button id="empty-reset-btn" type="button" class="mt-3 text-xs font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-white underline underline-offset-4 transition-colors">
-        Clear search
-      </button>
     </section>
 
   </main>
 
-  <!-- ==================== 5. MINIMAL SINGLE-ROW FOOTER ==================== -->
-  <footer class="w-full border-t border-zinc-200/80 dark:border-white/[0.08]">
+  <!-- ==================== 5. MINIMAL FOOTER ==================== -->
+  <footer class="w-full border-t border-zinc-200/80 dark:border-zinc-800/80">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
       <span class="font-medium text-zinc-900 dark:text-zinc-200">MedLab</span>
-      <span class="text-zinc-500 dark:text-zinc-500">Client-side educational models &middot; Not for clinical decision-making</span>
+      <span class="text-zinc-500 dark:text-zinc-500">Educational simulations only &mdash; not intended for clinical decision-making.</span>
     </div>
   </footer>
 
-  <!-- ==================== REGISTRY, FILTERING & GENERATIVE MANIFOLD SCRIPT ==================== -->
+  <!-- ==================== THEME PERSISTENCE & LIVE LEAD II ECG ENGINE ==================== -->
   <script>
   (() => {
     'use strict';
 
-    /* =========================================================================
-       1. EDITABLE DATA REGISTRIES (ADD OR RENAME ROUTES HERE)
-       ========================================================================= */
-
-    /**
-     * Physiology Simulators
-     * Strictly relative hrefs (no leading slash) for GitHub Pages subpath compatibility.
-     */
-    const SIMULATORS = [
-      {
-        name: 'CardioSim',
-        href: 'cardiosim.html',
-        category: 'Cardiopulmonary',
-        subtitle: 'LV pressure-volume loops, hemodynamics & pressors',
-        live: true,
-        icon: 'cardio',
-      },
-      {
-        name: 'VentSim',
-        href: 'ventsim.html',
-        category: 'Cardiopulmonary',
-        subtitle: 'Mechanical ventilation, V/Q matching & ABG dynamics',
-        live: false,
-        icon: 'vent',
-      },
-      {
-        name: 'NephroSim',
-        href: 'nephrosim.html',
-        category: 'Renal & Fluids',
-        subtitle: 'Segmental nephron transport, diuretics & Davenport acid-base',
-        live: false,
-        icon: 'nephro',
-      },
-      {
-        name: 'PKPD',
-        href: 'pkpd.html',
-        category: 'Pharmacology',
-        subtitle: 'Multi-compartment kinetics, effect-site curves & dosing',
-        live: false,
-        icon: 'pkpd',
-      },
-      {
-        name: 'ElectroSim',
-        href: 'electrosim.html',
-        category: 'Cardiopulmonary',
-        subtitle: 'Cardiac action potentials, ion channels & arrhythmias',
-        live: false,
-        icon: 'electro',
-      },
-      {
-        name: 'FluidSim',
-        href: 'fluidsim.html',
-        category: 'Renal & Fluids',
-        subtitle: 'Darrow-Yannet compartments & revised Starling forces',
-        live: false,
-        icon: 'fluid',
-      },
-      {
-        name: 'CoagSim',
-        href: 'coagsim.html',
-        category: 'Pharmacology',
-        subtitle: 'Cell-based coagulation cascade, anticoagulants & TEG',
-        live: false,
-        icon: 'coag',
-      },
-      {
-        name: 'NeuroOphtho',
-        href: 'neuroophtho.html',
-        category: 'Neuro & Endocrine',
-        subtitle: 'Cranial nerve pathways, pupillary reflexes & ray optics',
-        live: false,
-        icon: 'neuro',
-      },
-      {
-        name: 'EndoSim',
-        href: 'endosim.html',
-        category: 'Neuro & Endocrine',
-        subtitle: 'Coupled glucose-insulin & HPA/HPT feedback loops',
-        live: false,
-        icon: 'endo',
-      },
-    ];
-
-    const SIM_CATEGORIES = [
-      'All',
-      'Cardiopulmonary',
-      'Renal & Fluids',
-      'Pharmacology',
-      'Neuro & Endocrine',
-    ];
-
-    /**
-     * Clinical Calculators (20 tools, all routing to calculators.html#slug)
-     */
-    const CALCULATOR_GROUPS = [
-      {
-        category: 'Acid-Base & Electrolytes',
-        items: [
-          { name: 'Anion Gap & Delta-Delta', slug: 'anion-gap', keywords: 'metabolic acidosis hagma nagma' },
-          { name: "Winter's Formula", slug: 'winters', keywords: 'paco2 compensation respiratory' },
-          { name: 'Corrected Na⁺', slug: 'corrected-na', keywords: 'sodium hyperglycemia glucose katz' },
-          { name: 'Osmolar Gap', slug: 'osmolar-gap', keywords: 'toxic alcohol methanol ethylene glycol' },
-          { name: 'A-a Gradient', slug: 'aa-gradient', keywords: 'oxygenation hypoxemia shunt alveolar' },
-        ],
-      },
-      {
-        category: 'Cardiology',
-        items: [
-          { name: 'QTc Interval', slug: 'qtc', keywords: 'bazett fridericia ecg torsades' },
-          { name: 'MAP & SVR', slug: 'map-svr', keywords: 'mean arterial pressure resistance shock' },
-          { name: 'Fick Cardiac Output', slug: 'fick-co', keywords: 'vo2 oxygen consumption svo2 hemodynamics' },
-          { name: 'CHA₂DS₂-VASc', slug: 'cha2ds2-vasc', keywords: 'atrial fibrillation stroke anticoagulation' },
-          { name: 'HAS-BLED', slug: 'has-bled', keywords: 'bleeding risk atrial fibrillation' },
-        ],
-      },
-      {
-        category: 'Renal & Dosing',
-        items: [
-          { name: 'eGFR CKD-EPI', slug: 'egfr', keywords: 'kidney filtration creatinine 2021' },
-          { name: 'Cockcroft-Gault CrCl', slug: 'crcl', keywords: 'creatinine clearance renal dosing' },
-          { name: 'FENa / FEUrea', slug: 'fena', keywords: 'aki prerenal atn fractional excretion' },
-          { name: 'Free Water Deficit', slug: 'free-water', keywords: 'hypernatremia tbw fluids' },
-          { name: 'Corrected Ca²⁺', slug: 'corrected-ca', keywords: 'calcium albumin hypoalbuminemia' },
-        ],
-      },
-      {
-        category: 'Critical Care',
-        items: [
-          { name: 'SOFA Score', slug: 'sofa', keywords: 'sepsis icu organ dysfunction mortality' },
-          { name: 'qSOFA', slug: 'qsofa', keywords: 'quick sepsis screening bedside' },
-          { name: 'Wells PE / DVT', slug: 'wells', keywords: 'pulmonary embolism thrombosis pretest' },
-          { name: 'CURB-65', slug: 'curb65', keywords: 'pneumonia severity cap admission' },
-          { name: 'MELD-Na', slug: 'meld-na', keywords: 'cirrhosis liver sodium transplant' },
-        ],
-      },
-    ];
-
-    /* =========================================================================
-       2. THIN-STROKE 20px MONOCHROME SVG ICONS FOR SIMULATORS
-       ========================================================================= */
-
-    function getModuleIcon(key) {
-      const icons = {
-        cardio: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16M4 19V5" opacity="0.45"/><path d="M9 16.2c2.5 0 6.5-.5 8.2-2.2V8.8c-1.8-1.6-6-1.4-8.2-.2v7.6Z"/></svg>`,
-        vent: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16c2.2 0 2.8-9 5.8-9 2 0 2.4 3 3.7 3s1.2 6 3 6 2.2-9 5.5-9"/><path d="M3 18.5h18" opacity="0.35"/></svg>`,
-        nephro: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6.5" cy="7.5" r="2.5"/><path d="M9 7.5h2.5v10a2 2 0 0 0 4 0V7.5h2a2 2 0 0 1 2 2v9"/></svg>`,
-        pkpd: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18.5L7.5 6.5c2 6.8 6 9.8 12.5 11.2"/><path d="M4 18.5c3 0 5-7 8-7 3.2 0 5 4.2 8 6.2" stroke-dasharray="2.5 2.5" opacity="0.6"/></svg>`,
-        electro: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 15.5h3.2l1.4-9.5h4.3c2 0 2.8 5.2 4.3 9.5h5.8"/></svg>`,
-        fluid: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="7" height="13" rx="1.5"/><rect x="13.5" y="8" width="7" height="10.5" rx="1.5"/><path d="M10.5 11.5h3M10.5 14.5h3" opacity="0.55"/></svg>`,
-        coag: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4c2.4 0 4-5.2 8-5.2h6"/><path d="M3 12h4c2.4 0 4 5.2 8 5.2h6"/><path d="M3 12h18" opacity="0.28"/></svg>`,
-        neuro: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.4"/></svg>`,
-        endo: `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 4.5h3v3"/><path d="M20.5 4.5 17 8a6.8 6.8 0 1 0 1.9 5.6"/><path d="M6.5 19.5h-3v-3"/></svg>`,
-      };
-      return icons[key] || icons.cardio;
-    }
-
-    /* =========================================================================
-       3. STATE & RENDERING (SIMULATORS + COMPACT CALCULATORS + LIVE SEARCH)
-       ========================================================================= */
-
-    const state = {
-      query: '',
-      activeCategory: 'All',
-    };
-
-    function matchesQuery(text, query) {
-      if (!query) return true;
-      const tokens = query.toLowerCase().trim().split(/\s+/);
-      const hay = text.toLowerCase();
-      return tokens.every(tok => hay.includes(tok));
-    }
-
-    function renderTabs() {
-      const container = document.getElementById('sim-tabs');
-      container.innerHTML = SIM_CATEGORIES.map(cat => {
-        const active = state.activeCategory === cat;
-        return `
-          <button
-            type="button"
-            role="tab"
-            aria-selected="${active}"
-            data-cat="${cat}"
-            class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-              active
-                ? 'bg-zinc-900 text-white dark:bg-white/[0.1] dark:text-white'
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.04]'
-            }"
-          >${cat}</button>
-        `;
-      }).join('');
-
-      container.querySelectorAll('button').forEach(btn => {
-        btn.addEventListener('click', () => {
-          state.activeCategory = btn.dataset.cat;
-          renderAll();
-        });
-      });
-    }
-
-    function renderAll() {
-      renderTabs();
-
-      const q = state.query.trim();
-      const simSection = document.getElementById('simulators');
-      const calcSection = document.getElementById('calculators');
-      const simGrid = document.getElementById('simulators-grid');
-      const calcGrid = document.getElementById('calculators-grid');
-      const emptyState = document.getElementById('global-empty-state');
-
-      // 1. Filter simulators
-      const visibleSims = SIMULATORS.filter(s => {
-        if (state.activeCategory !== 'All' && s.category !== state.activeCategory) return false;
-        return matchesQuery(`${s.name} ${s.subtitle} ${s.category} ${s.href}`, q);
-      });
-
-      // 2. Filter calculators
-      const visibleGroups = CALCULATOR_GROUPS.map(g => ({
-        category: g.category,
-        items: g.items.filter(item =>
-          matchesQuery(`${item.name} ${item.slug} ${item.keywords} ${g.category}`, q)
-        ),
-      })).filter(g => g.items.length > 0);
-
-      const totalCalcMatches = visibleGroups.reduce((acc, g) => acc + g.items.length, 0);
-      const totalMatches = visibleSims.length + totalCalcMatches;
-
-      // Toggle global empty state only when zero matches exist across both sections
-      if (totalMatches === 0 && q) {
-        simSection.classList.add('hidden');
-        calcSection.classList.add('hidden');
-        emptyState.classList.remove('hidden');
-        document.getElementById('empty-query').textContent = q;
-        return;
-      }
-
-      emptyState.classList.add('hidden');
-
-      // Show/hide sections smoothly when filtering
-      if (q && visibleSims.length === 0) {
-        simSection.classList.add('hidden');
-      } else {
-        simSection.classList.remove('hidden');
-      }
-
-      if (q && totalCalcMatches === 0) {
-        calcSection.classList.add('hidden');
-      } else {
-        calcSection.classList.remove('hidden');
-      }
-
-      // Render Simulator Cards (direct relative <a> navigation)
-      simGrid.innerHTML = visibleSims.map(sim => `
-        <a
-          href="${sim.href}"
-          class="group relative flex flex-col justify-between p-5 rounded-xl bg-white dark:bg-cardDark border border-zinc-200 dark:border-white/[0.08] hover:border-accentLight/45 dark:hover:border-accentDark/40 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_-12px_rgba(15,118,110,0.16)] dark:hover:shadow-[0_12px_32px_-12px_rgba(45,212,191,0.12)] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
-        >
-          <div>
-            <!-- Top Row: 20px Monochrome Icon + Gliding ↗ Arrow -->
-            <div class="flex items-start justify-between gap-3 mb-4">
-              <div class="text-zinc-700 dark:text-zinc-300 group-hover:text-accentLight dark:group-hover:text-accentDark transition-colors">
-                ${getModuleIcon(sim.icon)}
-              </div>
-              <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-accentLight dark:group-hover:text-accentDark transition-all duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 text-sm leading-none" aria-hidden="true">&#8599;</span>
-            </div>
-
-            <!-- Title (+ subtle live emerald dot for CardioSim) -->
-            <div class="flex items-center gap-2">
-              <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">
-                ${sim.name}
-              </h3>
-              ${sim.live ? `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 dot-pulse" title="Live module"></span>` : ''}
-            </div>
-
-            <!-- Concise 1-line Muted Description -->
-            <p class="mt-1.5 text-[13px] text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-1">
-              ${sim.subtitle}
-            </p>
-          </div>
-
-          <!-- Tiny Muted Monospace Filename -->
-          <div class="mt-5 pt-3 border-t border-zinc-100 dark:border-white/[0.05] flex items-center justify-between">
-            <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">${sim.href}</span>
-          </div>
-        </a>
-      `).join('');
-
-      // Render Compact 4-Column Calculator Directory
-      const metaEl = document.getElementById('calc-meta');
-      metaEl.textContent = q
-        ? `${totalCalcMatches} matching · single unified workspace`
-        : '20 tools · single unified workspace';
-
-      calcGrid.innerHTML = visibleGroups.map(group => `
-        <div class="space-y-2">
-          <h3 class="px-2 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
-            ${group.category}
-          </h3>
-          <ul class="space-y-0.5">
-            ${group.items.map(item => `
-              <li>
-                <a
-                  href="calculators.html#${item.slug}"
-                  class="group flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/90 dark:hover:bg-white/[0.05] transition-colors"
-                >
-                  <span class="truncate">${item.name}</span>
-                  <span class="text-[11px] text-zinc-400 dark:text-zinc-600 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-accentLight dark:group-hover:text-accentDark transition-all duration-150 shrink-0" aria-hidden="true">&rarr;</span>
-                </a>
-              </li>
-            `).join('')}
-          </ul>
-        </div>
-      `).join('');
-
-      // Search input shortcut / clear button toggle
-      const clearBtn = document.getElementById('search-clear');
-      const kbd = document.getElementById('search-shortcut');
-      if (q) {
-        clearBtn.classList.remove('hidden');
-        kbd.classList.add('hidden');
-      } else {
-        clearBtn.classList.add('hidden');
-        kbd.classList.remove('hidden');
-      }
-    }
-
-    /* =========================================================================
-       4. INTERACTIVE 3D HARMONIC PHASE-SPACE FLOW-FIELD CANVAS (60 FPS)
-       ========================================================================= */
-
-    function initHarmonicManifold() {
-      const wrap = document.getElementById('manifold-wrap');
-      const canvas = document.getElementById('manifold-canvas');
-      if (!wrap || !canvas) return;
-      const ctx = canvas.getContext('2d');
-
-      let width = 1;
-      let height = 1;
-      let dpr = 1;
-
-      function resize() {
-        const rect = wrap.getBoundingClientRect();
-        dpr = Math.min(window.devicePixelRatio || 1, 2);
-        width = Math.max(100, rect.width);
-        height = Math.max(100, rect.height);
-        canvas.width = Math.floor(width * dpr);
-        canvas.height = Math.floor(height * dpr);
-      }
-
-      resize();
-      new ResizeObserver(resize).observe(wrap);
-      window.addEventListener('resize', resize);
-
-      // Smooth cursor interaction state (normalized -1..1)
-      const pointer = {
-        active: false,
-        tx: 0,
-        ty: 0,
-        x: 0,
-        y: 0,
-        canvasX: 0.5,
-        canvasY: 0.5,
-      };
-
-      // Active radial harmonic ripples emitted on click/tap
-      const ripples = [];
-
-      function updatePointer(clientX, clientY) {
-        const rect = wrap.getBoundingClientRect();
-        const nx = (clientX - rect.left) / rect.width;
-        const ny = (clientY - rect.top) / rect.height;
-        pointer.active = true;
-        pointer.canvasX = nx;
-        pointer.canvasY = ny;
-        pointer.tx = (nx - 0.5) * 2;
-        pointer.ty = (ny - 0.5) * 2;
-      }
-
-      function emitRipple(clientX, clientY, nowSec) {
-        const rect = wrap.getBoundingClientRect();
-        const nx = ((clientX - rect.left) / rect.width - 0.5) * 2;
-        const ny = ((clientY - rect.top) / rect.height - 0.5) * 2;
-        ripples.push({ x: nx * 1.35, y: ny * 0.9, born: nowSec });
-        if (ripples.length > 5) ripples.shift();
-      }
-
-      let currentSec = 0;
-
-      wrap.addEventListener('pointermove', e => updatePointer(e.clientX, e.clientY));
-      wrap.addEventListener('pointerleave', () => {
-        pointer.active = false;
-        pointer.tx = 0;
-        pointer.ty = 0;
-      });
-      wrap.addEventListener('pointerdown', e => {
-        updatePointer(e.clientX, e.clientY);
-        emitRipple(e.clientX, e.clientY, currentSec);
-      });
-
-      // Manifold parameters
-      const NUM_THREADS = 26;
-      const SEGMENTS = 78;
-
-      // Floating phase-space particles tethered to threads
-      const particles = Array.from({ length: 46 }, (_, i) => ({
-        thread: Math.floor((i * 7) % NUM_THREADS),
-        u: ((i * 0.6180339) % 1) * 2 - 1,
-        speed: 0.055 + (i % 7) * 0.014,
-        size: 1.15 + (i % 4) * 0.38,
-      }));
-
-      // Subtle physiological breathing / double-harmonic rhythmic pulse
-      function physiologicalPulse(t) {
-        const phase = (t * 0.85) % 1;
-        const primary = Math.exp(-Math.pow((phase - 0.16) / 0.09, 2));
-        const dicrotic = 0.38 * Math.exp(-Math.pow((phase - 0.36) / 0.12, 2));
-        return 1.0 + 0.085 * (primary + dicrotic);
-      }
-
-      function render(ts) {
-        currentSec = ts * 0.001;
-        const t = currentSec;
-
-        // Smooth pointer inertia
-        pointer.x += (pointer.tx - pointer.x) * 0.065;
-        pointer.y += (pointer.ty - pointer.y) * 0.065;
-
-        // Expire old ripples
-        for (let i = ripples.length - 1; i >= 0; i--) {
-          if (t - ripples[i].born > 2.4) ripples.splice(i, 1);
-        }
-
-        const isDark = document.documentElement.classList.contains('dark');
-        const pulse = physiologicalPulse(t);
-
-        ctx.save();
-        ctx.scale(dpr, dpr);
-        ctx.clearRect(0, 0, width, height);
-
-        // 3D camera rotation angles (gentle autonomous drift + cursor tilt)
-        const rotY = Math.sin(t * 0.22) * 0.26 + pointer.x * 0.42;
-        const rotX = 0.28 + Math.cos(t * 0.17) * 0.12 - pointer.y * 0.34;
-        const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
-        const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
-
-        const cx = width * 0.5;
-        const cy = height * 0.5;
-        const scaleBase = Math.min(width, height) * 0.42;
-        const fov = 3.4;
-
-        // Evaluate a single 3D manifold point and project to 2D
-        function projectPoint(u, vNorm) {
-          // Layered harmonic ribbon geometry
-          const layerPhase = vNorm * Math.PI * 1.45;
-          const twist = u * 2.15 + t * 0.55;
-          const env = Math.cos(u * Math.PI * 0.48); // Taper ends cleanly
-
-          let x = u * 1.48;
-          let y =
-            (Math.sin(twist + layerPhase * 0.65) * 0.44 +
-              Math.cos(u * 3.6 - t * 0.42 + layerPhase) * 0.22 +
-              vNorm * 0.34) *
-            pulse *
-            (0.45 + 0.55 * env);
-          let z =
-            (Math.cos(twist * 0.85 + layerPhase) * 0.56 +
-              Math.sin(u * 2.8 + t * 0.38 - layerPhase * 0.5) * 0.24) *
-            (0.45 + 0.55 * env);
-
-          // Local cursor gravitational warp
-          if (pointer.active) {
-            const dx = x - pointer.x * 1.25;
-            const dy = y - pointer.y * 0.85;
-            const d2 = dx * dx + dy * dy;
-            const warp = Math.exp(-d2 * 1.9) * 0.24;
-            z += warp;
-            y += dy * warp * 0.45;
-          }
-
-          // Click radial harmonic ripples
-          let rippleGlow = 0;
-          for (let r = 0; r < ripples.length; r++) {
-            const rp = ripples[r];
-            const age = t - rp.born;
-            const radius = age * 1.55;
-            const dist = Math.hypot(x - rp.x, y - rp.y);
-            const band = Math.exp(-Math.pow((dist - radius) / 0.24, 2));
-            const decay = Math.max(0, 1 - age / 2.4);
-            const wave = Math.sin((dist - radius) * 14) * band * decay;
-            z += wave * 0.28;
-            y += wave * 0.11;
-            rippleGlow = Math.max(rippleGlow, band * decay);
-          }
-
-          // 3D rotation (Y then X)
-          const rx = x * cosY - z * sinY;
-          const rz1 = x * sinY + z * cosY;
-          const ry = y * cosX - rz1 * sinX;
-          const rz = y * sinX + rz1 * cosX;
-
-          const perspective = fov / (fov + rz + 1.3);
-          return {
-            sx: cx + rx * scaleBase * perspective,
-            sy: cy + ry * scaleBase * perspective,
-            depth: perspective,
-            glow: rippleGlow,
-          };
-        }
-
-        // Draw delicate layered sine-harmonic threads
-        for (let i = 0; i < NUM_THREADS; i++) {
-          const vNorm = (i / (NUM_THREADS - 1)) * 2 - 1; // -1..1
-          const centerWeight = 1 - Math.abs(vNorm); // Brighter near core
-
-          let maxGlow = 0;
-          ctx.beginPath();
-          for (let s = 0; s <= SEGMENTS; s++) {
-            const u = (s / SEGMENTS) * 2 - 1;
-            const p = projectPoint(u, vNorm);
-            if (p.glow > maxGlow) maxGlow = p.glow;
-            if (s === 0) ctx.moveTo(p.sx, p.sy);
-            else ctx.lineTo(p.sx, p.sy);
-          }
-
-          // Theme-adapted restrained palette (electric teal core -> cool zinc outer)
-          if (isDark) {
-            const alpha = Math.min(0.82, 0.08 + centerWeight * 0.34 + maxGlow * 0.35);
-            const isCore = centerWeight > 0.36;
-            ctx.strokeStyle = isCore
-              ? `rgba(45, 212, 191, ${alpha.toFixed(3)})`
-              : `rgba(161, 161, 170, ${(alpha * 0.72).toFixed(3)})`;
-          } else {
-            const alpha = Math.min(0.75, 0.09 + centerWeight * 0.32 + maxGlow * 0.32);
-            const isCore = centerWeight > 0.36;
-            ctx.strokeStyle = isCore
-              ? `rgba(15, 118, 110, ${alpha.toFixed(3)})`
-              : `rgba(82, 82, 91, ${(alpha * 0.65).toFixed(3)})`;
-          }
-
-          ctx.lineWidth = 0.7 + centerWeight * 0.75 + maxGlow * 0.55;
-          ctx.stroke();
-        }
-
-        // Draw floating luminous phase-space particles along manifold threads
-        for (let i = 0; i < particles.length; i++) {
-          const pt = particles[i];
-          pt.u += pt.speed * 0.016;
-          if (pt.u > 1) pt.u = -1;
-
-          const vNorm = (pt.thread / (NUM_THREADS - 1)) * 2 - 1;
-          const p = projectPoint(pt.u, vNorm);
-          const edgeFade = Math.max(0, 1 - Math.pow(Math.abs(pt.u), 3));
-          const r = pt.size * p.depth * (1 + p.glow * 0.6);
-          const alpha = Math.min(0.95, (0.28 + p.depth * 0.45 + p.glow * 0.4) * edgeFade);
-
-          ctx.beginPath();
-          ctx.arc(p.sx, p.sy, Math.max(0.6, r), 0, Math.PI * 2);
-          ctx.fillStyle = isDark
-            ? `rgba(94, 234, 212, ${alpha.toFixed(3)})`
-            : `rgba(15, 118, 110, ${alpha.toFixed(3)})`;
-          ctx.fill();
-        }
-
-        ctx.restore();
-        requestAnimationFrame(render);
-      }
-
-      requestAnimationFrame(render);
-    }
-
-    /* =========================================================================
-       5. EVENT WIRING (SEARCH, KEYBOARD SHORTCUTS, THEME TOGGLE)
-       ========================================================================= */
-
-    function wireEvents() {
-      const searchInput = document.getElementById('search-input');
-      const clearBtn = document.getElementById('search-clear');
-      const emptyReset = document.getElementById('empty-reset-btn');
-      const themeToggle = document.getElementById('theme-toggle');
-
-      const setQuery = val => {
-        state.query = val;
-        searchInput.value = val;
-        renderAll();
-      };
-
-      searchInput.addEventListener('input', e => {
-        state.query = e.target.value;
-        renderAll();
-      });
-
-      clearBtn.addEventListener('click', () => {
-        setQuery('');
-        searchInput.focus();
-      });
-
-      emptyReset.addEventListener('click', () => {
-        state.activeCategory = 'All';
-        setQuery('');
-        searchInput.focus();
-      });
-
-      // Global keyboard shortcuts: '/' or Cmd/Ctrl+K focuses search; Escape clears/blurs
-      document.addEventListener('keydown', e => {
-        const tag = document.activeElement?.tagName;
-        const isTyping = tag === 'INPUT' || tag === 'TEXTAREA';
-
-        if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !isTyping)) {
-          e.preventDefault();
-          searchInput.focus();
-          searchInput.select();
-          return;
-        }
-
-        if (e.key === 'Escape' && document.activeElement === searchInput) {
-          if (state.query) {
-            setQuery('');
-          } else {
-            searchInput.blur();
-          }
-        }
-      });
-
-      // Dark / Light theme toggle persisted in localStorage
+    /* -------------------------------------------------------------------------
+       1. Dark / Light Theme Toggle
+       ------------------------------------------------------------------------- */
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
       themeToggle.addEventListener('click', () => {
         const isDarkNow = document.documentElement.classList.toggle('dark');
         try {
@@ -923,12 +620,286 @@
       });
     }
 
-    // Boot
-    window.addEventListener('load', () => {
-      wireEvents();
-      renderAll();
-      initHarmonicManifold();
+    /* -------------------------------------------------------------------------
+       2. Clinical Lead II Bedside ECG Monitor Engine
+          - Ring-buffer phosphor-persistence sweep with erase bar
+          - Physiological Lead II P-QRS-T & respiratory sinus arrhythmia
+          - Click/keyboard triggers single wide-complex PVC + compensatory pause
+       ------------------------------------------------------------------------- */
+    const wrapper = document.getElementById('ecg-wrapper');
+    const canvas = document.getElementById('ecg-canvas');
+    const hrEl = document.getElementById('ecg-hr');
+    const dotEl = document.getElementById('ecg-pulse-dot');
+    if (!wrapper || !canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const SECONDS_ACROSS = 4.2;               // Bedside sweep width (seconds)
+    const SAMPLES = 720;                      // Ring buffer horizontal samples
+    const ERASE_GAP = Math.floor(SAMPLES * 0.055);
+
+    const buffer = new Float32Array(SAMPLES).fill(NaN);
+    let width = 1;
+    let height = 1;
+    let dpr = 1;
+
+    let simTime = 0;
+    let phase = 0.08;
+    let beatType = 'normal';                  // 'normal' | 'pvc'
+    let pvcQueued = false;
+    let currentRR = 60 / 68;
+    let headPos = 0;
+    let lastIndex = 0;
+    let lastFrame = performance.now();
+    let beatFlash = 0;
+
+    function resize() {
+      const rect = wrapper.getBoundingClientRect();
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = Math.max(1, rect.width);
+      height = Math.max(1, rect.height);
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+    }
+
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(resize).observe(wrapper);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Queue a single PVC on click or Enter/Space
+    function triggerPVC() {
+      pvcQueued = true;
+    }
+    wrapper.addEventListener('click', triggerPVC);
+    wrapper.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        triggerPVC();
+      }
     });
+
+    function gauss(x, mu, sigma) {
+      const z = (x - mu) / sigma;
+      return Math.exp(-0.5 * z * z);
+    }
+
+    // Asymmetric Gaussian for realistic T-wave & PVC repolarization slopes
+    function asymGauss(x, mu, sLeft, sRight) {
+      const s = x < mu ? sLeft : sRight;
+      const z = (x - mu) / s;
+      return Math.exp(-0.5 * z * z);
+    }
+
+    function sampleECG(p, type, t) {
+      // Subtle respiratory baseline wander + micro amplifier ripple
+      const drift =
+        0.012 * Math.sin(2 * Math.PI * 0.22 * t) +
+        0.004 * Math.sin(2 * Math.PI * 3.7 * t);
+
+      if (type === 'pvc') {
+        // Wide, bizarre QRS (>140 ms), absent P-wave, discordant negative T-wave
+        const qrs =
+          0.88 * asymGauss(p, 0.295, 0.020, 0.026) -
+          0.58 * asymGauss(p, 0.355, 0.022, 0.030);
+        const tWave = -0.34 * asymGauss(p, 0.56, 0.060, 0.042);
+        return qrs + tWave + drift;
+      }
+
+      // Normal Lead II P-QRS-T morphology
+      const pWave = 0.13 * asymGauss(p, 0.165, 0.024, 0.020);
+      const qWave = -0.11 * gauss(p, 0.270, 0.0075);
+      const rWave = 1.05 * gauss(p, 0.295, 0.0095);
+      const sWave = -0.23 * gauss(p, 0.320, 0.0095);
+      const tWave = 0.27 * asymGauss(p, 0.525, 0.052, 0.034);
+      return pWave + qWave + rWave + sWave + tWave + drift;
+    }
+
+    function stepPhysiology(dt) {
+      // Subtle respiratory sinus arrhythmia (~65–71 bpm)
+      const rsaHR = 68 + 2.8 * Math.sin(2 * Math.PI * 0.22 * simTime);
+      const baseRR = 60 / rsaHR;
+      const prevPhase = phase;
+
+      // Trigger queued PVC safely past T-wave (phase >= 0.72 avoids R-on-T)
+      if (pvcQueued && beatType === 'normal' && phase >= 0.72) {
+        pvcQueued = false;
+        beatType = 'pvc';
+        phase = 0.22;
+        currentRR = baseRR * 1.50; // Full compensatory pause (~2.0x RR interval)
+      } else {
+        phase += dt / currentRR;
+        if (phase >= 1) {
+          phase -= 1;
+          beatType = 'normal';
+          currentRR = baseRR;
+        }
+      }
+
+      // Flash beat dot & refresh HR readout at R-peak crossing
+      if (prevPhase < 0.295 && phase >= 0.295) {
+        beatFlash = 1;
+        if (hrEl) hrEl.textContent = Math.round(rsaHR);
+      }
+
+      simTime += dt;
+      return sampleECG(phase, beatType, simTime);
+    }
+
+    // Edge-faded 1 mm (12px) / 5 mm (60px) clinical ECG calibration grid
+    function drawGrid(isDark) {
+      const minor = 12;
+      const major = minor * 5;
+      const colorMinor = isDark ? 'rgba(255,255,255,0.032)' : 'rgba(9,9,11,0.038)';
+      const colorMajor = isDark ? 'rgba(45,212,191,0.070)' : 'rgba(15,118,110,0.080)';
+
+      ctx.save();
+      ctx.lineWidth = 1;
+
+      const vGradMinor = ctx.createLinearGradient(0, 0, 0, height);
+      vGradMinor.addColorStop(0, 'transparent');
+      vGradMinor.addColorStop(0.18, colorMinor);
+      vGradMinor.addColorStop(0.82, colorMinor);
+      vGradMinor.addColorStop(1, 'transparent');
+
+      const vGradMajor = ctx.createLinearGradient(0, 0, 0, height);
+      vGradMajor.addColorStop(0, 'transparent');
+      vGradMajor.addColorStop(0.18, colorMajor);
+      vGradMajor.addColorStop(0.82, colorMajor);
+      vGradMajor.addColorStop(1, 'transparent');
+
+      for (let x = 0; x <= width; x += minor) {
+        const edgeFade = Math.min(x / (width * 0.12), (width - x) / (width * 0.12), 1);
+        if (edgeFade <= 0) continue;
+        const isMajor = Math.round(x) % major === 0;
+        ctx.globalAlpha = edgeFade;
+        ctx.strokeStyle = isMajor ? vGradMajor : vGradMinor;
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, 0);
+        ctx.lineTo(x + 0.5, height);
+        ctx.stroke();
+      }
+
+      const hGradMinor = ctx.createLinearGradient(0, 0, width, 0);
+      hGradMinor.addColorStop(0, 'transparent');
+      hGradMinor.addColorStop(0.12, colorMinor);
+      hGradMinor.addColorStop(0.88, colorMinor);
+      hGradMinor.addColorStop(1, 'transparent');
+
+      const hGradMajor = ctx.createLinearGradient(0, 0, width, 0);
+      hGradMajor.addColorStop(0, 'transparent');
+      hGradMajor.addColorStop(0.12, colorMajor);
+      hGradMajor.addColorStop(0.88, colorMajor);
+      hGradMajor.addColorStop(1, 'transparent');
+
+      const cy = Math.round(height * 0.60);
+      for (let dy = -height; dy <= height; dy += minor) {
+        const y = cy + dy;
+        if (y < 0 || y > height) continue;
+        const edgeFade = Math.min(y / (height * 0.18), (height - y) / (height * 0.18), 1);
+        if (edgeFade <= 0) continue;
+        const isMajor = Math.abs(dy) % major === 0;
+        ctx.globalAlpha = edgeFade;
+        ctx.strokeStyle = isMajor ? hGradMajor : hGradMinor;
+        ctx.beginPath();
+        ctx.moveTo(0, y + 0.5);
+        ctx.lineTo(width, y + 0.5);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function render(now) {
+      const dt = Math.min((now - lastFrame) / 1000, 0.05);
+      lastFrame = now;
+
+      // Advance ring buffer sample-by-sample so narrow R-peaks are never clipped
+      const samplesPerSec = SAMPLES / SECONDS_ACROSS;
+      headPos = (headPos + dt * samplesPerSec) % SAMPLES;
+
+      let idx = lastIndex;
+      const targetIdx = Math.floor(headPos);
+      const stepDt = 1 / samplesPerSec;
+      let safety = 0;
+      while (idx !== targetIdx && safety++ < SAMPLES) {
+        idx = (idx + 1) % SAMPLES;
+        buffer[idx] = stepPhysiology(stepDt);
+      }
+      lastIndex = targetIdx;
+
+      // Clear erase bar ahead of leading sweep point
+      for (let g = 1; g <= ERASE_GAP; g++) {
+        buffer[(targetIdx + g) % SAMPLES] = NaN;
+      }
+
+      // Decay beat indicator dot
+      if (beatFlash > 0) {
+        beatFlash = Math.max(0, beatFlash - dt * 4.5);
+        if (dotEl) dotEl.style.opacity = (0.25 + beatFlash * 0.75).toFixed(2);
+      }
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const rgb = isDark ? '45, 212, 191' : '15, 118, 110';
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      drawGrid(isDark);
+
+      const baselineY = height * 0.60;
+      const ampScale = height * 0.36;
+      const dx = width / (SAMPLES - 1);
+
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Phosphor-persistence trace with freshness power decay
+      const visibleLen = SAMPLES - ERASE_GAP - 1;
+      for (let age = 0; age < visibleLen; age++) {
+        const iCurr = (targetIdx - age + SAMPLES) % SAMPLES;
+        const iPrev = (iCurr - 1 + SAMPLES) % SAMPLES;
+        if (iCurr === 0) continue; // Prevent wraparound artifact across screen edges
+
+        const v0 = buffer[iPrev];
+        const v1 = buffer[iCurr];
+        if (Number.isNaN(v0) || Number.isNaN(v1)) continue;
+
+        const freshness = 1 - age / visibleLen;
+        const alpha = 0.10 + Math.pow(freshness, 1.8) * 0.90;
+
+        ctx.strokeStyle = `rgba(${rgb}, ${alpha.toFixed(3)})`;
+        ctx.lineWidth = freshness > 0.88 ? 2.0 : 1.5;
+        ctx.beginPath();
+        ctx.moveTo(iPrev * dx, baselineY - v0 * ampScale);
+        ctx.lineTo(iCurr * dx, baselineY - v1 * ampScale);
+        ctx.stroke();
+      }
+
+      // Soft radial phosphor glow at leading sweep head
+      const headVal = buffer[targetIdx];
+      if (!Number.isNaN(headVal)) {
+        const hx = targetIdx * dx;
+        const hy = baselineY - headVal * ampScale;
+
+        const glow = ctx.createRadialGradient(hx, hy, 0, hx, hy, 12);
+        glow.addColorStop(0, `rgba(${rgb}, ${isDark ? 0.85 : 0.60})`);
+        glow.addColorStop(0.35, `rgba(${rgb}, ${isDark ? 0.25 : 0.15})`);
+        glow.addColorStop(1, `rgba(${rgb}, 0)`);
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(hx, hy, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = isDark ? '#ccfbf1' : '#0f766e';
+        ctx.beginPath();
+        ctx.arc(hx, hy, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      requestAnimationFrame(render);
+    }
+
+    requestAnimationFrame(render);
   })();
   </script>
 </body>
