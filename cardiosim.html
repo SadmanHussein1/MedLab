@@ -1,1 +1,2524 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CardioSim — MedLab Hemodynamics Simulator</title>
 
+  <!-- Prevent theme flash prior to first paint (syncs medlab-theme & theme keys; defaults to dark) -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#0f0f12',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Subtle Minimal Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(113, 113, 122, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(113, 113, 122, 0.45);
+    }
+
+    /* Minimalist Swiss-Precision Range Sliders (Light & Dark aware, zero heavy glow) */
+    input[type="range"].clinical-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      border-radius: 9999px;
+      background: #e4e4e7;
+      outline: none;
+      cursor: pointer;
+    }
+    .dark input[type="range"].clinical-slider {
+      background: #27272a;
+    }
+
+    input[type="range"].clinical-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+      transition: transform 0.1s ease, background-color 0.15s ease;
+    }
+    .dark input[type="range"].clinical-slider::-webkit-slider-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.14);
+    }
+
+    input[type="range"].clinical-slider.drug-slider::-webkit-slider-thumb {
+      background: #7c3aed;
+    }
+    .dark input[type="range"].clinical-slider.drug-slider::-webkit-slider-thumb {
+      background: #a78bfa;
+    }
+
+    input[type="range"].clinical-slider::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+      transition: transform 0.1s ease, background-color 0.15s ease;
+    }
+    .dark input[type="range"].clinical-slider::-moz-range-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+    input[type="range"].clinical-slider.drug-slider::-moz-range-thumb {
+      background: #7c3aed;
+    }
+    .dark input[type="range"].clinical-slider.drug-slider::-moz-range-thumb {
+      background: #a78bfa;
+    }
+
+    /* Floating Clinical Tooltip */
+    #clinical-tooltip {
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+      z-index: 9999;
+    }
+
+    /* Calm Live Status Pulse */
+    @keyframes monitorPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .pulse-live {
+      animation: monitorPulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-zinc-50 text-zinc-900 dark:bg-obsidian dark:text-zinc-100 transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
+
+  <!-- ==================== FLOATING CLINICAL TOOLTIP ==================== -->
+  <div id="clinical-tooltip" class="fixed opacity-0 max-w-xs px-3 py-2 rounded-lg bg-zinc-900/95 text-zinc-100 dark:bg-zinc-900/95 dark:text-zinc-100 border border-zinc-800 shadow-lg text-xs leading-relaxed backdrop-blur-sm"></div>
+
+  <!-- ==================== 1. MINIMAL STICKY HEADER ==================== -->
+  <header class="sticky top-0 z-40 w-full border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/90 dark:bg-obsidian/90 backdrop-blur-md shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+
+      <!-- Left: MedLab Breadcrumb + CardioSim + Active Preset -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="flex items-center gap-2 group focus:outline-none shrink-0">
+          <span class="w-7 h-7 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-surfaceDark group-hover:border-tealLight/50 dark:group-hover:border-tealDark/50 transition-colors">
+            <svg class="w-4 h-4 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2.5 13h4l2.1-6.2 3.5 11.2 2.3-5h7.1" />
+            </svg>
+          </span>
+          <span class="text-[14px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">MedLab</span>
+        </a>
+
+        <span class="text-zinc-300 dark:text-zinc-700 text-sm font-light select-none">/</span>
+
+        <span class="text-[14px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 shrink-0">CardioSim</span>
+
+        <span class="hidden sm:inline-block h-3.5 w-px bg-zinc-200 dark:bg-zinc-800 mx-0.5"></span>
+
+        <div class="hidden sm:flex items-center gap-1.5 min-w-0">
+          <span id="live-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 pulse-live shrink-0"></span>
+          <span id="active-preset-label" class="text-xs font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[180px] md:max-w-[240px]">Normal Physiology</span>
+          <span id="baroreflex-badge" class="hidden font-mono text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">BARO</span>
+        </div>
+      </div>
+
+      <!-- Right: Uncluttered Control Group -->
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <!-- Play / Pause -->
+        <button id="btn-play-pause" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5 transition-colors" title="Play / Pause Simulation">
+          <svg id="icon-pause" class="w-3.5 h-3.5 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+            <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+          </svg>
+          <svg id="icon-play" class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 hidden" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5,3 20,12 5,21"></polygon>
+          </svg>
+          <span id="play-pause-text" class="hidden sm:inline">Pause</span>
+        </button>
+
+        <!-- Compact Segmented Speed Control -->
+        <div class="inline-flex items-center h-8 rounded-lg bg-zinc-100/80 dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800 p-0.5 text-[11px] font-mono">
+          <button data-speed="0.25" type="button" class="speed-btn px-2 h-full rounded-md text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">0.25×</button>
+          <button data-speed="0.5" type="button" class="speed-btn px-2 h-full rounded-md text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">0.5×</button>
+          <button data-speed="1" type="button" class="speed-btn px-2 h-full rounded-md bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm transition-colors">1×</button>
+        </div>
+
+        <!-- Pin Snapshot -->
+        <button id="btn-pin-snapshot" type="button" data-tooltip="Pin the current hemodynamic state as the Ghost Reference loop & delta baseline for direct before/after comparison." class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:border-tealLight/50 dark:hover:border-tealDark/50 flex items-center gap-1.5 transition-colors">
+          <svg class="w-3.5 h-3.5 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 17v5" />
+            <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+          </svg>
+          <span id="snapshot-btn-label">Pin</span>
+        </button>
+
+        <!-- Reset Normal -->
+        <button id="btn-reset-normal" type="button" data-tooltip="Restore Normal Physiology, clear all drugs, disable baroreflex, and reset reference loop." class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+          Reset
+        </button>
+
+        <!-- Dark / Light Mode Toggle -->
+        <button
+          id="theme-toggle"
+          type="button"
+          aria-label="Toggle dark and light theme"
+          title="Switch Bright / Dark mode"
+          class="w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+        >
+          <!-- Sun Icon (shown in dark mode) -->
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <!-- Moon Icon (shown in light mode) -->
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ==================== 2. CALM HAIRLINE TELEMETRY BAR ==================== -->
+  <section id="telemetry-strip" class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 pt-3.5 shrink-0">
+    <div class="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 overflow-hidden">
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
+
+        <!-- 1. HR -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-b sm:border-b lg:border-b-0 border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="Heart Rate (beats/min). Determines cardiac cycle duration T = 60/HR and diastolic filling time.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>HR</span>
+            <span id="delta-hr" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-hr" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">72</span>
+            <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">bpm</span>
+          </div>
+        </div>
+
+        <!-- 2. BP / MAP -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-b lg:border-b-0 sm:border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="Systemic Arterial Blood Pressure (SBP/DBP) and Mean Arterial Pressure (MAP). Target MAP ≥ 65 mmHg for organ perfusion.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>BP / MAP</span>
+            <span id="delta-map" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1 flex-wrap">
+            <span id="val-bp" class="font-mono text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">120/80</span>
+            <span id="val-map" class="font-mono text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">(93)</span>
+          </div>
+        </div>
+
+        <!-- 3. FWD CO -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-b lg:border-b-0 border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="Forward Cardiac Output (net systemic flow in L/min). In AR or MR, Forward CO is lower than Total LV output due to regurgitant flow.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>FWD CO</span>
+            <span id="delta-co" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline justify-between gap-1 mt-1">
+            <div class="flex items-baseline gap-1">
+              <span id="val-co" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">5.0</span>
+              <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">L/m</span>
+            </div>
+            <span id="val-rf" class="hidden font-mono text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 tabular-nums">RF 0%</span>
+          </div>
+        </div>
+
+        <!-- 4. SV / EF -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="Stroke Volume (mL) & Ejection Fraction (%). Displays Forward SV alongside Total SV whenever valvular regurgitation is present.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>SV / EF</span>
+            <span id="delta-ef" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1 flex-wrap">
+            <span id="val-sv" class="font-mono text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">70 mL</span>
+            <span id="val-ef" class="font-mono text-xs font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">58%</span>
+          </div>
+        </div>
+
+        <!-- 5. EDV / ESV -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-b sm:border-b-0 border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="LV End-Diastolic Volume (preload index) and End-Systolic Volume (mL).">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>EDV / ESV</span>
+            <span id="delta-edv" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-edv-esv" class="font-mono text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">120/50</span>
+            <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">mL</span>
+          </div>
+        </div>
+
+        <!-- 6. EDP / PCWP -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-b sm:border-b-0 sm:border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="LV End-Diastolic Pressure & Mean Left Atrial Pressure / Pulmonary Capillary Wedge Pressure (mmHg). PCWP > 18 mmHg indicates pulmonary congestion risk.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>EDP / PCWP</span>
+            <span id="delta-pcwp" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-edp-pcwp" class="font-mono text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">9 / 9</span>
+            <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">mmHg</span>
+          </div>
+        </div>
+
+        <!-- 7. SVR -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between border-r border-zinc-200/80 dark:border-zinc-800/80" data-tooltip="Systemic Vascular Resistance (dyn·s/cm⁵). Primary determinant of arterial afterload. Normal: 800–1400 dyn·s/cm⁵.">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>SVR</span>
+            <span id="delta-svr" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="val-svr" class="font-mono text-[17px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">1200</span>
+            <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">d·s/c⁵</span>
+          </div>
+        </div>
+
+        <!-- 8. Ea/Ees · PVA -->
+        <div class="px-3.5 py-2.5 flex flex-col justify-between" data-tooltip="Ventriculo-Arterial Coupling (Ea/Ees, optimal 0.5–1.0) and Pressure-Volume Area (PVA = SW + PE, direct linear correlate of myocardial O₂ consumption MVO₂).">
+          <div class="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span>Ea/Ees · PVA</span>
+            <span id="delta-pva" class="font-mono text-[10px] tabular-nums"></span>
+          </div>
+          <div class="flex items-baseline gap-1.5 mt-1">
+            <span id="val-coupling" class="font-mono text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums leading-tight">0.60</span>
+            <span id="val-pva" class="font-mono text-[11px] font-medium text-zinc-500 dark:text-zinc-400 tabular-nums">9.2k</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. SPACIOUS MAIN WORKSPACE ==================== -->
+  <main class="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-4 grid grid-cols-1 xl:grid-cols-12 gap-4 min-h-0">
+
+    <!-- LEFT (xl:col-span-4): LV PRESSURE–VOLUME LOOP -->
+    <section class="xl:col-span-4 rounded-xl bg-white dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800/80 flex flex-col min-h-[390px] xl:min-h-[540px] overflow-hidden">
+      <!-- Clean Header + Understated Overlay Toggles -->
+      <div class="px-4 py-3 border-b border-zinc-200/80 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div class="flex items-baseline gap-2">
+          <h2 class="text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">LV Pressure–Volume</h2>
+          <span id="pv-ref-tag" class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500">Ref: Normal</span>
+        </div>
+
+        <!-- Monochrome Overlay Toggle Pills -->
+        <div class="flex flex-wrap items-center gap-1 text-[10px] font-mono">
+          <button data-overlay="espvr" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="End-Systolic Pressure-Volume Relationship (ESPVR): Linear slope Ees representing load-independent LV contractility.">ESPVR</button>
+          <button data-overlay="edpvr" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="End-Diastolic Pressure-Volume Relationship (EDPVR): Nonlinear exponential passive filling curve reflecting myocardial compliance/stiffness.">EDPVR</button>
+          <button data-overlay="ea" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Effective Arterial Elastance (Ea): Slope from (EDV, 0) to (ESV, Pes) quantifying net arterial afterload imposed on the LV.">Ea</button>
+          <button data-overlay="ghost" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Ghost Reference Loop: Dashed outline of Normal baseline or your Pinned Snapshot for visual comparison.">Ghost</button>
+          <button data-overlay="energy" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Stroke Work (SW) & Potential Energy (PE) shaded fills. Total PVA = SW + PE correlates linearly with myocardial oxygen consumption (MVO₂).">SW/PE</button>
+          <button data-overlay="valves" type="button" class="overlay-btn px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 transition-colors" data-tooltip="Cardiac Valve Markers: MVC (Mitral Valve Closure), AVO (Aortic Opening), AVC (Aortic Closure), MVO (Mitral Opening).">Valves</button>
+        </div>
+      </div>
+
+      <!-- High-DPI Canvas Container -->
+      <div id="pv-canvas-wrap" class="relative flex-1 w-full min-h-[310px] p-1">
+        <canvas id="pv-canvas" class="block w-full h-full"></canvas>
+      </div>
+
+      <!-- Quiet Single-Line Footer -->
+      <div class="px-4 py-2 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-950/40 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 shrink-0">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span data-tooltip="LV End-Systolic Elastance (Contractility)">Ees <strong id="foot-ees" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">2.50</strong></span>
+          <span data-tooltip="Effective Arterial Elastance (Afterload)">Ea <strong id="foot-ea" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">1.50</strong></span>
+          <span data-tooltip="Stroke Work (Area inside PV loop)">SW <strong id="foot-sw" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">7100</strong></span>
+          <span data-tooltip="Potential Energy (Elastic energy stored at end-systole)">PE <strong id="foot-pe" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">2100</strong></span>
+        </div>
+        <span id="foot-phase" class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/90 text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700/70">Systole</span>
+      </div>
+    </section>
+
+    <!-- CENTER (xl:col-span-5): SYNCHRONIZED WIGGERS DIAGRAM -->
+    <section class="xl:col-span-5 rounded-xl bg-white dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800/80 flex flex-col min-h-[390px] xl:min-h-[540px] overflow-hidden">
+      <!-- Clean Header + Compact Inline Color Legend -->
+      <div class="px-4 py-3 border-b border-zinc-200/80 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <h2 class="text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Wiggers Diagram</h2>
+        <div class="flex flex-wrap items-center gap-2.5 text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-rose-600 dark:bg-rose-400 inline-block"></span>AoP</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-amber-600 dark:bg-amber-400 inline-block"></span>LVP</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-cyan-600 dark:bg-cyan-400 inline-block"></span>LAP</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-emerald-600 dark:bg-emerald-400 inline-block"></span>Vol</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-teal-600/70 dark:bg-teal-400/70 inline-block"></span>Flow</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-green-600 dark:bg-green-400 inline-block"></span>ECG</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-0.5 rounded-full bg-violet-600 dark:bg-violet-400 inline-block"></span>Phono</span>
+        </div>
+      </div>
+
+      <!-- High-DPI Canvas Container -->
+      <div id="wiggers-canvas-wrap" class="relative flex-1 w-full min-h-[310px] p-1">
+        <canvas id="wiggers-canvas" class="block w-full h-full"></canvas>
+      </div>
+
+      <!-- Quiet Single-Line Footer -->
+      <div class="px-4 py-2 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-950/40 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 shrink-0">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span>Ao Grad <strong id="foot-ao-grad" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">2 mmHg</strong></span>
+          <span>MV Grad <strong id="foot-mv-grad" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">1 mmHg</strong></span>
+          <span>LA v-wave <strong id="foot-la-v" class="font-medium text-zinc-800 dark:text-zinc-200 tabular-nums">11 mmHg</strong></span>
+        </div>
+        <span id="foot-murmur" class="text-[10.5px] font-sans text-zinc-600 dark:text-zinc-400 font-medium truncate max-w-[240px]">S1 / S2 Normal</span>
+      </div>
+    </section>
+
+    <!-- RIGHT (xl:col-span-3): CALM TABBED CONTROL PANEL -->
+    <aside class="xl:col-span-3 rounded-xl bg-white dark:bg-surfaceDark border border-zinc-200 dark:border-zinc-800/80 flex flex-col min-h-[440px] xl:min-h-0 xl:max-h-[calc(100vh-208px)] overflow-hidden">
+      <!-- 3-Tab Segmented Switcher -->
+      <div class="p-2 border-b border-zinc-200/80 dark:border-zinc-800/80 shrink-0">
+        <div class="grid grid-cols-3 rounded-lg bg-zinc-100/90 dark:bg-obsidian p-0.5 gap-0.5 border border-zinc-200/70 dark:border-zinc-800/80">
+          <button data-tab="pathologies" type="button" class="tab-btn py-1.5 rounded-md text-xs font-medium bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm transition-colors">
+            Pathologies
+          </button>
+          <button data-tab="parameters" type="button" class="tab-btn py-1.5 rounded-md text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors">
+            Parameters
+          </button>
+          <button data-tab="pharmacology" type="button" class="tab-btn py-1.5 rounded-md text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors flex items-center justify-center gap-1.5">
+            <span>Drugs</span>
+            <span id="tab-drug-count" class="hidden font-mono text-[10px] px-1.5 rounded-full bg-violet-500/15 text-violet-700 dark:text-violet-300">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Tab Content Area -->
+      <div class="flex-1 overflow-y-auto p-3">
+
+        <!-- TAB 1: PATHOLOGIES (11 Presets) -->
+        <div id="tab-pathologies" class="space-y-1.5">
+          <!-- Populated dynamically via JS -->
+        </div>
+
+        <!-- TAB 2: PARAMETERS (Baroreflex + 10 Sliders grouped cleanly) -->
+        <div id="tab-parameters" class="hidden space-y-4">
+          <!-- Baroreflex Compensation Toggle -->
+          <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/90 dark:border-zinc-800/80 flex items-center justify-between gap-3" data-tooltip="Closed-loop arterial baroreceptor reflex: gently adjusts Heart Rate and SVR via negative feedback to defend MAP around 90 mmHg.">
+            <div>
+              <div class="text-xs font-medium text-zinc-900 dark:text-zinc-100">Baroreflex Compensation</div>
+              <div class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">Defends MAP ≈ 90 mmHg via HR &amp; SVR</div>
+            </div>
+            <button id="toggle-baroreflex" type="button" role="switch" aria-checked="false" class="relative w-9 h-5 rounded-full bg-zinc-300 dark:bg-zinc-700 transition-colors focus:outline-none shrink-0">
+              <span id="baro-knob" class="block w-4 h-4 rounded-full bg-white shadow-sm transform translate-x-0.5 transition-transform"></span>
+            </button>
+          </div>
+
+          <!-- Grouped Sliders -->
+          <div id="param-sliders-list" class="space-y-4"></div>
+        </div>
+
+        <!-- TAB 3: PHARMACOLOGY (Header + 10 Stackable Infusions) -->
+        <div id="tab-pharmacology" class="hidden space-y-2.5">
+          <div class="flex items-center justify-between gap-2 pb-2 border-b border-zinc-200/80 dark:border-zinc-800/80">
+            <span class="text-[11px] text-zinc-500 dark:text-zinc-400">Stackable bedside infusions</span>
+            <button id="btn-clear-drugs" type="button" class="hidden text-[11px] font-medium text-violet-700 dark:text-violet-300 hover:underline focus:outline-none">
+              Clear all
+            </button>
+          </div>
+          <div id="drug-sliders-list" class="space-y-2"></div>
+        </div>
+
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ==================== 4. MINIMAL BOTTOM CLINICAL STATUS BAR ==================== -->
+  <footer class="w-full border-t border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-obsidian/90 shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <!-- Live Clinical Status Pills -->
+      <div id="diagnostics-badges" class="flex flex-wrap items-center gap-1.5"></div>
+      <!-- Active Drug Infusion Chips -->
+      <div id="active-drugs-summary" class="text-[11px] font-mono flex flex-wrap items-center gap-1.5">
+        <span class="text-zinc-400 dark:text-zinc-500">No active infusions</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== SIMULATION ENGINE & UI CONTROLLER ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    /* =========================================================================
+       1. DEFINITIONS: BASELINE, PATHOLOGY PRESETS, PARAMETERS & PHARMACOLOGY
+          (Preserved 100% verbatim from biophysical model)
+       ========================================================================= */
+
+    const NORMAL_PARAMS = {
+      hr: 72,                  // Heart Rate (bpm)
+      ees: 2.5,                // LV Contractility Ees (mmHg/mL)
+      sbv: 1380,               // Total Stressed Blood Volume (mL)
+      svr: 1200,               // Systemic Vascular Resistance (dyn·s/cm⁵)
+      ca: 1.45,                // Systemic Arterial Compliance (mL/mmHg)
+      diastolicStiffness: 1.0, // EDPVR stiffness multiplier
+      ava: 3.2,                // Aortic Valve Area (cm²)
+      ar: 0,                   // Aortic Regurgitation severity (0-100%)
+      mva: 4.5,                // Mitral Valve Area (cm²)
+      mr: 0,                   // Mitral Regurgitation severity (0-100%)
+    };
+
+    const PATHOLOGIES = [
+      {
+        id: 'normal',
+        name: 'Normal Physiology',
+        tag: 'Baseline',
+        desc: 'Balanced contractility, preload, afterload, and competent valves.',
+        params: { ...NORMAL_PARAMS }
+      },
+      {
+        id: 'hfref',
+        name: 'HFrEF (Systolic HF)',
+        tag: '↓ Ees',
+        desc: 'Depressed ESPVR slope, eccentric LV dilation, low EF, high PCWP.',
+        params: { hr: 92, ees: 0.95, sbv: 1680, svr: 1550, ca: 1.25, diastolicStiffness: 0.72, ava: 3.2, ar: 0, mva: 4.5, mr: 0 }
+      },
+      {
+        id: 'hfpef',
+        name: 'HFpEF (Diastolic HF)',
+        tag: '↑↑ EDPVR',
+        desc: 'Steep upward-shifted EDPVR, preserved EF, marked LVEDP/PCWP elevation.',
+        params: { hr: 78, ees: 2.8, sbv: 1560, svr: 1480, ca: 1.0, diastolicStiffness: 2.8, ava: 3.2, ar: 0, mva: 4.5, mr: 0 }
+      },
+      {
+        id: 'as',
+        name: 'Severe Aortic Stenosis',
+        tag: 'AVA 0.62',
+        desc: 'High LV-to-Aorta systolic gradient, pressure overload, concentric stiffness.',
+        params: { hr: 76, ees: 3.1, sbv: 1480, svr: 1280, ca: 1.25, diastolicStiffness: 1.6, ava: 0.62, ar: 0, mva: 4.5, mr: 0 }
+      },
+      {
+        id: 'ar',
+        name: 'Aortic Regurgitation (Severe)',
+        tag: 'AR 78%',
+        desc: 'No IVR, wide pulse pressure, low DBP, massive volume-overloaded LV.',
+        params: { hr: 84, ees: 2.2, sbv: 1620, svr: 1050, ca: 1.55, diastolicStiffness: 0.65, ava: 3.2, ar: 78, mva: 4.5, mr: 0 }
+      },
+      {
+        id: 'mr',
+        name: 'Mitral Regurgitation (Severe)',
+        tag: 'MR 78%',
+        desc: 'No IVC, giant systolic LA v-wave, high total EF but reduced forward CO.',
+        params: { hr: 92, ees: 2.3, sbv: 1640, svr: 1300, ca: 1.4, diastolicStiffness: 0.72, ava: 3.2, ar: 0, mva: 4.5, mr: 78 }
+      },
+      {
+        id: 'ms',
+        name: 'Mitral Stenosis (Severe)',
+        tag: 'MVA 0.85',
+        desc: 'Diastolic LA-to-LV gradient, high PCWP with underfilled LV & low CO.',
+        params: { hr: 88, ees: 2.5, sbv: 1560, svr: 1420, ca: 1.4, diastolicStiffness: 1.0, ava: 3.2, ar: 0, mva: 0.85, mr: 0 }
+      },
+      {
+        id: 'cardiogenic_shock',
+        name: 'Cardiogenic Shock',
+        tag: 'Critical',
+        desc: 'Severe pump failure (↓Ees), high SVR, hypotension, low CO, high PCWP.',
+        params: { hr: 112, ees: 0.72, sbv: 1640, svr: 1920, ca: 1.15, diastolicStiffness: 0.85, ava: 3.2, ar: 0, mva: 4.5, mr: 0 }
+      },
+      {
+        id: 'septic_shock',
+        name: 'Septic / Distributive Shock',
+        tag: '↓↓↓ SVR',
+        desc: 'Profound vasoplegia (low SVR), tachycardia, hypotension, high/normal CO.',
+        params: { hr: 122, ees: 2.8, sbv: 1160, svr: 500, ca: 1.75, diastolicStiffness: 1.0, ava: 3.2, ar: 0, mva: 4.5, mr: 0 }
+      },
+      {
+        id: 'hypovolemic_shock',
+        name: 'Hypovolemic Shock',
+        tag: '↓↓↓ SBV',
+        desc: 'Severe preload depletion, leftward collapsed loop, tachycardia, high SVR.',
+        params: { hr: 124, ees: 2.9, sbv: 780, svr: 2050, ca: 1.25, diastolicStiffness: 1.0, ava: 3.2, ar: 0, mva: 4.5, mr: 0 }
+      },
+      {
+        id: 'htn_crisis',
+        name: 'Hypertensive Crisis',
+        tag: '↑↑↑ SVR',
+        desc: 'Extreme arterial afterload & stiffness, tall narrow loop, elevated PVA.',
+        params: { hr: 82, ees: 3.2, sbv: 1520, svr: 2550, ca: 0.85, diastolicStiffness: 1.5, ava: 3.2, ar: 0, mva: 4.5, mr: 0 }
+      }
+    ];
+
+    const PARAMETER_CONFIGS = [
+      { key: 'hr', group: 'myo', label: 'Heart Rate', unit: 'bpm', min: 40, max: 180, step: 1, decimals: 0, tip: 'Beats per minute. Shortens diastole disproportionately at high rates.' },
+      { key: 'ees', group: 'myo', label: 'Contractility (Ees)', unit: 'mmHg/mL', min: 0.5, max: 5.0, step: 0.05, decimals: 2, tip: 'Slope of LV End-Systolic Pressure-Volume Relationship (load-independent inotropy).' },
+      { key: 'sbv', group: 'myo', label: 'Stressed Blood Vol (Preload)', unit: 'mL', min: 500, max: 2400, step: 10, decimals: 0, tip: 'Hemodynamically active circulating blood volume generating mean systemic filling pressure.' },
+      { key: 'svr', group: 'myo', label: 'Systemic Vasc Resistance', unit: 'dyn·s/cm⁵', min: 400, max: 3000, step: 20, decimals: 0, tip: 'Arteriolar resistance governing systemic arterial afterload.' },
+      { key: 'ca', group: 'myo', label: 'Arterial Compliance (Ca)', unit: 'mL/mmHg', min: 0.5, max: 3.0, step: 0.05, decimals: 2, tip: 'Windkessel elasticity of large arteries. Lower Ca increases systolic BP and pulse pressure.' },
+      { key: 'diastolicStiffness', group: 'myo', label: 'Diastolic Stiffness (EDPVR)', unit: '×', min: 0.5, max: 4.5, step: 0.05, decimals: 2, tip: 'Scales exponential LV passive stiffness curve. Elevated in HFpEF and hypertrophy.' },
+      { key: 'ava', group: 'valve', label: 'Aortic Valve Area (AVA)', unit: 'cm²', min: 0.4, max: 3.5, step: 0.05, decimals: 2, tip: 'Normal 3.0–4.0 cm². Severe Aortic Stenosis < 1.0 cm².' },
+      { key: 'ar', group: 'valve', label: 'Aortic Regurgitation (AR)', unit: '%', min: 0, max: 100, step: 1, decimals: 0, tip: 'Diastolic backward leak across aortic valve. Eliminates IVR and widens pulse pressure.' },
+      { key: 'mva', group: 'valve', label: 'Mitral Valve Area (MVA)', unit: 'cm²', min: 0.6, max: 5.0, step: 0.05, decimals: 2, tip: 'Normal 4.0–5.0 cm². Severe Mitral Stenosis < 1.0 cm².' },
+      { key: 'mr', group: 'valve', label: 'Mitral Regurgitation (MR)', unit: '%', min: 0, max: 100, step: 1, decimals: 0, tip: 'Systolic backward leak into LA. Eliminates IVC and creates giant LA v-wave.' }
+    ];
+
+    const DRUG_CONFIGS = [
+      {
+        id: 'norepi', name: 'Norepinephrine', maxDose: 0.5, unit: 'mcg/kg/min', decimals: 2,
+        receptors: 'α1+++, β1+', effects: '↑↑SVR · ↑SBV · ↑Ees',
+        apply: (eff, d) => {
+          eff.svr *= (1 + 0.85 * d);
+          eff.sbv += 260 * d;
+          eff.ees *= (1 + 0.28 * d);
+          eff.hr *= (1 + 0.08 * d);
+        }
+      },
+      {
+        id: 'phenyl', name: 'Phenylephrine', maxDose: 2.0, unit: 'mcg/kg/min', decimals: 2,
+        receptors: 'α1+++', effects: '↑↑↑SVR · ↑SBV · ↓HR',
+        apply: (eff, d) => {
+          eff.svr *= (1 + 1.15 * d);
+          eff.sbv += 220 * d;
+          eff.hr *= (1 - 0.18 * d);
+        }
+      },
+      {
+        id: 'dobutamine', name: 'Dobutamine', maxDose: 20, unit: 'mcg/kg/min', decimals: 1,
+        receptors: 'β1+++, β2+', effects: '↑↑Ees · ↑HR · ↓SVR',
+        apply: (eff, d) => {
+          eff.ees *= (1 + 0.95 * d);
+          eff.hr *= (1 + 0.35 * d);
+          eff.svr *= (1 - 0.18 * d);
+          eff.diastolicStiffness *= (1 - 0.12 * d);
+        }
+      },
+      {
+        id: 'milrinone', name: 'Milrinone', maxDose: 0.75, unit: 'mcg/kg/min', decimals: 2,
+        receptors: 'PDE3-i', effects: '↑Ees · ↓↓SVR · ↓SBV · Lusitropy',
+        apply: (eff, d) => {
+          eff.ees *= (1 + 0.45 * d);
+          eff.svr *= (1 - 0.38 * d);
+          eff.sbv -= 140 * d;
+          eff.diastolicStiffness *= (1 - 0.25 * d);
+          eff.hr *= (1 + 0.12 * d);
+        }
+      },
+      {
+        id: 'epi', name: 'Epinephrine', maxDose: 0.3, unit: 'mcg/kg/min', decimals: 2,
+        receptors: 'β1+++, β2++, α1++', effects: '↑↑Ees · ↑↑HR · ↑SVR (high)',
+        apply: (eff, d) => {
+          eff.ees *= (1 + 1.10 * d);
+          eff.hr *= (1 + 0.50 * d);
+          eff.svr *= (1 - 0.12 * d + 0.60 * d * d);
+          eff.sbv += 160 * d;
+        }
+      },
+      {
+        id: 'nitroprusside', name: 'Sodium Nitroprusside', maxDose: 5.0, unit: 'mcg/kg/min', decimals: 1,
+        receptors: 'NO donor', effects: '↓↓↓SVR · ↓SBV · ↑Ca',
+        apply: (eff, d) => {
+          eff.svr *= (1 - 0.58 * d);
+          eff.sbv -= 180 * d;
+          eff.ca *= (1 + 0.20 * d);
+        }
+      },
+      {
+        id: 'ntg', name: 'Nitroglycerin', maxDose: 200, unit: 'mcg/min', decimals: 0,
+        receptors: 'Venodilator', effects: '↓↓↓Preload (SBV) · ↓SVR',
+        apply: (eff, d) => {
+          eff.sbv -= 420 * d;
+          eff.svr *= (1 - 0.16 * d);
+        }
+      },
+      {
+        id: 'esmolol', name: 'Esmolol (β-blocker)', maxDose: 300, unit: 'mcg/kg/min', decimals: 0,
+        receptors: 'β1-antag', effects: '↓↓HR · ↓↓Ees',
+        apply: (eff, d) => {
+          eff.hr *= (1 - 0.42 * d);
+          eff.ees *= (1 - 0.40 * d);
+        }
+      },
+      {
+        id: 'furosemide', name: 'Furosemide (Diuretic)', maxDose: 120, unit: 'mg IV', decimals: 0,
+        receptors: 'Loop Diuretic', effects: '↓↓↓Stressed Blood Vol',
+        apply: (eff, d) => {
+          eff.sbv -= 480 * d;
+        }
+      },
+      {
+        id: 'crystalloid', name: 'IV Crystalloid Bolus', maxDose: 2000, unit: 'mL', decimals: 0,
+        receptors: 'Volume', effects: '↑↑↑Stressed Blood Vol',
+        apply: (eff, d) => {
+          eff.sbv += 560 * d;
+        }
+      }
+    ];
+
+    /* =========================================================================
+       2. BIOPHYSICAL LUMPED-PARAMETER HEMODYNAMIC ODE ENGINE (EXACT VERBATIM)
+       ========================================================================= */
+
+    const DH_T1 = 0.45;
+    const DH_T2 = 0.92;
+    const DH_N1 = 1.9;
+    const DH_N2 = 21.9;
+    let DH_PEAK = 1.0;
+    (() => {
+      let maxVal = 0;
+      for (let i = 1; i <= 400; i++) {
+        const tau = (i / 400) * 1.4;
+        const a = Math.pow(tau / DH_T1, DH_N1);
+        const b = Math.pow(tau / DH_T2, DH_N2);
+        const v = (a / (1 + a)) * (1 / (1 + b));
+        if (v > maxVal) maxVal = v;
+      }
+      DH_PEAK = maxVal;
+    })();
+
+    function evalVentricularAlpha(tCycle, Tsys) {
+      const tau = tCycle / Tsys;
+      if (tau <= 0 || tau > 1.45) return 0;
+      const a = Math.pow(tau / DH_T1, DH_N1);
+      const b = Math.pow(tau / DH_T2, DH_N2);
+      const val = ((a / (1 + a)) * (1 / (1 + b))) / DH_PEAK;
+      return val < 1e-4 ? 0 : Math.min(1, val);
+    }
+
+    function evalAtrialAlpha(tCycle, T) {
+      const Tas = Math.min(0.16, 0.24 * T);
+      const start = T - Tas;
+      if (tCycle < start || tCycle > T) return 0;
+      return 0.5 * (1 - Math.cos(2 * Math.PI * (tCycle - start) / Tas));
+    }
+
+    function solveValveFlow(dP, K, Rlin) {
+      if (dP <= 0) return 0;
+      if (K <= 1e-12) return dP / Math.max(Rlin, 1e-4);
+      return (-Rlin + Math.sqrt(Rlin * Rlin + 4 * K * dP)) / (2 * K);
+    }
+
+    function computeEDPVR(V, V0, betaEff, gammaEff) {
+      const dv = Math.max(0, V - V0);
+      const expArg = Math.min(8.5, gammaEff * dv);
+      return betaEff * (Math.exp(expArg) - 1);
+    }
+
+    function runHemodynamicSimulation(baseParams, drugDoses, baroreflexOn) {
+      const eff = { ...baseParams };
+      for (const drug of DRUG_CONFIGS) {
+        const d = drugDoses[drug.id] || 0;
+        if (d > 0.0001) {
+          drug.apply(eff, d);
+        }
+      }
+
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      eff.hr = clamp(eff.hr, 35, 195);
+      eff.ees = clamp(eff.ees, 0.35, 6.5);
+      eff.sbv = clamp(eff.sbv, 420, 2900);
+      eff.svr = clamp(eff.svr, 280, 3600);
+      eff.ca = clamp(eff.ca, 0.4, 3.8);
+      eff.diastolicStiffness = clamp(eff.diastolicStiffness, 0.4, 5.0);
+      eff.ava = clamp(eff.ava, 0.35, 4.0);
+      eff.ar = clamp(eff.ar, 0, 100);
+      eff.mva = clamp(eff.mva, 0.5, 5.5);
+      eff.mr = clamp(eff.mr, 0, 100);
+
+      const V0_LV = 10.0;
+      const V0_RV = 10.0;
+      const V0_LA = 10.0;
+
+      const kd = eff.diastolicStiffness;
+      const betaLV = 0.55 * kd;
+      const gammaLV = 0.025 * (0.85 + 0.15 * kd);
+
+      const inotropyRatio = clamp(eff.ees / Math.max(0.5, baseParams.ees), 0.65, 1.5);
+      const Ees_RV = 0.58 * inotropyRatio;
+      const betaRV = 0.32;
+      const gammaRV = 0.020;
+
+      const Ees_LA = 0.26;
+      const betaLA = 1.0;
+      const gammaLA = 0.035;
+
+      const Ca = eff.ca;
+      const Csv = 150.0;
+      const Cpa = 4.5;
+      const Rc = 0.065;
+      const Rp = 0.075;
+      const Rtv = 0.005;
+      const Rpv = 0.005;
+
+      const K_av = 1.0 / Math.pow(50.0 * eff.ava, 2);
+      const sAR = eff.ar / 100.0;
+      const eroaAR = sAR > 0.001 ? 0.55 * Math.pow(sAR, 1.5) : 0;
+      const K_ar = eroaAR > 0 ? 1.0 / Math.pow(50.0 * eroaAR, 2) : 0;
+
+      const K_mv = 1.0 / Math.pow(40.0 * eff.mva, 2);
+      const R_mv_lin = 0.004;
+      const sMR = eff.mr / 100.0;
+      const eroaMR = sMR > 0.001 ? 0.60 * Math.pow(sMR, 1.5) : 0;
+      const K_mr = eroaMR > 0 ? 1.0 / Math.pow(45.0 * eroaMR, 2) : 0;
+
+      let Vlv = 115.0;
+      let Vrv = 115.0;
+      let Vla = 65.0;
+      let Vsa = Math.min(eff.sbv * 0.14, 130.0);
+      let Vpa = Math.min(eff.sbv * 0.06, 70.0);
+      let Vsv = eff.sbv - ((Vlv - V0_LV) + (Vrv - V0_RV) + (Vla - V0_LA) + Vsa + Vpa);
+      if (Vsv < 120) {
+        const scale = eff.sbv / 1380;
+        Vlv = V0_LV + 105 * scale;
+        Vrv = V0_RV + 105 * scale;
+        Vla = V0_LA + 55 * scale;
+        Vsa = 130 * scale;
+        Vpa = 70 * scale;
+        Vsv = Math.max(50, eff.sbv - ((Vlv - V0_LV) + (Vrv - V0_RV) + (Vla - V0_LA) + Vsa + Vpa));
+      }
+
+      let runHR = eff.hr;
+      let runSVR = eff.svr;
+
+      const dt = 0.0005;
+      const totalBeats = baroreflexOn ? 18 : 13;
+
+      function computeDerivatives(vLV, vSA, vSV, vRV, vPA, vLA, aV, aA, Rs) {
+        const pLV_es = eff.ees * Math.max(0, vLV - V0_LV);
+        const pLV_ed = computeEDPVR(vLV, V0_LV, betaLV, gammaLV);
+        const pLV = aV * pLV_es + (1 - aV) * pLV_ed;
+
+        const pRV_es = Ees_RV * Math.max(0, vRV - V0_RV);
+        const pRV_ed = computeEDPVR(vRV, V0_RV, betaRV, gammaRV);
+        const pRV = aV * pRV_es + (1 - aV) * pRV_ed;
+
+        const pLA_es = Ees_LA * Math.max(0, vLA - V0_LA);
+        const pLA_ed = computeEDPVR(vLA, V0_LA, betaLA, gammaLA);
+        const pLA = aA * pLA_es + (1 - aA) * pLA_ed;
+
+        const pSA = Math.max(0, vSA / Ca);
+        const pSV = Math.max(0, vSV / Csv);
+        const pPA = Math.max(0, vPA / Cpa);
+
+        let qAV = 0;
+        if (pLV > pSA) {
+          qAV = solveValveFlow(pLV - pSA, K_av, Rc);
+        } else if (K_ar > 0 && pSA > pLV) {
+          qAV = -solveValveFlow(pSA - pLV, K_ar, Rc);
+        }
+        const pAo = Math.max(0, pSA + qAV * Rc);
+
+        let qMV = 0;
+        if (pLA > pLV) {
+          qMV = solveValveFlow(pLA - pLV, K_mv, R_mv_lin);
+        } else if (K_mr > 0 && pLV > pLA) {
+          qMV = -solveValveFlow(pLV - pLA, K_mr, R_mv_lin);
+        }
+
+        const dP_sys = Math.max(0, pSA - pSV);
+        const pZf = 7.0 * Math.tanh(dP_sys / 25.0);
+        const qSys = Math.max(0, dP_sys - pZf) / Rs;
+
+        const qTV = pSV > pRV ? (pSV - pRV) / Rtv : 0;
+        const qPV = pRV > pPA ? (pRV - pPA) / Rpv : 0;
+        const qPul = (pPA - pLA) / Rp;
+
+        return {
+          dVlv: qMV - qAV,
+          dVsa: qAV - qSys,
+          dVsv: qSys - qTV,
+          dVrv: qTV - qPV,
+          dVpa: qPV - qPul,
+          dVla: qPul - qMV,
+          pLV, pAo, pLA, pSA, pSV, pPA, qAV, qMV, qSys
+        };
+      }
+
+      const RECORD_POINTS = 260;
+      const trace = {
+        t: [], pLV: [], pAo: [], pLA: [], vLV: [], qAV: [], qMV: [],
+        ecg: [], phono: [], alphaV: []
+      };
+
+      let mapSum = 0, lapSum = 0, stepCount = 0;
+      let sbp = -Infinity, dbp = Infinity;
+      let edv = -Infinity, esv = Infinity;
+      let lvedp = 0, laVWave = -Infinity;
+      let avFwdVol = 0, avRegVol = 0, mvFwdVol = 0, mvRegVol = 0;
+      let aoGradSum = 0, aoGradCount = 0;
+      let mvGradSum = 0, mvGradCount = 0;
+      let maxElastRatio = -Infinity, pes = 100, ves = 50;
+
+      for (let beat = 0; beat < totalBeats; beat++) {
+        const T = 60.0 / runHR;
+        const Tsys = Math.min(0.74 * T, 0.35 * Math.sqrt(T));
+        const Rs = runSVR / 1333.22;
+        const nSteps = Math.max(200, Math.round(T / dt));
+        const h = T / nSteps;
+        const isLastBeat = (beat === totalBeats - 1);
+
+        const aV_arr = new Float64Array(nSteps + 1);
+        const aA_arr = new Float64Array(nSteps + 1);
+        for (let i = 0; i <= nSteps; i++) {
+          const tc = i * h;
+          aV_arr[i] = evalVentricularAlpha(tc, Tsys);
+          aA_arr[i] = evalAtrialAlpha(tc, T);
+        }
+
+        let beatMapSum = 0;
+        const sampleEvery = isLastBeat ? Math.max(1, Math.floor(nSteps / RECORD_POINTS)) : 9999999;
+
+        for (let i = 0; i < nSteps; i++) {
+          const aV0 = aV_arr[i];
+          const aA0 = aA_arr[i];
+          const aVm = 0.5 * (aV0 + aV_arr[i + 1]);
+          const aAm = 0.5 * (aA0 + aA_arr[i + 1]);
+
+          const k1 = computeDerivatives(Vlv, Vsa, Vsv, Vrv, Vpa, Vla, aV0, aA0, Rs);
+
+          const h2 = 0.5 * h;
+          const mVlv = Math.max(V0_LV + 0.5, Vlv + h2 * k1.dVlv);
+          const mVsa = Math.max(1.0, Vsa + h2 * k1.dVsa);
+          const mVsv = Math.max(5.0, Vsv + h2 * k1.dVsv);
+          const mVrv = Math.max(V0_RV + 0.5, Vrv + h2 * k1.dVrv);
+          const mVpa = Math.max(1.0, Vpa + h2 * k1.dVpa);
+          const mVla = Math.max(V0_LA + 0.5, Vla + h2 * k1.dVla);
+
+          const k2 = computeDerivatives(mVlv, mVsa, mVsv, mVrv, mVpa, mVla, aVm, aAm, Rs);
+
+          Vlv += h * k2.dVlv;
+          Vsa += h * k2.dVsa;
+          Vsv += h * k2.dVsv;
+          Vrv += h * k2.dVrv;
+          Vpa += h * k2.dVpa;
+          Vla += h * k2.dVla;
+
+          if (Vlv < V0_LV + 1) { Vsv -= (V0_LV + 1 - Vlv); Vlv = V0_LV + 1; }
+          if (Vrv < V0_RV + 1) { Vsv -= (V0_RV + 1 - Vrv); Vrv = V0_RV + 1; }
+          if (Vla < V0_LA + 1) { Vsv -= (V0_LA + 1 - Vla); Vla = V0_LA + 1; }
+          if (Vsa < 1) { Vsv -= (1 - Vsa); Vsa = 1; }
+          if (Vpa < 1) { Vsv -= (1 - Vpa); Vpa = 1; }
+          if (Vsv < 5) Vsv = 5;
+
+          beatMapSum += k1.pAo;
+
+          if (isLastBeat) {
+            const tc = i * h;
+            if (i === 0) lvedp = k1.pLV;
+
+            mapSum += k1.pAo;
+            lapSum += k1.pLA;
+            stepCount++;
+
+            if (k1.pAo > sbp) sbp = k1.pAo;
+            if (k1.pAo < dbp) dbp = k1.pAo;
+            if (Vlv > edv) edv = Vlv;
+            if (Vlv < esv) esv = Vlv;
+
+            if (tc >= 0.25 * Tsys && tc <= 1.25 * Tsys && k1.pLA > laVWave) {
+              laVWave = k1.pLA;
+            }
+
+            if (tc > 0.2 * Tsys && tc < 1.15 * Tsys) {
+              const ratio = k1.pLV / Math.max(1, Vlv - V0_LV);
+              if (ratio > maxElastRatio) {
+                maxElastRatio = ratio;
+                pes = k1.pLV;
+                ves = Vlv;
+              }
+            }
+
+            if (k1.qAV > 0) {
+              avFwdVol += k1.qAV * h;
+              aoGradSum += Math.max(0, k1.pLV - k1.pAo);
+              aoGradCount++;
+            } else if (k1.qAV < 0) {
+              avRegVol += (-k1.qAV) * h;
+            }
+
+            if (k1.qMV > 0) {
+              mvFwdVol += k1.qMV * h;
+              mvGradSum += Math.max(0, k1.pLA - k1.pLV);
+              mvGradCount++;
+            } else if (k1.qMV < 0) {
+              mvRegVol += (-k1.qMV) * h;
+            }
+
+            if (i % sampleEvery === 0) {
+              trace.t.push(tc);
+              trace.pLV.push(k1.pLV);
+              trace.pAo.push(k1.pAo);
+              trace.pLA.push(k1.pLA);
+              trace.vLV.push(Vlv);
+              trace.qAV.push(k1.qAV);
+              trace.qMV.push(k1.qMV);
+              trace.alphaV.push(aV0);
+            }
+          }
+        }
+
+        if (baroreflexOn && beat >= 2 && beat < totalBeats - 2) {
+          const beatMAP = beatMapSum / nSteps;
+          const mapErr = 90.0 - beatMAP;
+          const targetHR = clamp(eff.hr * (1 + 0.011 * mapErr), 40, 180);
+          const targetSVR = clamp(eff.svr * (1 + 0.013 * mapErr), 400, 3200);
+          runHR += 0.35 * (targetHR - runHR);
+          runSVR += 0.35 * (targetSVR - runSVR);
+        }
+      }
+
+      eff.hr = runHR;
+      eff.svr = runSVR;
+
+      const T = 60.0 / runHR;
+      const Tsys = Math.min(0.74 * T, 0.35 * Math.sqrt(T));
+      const map = mapSum / Math.max(1, stepCount);
+      const pcwp = lapSum / Math.max(1, stepCount);
+      const totalSV = Math.max(1, edv - esv);
+      const forwardSV = Math.max(0.5, avFwdVol - avRegVol);
+      const forwardCO = (forwardSV * runHR) / 1000.0;
+      const totalEF = (totalSV / Math.max(1, edv)) * 100.0;
+      const forwardEF = (forwardSV / Math.max(1, edv)) * 100.0;
+
+      const rfAR = avFwdVol > 1 ? (avRegVol / avFwdVol) * 100.0 : 0;
+      const rfMR = mvFwdVol > 1 ? (mvRegVol / mvFwdVol) * 100.0 : 0;
+      const regurgFraction = Math.max(rfAR, rfMR);
+
+      const meanAoGrad = aoGradCount > 0 ? aoGradSum / aoGradCount : 0;
+      const meanMvGrad = mvGradCount > 0 ? mvGradSum / mvGradCount : 0;
+
+      const ea = pes / Math.max(1, totalSV);
+      const coupling = ea / eff.ees;
+
+      let sw = 0;
+      const N = trace.vLV.length;
+      for (let i = 0; i < N; i++) {
+        const j = (i + 1) % N;
+        const pMid = 0.5 * (trace.pLV[i] + trace.pLV[j]);
+        const dV = trace.vLV[j] - trace.vLV[i];
+        sw -= pMid * dV;
+      }
+      sw = Math.max(0, sw);
+
+      let edpvrInt = 0;
+      const intSteps = 40;
+      const dvInt = Math.max(0, ves - V0_LV) / intSteps;
+      for (let k = 0; k < intSteps; k++) {
+        const vMid = V0_LV + (k + 0.5) * dvInt;
+        edpvrInt += computeEDPVR(vMid, V0_LV, betaLV, gammaLV) * dvInt;
+      }
+      const pe = Math.max(0, 0.5 * pes * Math.max(0, ves - V0_LV) - edpvrInt);
+      const pva = sw + pe;
+
+      let idxMVC = 0, idxAVO = -1, idxAVC = -1, idxMVO = -1;
+      for (let i = 0; i < N; i++) {
+        if (idxAVO === -1 && trace.qAV[i] > 5) idxAVO = i;
+      }
+      if (idxAVO !== -1) {
+        for (let i = idxAVO + 2; i < N; i++) {
+          if (trace.qAV[i] <= 2) { idxAVC = i; break; }
+        }
+      }
+      if (idxAVC !== -1) {
+        for (let i = idxAVC + 1; i < N; i++) {
+          if (trace.qMV[i] > 5) { idxMVO = i; break; }
+        }
+      }
+      if (idxAVO === -1) idxAVO = Math.round(N * 0.08);
+      if (idxAVC === -1) idxAVC = Math.round(N * (Tsys / T) * 0.95);
+      if (idxMVO === -1) idxMVO = Math.min(N - 1, idxAVC + Math.round(N * 0.08));
+
+      const tAVO = trace.t[idxAVO] || 0.05;
+      const tAVC = trace.t[idxAVC] || Tsys;
+      const tMVO = trace.t[idxMVO] || (Tsys + 0.06);
+      const Tas = Math.min(0.16, 0.24 * T);
+
+      for (let i = 0; i < N; i++) {
+        const tc = trace.t[i];
+
+        let ecg = 0;
+        const tP = T - 0.55 * Tas;
+        const dP = tc - tP;
+        ecg += 0.16 * Math.exp(-(dP * dP) / (2 * 0.022 * 0.022));
+
+        const dQ = tc - 0.008;
+        const dR = tc - 0.022;
+        const dS = tc - 0.038;
+        ecg -= 0.14 * Math.exp(-(dQ * dQ) / (2 * 0.005 * 0.005));
+        ecg += 1.15 * Math.exp(-(dR * dR) / (2 * 0.007 * 0.007));
+        ecg -= 0.25 * Math.exp(-(dS * dS) / (2 * 0.006 * 0.006));
+
+        const tTw = 0.78 * Tsys;
+        const dT = tc - tTw;
+        const sigT = dT < 0 ? 0.042 : 0.032;
+        ecg += 0.30 * Math.exp(-(dT * dT) / (2 * sigT * sigT));
+        trace.ecg.push(ecg);
+
+        let phono = 0;
+        const dS1 = tc - 0.02;
+        if (Math.abs(dS1) < 0.055) {
+          phono += 0.85 * Math.exp(-(dS1 * dS1) / (2 * 0.013 * 0.013)) * Math.sin(2 * Math.PI * 62 * dS1);
+        }
+        const dS2 = tc - tAVC;
+        if (Math.abs(dS2) < 0.05) {
+          phono += 0.72 * Math.exp(-(dS2 * dS2) / (2 * 0.011 * 0.011)) * Math.sin(2 * Math.PI * 82 * dS2);
+        }
+
+        const carrier = Math.sin(2 * Math.PI * 115 * tc) * 0.55 +
+                        Math.sin(2 * Math.PI * 173 * tc + 1.1) * 0.30 +
+                        Math.cos(2 * Math.PI * 227 * tc + 2.3) * 0.15;
+
+        if (meanAoGrad > 10 && tc > tAVO && tc < tAVC) {
+          const u = (tc - tAVO) / Math.max(0.02, tAVC - tAVO);
+          const env = Math.sin(Math.PI * u);
+          const amp = Math.min(0.85, (meanAoGrad - 8) / 55);
+          phono += amp * env * env * carrier;
+        }
+
+        if (eff.mr > 8 && tc > 0.02 && tc < tAVC) {
+          const u = (tc - 0.02) / Math.max(0.02, tAVC - 0.02);
+          const env = Math.min(1, u * 10) * Math.min(1, (1 - u) * 10);
+          const amp = Math.min(0.75, (eff.mr / 100) * 0.85);
+          phono += amp * env * carrier;
+        }
+
+        if (eff.ar > 8 && tc > tAVC) {
+          const u = (tc - tAVC) / Math.max(0.05, T - tAVC);
+          const env = Math.exp(-3.2 * u);
+          const amp = Math.min(0.75, (eff.ar / 100) * 0.85);
+          phono += amp * env * carrier;
+        }
+
+        if (meanMvGrad > 3.5 && tc > tMVO) {
+          const dOS = tc - tMVO;
+          if (Math.abs(dOS) < 0.02) {
+            phono += 0.35 * Math.exp(-(dOS * dOS) / (2 * 0.005 * 0.005)) * Math.sin(2 * Math.PI * 95 * dOS);
+          }
+          const u = (tc - tMVO) / Math.max(0.05, T - tMVO);
+          const presys = tc > (T - Tas) ? 0.55 * Math.sin(Math.PI * (tc - (T - Tas)) / Tas) : 0;
+          const env = Math.min(1, u * 8) * (0.65 * Math.exp(-1.4 * u) + presys);
+          const amp = Math.min(0.70, (meanMvGrad - 2.5) / 16);
+          const lowCarrier = Math.sin(2 * Math.PI * 75 * tc) * 0.65 + Math.cos(2 * Math.PI * 108 * tc) * 0.35;
+          phono += amp * env * lowCarrier;
+        }
+
+        trace.phono.push(phono);
+      }
+
+      const murmurs = [];
+      if (meanAoGrad > 12) murmurs.push('Systolic Crescendo-Decrescendo (AS)');
+      if (eff.mr > 12) murmurs.push('Holosystolic (MR)');
+      if (eff.ar > 12) murmurs.push('Diastolic Decrescendo (AR)');
+      if (meanMvGrad > 4) murmurs.push('OS + Diastolic Rumble (MS)');
+
+      return {
+        eff,
+        T,
+        Tsys,
+        V0: V0_LV,
+        betaLV,
+        gammaLV,
+        trace,
+        valves: { idxMVC, idxAVO, idxAVC, idxMVO },
+        murmurLabel: murmurs.length ? murmurs.join(' · ') : 'S1 / S2 Normal',
+        metrics: {
+          hr: runHR,
+          sbp,
+          dbp,
+          map,
+          edv,
+          esv,
+          totalSV,
+          forwardSV,
+          forwardCO,
+          totalEF,
+          forwardEF,
+          regurgFraction,
+          rfAR,
+          rfMR,
+          lvedp,
+          pcwp,
+          laVWave: isFinite(laVWave) ? laVWave : pcwp,
+          svr: runSVR,
+          ees: eff.ees,
+          ea,
+          coupling,
+          pes,
+          ves,
+          sw,
+          pe,
+          pva,
+          meanAoGrad,
+          meanMvGrad
+        }
+      };
+    }
+
+    /* =========================================================================
+       3. APPLICATION STATE
+       ========================================================================= */
+
+    const state = {
+      activePresetId: 'normal',
+      params: { ...NORMAL_PARAMS },
+      drugs: {},
+      baroreflex: false,
+      playing: true,
+      speed: 1.0,
+      simTime: 0,
+      overlays: {
+        espvr: true,
+        edpvr: true,
+        ea: true,
+        ghost: true,
+        energy: true,
+        valves: true
+      },
+      currentSim: null,
+      referenceSim: null,
+      referenceLabel: 'Normal',
+      axisMaxV: 250,
+      axisMaxP: 220,
+      targetMaxV: 250,
+      targetMaxP: 220
+    };
+
+    for (const d of DRUG_CONFIGS) state.drugs[d.id] = 0;
+
+    /* =========================================================================
+       4. SIMULATION UPDATE & CALM TELEMETRY BINDING
+       ========================================================================= */
+
+    function updateSimulation() {
+      try {
+        state.currentSim = runHemodynamicSimulation(state.params, state.drugs, state.baroreflex);
+        if (!state.referenceSim) {
+          state.referenceSim = state.currentSim;
+        }
+
+        const maxVNow = Math.max(
+          state.currentSim.metrics.edv,
+          state.referenceSim ? state.referenceSim.metrics.edv : 0
+        );
+        const maxPNow = Math.max(
+          ...state.currentSim.trace.pLV,
+          state.referenceSim ? Math.max(...state.referenceSim.trace.pLV) : 0
+        );
+        state.targetMaxV = maxVNow > 225 ? Math.ceil((maxVNow + 30) / 50) * 50 : 250;
+        state.targetMaxP = maxPNow > 200 ? Math.ceil((maxPNow + 25) / 40) * 40 : 220;
+
+        renderTelemetry();
+        renderDiagnostics();
+        updateParameterEffectiveReadouts();
+        updateHeaderBadges();
+      } catch (err) {
+        console.error('Simulation error:', err);
+      }
+    }
+
+    function formatDelta(curr, ref, decimals = 0, invertColor = false) {
+      const diff = curr - ref;
+      const thresh = decimals === 0 ? 0.5 : 0.05;
+      if (Math.abs(diff) < thresh) return { text: '—', cls: 'text-zinc-300 dark:text-zinc-700' };
+      const sign = diff > 0 ? '+' : '';
+      const text = `${sign}${diff.toFixed(decimals)}`;
+      const isPositive = diff > 0;
+      let cls = isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+      if (invertColor) cls = isPositive ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
+      return { text, cls };
+    }
+
+    function setDeltaEl(id, deltaObj) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = deltaObj.text;
+      el.className = `font-mono text-[10px] tabular-nums ${deltaObj.cls}`;
+    }
+
+    function renderTelemetry() {
+      const m = state.currentSim.metrics;
+      const r = state.referenceSim.metrics;
+      const baseNumCls = 'text-zinc-900 dark:text-zinc-100';
+      const roseCls = 'text-rose-600 dark:text-rose-400';
+      const amberCls = 'text-amber-600 dark:text-amber-400';
+
+      // 1. HR
+      const hrEl = document.getElementById('val-hr');
+      hrEl.textContent = Math.round(m.hr);
+      hrEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${m.hr > 115 || m.hr < 48 ? amberCls : baseNumCls}`;
+      setDeltaEl('delta-hr', formatDelta(m.hr, r.hr, 0, true));
+
+      // 2. BP / MAP
+      const bpEl = document.getElementById('val-bp');
+      const mapEl = document.getElementById('val-map');
+      bpEl.textContent = `${Math.round(m.sbp)}/${Math.round(m.dbp)}`;
+      mapEl.textContent = `(${Math.round(m.map)})`;
+      const bpAbnormal = m.map < 65 || m.sbp >= 180 || m.dbp >= 110;
+      bpEl.className = `font-mono text-[15px] font-semibold tabular-nums leading-tight ${bpAbnormal ? roseCls : baseNumCls}`;
+      mapEl.className = `font-mono text-[11px] font-medium tabular-nums ${bpAbnormal ? roseCls : 'text-zinc-500 dark:text-zinc-400'}`;
+      setDeltaEl('delta-map', formatDelta(m.map, r.map, 0, false));
+
+      // 3. FWD CO + RF pill
+      const coEl = document.getElementById('val-co');
+      coEl.textContent = m.forwardCO.toFixed(1);
+      coEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${m.forwardCO < 3.5 ? roseCls : baseNumCls}`;
+      setDeltaEl('delta-co', formatDelta(m.forwardCO, r.forwardCO, 1, false));
+
+      const rfEl = document.getElementById('val-rf');
+      if (m.regurgFraction >= 2) {
+        rfEl.classList.remove('hidden');
+        rfEl.textContent = `RF ${Math.round(m.regurgFraction)}%`;
+      } else {
+        rfEl.classList.add('hidden');
+      }
+
+      // 4. SV / EF
+      const svEl = document.getElementById('val-sv');
+      if (m.regurgFraction >= 3) {
+        svEl.textContent = `${Math.round(m.forwardSV)}/${Math.round(m.totalSV)}`;
+        svEl.className = `font-mono text-[14px] font-semibold tabular-nums leading-tight ${baseNumCls}`;
+      } else {
+        svEl.textContent = `${Math.round(m.forwardSV)} mL`;
+        svEl.className = `font-mono text-[15px] font-semibold tabular-nums leading-tight ${baseNumCls}`;
+      }
+      const efEl = document.getElementById('val-ef');
+      efEl.textContent = `${Math.round(m.totalEF)}%`;
+      efEl.className = `font-mono text-xs font-medium tabular-nums ${m.totalEF < 40 ? roseCls : 'text-zinc-500 dark:text-zinc-400'}`;
+      setDeltaEl('delta-ef', formatDelta(m.totalEF, r.totalEF, 0, false));
+
+      // 5. EDV / ESV
+      document.getElementById('val-edv-esv').textContent = `${Math.round(m.edv)}/${Math.round(m.esv)}`;
+      setDeltaEl('delta-edv', formatDelta(m.edv, r.edv, 0, true));
+
+      // 6. EDP / PCWP
+      const edpEl = document.getElementById('val-edp-pcwp');
+      edpEl.textContent = `${Math.round(m.lvedp)} / ${Math.round(m.pcwp)}`;
+      edpEl.className = `font-mono text-[15px] font-semibold tabular-nums leading-tight ${m.pcwp > 18 ? roseCls : (m.pcwp < 5 ? amberCls : baseNumCls)}`;
+      setDeltaEl('delta-pcwp', formatDelta(m.pcwp, r.pcwp, 0, true));
+
+      // 7. SVR
+      const svrEl = document.getElementById('val-svr');
+      svrEl.textContent = Math.round(m.svr);
+      svrEl.className = `font-mono text-[17px] font-semibold tabular-nums leading-tight ${m.svr < 700 || m.svr > 1800 ? amberCls : baseNumCls}`;
+      setDeltaEl('delta-svr', formatDelta(m.svr, r.svr, 0, true));
+
+      // 8. Ea/Ees · PVA
+      const coupEl = document.getElementById('val-coupling');
+      coupEl.textContent = m.coupling.toFixed(2);
+      coupEl.className = `font-mono text-[15px] font-semibold tabular-nums leading-tight ${m.coupling > 1.2 ? amberCls : baseNumCls}`;
+      document.getElementById('val-pva').textContent = `${(m.pva / 1000).toFixed(1)}k`;
+      setDeltaEl('delta-pva', formatDelta(m.pva / 1000, r.pva / 1000, 1, true));
+
+      // Panel Footers
+      document.getElementById('foot-ees').textContent = m.ees.toFixed(2);
+      document.getElementById('foot-ea').textContent = m.ea.toFixed(2);
+      document.getElementById('foot-sw').textContent = Math.round(m.sw);
+      document.getElementById('foot-pe').textContent = Math.round(m.pe);
+      document.getElementById('foot-ao-grad').textContent = `${Math.round(m.meanAoGrad)} mmHg`;
+      document.getElementById('foot-mv-grad').textContent = `${Math.round(m.meanMvGrad)} mmHg`;
+      document.getElementById('foot-la-v').textContent = `${Math.round(m.laVWave)} mmHg`;
+      document.getElementById('foot-murmur').textContent = state.currentSim.murmurLabel;
+      document.getElementById('pv-ref-tag').textContent = `Ref: ${state.referenceLabel}`;
+    }
+
+    function renderDiagnostics() {
+      const m = state.currentSim.metrics;
+      const badges = [];
+
+      if (m.map < 65) {
+        badges.push({ text: `Hypotension / Shock (MAP ${Math.round(m.map)} mmHg)`, level: 'critical' });
+      } else if (m.sbp >= 180 || m.dbp >= 110) {
+        badges.push({ text: `Hypertensive Urgency (${Math.round(m.sbp)}/${Math.round(m.dbp)})`, level: 'critical' });
+      }
+
+      if (m.forwardCO < 3.5) {
+        badges.push({ text: `Low Output (CO ${m.forwardCO.toFixed(1)} L/min)`, level: 'critical' });
+      } else if (m.forwardCO > 7.5) {
+        badges.push({ text: `Hyperdynamic (CO ${m.forwardCO.toFixed(1)} L/min)`, level: 'info' });
+      }
+
+      if (m.pcwp > 18) {
+        badges.push({ text: `Pulmonary Edema Risk (PCWP ${Math.round(m.pcwp)} mmHg)`, level: 'warn' });
+      } else if (m.pcwp < 5) {
+        badges.push({ text: `Preload Depleted (PCWP ${Math.round(m.pcwp)} mmHg)`, level: 'warn' });
+      }
+
+      if (m.coupling > 1.2) {
+        badges.push({ text: `Suboptimal VA Coupling (Ea/Ees ${m.coupling.toFixed(2)})`, level: 'warn' });
+      }
+
+      if (m.meanAoGrad >= 40) {
+        badges.push({ text: `Severe AS Gradient (${Math.round(m.meanAoGrad)} mmHg)`, level: 'warn' });
+      }
+      if (m.meanMvGrad >= 10) {
+        badges.push({ text: `Severe MS Gradient (${Math.round(m.meanMvGrad)} mmHg)`, level: 'warn' });
+      }
+      if (m.rfMR >= 40) {
+        badges.push({ text: `Severe MR · v-wave ${Math.round(m.laVWave)} mmHg`, level: 'warn' });
+      }
+      if (m.rfAR >= 40) {
+        badges.push({ text: `Severe AR · Wide PP (${Math.round(m.sbp - m.dbp)} mmHg)`, level: 'warn' });
+      }
+
+      if (badges.length === 0) {
+        badges.push({ text: 'Normal Hemodynamics · Optimal VA Coupling', level: 'ok' });
+      }
+
+      const levelStyles = {
+        ok: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
+        info: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25',
+        warn: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
+        critical: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30'
+      };
+
+      document.getElementById('diagnostics-badges').innerHTML = badges.map(b =>
+        `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[11px] font-medium ${levelStyles[b.level]}">
+          <span class="w-1.5 h-1.5 rounded-full bg-current"></span>${b.text}
+        </span>`
+      ).join('');
+
+      const activeDrugs = DRUG_CONFIGS.filter(d => (state.drugs[d.id] || 0) > 0.005);
+      const summaryEl = document.getElementById('active-drugs-summary');
+      if (activeDrugs.length === 0) {
+        summaryEl.innerHTML = '<span class="text-zinc-400 dark:text-zinc-500">No active infusions</span>';
+      } else {
+        summaryEl.innerHTML = activeDrugs.map(d => {
+          const val = (state.drugs[d.id] * d.maxDose).toFixed(d.decimals);
+          return `<span class="px-2 py-0.5 rounded-md bg-violet-500/10 border border-violet-500/25 text-violet-700 dark:text-violet-300">${d.name.split(' ')[0]} ${val} ${d.unit}</span>`;
+        }).join('');
+      }
+    }
+
+    function updateHeaderBadges() {
+      const preset = PATHOLOGIES.find(p => p.id === state.activePresetId);
+      document.getElementById('active-preset-label').textContent = preset ? preset.name : 'Custom Physiology';
+
+      const baroBadge = document.getElementById('baroreflex-badge');
+      baroBadge.classList.toggle('hidden', !state.baroreflex);
+
+      const activeCount = DRUG_CONFIGS.filter(d => (state.drugs[d.id] || 0) > 0.005).length;
+      const tabCountEl = document.getElementById('tab-drug-count');
+      const clearBtn = document.getElementById('btn-clear-drugs');
+      if (activeCount > 0) {
+        tabCountEl.textContent = activeCount;
+        tabCountEl.classList.remove('hidden');
+        clearBtn.classList.remove('hidden');
+      } else {
+        tabCountEl.classList.add('hidden');
+        clearBtn.classList.add('hidden');
+      }
+    }
+
+    /* =========================================================================
+       5. HIGH-DPI DARK & LIGHT MODE CANVAS RENDERERS
+       ========================================================================= */
+
+    const pvCanvas = document.getElementById('pv-canvas');
+    const pvCtx = pvCanvas.getContext('2d');
+    const wiggersCanvas = document.getElementById('wiggers-canvas');
+    const wiggersCtx = wiggersCanvas.getContext('2d');
+
+    function getCanvasPalette(isDark) {
+      if (isDark) {
+        return {
+          plotBg: '#09090b',
+          subBoxBg: '#0f0f12',
+          grid: 'rgba(63, 63, 70, 0.35)',
+          gridFaint: 'rgba(63, 63, 70, 0.25)',
+          axis: '#3f3f46',
+          boxBorder: 'rgba(63, 63, 70, 0.65)',
+          tick: '#71717a',
+          axisTitle: '#a1a1aa',
+          pvLoop: '#2dd4bf',
+          espvr: '#34d399',
+          edpvr: '#60a5fa',
+          ea: '#fbbf24',
+          ghost: 'rgba(161, 161, 170, 0.40)',
+          swFill: 'rgba(45, 212, 191, 0.12)',
+          peFill: 'rgba(129, 140, 248, 0.14)',
+          aop: '#fb7185',
+          lvp: '#fbbf24',
+          lap: '#22d3ee',
+          vol: '#34d399',
+          flowStroke: 'rgba(45, 212, 191, 0.55)',
+          flowFill: 'rgba(45, 212, 191, 0.12)',
+          ecg: '#4ade80',
+          phono: '#a78bfa',
+          playhead: 'rgba(244, 244, 245, 0.80)',
+          playheadTrail: 'rgba(45, 212, 191, 0.12)',
+          beadFill: '#ffffff',
+          beadRing: '#2dd4bf',
+          beadTrailRGB: '45, 212, 191',
+          dotOutline: '#09090b',
+          asShade: 'rgba(251, 191, 36, 0.20)',
+          msShade: 'rgba(34, 211, 238, 0.22)',
+          valveMVC: '#22d3ee',
+          valveAVO: '#fb7185',
+          valveAVC: '#fbbf24',
+          valveMVO: '#34d399'
+        };
+      }
+      return {
+        plotBg: '#ffffff',
+        subBoxBg: '#fafafa',
+        grid: '#e4e4e7',
+        gridFaint: '#f4f4f5',
+        axis: '#a1a1aa',
+        boxBorder: '#e4e4e7',
+        tick: '#71717a',
+        axisTitle: '#52525b',
+        pvLoop: '#0f766e',
+        espvr: '#059669',
+        edpvr: '#2563eb',
+        ea: '#d97706',
+        ghost: 'rgba(113, 113, 122, 0.45)',
+        swFill: 'rgba(15, 118, 110, 0.10)',
+        peFill: 'rgba(99, 102, 241, 0.10)',
+        aop: '#e11d48',
+        lvp: '#d97706',
+        lap: '#0891b2',
+        vol: '#059669',
+        flowStroke: 'rgba(13, 148, 136, 0.55)',
+        flowFill: 'rgba(13, 148, 136, 0.10)',
+        ecg: '#16a34a',
+        phono: '#7c3aed',
+        playhead: 'rgba(24, 24, 27, 0.75)',
+        playheadTrail: 'rgba(15, 118, 110, 0.10)',
+        beadFill: '#ffffff',
+        beadRing: '#0f766e',
+        beadTrailRGB: '15, 118, 110',
+        dotOutline: '#ffffff',
+        asShade: 'rgba(217, 119, 6, 0.16)',
+        msShade: 'rgba(8, 145, 178, 0.18)',
+        valveMVC: '#0891b2',
+        valveAVO: '#e11d48',
+        valveAVC: '#d97706',
+        valveMVO: '#059669'
+      };
+    }
+
+    function resizeCanvas(canvas, wrapId) {
+      const wrap = document.getElementById(wrapId);
+      if (!wrap) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const rect = wrap.getBoundingClientRect();
+      const w = Math.max(100, Math.floor(rect.width - 8));
+      const h = Math.max(100, Math.floor(rect.height - 8));
+      if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+      }
+    }
+
+    function sampleTraceAtPhase(sim, u) {
+      const tr = sim.trace;
+      const N = tr.t.length;
+      const pos = ((u % 1) + 1) % 1 * N;
+      const i0 = Math.floor(pos) % N;
+      const i1 = (i0 + 1) % N;
+      const f = pos - Math.floor(pos);
+      const lerp = (a, b) => a + (b - a) * f;
+      return {
+        pLV: lerp(tr.pLV[i0], tr.pLV[i1]),
+        pAo: lerp(tr.pAo[i0], tr.pAo[i1]),
+        pLA: lerp(tr.pLA[i0], tr.pLA[i1]),
+        vLV: lerp(tr.vLV[i0], tr.vLV[i1]),
+        qAV: lerp(tr.qAV[i0], tr.qAV[i1]),
+        qMV: lerp(tr.qMV[i0], tr.qMV[i1]),
+        ecg: lerp(tr.ecg[i0], tr.ecg[i1]),
+        phono: lerp(tr.phono[i0], tr.phono[i1]),
+        idx: i0
+      };
+    }
+
+    function drawPVLoop(beatPhase) {
+      const sim = state.currentSim;
+      if (!sim) return;
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const C = getCanvasPalette(isDark);
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = pvCanvas.width / dpr;
+      const H = pvCanvas.height / dpr;
+
+      pvCtx.save();
+      pvCtx.scale(dpr, dpr);
+      pvCtx.clearRect(0, 0, W, H);
+
+      state.axisMaxV += (state.targetMaxV - state.axisMaxV) * 0.14;
+      state.axisMaxP += (state.targetMaxP - state.axisMaxP) * 0.14;
+
+      const pad = { left: 48, right: 18, top: 16, bottom: 38 };
+      const plotW = Math.max(40, W - pad.left - pad.right);
+      const plotH = Math.max(40, H - pad.top - pad.bottom);
+
+      // Clean plot background
+      pvCtx.fillStyle = C.plotBg;
+      pvCtx.fillRect(pad.left, pad.top, plotW, plotH);
+
+      const maxV = state.axisMaxV;
+      const maxP = state.axisMaxP;
+      const xOf = v => pad.left + (v / maxV) * plotW;
+      const yOf = p => pad.top + plotH - (p / maxP) * plotH;
+
+      // 1. Hairline Clinical Grid
+      pvCtx.strokeStyle = C.grid;
+      pvCtx.lineWidth = 1;
+      pvCtx.font = '10px "JetBrains Mono", monospace';
+      pvCtx.fillStyle = C.tick;
+
+      const vStep = maxV > 300 ? 100 : 50;
+      for (let v = 0; v <= maxV + 0.1; v += vStep) {
+        const x = Math.round(xOf(v)) + 0.5;
+        pvCtx.beginPath();
+        pvCtx.moveTo(x, pad.top);
+        pvCtx.lineTo(x, pad.top + plotH);
+        pvCtx.stroke();
+        pvCtx.textAlign = 'center';
+        pvCtx.fillText(Math.round(v), x, pad.top + plotH + 14);
+      }
+
+      const pStep = maxP > 240 ? 50 : 40;
+      for (let p = 0; p <= maxP + 0.1; p += pStep) {
+        const y = Math.round(yOf(p)) + 0.5;
+        pvCtx.beginPath();
+        pvCtx.moveTo(pad.left, y);
+        pvCtx.lineTo(pad.left + plotW, y);
+        pvCtx.stroke();
+        pvCtx.textAlign = 'right';
+        pvCtx.fillText(Math.round(p), pad.left - 7, y + 3);
+      }
+
+      // Axis Hairlines & Titles
+      pvCtx.strokeStyle = C.axis;
+      pvCtx.lineWidth = 1;
+      pvCtx.beginPath();
+      pvCtx.moveTo(pad.left + 0.5, pad.top);
+      pvCtx.lineTo(pad.left + 0.5, pad.top + plotH + 0.5);
+      pvCtx.lineTo(pad.left + plotW, pad.top + plotH + 0.5);
+      pvCtx.stroke();
+
+      pvCtx.fillStyle = C.axisTitle;
+      pvCtx.font = '500 10px Inter, sans-serif';
+      pvCtx.textAlign = 'center';
+      pvCtx.fillText('LV Volume (mL)', pad.left + plotW / 2, H - 8);
+
+      pvCtx.save();
+      pvCtx.translate(13, pad.top + plotH / 2);
+      pvCtx.rotate(-Math.PI / 2);
+      pvCtx.fillText('LV Pressure (mmHg)', 0, 0);
+      pvCtx.restore();
+
+      // Clip interior curves strictly to plot rectangle
+      pvCtx.save();
+      pvCtx.beginPath();
+      pvCtx.rect(pad.left, pad.top, plotW, plotH);
+      pvCtx.clip();
+
+      const m = sim.metrics;
+      const tr = sim.trace;
+
+      // 2. SW & PE Shaded Energetics Fill
+      if (state.overlays.energy) {
+        pvCtx.beginPath();
+        pvCtx.moveTo(xOf(sim.V0), yOf(0));
+        pvCtx.lineTo(xOf(m.ves), yOf(m.pes));
+        const stepsPE = 24;
+        for (let k = stepsPE; k >= 0; k--) {
+          const v = sim.V0 + (m.ves - sim.V0) * (k / stepsPE);
+          const p = computeEDPVR(v, sim.V0, sim.betaLV, sim.gammaLV);
+          pvCtx.lineTo(xOf(v), yOf(p));
+        }
+        pvCtx.closePath();
+        pvCtx.fillStyle = C.peFill;
+        pvCtx.fill();
+
+        pvCtx.beginPath();
+        for (let i = 0; i < tr.vLV.length; i++) {
+          const x = xOf(tr.vLV[i]);
+          const y = yOf(tr.pLV[i]);
+          if (i === 0) pvCtx.moveTo(x, y);
+          else pvCtx.lineTo(x, y);
+        }
+        pvCtx.closePath();
+        pvCtx.fillStyle = C.swFill;
+        pvCtx.fill();
+      }
+
+      // 3. Ghost Reference Loop
+      if (state.overlays.ghost && state.referenceSim) {
+        const refTr = state.referenceSim.trace;
+        pvCtx.save();
+        pvCtx.beginPath();
+        for (let i = 0; i < refTr.vLV.length; i++) {
+          const x = xOf(refTr.vLV[i]);
+          const y = yOf(refTr.pLV[i]);
+          if (i === 0) pvCtx.moveTo(x, y);
+          else pvCtx.lineTo(x, y);
+        }
+        pvCtx.closePath();
+        pvCtx.setLineDash([4, 4]);
+        pvCtx.strokeStyle = C.ghost;
+        pvCtx.lineWidth = 1.4;
+        pvCtx.stroke();
+        pvCtx.restore();
+      }
+
+      // 4. ESPVR Line
+      if (state.overlays.espvr) {
+        pvCtx.save();
+        pvCtx.setLineDash([5, 4]);
+        pvCtx.strokeStyle = C.espvr;
+        pvCtx.lineWidth = 1.4;
+        const vEnd = Math.min(maxV, sim.V0 + maxP / sim.eff.ees);
+        const pEnd = sim.eff.ees * (vEnd - sim.V0);
+        pvCtx.beginPath();
+        pvCtx.moveTo(xOf(sim.V0), yOf(0));
+        pvCtx.lineTo(xOf(vEnd), yOf(pEnd));
+        pvCtx.stroke();
+        pvCtx.restore();
+
+        const lblV = Math.min(vEnd * 0.88, maxV - 34);
+        const lblP = Math.min(maxP - 12, sim.eff.ees * (lblV - sim.V0));
+        if (lblP > 25) {
+          pvCtx.fillStyle = C.espvr;
+          pvCtx.font = '500 9.5px "JetBrains Mono", monospace';
+          pvCtx.textAlign = 'left';
+          pvCtx.fillText('ESPVR', xOf(lblV) + 4, yOf(lblP) + 4);
+        }
+      }
+
+      // 5. EDPVR Exponential Curve
+      if (state.overlays.edpvr) {
+        pvCtx.save();
+        pvCtx.setLineDash([5, 4]);
+        pvCtx.strokeStyle = C.edpvr;
+        pvCtx.lineWidth = 1.4;
+        pvCtx.beginPath();
+        let started = false;
+        let lastLabelX = 0, lastLabelY = 0;
+        for (let v = sim.V0; v <= maxV; v += 3) {
+          const p = computeEDPVR(v, sim.V0, sim.betaLV, sim.gammaLV);
+          if (p > maxP * 1.15) break;
+          const x = xOf(v);
+          const y = yOf(p);
+          if (!started) { pvCtx.moveTo(x, y); started = true; }
+          else pvCtx.lineTo(x, y);
+          if (p < maxP - 25 && v < maxV - 36) {
+            lastLabelX = x;
+            lastLabelY = y;
+          }
+        }
+        pvCtx.stroke();
+        pvCtx.restore();
+
+        if (lastLabelX > pad.left + 20) {
+          pvCtx.fillStyle = C.edpvr;
+          pvCtx.font = '500 9.5px "JetBrains Mono", monospace';
+          pvCtx.textAlign = 'left';
+          pvCtx.fillText('EDPVR', Math.min(lastLabelX + 4, pad.left + plotW - 36), Math.max(pad.top + 14, lastLabelY - 6));
+        }
+      }
+
+      // 6. Arterial Elastance Ea Line
+      if (state.overlays.ea) {
+        pvCtx.save();
+        pvCtx.setLineDash([4, 4]);
+        pvCtx.strokeStyle = C.ea;
+        pvCtx.lineWidth = 1.4;
+        pvCtx.beginPath();
+        pvCtx.moveTo(xOf(m.edv), yOf(0));
+        pvCtx.lineTo(xOf(m.ves), yOf(m.pes));
+        pvCtx.stroke();
+        pvCtx.restore();
+
+        const midX = xOf(0.5 * (m.edv + m.ves));
+        const midY = yOf(0.5 * m.pes);
+        pvCtx.fillStyle = C.ea;
+        pvCtx.font = '500 9.5px "JetBrains Mono", monospace';
+        pvCtx.textAlign = 'left';
+        pvCtx.fillText('Ea', midX + 5, midY - 4);
+      }
+
+      // 7. Active LV Pressure-Volume Loop Curve (crisp, zero neon blur)
+      pvCtx.save();
+      pvCtx.beginPath();
+      for (let i = 0; i < tr.vLV.length; i++) {
+        const x = xOf(tr.vLV[i]);
+        const y = yOf(tr.pLV[i]);
+        if (i === 0) pvCtx.moveTo(x, y);
+        else pvCtx.lineTo(x, y);
+      }
+      pvCtx.closePath();
+      pvCtx.strokeStyle = C.pvLoop;
+      pvCtx.lineWidth = 2.2;
+      pvCtx.lineJoin = 'round';
+      pvCtx.stroke();
+      pvCtx.restore();
+
+      // 8. Valve Event Markers (MVC, AVO, AVC, MVO)
+      if (state.overlays.valves) {
+        const vMarks = [
+          { idx: sim.valves.idxMVC, label: 'MVC', dx: 7, dy: 11, color: C.valveMVC },
+          { idx: sim.valves.idxAVO, label: 'AVO', dx: 7, dy: -6, color: C.valveAVO },
+          { idx: sim.valves.idxAVC, label: 'AVC', dx: -26, dy: -7, color: C.valveAVC },
+          { idx: sim.valves.idxMVO, label: 'MVO', dx: -27, dy: 11, color: C.valveMVO }
+        ];
+        pvCtx.font = '500 9px "JetBrains Mono", monospace';
+        for (const vm of vMarks) {
+          const vi = tr.vLV[vm.idx];
+          const pi = tr.pLV[vm.idx];
+          const mx = xOf(vi);
+          const my = yOf(pi);
+          pvCtx.beginPath();
+          pvCtx.arc(mx, my, 3, 0, Math.PI * 2);
+          pvCtx.fillStyle = vm.color;
+          pvCtx.fill();
+          pvCtx.strokeStyle = C.dotOutline;
+          pvCtx.lineWidth = 1;
+          pvCtx.stroke();
+
+          pvCtx.fillStyle = vm.color;
+          pvCtx.textAlign = 'left';
+          pvCtx.fillText(vm.label, mx + vm.dx, my + vm.dy);
+        }
+      }
+
+      // 9. Clean Synchronized Beat Cursor + Subtle Trail
+      const trailSteps = 14;
+      for (let k = trailSteps; k >= 1; k--) {
+        const uTrail = beatPhase - k * 0.0055;
+        const pt = sampleTraceAtPhase(sim, uTrail);
+        const alpha = (1 - k / trailSteps) * 0.42;
+        pvCtx.beginPath();
+        pvCtx.arc(xOf(pt.vLV), yOf(pt.pLV), 1.8 + (1 - k / trailSteps) * 1.8, 0, Math.PI * 2);
+        pvCtx.fillStyle = `rgba(${C.beadTrailRGB}, ${alpha.toFixed(3)})`;
+        pvCtx.fill();
+      }
+
+      const cur = sampleTraceAtPhase(sim, beatPhase);
+      const bx = xOf(cur.vLV);
+      const by = yOf(cur.pLV);
+
+      pvCtx.save();
+      pvCtx.beginPath();
+      pvCtx.arc(bx, by, 5, 0, Math.PI * 2);
+      pvCtx.fillStyle = C.beadFill;
+      pvCtx.fill();
+      pvCtx.lineWidth = 2.2;
+      pvCtx.strokeStyle = C.beadRing;
+      pvCtx.stroke();
+      pvCtx.restore();
+
+      pvCtx.restore(); // End clip
+
+      const phaseEl = document.getElementById('foot-phase');
+      if (phaseEl) {
+        const idx = cur.idx;
+        const { idxAVO, idxAVC, idxMVO } = sim.valves;
+        let phaseText = 'Diastolic Filling';
+        if (idx < idxAVO) phaseText = sim.eff.mr > 10 ? 'Systole (MR)' : 'Isovolumic Contraction';
+        else if (idx < idxAVC) phaseText = 'Systolic Ejection';
+        else if (idx < idxMVO) phaseText = sim.eff.ar > 10 ? 'Diastole (AR)' : 'Isovolumic Relaxation';
+        else if (beatPhase > 0.80) phaseText = 'Atrial Kick';
+        phaseEl.textContent = phaseText;
+      }
+
+      pvCtx.restore();
+    }
+
+    function drawWiggers(sweepTime, windowDuration) {
+      const sim = state.currentSim;
+      if (!sim) return;
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const C = getCanvasPalette(isDark);
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = wiggersCanvas.width / dpr;
+      const H = wiggersCanvas.height / dpr;
+
+      wiggersCtx.save();
+      wiggersCtx.scale(dpr, dpr);
+      wiggersCtx.clearRect(0, 0, W, H);
+
+      const padL = 42, padR = 14, padT = 10, padB = 22;
+      const gap = 12;
+      const usableH = Math.max(120, H - padT - padB - 2 * gap);
+      const plotW = Math.max(60, W - padL - padR);
+
+      const h1 = usableH * 0.48;
+      const h2 = usableH * 0.28;
+      const h3 = usableH * 0.24;
+      const y1 = padT;
+      const y2 = y1 + h1 + gap;
+      const y3 = y2 + h2 + gap;
+
+      const T = sim.T;
+      const nSamples = Math.min(480, Math.max(220, Math.floor(plotW)));
+      const xOfT = t => padL + (t / windowDuration) * plotW;
+
+      const maxP = Math.max(160, Math.ceil((Math.max(...sim.trace.pLV, ...sim.trace.pAo) + 15) / 40) * 40);
+      const maxV = Math.max(160, Math.ceil((sim.metrics.edv + 20) / 40) * 40);
+      const maxFlow = Math.max(450, Math.ceil((Math.max(...sim.trace.qAV) + 50) / 100) * 100);
+
+      function drawPanelBox(top, height, label, ticks, maxVal) {
+        wiggersCtx.fillStyle = C.subBoxBg;
+        wiggersCtx.fillRect(padL, top, plotW, height);
+
+        wiggersCtx.strokeStyle = C.grid;
+        wiggersCtx.lineWidth = 1;
+        wiggersCtx.font = '9px "JetBrains Mono", monospace';
+        wiggersCtx.fillStyle = C.tick;
+        wiggersCtx.textAlign = 'right';
+
+        for (const tk of ticks) {
+          const py = Math.round(top + height - (tk / maxVal) * height) + 0.5;
+          wiggersCtx.beginPath();
+          wiggersCtx.moveTo(padL, py);
+          wiggersCtx.lineTo(padL + plotW, py);
+          wiggersCtx.stroke();
+          wiggersCtx.fillText(Math.round(tk), padL - 6, py + 3);
+        }
+
+        wiggersCtx.strokeStyle = C.boxBorder;
+        wiggersCtx.strokeRect(padL + 0.5, top + 0.5, plotW - 1, height - 1);
+
+        wiggersCtx.fillStyle = C.axisTitle;
+        wiggersCtx.font = '500 9px "JetBrains Mono", monospace';
+        wiggersCtx.textAlign = 'left';
+        wiggersCtx.fillText(label, padL + 7, top + 12);
+      }
+
+      drawPanelBox(y1, h1, 'PRESSURES (mmHg)', [0, maxP * 0.25, maxP * 0.5, maxP * 0.75, maxP], maxP);
+      drawPanelBox(y2, h2, 'LV VOLUME (mL) · AO FLOW', [0, maxV * 0.5, maxV], maxV);
+
+      // Panel 3 Box (ECG + Phono)
+      wiggersCtx.fillStyle = C.subBoxBg;
+      wiggersCtx.fillRect(padL, y3, plotW, h3);
+      wiggersCtx.strokeStyle = C.boxBorder;
+      wiggersCtx.strokeRect(padL + 0.5, y3 + 0.5, plotW - 1, h3 - 1);
+
+      wiggersCtx.strokeStyle = C.grid;
+      wiggersCtx.beginPath();
+      const mid3 = Math.round(y3 + h3 * 0.54) + 0.5;
+      wiggersCtx.moveTo(padL, mid3);
+      wiggersCtx.lineTo(padL + plotW, mid3);
+      wiggersCtx.stroke();
+
+      wiggersCtx.fillStyle = C.ecg;
+      wiggersCtx.font = '500 9px "JetBrains Mono", monospace';
+      wiggersCtx.textAlign = 'left';
+      wiggersCtx.fillText('LEAD II ECG', padL + 7, y3 + 11);
+      wiggersCtx.fillStyle = C.phono;
+      wiggersCtx.fillText('PHONO', padL + 7, y3 + h3 * 0.54 + 11);
+
+      // Vertical time gridlines every 0.5 s
+      wiggersCtx.strokeStyle = C.gridFaint;
+      wiggersCtx.fillStyle = C.tick;
+      wiggersCtx.font = '9px "JetBrains Mono", monospace';
+      wiggersCtx.textAlign = 'center';
+      for (let ts = 0; ts <= windowDuration + 0.01; ts += 0.5) {
+        const gx = Math.round(xOfT(ts)) + 0.5;
+        wiggersCtx.beginPath();
+        wiggersCtx.moveTo(gx, y1);
+        wiggersCtx.lineTo(gx, y3 + h3);
+        wiggersCtx.stroke();
+        wiggersCtx.fillText(`${ts.toFixed(1)}s`, gx, H - 6);
+      }
+
+      const xs = new Float32Array(nSamples + 1);
+      const pLV_y = new Float32Array(nSamples + 1);
+      const pAo_y = new Float32Array(nSamples + 1);
+      const pLA_y = new Float32Array(nSamples + 1);
+      const vLV_y = new Float32Array(nSamples + 1);
+      const qAV_y = new Float32Array(nSamples + 1);
+      const ecg_y = new Float32Array(nSamples + 1);
+      const pho_y = new Float32Array(nSamples + 1);
+
+      const pLV_raw = new Float32Array(nSamples + 1);
+      const pAo_raw = new Float32Array(nSamples + 1);
+      const pLA_raw = new Float32Array(nSamples + 1);
+
+      const ecgBase = y3 + h3 * 0.42;
+      const ecgScale = h3 * 0.30;
+      const phoBase = y3 + h3 * 0.78;
+      const phoScale = h3 * 0.19;
+
+      for (let i = 0; i <= nSamples; i++) {
+        const t = (i / nSamples) * windowDuration;
+        const u = (t % T) / T;
+        const pt = sampleTraceAtPhase(sim, u);
+
+        xs[i] = xOfT(t);
+        pLV_raw[i] = pt.pLV;
+        pAo_raw[i] = pt.pAo;
+        pLA_raw[i] = pt.pLA;
+
+        pLV_y[i] = y1 + h1 - (pt.pLV / maxP) * h1;
+        pAo_y[i] = y1 + h1 - (pt.pAo / maxP) * h1;
+        pLA_y[i] = y1 + h1 - (pt.pLA / maxP) * h1;
+
+        vLV_y[i] = y2 + h2 - (pt.vLV / maxV) * h2;
+        qAV_y[i] = y2 + h2 - (Math.max(0, pt.qAV) / maxFlow) * h2 * 0.9;
+
+        ecg_y[i] = ecgBase - pt.ecg * ecgScale;
+        pho_y[i] = phoBase - pt.phono * phoScale;
+      }
+
+      // Shaded Valvular Gradients (AS & MS)
+      if (sim.metrics.meanAoGrad > 10) {
+        wiggersCtx.fillStyle = C.asShade;
+        for (let i = 0; i < nSamples; i++) {
+          if (pLV_raw[i] > pAo_raw[i] + 4) {
+            wiggersCtx.fillRect(xs[i], pLV_y[i], Math.max(1.2, xs[i + 1] - xs[i]), Math.max(0, pAo_y[i] - pLV_y[i]));
+          }
+        }
+      }
+      if (sim.metrics.meanMvGrad > 3.5) {
+        wiggersCtx.fillStyle = C.msShade;
+        for (let i = 0; i < nSamples; i++) {
+          if (pLA_raw[i] > pLV_raw[i] + 2) {
+            wiggersCtx.fillRect(xs[i], pLA_y[i], Math.max(1.2, xs[i + 1] - xs[i]), Math.max(0, pLV_y[i] - pLA_y[i]));
+          }
+        }
+      }
+
+      function strokeSeries(yArr, color, width) {
+        wiggersCtx.save();
+        wiggersCtx.beginPath();
+        for (let i = 0; i <= nSamples; i++) {
+          if (i === 0) wiggersCtx.moveTo(xs[i], yArr[i]);
+          else wiggersCtx.lineTo(xs[i], yArr[i]);
+        }
+        wiggersCtx.strokeStyle = color;
+        wiggersCtx.lineWidth = width;
+        wiggersCtx.lineJoin = 'round';
+        wiggersCtx.stroke();
+        wiggersCtx.restore();
+      }
+
+      // Panel 1 traces: LAP, LVP, AoP
+      strokeSeries(pLA_y, C.lap, 1.5);
+      strokeSeries(pLV_y, C.lvp, 1.85);
+      strokeSeries(pAo_y, C.aop, 1.85);
+
+      // Panel 2 traces: Aortic Forward Flow (subtle fill), LV Volume
+      wiggersCtx.save();
+      wiggersCtx.beginPath();
+      wiggersCtx.moveTo(xs[0], y2 + h2);
+      for (let i = 0; i <= nSamples; i++) {
+        wiggersCtx.lineTo(xs[i], qAV_y[i]);
+      }
+      wiggersCtx.lineTo(xs[nSamples], y2 + h2);
+      wiggersCtx.closePath();
+      wiggersCtx.fillStyle = C.flowFill;
+      wiggersCtx.fill();
+      wiggersCtx.restore();
+
+      strokeSeries(qAV_y, C.flowStroke, 1.15);
+      strokeSeries(vLV_y, C.vol, 1.9);
+
+      // Panel 3 traces: Lead II ECG & Phonocardiogram
+      strokeSeries(ecg_y, C.ecg, 1.5);
+      strokeSeries(pho_y, C.phono, 1.25);
+
+      // Synchronized Sweeping Playhead
+      const playX = xOfT(sweepTime);
+      wiggersCtx.save();
+      const grad = wiggersCtx.createLinearGradient(playX - 16, 0, playX, 0);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, C.playheadTrail);
+      wiggersCtx.fillStyle = grad;
+      wiggersCtx.fillRect(Math.max(padL, playX - 16), y1, Math.min(16, playX - padL), (y3 + h3) - y1);
+
+      wiggersCtx.beginPath();
+      wiggersCtx.moveTo(playX, y1);
+      wiggersCtx.lineTo(playX, y3 + h3);
+      wiggersCtx.strokeStyle = C.playhead;
+      wiggersCtx.lineWidth = 1.25;
+      wiggersCtx.stroke();
+
+      const curPt = sampleTraceAtPhase(sim, (sweepTime % T) / T);
+      const dots = [
+        { y: y1 + h1 - (curPt.pAo / maxP) * h1, color: C.aop },
+        { y: y1 + h1 - (curPt.pLV / maxP) * h1, color: C.lvp },
+        { y: y1 + h1 - (curPt.pLA / maxP) * h1, color: C.lap },
+        { y: y2 + h2 - (curPt.vLV / maxV) * h2, color: C.vol },
+        { y: ecgBase - curPt.ecg * ecgScale, color: C.ecg }
+      ];
+      for (const d of dots) {
+        wiggersCtx.beginPath();
+        wiggersCtx.arc(playX, d.y, 3, 0, Math.PI * 2);
+        wiggersCtx.fillStyle = d.color;
+        wiggersCtx.fill();
+        wiggersCtx.strokeStyle = C.dotOutline;
+        wiggersCtx.lineWidth = 1;
+        wiggersCtx.stroke();
+      }
+      wiggersCtx.restore();
+
+      wiggersCtx.restore();
+    }
+
+    /* =========================================================================
+       6. CALM SIDEBAR UI GENERATION (PATHOLOGIES, PARAMETERS, DRUGS)
+       ========================================================================= */
+
+    function buildPathologiesTab() {
+      const container = document.getElementById('tab-pathologies');
+
+      container.innerHTML = PATHOLOGIES.map(p => `
+        <button data-preset="${p.id}" type="button" class="preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1">
+          <div class="flex items-center justify-between gap-2 w-full">
+            <span class="text-xs font-medium text-zinc-900 dark:text-zinc-100">${p.name}</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/70 shrink-0">${p.tag}</span>
+          </div>
+          <p class="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug line-clamp-1">${p.desc}</p>
+        </button>
+      `).join('');
+
+      highlightActivePresetCard();
+
+      container.querySelectorAll('.preset-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const preset = PATHOLOGIES.find(p => p.id === btn.dataset.preset);
+          if (!preset) return;
+          state.activePresetId = preset.id;
+          state.params = { ...preset.params };
+          syncParameterSlidersFromState();
+          highlightActivePresetCard();
+          updateSimulation();
+        });
+      });
+    }
+
+    function highlightActivePresetCard() {
+      document.querySelectorAll('.preset-card').forEach(btn => {
+        const isActive = btn.dataset.preset === state.activePresetId;
+        btn.className = `preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1 ${
+          isActive
+            ? 'border-tealLight/50 dark:border-tealDark/50 bg-teal-500/[0.06] dark:bg-teal-400/[0.08]'
+            : 'border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-100/60 dark:hover:bg-zinc-900/60'
+        }`;
+      });
+    }
+
+    function buildParametersTab() {
+      const container = document.getElementById('param-sliders-list');
+      const groups = [
+        { id: 'myo', title: 'Myocardium & Vascular' },
+        { id: 'valve', title: 'Valves' }
+      ];
+
+      container.innerHTML = groups.map(grp => {
+        const items = PARAMETER_CONFIGS.filter(c => c.group === grp.id);
+        return `
+          <div class="space-y-3">
+            <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500 pb-1 border-b border-zinc-200/70 dark:border-zinc-800/70">
+              ${grp.title}
+            </div>
+            <div class="space-y-3">
+              ${items.map(cfg => `
+                <div class="space-y-1.5" data-tooltip="${cfg.tip}">
+                  <div class="flex items-center justify-between text-[11.5px] gap-2">
+                    <span class="font-medium text-zinc-700 dark:text-zinc-300 truncate">${cfg.label}</span>
+                    <div class="flex items-center gap-1 font-mono tabular-nums shrink-0">
+                      <span id="p-val-${cfg.key}" class="text-zinc-900 dark:text-zinc-100 font-medium">${state.params[cfg.key].toFixed(cfg.decimals)}</span>
+                      <span id="p-eff-${cfg.key}" class="hidden text-[10px] text-tealLight dark:text-tealDark font-medium"></span>
+                      <span class="text-[10px] text-zinc-400 dark:text-zinc-500">${cfg.unit}</span>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    id="p-slider-${cfg.key}"
+                    class="clinical-slider"
+                    min="${cfg.min}"
+                    max="${cfg.max}"
+                    step="${cfg.step}"
+                    value="${state.params[cfg.key]}"
+                  />
+                </div>
+              `).join('')}
+            </div>
+          </div>`;
+      }).join('');
+
+      PARAMETER_CONFIGS.forEach(cfg => {
+        const slider = document.getElementById(`p-slider-${cfg.key}`);
+        slider.addEventListener('input', () => {
+          state.params[cfg.key] = parseFloat(slider.value);
+          state.activePresetId = 'custom';
+          document.getElementById(`p-val-${cfg.key}`).textContent = state.params[cfg.key].toFixed(cfg.decimals);
+          highlightActivePresetCard();
+          updateSimulation();
+        });
+      });
+    }
+
+    function syncParameterSlidersFromState() {
+      for (const cfg of PARAMETER_CONFIGS) {
+        const slider = document.getElementById(`p-slider-${cfg.key}`);
+        const valEl = document.getElementById(`p-val-${cfg.key}`);
+        if (slider) slider.value = state.params[cfg.key];
+        if (valEl) valEl.textContent = state.params[cfg.key].toFixed(cfg.decimals);
+      }
+    }
+
+    function updateParameterEffectiveReadouts() {
+      if (!state.currentSim) return;
+      const eff = state.currentSim.eff;
+      for (const cfg of PARAMETER_CONFIGS) {
+        const effEl = document.getElementById(`p-eff-${cfg.key}`);
+        if (!effEl) continue;
+        const baseVal = state.params[cfg.key];
+        const effVal = eff[cfg.key];
+        const diff = Math.abs(effVal - baseVal);
+        const tol = cfg.decimals === 0 ? 0.8 : 0.03;
+        if (diff > tol) {
+          effEl.textContent = `→${effVal.toFixed(cfg.decimals)}`;
+          effEl.classList.remove('hidden');
+        } else {
+          effEl.classList.add('hidden');
+        }
+      }
+    }
+
+    function buildPharmacologyTab() {
+      const container = document.getElementById('drug-sliders-list');
+      container.innerHTML = DRUG_CONFIGS.map(d => `
+        <div id="drug-card-${d.id}" class="px-3 py-2.5 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-200/80 dark:border-zinc-800/80 transition-colors">
+          <div class="flex items-center justify-between gap-1.5 mb-1">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate">${d.name}</span>
+              <span class="text-[9.5px] font-mono px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/70 shrink-0">${d.receptors}</span>
+            </div>
+            <button data-zero-drug="${d.id}" type="button" title="Stop infusion" class="zero-drug-btn hidden text-xs font-mono text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 px-1 leading-none">×</button>
+          </div>
+          <div class="flex items-center justify-between text-[10.5px] mb-2 gap-2">
+            <span class="text-zinc-500 dark:text-zinc-400 font-mono truncate">${d.effects}</span>
+            <span id="drug-val-${d.id}" class="font-mono font-medium text-zinc-400 dark:text-zinc-500 tabular-nums shrink-0">0 ${d.unit}</span>
+          </div>
+          <input
+            type="range"
+            id="drug-slider-${d.id}"
+            class="clinical-slider drug-slider"
+            min="0"
+            max="100"
+            step="1"
+            value="0"
+          />
+        </div>
+      `).join('');
+
+      DRUG_CONFIGS.forEach(d => {
+        const slider = document.getElementById(`drug-slider-${d.id}`);
+        const zeroBtn = container.querySelector(`[data-zero-drug="${d.id}"]`);
+
+        const setDosePct = pct => {
+          const norm = pct / 100;
+          state.drugs[d.id] = norm;
+          const clinicalVal = (norm * d.maxDose).toFixed(d.decimals);
+          const valEl = document.getElementById(`drug-val-${d.id}`);
+          const cardEl = document.getElementById(`drug-card-${d.id}`);
+
+          valEl.textContent = pct > 0 ? `${clinicalVal} ${d.unit}` : `0 ${d.unit}`;
+          valEl.className = `font-mono font-medium tabular-nums shrink-0 ${
+            pct > 0 ? 'text-violet-700 dark:text-violet-300' : 'text-zinc-400 dark:text-zinc-500'
+          }`;
+
+          cardEl.className = `px-3 py-2.5 rounded-lg border transition-colors ${
+            pct > 0
+              ? 'border-violet-500/40 bg-violet-500/[0.05] dark:bg-violet-500/[0.08]'
+              : 'border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30'
+          }`;
+
+          zeroBtn.classList.toggle('hidden', pct === 0);
+          updateSimulation();
+        };
+
+        slider.addEventListener('input', () => setDosePct(parseInt(slider.value, 10)));
+        zeroBtn.addEventListener('click', () => {
+          slider.value = 0;
+          setDosePct(0);
+        });
+      });
+    }
+
+    function clearAllDrugs() {
+      for (const d of DRUG_CONFIGS) {
+        state.drugs[d.id] = 0;
+        const slider = document.getElementById(`drug-slider-${d.id}`);
+        const valEl = document.getElementById(`drug-val-${d.id}`);
+        const cardEl = document.getElementById(`drug-card-${d.id}`);
+        const zeroBtn = document.querySelector(`[data-zero-drug="${d.id}"]`);
+        if (slider) slider.value = 0;
+        if (valEl) {
+          valEl.textContent = `0 ${d.unit}`;
+          valEl.className = 'font-mono font-medium text-zinc-400 dark:text-zinc-500 tabular-nums shrink-0';
+        }
+        if (cardEl) {
+          cardEl.className = 'px-3 py-2.5 rounded-lg border transition-colors border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30';
+        }
+        if (zeroBtn) zeroBtn.classList.add('hidden');
+      }
+      updateSimulation();
+    }
+
+    /* =========================================================================
+       7. EVENT LISTENERS, THEME SYNC, TOOLTIPS & ANIMATION LOOP
+       ========================================================================= */
+
+    function wireControls() {
+      // Dark / Light Mode Toggle (persisted to both medlab-theme & theme keys)
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const isDarkNow = document.documentElement.classList.toggle('dark');
+        const val = isDarkNow ? 'dark' : 'light';
+        try {
+          localStorage.setItem('medlab-theme', val);
+          localStorage.setItem('theme', val);
+        } catch (_) {}
+      });
+
+      // Sidebar 3-Tab Segmented Switcher
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = btn.dataset.tab;
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            const active = b.dataset.tab === target;
+            b.className = `tab-btn py-1.5 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+              active
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+            }`;
+          });
+          ['pathologies', 'parameters', 'pharmacology'].forEach(id => {
+            document.getElementById(`tab-${id}`).classList.toggle('hidden', id !== target);
+          });
+        });
+      });
+
+      // Play / Pause
+      document.getElementById('btn-play-pause').addEventListener('click', () => {
+        state.playing = !state.playing;
+        document.getElementById('icon-pause').classList.toggle('hidden', !state.playing);
+        document.getElementById('icon-play').classList.toggle('hidden', state.playing);
+        document.getElementById('play-pause-text').textContent = state.playing ? 'Pause' : 'Play';
+        const dot = document.getElementById('live-dot');
+        dot.classList.toggle('pulse-live', state.playing);
+        dot.classList.toggle('bg-emerald-500', state.playing);
+        dot.classList.toggle('dark:bg-emerald-400', state.playing);
+        dot.classList.toggle('bg-amber-500', !state.playing);
+        dot.classList.toggle('dark:bg-amber-400', !state.playing);
+      });
+
+      // Speed Selector
+      document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.speed = parseFloat(btn.dataset.speed);
+          document.querySelectorAll('.speed-btn').forEach(b => {
+            const active = b === btn;
+            b.className = `speed-btn px-2 h-full rounded-md transition-colors ${
+              active
+                ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+            }`;
+          });
+        });
+      });
+
+      // Pin Snapshot as Ghost Reference
+      let pinTimer = null;
+      document.getElementById('btn-pin-snapshot').addEventListener('click', () => {
+        if (!state.currentSim) return;
+        state.referenceSim = state.currentSim;
+        const preset = PATHOLOGIES.find(p => p.id === state.activePresetId);
+        state.referenceLabel = preset ? preset.name.split(' ')[0] + ' Pin' : 'Pinned';
+        const btnLabel = document.getElementById('snapshot-btn-label');
+        btnLabel.textContent = 'Pinned ✓';
+        clearTimeout(pinTimer);
+        pinTimer = setTimeout(() => { btnLabel.textContent = 'Pin'; }, 1400);
+        renderTelemetry();
+      });
+
+      // Clear Drugs (inside Drugs tab)
+      document.getElementById('btn-clear-drugs').addEventListener('click', clearAllDrugs);
+
+      // Reset Normal
+      document.getElementById('btn-reset-normal').addEventListener('click', () => {
+        state.activePresetId = 'normal';
+        state.params = { ...NORMAL_PARAMS };
+        state.baroreflex = false;
+        syncBaroreflexUI();
+        syncParameterSlidersFromState();
+        highlightActivePresetCard();
+        clearAllDrugs();
+        state.referenceSim = state.currentSim;
+        state.referenceLabel = 'Normal';
+        renderTelemetry();
+      });
+
+      // Baroreflex Toggle
+      const baroBtn = document.getElementById('toggle-baroreflex');
+      function syncBaroreflexUI() {
+        baroBtn.setAttribute('aria-checked', String(state.baroreflex));
+        baroBtn.className = `relative w-9 h-5 rounded-full transition-colors focus:outline-none shrink-0 ${
+          state.baroreflex ? 'bg-tealLight dark:bg-tealDark' : 'bg-zinc-300 dark:bg-zinc-700'
+        }`;
+        const knob = document.getElementById('baro-knob');
+        knob.className = `block w-4 h-4 rounded-full bg-white dark:bg-obsidian shadow-sm transform transition-transform ${
+          state.baroreflex ? 'translate-x-4' : 'translate-x-0.5'
+        }`;
+      }
+      baroBtn.addEventListener('click', () => {
+        state.baroreflex = !state.baroreflex;
+        syncBaroreflexUI();
+        updateSimulation();
+      });
+
+      // PV Loop Overlay Toggle Pills (clean understated active/inactive states)
+      document.querySelectorAll('.overlay-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.overlay;
+          state.overlays[key] = !state.overlays[key];
+          const on = state.overlays[key];
+          btn.className = `overlay-btn px-1.5 py-0.5 rounded border transition-colors ${
+            on
+              ? 'border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200'
+              : 'border-zinc-200/70 dark:border-zinc-800/70 bg-transparent text-zinc-400 dark:text-zinc-600 line-through'
+          }`;
+        });
+      });
+
+      // Clinical Hover Tooltip Delegation
+      const tipEl = document.getElementById('clinical-tooltip');
+      document.addEventListener('mouseover', e => {
+        const target = e.target.closest('[data-tooltip]');
+        if (!target) return;
+        tipEl.textContent = target.dataset.tooltip;
+        tipEl.classList.remove('opacity-0');
+        tipEl.classList.add('opacity-100');
+      });
+      document.addEventListener('mousemove', e => {
+        if (tipEl.classList.contains('opacity-0')) return;
+        const pad = 14;
+        const rect = tipEl.getBoundingClientRect();
+        let x = e.clientX + pad;
+        let y = e.clientY + pad;
+        if (x + rect.width > window.innerWidth - 10) x = e.clientX - rect.width - pad;
+        if (y + rect.height > window.innerHeight - 10) y = e.clientY - rect.height - pad;
+        tipEl.style.left = `${Math.max(8, x)}px`;
+        tipEl.style.top = `${Math.max(8, y)}px`;
+      });
+      document.addEventListener('mouseout', e => {
+        const target = e.target.closest('[data-tooltip]');
+        if (!target) return;
+        tipEl.classList.add('opacity-0');
+        tipEl.classList.remove('opacity-100');
+      });
+
+      // Responsive Canvas ResizeObservers
+      const ro = new ResizeObserver(() => {
+        resizeCanvas(pvCanvas, 'pv-canvas-wrap');
+        resizeCanvas(wiggersCanvas, 'wiggers-canvas-wrap');
+      });
+      ro.observe(document.getElementById('pv-canvas-wrap'));
+      ro.observe(document.getElementById('wiggers-canvas-wrap'));
+      window.addEventListener('resize', () => {
+        resizeCanvas(pvCanvas, 'pv-canvas-wrap');
+        resizeCanvas(wiggersCanvas, 'wiggers-canvas-wrap');
+      });
+    }
+
+    // Main 60 FPS Animation Loop
+    let lastTimestamp = 0;
+    const WIGGERS_WINDOW_SEC = 2.5;
+
+    function animate(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000);
+      lastTimestamp = timestamp;
+
+      if (state.playing && state.currentSim) {
+        state.simTime += dt * state.speed;
+      }
+
+      if (state.currentSim) {
+        const sweepTime = state.simTime % WIGGERS_WINDOW_SEC;
+        const beatPhase = (sweepTime % state.currentSim.T) / state.currentSim.T;
+        drawPVLoop(beatPhase);
+        drawWiggers(sweepTime, WIGGERS_WINDOW_SEC);
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('load', () => {
+      buildPathologiesTab();
+      buildParametersTab();
+      buildPharmacologyTab();
+      wireControls();
+
+      resizeCanvas(pvCanvas, 'pv-canvas-wrap');
+      resizeCanvas(wiggersCanvas, 'wiggers-canvas-wrap');
+
+      updateSimulation();
+      requestAnimationFrame(animate);
+    });
+  })();
+  </script>
+</body>
+</html>
