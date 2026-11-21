@@ -1,1 +1,2850 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neuro-Ophtho Lab — MedLab Clinical Neuro-Ophthalmology &amp; Optics</title>
 
+  <!-- Prevent theme flash prior to first paint (syncs medlab-theme & theme; defaults to obsidian dark) -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Typography: Inter (UI) & JetBrains Mono (Telemetry / Clinical Data) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#111113',
+            borderDark: '#27272a',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Minimal thin scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(113, 113, 122, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(113, 113, 122, 0.45);
+    }
+
+    /* Swiss-Precision Range Sliders */
+    input[type="range"].clinical-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      border-radius: 9999px;
+      background: #e4e4e7;
+      outline: none;
+      cursor: pointer;
+    }
+    .dark input[type="range"].clinical-slider {
+      background: #27272a;
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      transition: transform 0.1s ease;
+    }
+    .dark input[type="range"].clinical-slider::-webkit-slider-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"].clinical-slider.iop-slider::-webkit-slider-thumb {
+      background: #0284c7;
+    }
+    .dark input[type="range"].clinical-slider.iop-slider::-webkit-slider-thumb {
+      background: #38bdf8;
+    }
+    input[type="range"].clinical-slider::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    }
+    .dark input[type="range"].clinical-slider::-moz-range-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+    input[type="range"].clinical-slider.iop-slider::-moz-range-thumb {
+      background: #0284c7;
+    }
+    .dark input[type="range"].clinical-slider.iop-slider::-moz-range-thumb {
+      background: #38bdf8;
+    }
+
+    /* Subtle pulse for active lesion nodes in SVG pathway map */
+    @keyframes lesionPulse {
+      0%, 100% { stroke-opacity: 1; transform: scale(1); }
+      50% { stroke-opacity: 0.45; transform: scale(1.06); }
+    }
+    .lesion-pulse {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: lesionPulse 1.8s ease-in-out infinite;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-canvasLight text-[#09090b] dark:bg-obsidian dark:text-[#f4f4f5] transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
+
+  <!-- ==================== 1. MINIMAL STICKY NAVBAR ==================== -->
+  <header class="sticky top-0 z-40 h-14 w-full border-b border-[#e4e4e7] dark:border-borderDark bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md shrink-0">
+    <div class="w-full max-w-[1600px] h-full mx-auto px-4 sm:px-5 flex items-center justify-between gap-2.5">
+
+      <!-- Left: Back Link + Divider + Title -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors shrink-0">
+          &larr; MedLab
+        </a>
+        <span class="h-4 w-px bg-[#e4e4e7] dark:bg-borderDark shrink-0"></span>
+        <div class="flex items-baseline gap-2 min-w-0">
+          <span class="font-mono text-[11px] text-tealLight dark:text-tealDark shrink-0">08</span>
+          <h1 class="text-[14.5px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] truncate">Neuro-Ophtho Lab</h1>
+        </div>
+      </div>
+
+      <!-- Right: Clinical Summary Badge, Pin Baseline, Reset, Theme Toggle -->
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <span id="hdr-summary-badge" class="hidden md:inline-flex items-center px-2.5 py-1 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark font-mono text-[10.5px] text-tealLight dark:text-tealDark max-w-[230px] truncate">
+          Normal Baseline
+        </span>
+
+        <button id="btn-pin-baseline" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5 transition-colors" title="Store current exam snapshot for KPI deltas">
+          <span id="pin-dot" class="hidden w-1.5 h-1.5 rounded-full bg-tealLight dark:bg-tealDark"></span>
+          <span id="pin-label">Pin Baseline</span>
+        </button>
+
+        <button id="btn-reset" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white transition-colors" title="Reset all lesions, drops, optics, and IOP to normal">
+          Reset
+        </button>
+
+        <button id="theme-toggle" type="button" aria-label="Toggle dark and light theme" title="Switch Dark / Light mode" class="w-8 h-8 rounded-lg flex items-center justify-center border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-white transition-colors">
+          <!-- Sun Icon (dark mode) -->
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <!-- Moon Icon (light mode) -->
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. TOP 6-CARD TELEMETRY STRIP ==================== -->
+  <section class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 pt-3.5 shrink-0">
+    <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+      <div id="kpi-strip" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-[#e4e4e7]/80 dark:divide-borderDark/80">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. MAIN 12-COLUMN WORKSPACE ==================== -->
+  <main class="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 min-w-0">
+
+    <!-- LEFT VISUALIZATION STAGE (8 cols on lg+) -->
+    <div class="lg:col-span-8 flex flex-col gap-4 min-h-0 min-w-0">
+
+      <!-- PANEL 1: BINOCULAR MOTILITY, EYELIDS & PUPILLARY EXAM BENCH -->
+      <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+        <!-- Control Toolbar Header -->
+        <div class="px-3.5 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5]">Binocular Motility &amp; Pupillary Exam</h2>
+            <!-- Gaze Mode Pills -->
+            <div class="inline-flex items-center rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[10px] font-mono">
+              <button data-gazemode="cardinal" type="button" class="gmode-btn px-2 py-0.5 rounded transition-colors">Cardinal</button>
+              <button data-gazemode="cursor" type="button" class="gmode-btn px-2 py-0.5 rounded transition-colors">Follow Cursor</button>
+              <button data-gazemode="near" type="button" class="gmode-btn px-2 py-0.5 rounded transition-colors">Near Conv.</button>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
+            <!-- Head Tilt (Parks-Bielschowsky) -->
+            <div class="inline-flex items-center rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5">
+              <button data-tilt="0" type="button" class="tilt-btn px-1.5 py-0.5 rounded transition-colors">Level</button>
+              <button data-tilt="1" type="button" class="tilt-btn px-1.5 py-0.5 rounded transition-colors">Tilt R</button>
+              <button data-tilt="-1" type="button" class="tilt-btn px-1.5 py-0.5 rounded transition-colors">Tilt L</button>
+            </div>
+
+            <!-- Lighting / Swinging Flashlight -->
+            <div class="inline-flex items-center rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5">
+              <button data-light="room" type="button" class="light-btn px-1.5 py-0.5 rounded transition-colors">Room</button>
+              <button data-light="dark" type="button" class="light-btn px-1.5 py-0.5 rounded transition-colors">Dark</button>
+              <button data-light="flash_od" type="button" class="light-btn px-1.5 py-0.5 rounded transition-colors">Flash OD</button>
+              <button data-light="flash_os" type="button" class="light-btn px-1.5 py-0.5 rounded transition-colors">Flash OS</button>
+              <button data-light="autoswing" type="button" class="light-btn px-1.5 py-0.5 rounded transition-colors">Auto-Swing</button>
+            </div>
+
+            <!-- Diplopia View Toggle -->
+            <button id="btn-diplopia-view" type="button" class="px-2 py-1 rounded-md border transition-colors">Diplopia View</button>
+          </div>
+        </div>
+
+        <!-- Bench Canvas + Overlay Compact 3x3 Cardinal Gaze Pad -->
+        <div class="relative flex flex-col sm:flex-row min-h-0">
+          <!-- STRICT LOCKED CANVAS WRAPPER -->
+          <div id="eyes-wrap" class="relative flex-1 w-full h-64 overflow-hidden select-none cursor-crosshair">
+            <canvas id="eyes-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+          </div>
+
+          <!-- Compact 3x3 Cardinal Gaze Pad (Patient's Perspective) -->
+          <div id="cardinal-pad-wrap" class="sm:w-44 shrink-0 border-t sm:border-t-0 sm:border-l border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/70 dark:bg-zinc-950/50 p-2.5 flex flex-col justify-between gap-2">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-mono text-[9.5px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Cardinal Gaze</span>
+                <span class="font-mono text-[8.5px] text-tealLight dark:text-tealDark">Pt. View</span>
+              </div>
+              <div id="gaze-pad" class="grid grid-cols-3 gap-1 font-mono text-[10px]">
+                <!-- Left column = Patient's Right (viewer's left) -->
+                <button data-gx="1" data-gy="1" type="button" class="gpad-btn py-1.5 rounded border text-center transition-colors" title="Patient looks Up-Right">UR</button>
+                <button data-gx="0" data-gy="1" type="button" class="gpad-btn py-1.5 rounded border text-center transition-colors" title="Patient looks Up">Up</button>
+                <button data-gx="-1" data-gy="1" type="button" class="gpad-btn py-1.5 rounded border text-center transition-colors" title="Patient looks Up-Left">UL</button>
+                <button data-gx="1" data-gy="0" type="button" class="gpad-btn py-1.5 rounded border text-center transition-colors" title="Patient looks Right">R</button>
+                <button data-gx="0" data-gy="0" type="button" class="gpad-btn py-1.5 rounded border text-center transition-colors" title="Primary Gaze">Prim</button>
+                <button data-gx="-1" data-gy="0" type="button" class="gpad-btn py-1.5 rounded border text-center transition-colors" title="Patient looks Left">L</button>
+                <button data-gx="1" data-gy="-1" type="button" class="gpad-btn py-1.5 rounded border text-center transition-colors" title="Patient looks Down-Right">DR</button>
+                <button data-gx="0" data-gy="-1" type="button" class="gpad-btn py-1.5 rounded border text-center transition-colors" title="Patient looks Down">Dn</button>
+                <button data-gx="-1" data-gy="-1" type="button" class="gpad-btn py-1.5 rounded border text-center transition-colors" title="Patient looks Down-Left">DL</button>
+              </div>
+              <div class="flex justify-between font-mono text-[8.5px] text-zinc-400 dark:text-zinc-500 mt-1 px-0.5">
+                <span>&larr; Pt Right</span>
+                <span>Pt Left &rarr;</span>
+              </div>
+            </div>
+
+            <!-- Live Swing / Gaze Status Readout -->
+            <div id="pad-status" class="p-1.5 rounded-md bg-white dark:bg-surfaceDark border border-[#e4e4e7]/80 dark:border-borderDark/80 font-mono text-[9.5px] text-zinc-600 dark:text-zinc-300 leading-snug">
+              Gaze: Primary<br/>Light: Room
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional Patient's Binocular Diplopia View Bar -->
+        <div id="diplopia-panel" class="hidden px-4 py-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-900/5 dark:bg-zinc-950/80 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="font-mono text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shrink-0">Patient Perceived Target</span>
+            <div class="relative w-44 h-12 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-obsidian overflow-hidden shrink-0">
+              <svg id="diplopia-svg" viewBox="0 0 180 48" class="w-full h-full block"></svg>
+            </div>
+          </div>
+          <div id="diplopia-desc" class="font-mono text-[10.5px] text-zinc-600 dark:text-zinc-300">Single binocular vision (fused OD + OS images).</div>
+        </div>
+
+        <!-- Footer Bar: Hirschberg, Diplopia Type, Light vs Near Reaction -->
+        <div id="eyes-footer" class="px-4 py-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/70 dark:bg-zinc-950/50 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-zinc-600 dark:text-zinc-400 shrink-0">
+          <span>Hirschberg: <strong id="ft-hirschberg" class="text-[#09090b] dark:text-[#f4f4f5]">Centered OU</strong></span>
+          <span>Diplopia: <strong id="ft-diplopia" class="text-[#09090b] dark:text-[#f4f4f5]">None</strong></span>
+          <span>Pupil L/N: <strong id="ft-pupil-ln" class="text-[#09090b] dark:text-[#f4f4f5]">PERRLA · Intact</strong></span>
+        </div>
+      </section>
+
+      <!-- PANEL 2: TWO-COLUMN DIAGNOSTIC ROW (PATHWAY SVG + VISUAL FIELD PERIMETRY) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0 min-w-0">
+
+        <!-- CARD 2A: Interactive Neuroanatomical Pathway Map (SVG) -->
+        <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+          <div class="px-3.5 py-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] truncate">Neuroanatomical Map</h2>
+            <div class="inline-flex rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[10px] font-mono shrink-0">
+              <button data-mapmode="visual" type="button" class="mapmode-btn px-2 py-0.5 rounded transition-colors">Visual &amp; Pupil</button>
+              <button data-mapmode="motor" type="button" class="mapmode-btn px-2 py-0.5 rounded transition-colors">Oculomotor</button>
+            </div>
+          </div>
+
+          <div class="relative w-full h-64 overflow-hidden select-none bg-zinc-50/40 dark:bg-obsidian/40">
+            <svg id="pathway-svg" viewBox="0 0 420 264" preserveAspectRatio="xMidYMid meet" class="w-full h-full block" role="img" aria-label="Interactive neuroanatomical pathway lesion map"></svg>
+          </div>
+
+          <!-- 1-Line Anatomical Inspector -->
+          <div id="anatomical-inspector" class="px-3.5 py-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/70 dark:bg-zinc-950/50 text-[11px] text-zinc-600 dark:text-zinc-300 truncate shrink-0">
+            Click any structure to toggle a discrete lesion on/off.
+          </div>
+        </section>
+
+        <!-- CARD 2B: Visual Field Perimetry (OU Humphrey / Goldmann Map) -->
+        <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+          <div class="px-3.5 py-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 shrink-0">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] truncate">Visual Field Perimetry (OU)</h2>
+            <span class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 shrink-0">OS (Left) &middot; OD (Right)</span>
+          </div>
+
+          <!-- STRICT LOCKED CANVAS WRAPPER -->
+          <div id="vf-wrap" class="relative w-full h-64 overflow-hidden cursor-crosshair">
+            <canvas id="vf-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+            <div id="vf-tooltip" class="pointer-events-none hidden absolute top-2 left-2 z-20 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-950/95 px-2.5 py-1 shadow-md backdrop-blur-sm text-[10px] font-mono tabular-nums"></div>
+          </div>
+
+          <!-- Perimetry Summary Footer -->
+          <div id="vf-footer" class="px-3.5 py-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/70 dark:bg-zinc-950/50 flex items-center justify-between gap-2 text-[11px] font-mono text-zinc-600 dark:text-zinc-300 shrink-0">
+            <span id="vf-pattern-lbl" class="truncate">Full Visual Fields OU</span>
+            <span id="vf-md-lbl" class="text-zinc-500 dark:text-zinc-400 shrink-0 tabular-nums">MD: 0.0 / 0.0 dB</span>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- PANEL 3: OCULAR RAY-TRACING OPTICAL BENCH & GOLDMANN AQUEOUS DYNAMICS -->
+      <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+        <!-- Header Controls -->
+        <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <div class="flex items-center gap-2 min-w-0">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] truncate">Ocular Ray-Tracing Optical Bench (OD)</h2>
+            <span id="angle-status-badge" class="font-mono text-[10px] font-medium px-2 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 shrink-0">Open Angle</span>
+          </div>
+
+          <div class="flex items-center gap-1.5 text-[10.5px] font-mono">
+            <button id="btn-auto-refract" type="button" class="px-2.5 py-1 rounded-md border border-tealLight/50 dark:border-tealDark/50 bg-teal-500/10 hover:bg-teal-500/20 text-tealLight dark:text-tealDark font-medium transition-colors" title="Set corrective sphere to neutralize axial/corneal refractive error">
+              Auto-Refract (Best Rx)
+            </button>
+            <button id="btn-pinhole" type="button" class="px-2.5 py-1 rounded-md border transition-colors" title="Place 1.5 mm pinhole occluder before OD to distinguish refractive blur from optic nerve/media pathology">
+              Pinhole Test
+            </button>
+          </div>
+        </div>
+
+        <!-- STRICT LOCKED CANVAS WRAPPER -->
+        <div id="optics-wrap" class="relative w-full h-64 overflow-hidden select-none">
+          <canvas id="optics-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+        </div>
+
+        <!-- Goldmann Aqueous Humor Equation & IOP Gauge Bar -->
+        <div class="px-4 py-2.5 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/70 dark:bg-zinc-950/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] tabular-nums">
+            <span class="text-zinc-500 dark:text-zinc-400">Goldmann:</span>
+            <span id="goldmann-eq" class="text-[#09090b] dark:text-[#f4f4f5] font-medium">IOP = (2.50 &minus; 0.60) / 0.28 + 8.0 = <strong class="text-tealLight dark:text-tealDark">14.8 mmHg</strong></span>
+          </div>
+          <div class="flex items-center gap-2.5 sm:w-64 shrink-0">
+            <div class="relative flex-1 h-2.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+              <!-- Threshold markers at 21 and 30 mmHg (scale 0..65 mmHg) -->
+              <div class="absolute top-0 bottom-0 left-[32.3%] w-px bg-zinc-400/70 dark:bg-zinc-600 z-10"></div>
+              <div class="absolute top-0 bottom-0 left-[46.1%] w-px bg-rose-500/70 z-10"></div>
+              <div id="iop-gauge-bar" class="h-full rounded-full bg-teal-500 transition-all duration-200" style="width: 22.8%"></div>
+            </div>
+            <span id="iop-gauge-label" class="font-mono text-[10px] font-medium text-emerald-600 dark:text-emerald-400 w-16 text-right shrink-0">Normal</span>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- RIGHT CLINICAL CONSOLE (4 cols on lg+) -->
+    <aside class="lg:col-span-4 min-w-0 min-h-[480px] lg:max-h-[calc(100vh-178px)] rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden">
+      <!-- 4-Tab Switcher -->
+      <div class="p-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 shrink-0">
+        <div class="grid grid-cols-4 rounded-lg bg-zinc-100/90 dark:bg-obsidian p-0.5 gap-0.5 border border-[#e4e4e7]/80 dark:border-borderDark/80">
+          <button data-tab="pathologies" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors">Pathologies</button>
+          <button data-tab="pharmacology" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center gap-1">
+            <span>Drops</span>
+            <span id="tab-drop-badge" class="hidden font-mono text-[9.5px] px-1 rounded bg-violet-500/15 text-violet-700 dark:text-violet-300">0</span>
+          </button>
+          <button data-tab="optics" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors">Optics/IOP</button>
+          <button data-tab="challenges" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors">Challenges</button>
+        </div>
+      </div>
+
+      <!-- Scrollable Tab Body -->
+      <div class="flex-1 overflow-y-auto p-3 min-h-0">
+        <div id="tab-pathologies" class="space-y-3"></div>
+        <div id="tab-pharmacology" class="hidden space-y-3.5"></div>
+        <div id="tab-optics" class="hidden space-y-3.5"></div>
+        <div id="tab-challenges" class="hidden space-y-3"></div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ==================== 4. MINIMAL FOOTER ==================== -->
+  <footer class="w-full border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-white/70 dark:bg-obsidian/90 shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+      <span class="font-medium text-[#09090b] dark:text-[#f4f4f5]">MedLab &middot; Neuro-Ophtho Lab</span>
+      <span>Mechanistic cranial nerve motility, pupillary reflex, visual field &amp; Gullstrand optics simulator for educational study only.</span>
+    </div>
+  </footer>
+
+  <!-- ==================== SIMULATION ENGINE & UI CONTROLLER ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    /* =========================================================================
+       1. NUMERIC UTILITIES & ANATOMICAL REGISTRY
+       ========================================================================= */
+    const clamp = (v, lo, hi) => (Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo);
+
+    const LESION_META = {
+      cn2_r:       { label: 'R CN II',        name: 'Right Optic Nerve (CN II)',       note: 'Monocular central scotoma (OD), severe Right RAPD (+3), reduced visual acuity not improved by pinhole.' },
+      cn2_l:       { label: 'L CN II',        name: 'Left Optic Nerve (CN II)',        note: 'Monocular central scotoma (OS), severe Left RAPD (+3), intact OD field and acuity.' },
+      chiasm:      { label: 'Chiasm',         name: 'Optic Chiasm (Crossing Fibers)',  note: 'Bitemporal hemianopia from compression of crossing nasal retinal fibers (e.g. pituitary adenoma).' },
+      tract_l:     { label: 'L Optic Tract',  name: 'Left Optic Tract',                note: 'Incongruous right homonymous hemianopia; may show subtle contralateral RAPD (OD).' },
+      tract_r:     { label: 'R Optic Tract',  name: 'Right Optic Tract',               note: 'Incongruous left homonymous hemianopia; may show subtle contralateral RAPD (OS).' },
+      meyer_l:     { label: "L Meyer's Loop", name: "Left Meyer's Loop (Temporal)",    note: 'Right superior homonymous quadrantanopia ("Pie in the sky"); pupillary light reflexes remain intact.' },
+      parietal_l:  { label: 'L Parietal Rad', name: 'Left Parietal Optic Radiation',   note: 'Right inferior homonymous quadrantanopia ("Pie on the floor"); pupillary light reflexes remain intact.' },
+      v1_l:        { label: 'L V1 Cortex',    name: 'Left V1 Occipital Cortex (PCA)',  note: 'Congruous right homonymous hemianopia with 5° macular sparing (dual MCA/PCA occipital pole supply).' },
+      midbrain_ar: { label: 'Dorsal Midbrain',name: 'Pretectal / Dorsal Midbrain (AR)',note: 'Argyll Robertson pupils: bilateral small irregular pupils with Light-Near Dissociation (accommodate but do not react to light).' },
+      adie_r:      { label: 'R Ciliary Gang', name: 'Right Ciliary Ganglion (Adie)',   note: 'Adie tonic pupil: dilated OD in bright light, absent/sluggish light reflex, tonic near constriction, supersensitive to 0.125% pilocarpine.' },
+      horner_r:    { label: 'R Sympathetic',  name: 'Right Oculosympathetic Chain',    note: 'Horner syndrome: mild R ptosis (~1.8 mm), R miosis worse in dark with dilation lag; anisocoria reverses with apraclonidine 0.5%.' },
+      cn3_comp_r:  { label: 'R CN III Comp',  name: 'Right CN III (Compressive PCom)', note: 'Down-and-out OD, severe ptosis, and blown fixed pupil (superficial parasympathetic fibers compressed).' },
+      cn3_micro_r: { label: 'R CN III Micro', name: 'Right CN III (Microvascular)',    note: 'Down-and-out OD with severe ptosis, but PUPIL-SPARING (ischemic core spares superficial parasympathetic fibers).' },
+      cn4_r:       { label: 'R CN IV',        name: 'Right Trochlear Nerve (CN IV)',   note: 'Right hypertropia + excyclotorsion; vertical diplopia worsens on contralateral (Left) gaze & ipsilateral (Right) head tilt.' },
+      cn6_r:       { label: 'R CN VI',        name: 'Right Abducens Nerve (CN VI)',    note: 'Right esotropia with impaired OD abduction; horizontal uncrossed diplopia worse on Patient Right gaze.' },
+      cn6_l:       { label: 'L CN VI',        name: 'Left Abducens Nerve (CN VI)',     note: 'Left esotropia with impaired OS abduction; horizontal uncrossed diplopia worse on Patient Left gaze.' },
+      mlf_r:       { label: 'R MLF (INO)',    name: 'Right MLF (Internuclear Ophth.)', note: 'Right INO: impaired OD adduction on Left gaze, dissociative abducting nystagmus in OS, spared Near Convergence.' },
+      pprf_r:      { label: 'R PPRF',         name: 'Right PPRF (Horizontal Gaze Ctr)',note: 'Ipsilateral horizontal conjugate gaze palsy (neither eye looks Right); combined with R MLF yields One-and-a-Half syndrome.' },
+      cav_r:       { label: 'R Cav. Sinus',   name: 'Right Cavernous Sinus',           note: 'Frozen OD ophthalmoplegia (CN III + IV + VI) + oculosympathetic involvement -> severe ptosis & mid-dilated fixed pupil.' }
+    };
+
+    const NORMAL_OPTICS = {
+      axialLength: 24.0,   // mm (19.5–29.5)
+      cornealPower: 43.0,  // D (37.0–52.0)
+      accomDemand: 0.0,    // D (0–12)
+      objectDistIdx: 6,    // Index into OBJECT_DISTANCES (6 = Infinity)
+      sphereRx: 0.0,       // D (-10 to +10, step 0.25)
+      age: 25,             // years (20–80)
+      opacity: 0           // % cataract / corneal edema (0–100)
+    };
+
+    const OBJECT_DISTANCES = [
+      { m: 0.15, label: '15 cm (6.7 D)', vergence: -6.67 },
+      { m: 0.25, label: '25 cm (4.0 D)', vergence: -4.00 },
+      { m: 0.33, label: '33 cm (3.0 D)', vergence: -3.00 },
+      { m: 0.50, label: '50 cm (2.0 D)', vergence: -2.00 },
+      { m: 1.00, label: '1.0 m (1.0 D)', vergence: -1.00 },
+      { m: 2.00, label: '2.0 m (0.5 D)', vergence: -0.50 },
+      { m: Infinity, label: 'Infinity (0 D)', vergence: 0.0 }
+    ];
+
+    const NORMAL_IOP = {
+      F: 2.50,             // Aqueous production (uL/min)
+      C: 0.28,             // Trabecular outflow facility (uL/min/mmHg)
+      U: 0.60,             // Uveoscleral outflow (uL/min)
+      Pv: 8.0,             // Episcleral venous pressure (mmHg)
+      angleClosed: false
+    };
+
+    const NORMAL_DROPS = {
+      apraclonidine: false,
+      cocaine: false,
+      pilo0125: false,
+      pilo2: false,
+      atropineOD: false,
+      latanoprost: false,
+      timolol: false,
+      acetazolamide: false,
+      lpi: false
+    };
+
+    /* 16 Clinical Pathology Presets Grouped into 4 Categories */
+    const PATHOLOGIES = [
+      // Motility / CN
+      { id: 'normal', group: 'Motility & Cranial Nerves', name: 'Normal Baseline', tag: 'Intact OU', lesions: [], optics: {}, iop: {}, drops: {}, pearl: 'Orthophoric binocular alignment, PERRLA without RAPD, full visual fields OU, emmetropic optics (20/20), and Goldmann IOP 14.8 mmHg.' },
+      { id: 'cn3_comp', group: 'Motility & Cranial Nerves', name: 'R CN III Palsy (Compressive · PCom)', tag: 'Blown Pupil', lesions: ['cn3_comp_r'], optics: {}, iop: {}, drops: {}, pearl: 'PCom aneurysm compresses superficial parasympathetic pupillomotor fibers first -> down-and-out OD, severe ptosis, and fixed dilated pupil (>7 mm). Emergent CTA/MRA!' },
+      { id: 'cn3_micro', group: 'Motility & Cranial Nerves', name: 'R CN III Palsy (Microvascular)', tag: 'Pupil-Sparing', lesions: ['cn3_micro_r'], optics: {}, iop: {}, drops: {}, pearl: 'Diabetic/hypertensive vasa nervorum ischemia damages central somatic fibers (down-and-out OD, severe ptosis) while sparing peripheral parasympathetic pupillary fibers.' },
+      { id: 'cn4_palsy', group: 'Motility & Cranial Nerves', name: 'R CN IV Palsy (Trochlear)', tag: 'R Hypertropia', lesions: ['cn4_r'], optics: {}, iop: {}, drops: {}, pearl: 'Right Superior Oblique weakness causes R hypertropia & excyclotorsion. Classic Parks-Bielschowsky 3-step: worse on Left gaze and Right head tilt.' },
+      { id: 'cn6_palsy', group: 'Motility & Cranial Nerves', name: 'R CN VI Palsy (Abducens)', tag: 'R Esotropia', lesions: ['cn6_r'], optics: {}, iop: {}, drops: {}, pearl: 'Right Lateral Rectus palsy produces R esotropia and inability to abduct OD past midline, causing horizontal uncrossed diplopia worst on Patient Right gaze.' },
+      { id: 'mlf_ino', group: 'Motility & Cranial Nerves', name: 'R MLF Lesion (Right INO)', tag: 'Adduct + Nystag', lesions: ['mlf_r'], optics: {}, iop: {}, drops: {}, pearl: 'Right MLF demyelination (MS) or lacunar infarct impairs OD adduction on Left gaze with contralateral OS abducting nystagmus; Near Convergence is spared!' },
+      { id: 'one_half', group: 'Motility & Cranial Nerves', name: 'One-and-a-Half Syndrome (R PPRF+MLF)', tag: 'Pontine', lesions: ['pprf_r', 'mlf_r'], optics: {}, iop: {}, drops: {}, pearl: 'Dorsal pontine lesion knocking out R PPRF (no gaze Right) + R MLF (no OD adduction on Left gaze); only OS abduction remains.' },
+      { id: 'cav_sinus', group: 'Motility & Cranial Nerves', name: 'R Cavernous Sinus Syndrome', tag: 'CN III+IV+VI', lesions: ['cav_r'], optics: {}, iop: {}, drops: {}, pearl: 'Total OD ophthalmoplegia (CN III, IV, VI) plus oculosympathetic plexus involvement -> frozen globe, severe ptosis, and fixed mid-dilated pupil.' },
+      // Pupillary
+      { id: 'horner', group: 'Pupillary Pathways', name: 'R Horner Syndrome', tag: 'Miosis + Ptosis', lesions: ['horner_r'], optics: {}, iop: {}, drops: {}, pearl: 'Oculosympathetic disruption causes mild R ptosis (~1.8 mm) and R miosis with dilation lag; anisocoria is GREATER IN DARK and reverses with apraclonidine 0.5%.' },
+      { id: 'adie', group: 'Pupillary Pathways', name: 'R Adie Tonic Pupil', tag: 'Tonic Near', lesions: ['adie_r'], optics: {}, iop: {}, drops: {}, pearl: 'Postganglionic ciliary ganglion lesion: dilated OD in bright light, poor light reflex, slow tonic near constriction, and denervation supersensitivity to 0.125% pilocarpine.' },
+      { id: 'argyll', group: 'Pupillary Pathways', name: 'Argyll Robertson Pupils', tag: 'Light-Near Diss.', lesions: ['midbrain_ar'], optics: {}, iop: {}, drops: {}, pearl: 'Dorsal midbrain / pretectal lesion (e.g. neurosyphilis) spares ventral near-reflex fibers: bilateral small pupils with absent light reaction but brisk near constriction.' },
+      // Visual Pathways
+      { id: 'optic_neuritis', group: 'Visual Pathways', name: 'R Optic Neuritis (CN II)', tag: 'R RAPD +3', lesions: ['cn2_r'], optics: {}, iop: {}, drops: {}, pearl: 'Demyelinating R optic neuropathy: monocular OD central scotoma, severe R RAPD (+3) on swinging flashlight test, and decreased VA not corrected by pinhole.' },
+      { id: 'chiasm_pit', group: 'Visual Pathways', name: 'Pituitary Adenoma (Chiasm)', tag: 'Bitemporal', lesions: ['chiasm'], optics: {}, iop: {}, drops: {}, pearl: 'Sellar mass compresses decussating nasal retinal fibers in the optic chiasm -> classic bitemporal hemianopia respecting the vertical meridian.' },
+      { id: 'meyer_loop', group: 'Visual Pathways', name: "L Meyer's Loop (Temporal)", tag: 'Pie in Sky', lesions: ['meyer_l'], optics: {}, iop: {}, drops: {}, pearl: 'Left temporal lobe lesion affecting inferior optic radiations -> right superior homonymous quadrantanopia ("Pie in the sky") with intact pupillary reflexes.' },
+      { id: 'v1_stroke', group: 'Visual Pathways', name: 'L V1 PCA Stroke (Occipital)', tag: 'Macular Sparing', lesions: ['v1_l'], optics: {}, iop: {}, drops: {}, pearl: 'Left PCA territory occipital infarct -> congruous right homonymous hemianopia with 5° macular sparing due to collateral MCA perfusion of the occipital pole.' },
+      // Ocular & IOP
+      { id: 'aacg', group: 'Ocular Optics & IOP', name: 'Acute Angle-Closure Glaucoma (OD)', tag: 'IOP ~58 mmHg', lesions: [], optics: { axialLength: 22.8, opacity: 42 }, iop: { F: 2.35, C: 0.035, U: 0.60, Pv: 8.0, angleClosed: true }, drops: {}, pearl: 'Pupillary block closes the anterior chamber angle (C = 0.035) -> IOP skyrockets to ~58 mmHg, causing corneal edema blur, mid-dilated fixed OD pupil, and arcuate scotoma.' }
+    ];
+
+    const QUICK_OPTICAL_PRESETS = [
+      { id: 'emmetropia', label: 'Emmetropia', vals: { axialLength: 24.0, cornealPower: 43.0, accomDemand: 0, objectDistIdx: 6, sphereRx: 0, age: 25, opacity: 0 } },
+      { id: 'myopia',     label: 'High Myopia (-5D)', vals: { axialLength: 26.05, cornealPower: 43.0, accomDemand: 0, objectDistIdx: 6, sphereRx: 0, age: 25, opacity: 0 } },
+      { id: 'hyperopia',  label: 'Hyperopia (+4D)', vals: { axialLength: 22.75, cornealPower: 43.0, accomDemand: 0, objectDistIdx: 6, sphereRx: 0, age: 25, opacity: 0 } },
+      { id: 'presbyopia', label: 'Presbyopia (65y)', vals: { axialLength: 24.0, cornealPower: 43.0, accomDemand: 3.0, objectDistIdx: 2, sphereRx: 0, age: 65, opacity: 8 } },
+      { id: 'keratoconus',label: 'Keratoconus (50D)', vals: { axialLength: 24.0, cornealPower: 50.0, accomDemand: 0, objectDistIdx: 6, sphereRx: 0, age: 28, opacity: 12 } },
+      { id: 'cataract',   label: 'Dense Cataract', vals: { axialLength: 24.0, cornealPower: 43.0, accomDemand: 0, objectDistIdx: 6, sphereRx: 0, age: 74, opacity: 78 } }
+    ];
+
+    const BEDSIDE_CHALLENGES = [
+      { id: 'swing_rapd', name: 'Swinging Flashlight Test (RAPD)', tag: 'Afferent', desc: 'Activates Auto-Swing and measures OD vs OS pupil diameter during alternating illumination to detect RAPD.' },
+      { id: 'parks_3step', name: 'Parks-Bielschowsky 3-Step Test', tag: 'CN IV / SO', desc: 'Evaluates Primary → Left/Right Gaze → Right/Left Head Tilt vertical deviation to isolate cyclovertical palsy.' },
+      { id: 'anisocoria_workup', name: 'Anisocoria Dark/Light + Drop Workup', tag: 'Horner vs Adie', desc: 'Compares Bright vs Dark anisocoria and applies diagnostic drop logic (Apraclonidine / 0.125% & 2% Pilocarpine).' },
+      { id: 'ino_conv', name: 'INO Convergence Dissociation', tag: 'MLF', desc: 'Compares horizontal conjugate Left/Right gaze adduction against Near Convergence medial rectus recovery.' },
+      { id: 'aacg_rescue', name: 'Acute Angle-Closure Crisis Rescue', tag: 'IOP Emergency', desc: 'Applies Acetazolamide IV + Timolol + Pilocarpine 2% + LPI (loads AACG if inactive) and logs Before → After IOP & VA.' }
+    ];
+
+    /* =========================================================================
+       2. APPLICATION STATE
+       ========================================================================= */
+    const state = {
+      presetId: 'normal',
+      lesions: new Set(),
+      drops: { ...NORMAL_DROPS },
+      optics: { ...NORMAL_OPTICS },
+      iop: { ...NORMAL_IOP },
+
+      // Exam bench controls
+      gazeMode: 'cardinal',   // 'cardinal' | 'cursor' | 'near'
+      gazeTarget: { x: 0, y: 0 }, // x: +1 = Patient Right (viewer left), y: +1 = Up
+      headTilt: 0,            // 0 = Level, +1 = Tilt Right, -1 = Tilt Left
+      lightMode: 'room',      // 'room' | 'dark' | 'flash_od' | 'flash_os' | 'autoswing'
+      diplopiaView: false,
+      pinhole: false,
+
+      // UI state
+      activeTab: 'pathologies',
+      mapMode: 'visual',      // 'visual' | 'motor'
+      inspectedNode: null,
+      vfHover: null,          // { eye, degX, degY, dB, x, y }
+      pinnedSnap: null,
+      challengeLog: [],
+
+      // Smooth 60fps real-time kinematic & pupillary animation state
+      anim: {
+        odX: 0, odY: 0, odTorsion: 0, odPtosis: 0,
+        osX: 0, osY: 0, osTorsion: 0, osPtosis: 0,
+        odPupil: 3.8, osPupil: 3.8,
+        headAngleDeg: 0,
+        swingClock: 0,
+        activeFlashEye: null, // 'od' | 'os' | null
+        nystagClock: 0
+      },
+
+      // Cached derived clinical outputs
+      computed: null
+    };
+
+    /* =========================================================================
+       3. CORE BIOPHYSICAL & CLINICAL COMPUTATION ENGINES
+       ========================================================================= */
+
+    /** A. Goldmann Aqueous Humor Equation: IOP = (F - U) / C + Pv */
+    function computeGoldmannIOP(iopP, drops) {
+      let F = iopP.F;
+      let C = iopP.C;
+      let U = iopP.U;
+      const Pv = iopP.Pv;
+      let angleClosed = iopP.angleClosed;
+
+      // Medications
+      if (drops.timolol) F *= 0.65;
+      if (drops.acetazolamide) F *= 0.55;
+      if (drops.latanoprost) U += 0.75;
+
+      // Pilocarpine 2% + LPI relieve pupillary block in angle closure
+      if (angleClosed) {
+        if (drops.lpi) {
+          angleClosed = false;
+          C = Math.max(C, 0.25);
+        } else if (drops.pilo2) {
+          C = Math.max(C, 0.14);
+        }
+      } else if (drops.pilo2) {
+        C = Math.min(0.55, C + 0.06);
+      }
+
+      // Anticholinergic drop (Atropine) can precipitate narrow-angle outflow drop if C is borderline
+      if (drops.atropineOD && C < 0.14 && !drops.lpi) {
+        angleClosed = true;
+        C = Math.max(0.032, C * 0.6);
+      }
+
+      const iopVal = clamp(((F - U) / Math.max(0.02, C)) + Pv, 4.0, 72.0);
+      let status = 'Normal';
+      let statusLvl = 'ok';
+      if (iopVal >= 30) { status = 'Acute Crisis'; statusLvl = 'rose'; }
+      else if (iopVal >= 22) { status = 'OHT / Elevated'; statusLvl = 'amber'; }
+
+      return { F, C, U, Pv, iop: iopVal, angleClosed, status, statusLvl };
+    }
+
+    /** B. Gullstrand Paraxial Optics & Visual Acuity Engine (OD) */
+    function computeOptics(opt, lesions, drops, iopRes, pupilODmm, pinholeOn) {
+      const n = 1.336;
+      const L_anat = opt.axialLength;
+      const L_opt = L_anat - 1.733; // Exact calibration: 24.0 - 1.733 = 22.267 mm -> 1336 / 60.0 = 22.267 mm!
+
+      // Hofstetter presbyopia accommodation ceiling
+      const A_max = Math.max(0.5, 15.0 - 0.25 * opt.age);
+      // Atropine/Tropicamide causes cycloplegia (abolishes accommodation)
+      const effAccom = drops.atropineOD ? 0.0 : Math.min(opt.accomDemand, A_max);
+
+      const objSpec = OBJECT_DISTANCES[opt.objectDistIdx] || OBJECT_DISTANCES[6];
+      const P_lens = 17.0 + effAccom;
+      const P_eye_uncorr = opt.cornealPower + P_lens;
+      const P_total = P_eye_uncorr + opt.sphereRx;
+
+      // Vergence leaving the ocular lens system: V_out = V_obj + P_total
+      const V_out = objSpec.vergence + P_total;
+      const z_f = V_out > 5 ? (n * 1000.0) / V_out : 99.0; // Focal distance behind principal plane (mm)
+
+      // Exact unaccommodated distant refractive error (spherical equivalent Rx needed for distance infinity)
+      const P_required_dist = (n * 1000.0) / L_opt; // 60.00 D at L_anat = 24.0 mm
+      const eyeRefErrorD = P_required_dist - (opt.cornealPower + 17.0); // Negative = Myopia, Positive = Hyperopia
+
+      // Net residual defocus at retina (Diopters)
+      const defocusD = (n * 1000.0) / L_opt - V_out;
+
+      // Effective aperture (Pinhole = 1.5 mm overrides pupil diameter!)
+      const effAperture = pinholeOn ? 1.5 : clamp(pupilODmm, 1.5, 8.5);
+      // Retinal Circle of Confusion diameter (mm)
+      const blurCircleMm = z_f < 90 ? effAperture * Math.abs(L_opt - z_f) / Math.max(5.0, z_f) : 4.0;
+
+      // Media opacity (cataract + acute corneal edema when IOP > 35 mmHg)
+      const edemaOpacity = iopRes.iop > 35 ? clamp((iopRes.iop - 35) * 1.6, 0, 50) : 0;
+      const totalOpacity = clamp(opt.opacity + edemaOpacity, 0, 100);
+
+      // Estimate Snellen denominator (20 / denom):
+      // Refractive blur degrades linearly with blurCircleMm (improved drastically by pinhole!)
+      // Media opacity & Optic nerve lesion (cn2_r) degrade VA independently of pinhole!
+      const blurMAR = 1.0 + blurCircleMm * 14.5;
+      const mediaMAR = 1.0 + Math.pow(totalOpacity / 34.0, 2.15) * 3.8;
+      const neuralMAR = lesions.has('cn2_r') ? 8.5 : (lesions.has('tract_l') ? 1.15 : 1.0);
+      const totalMAR = Math.max(1.0, blurMAR * mediaMAR * neuralMAR);
+      const rawDenom = Math.round(20 * totalMAR);
+      const snellenTable = [20, 25, 30, 40, 50, 60, 70, 80, 100, 125, 150, 200, 300, 400, 600, 800];
+      let snellenDenom = snellenTable[snellenTable.length - 1];
+      for (const s of snellenTable) {
+        if (rawDenom <= s + s * 0.12) { snellenDenom = s; break; }
+      }
+      const snellenStr = rawDenom > 850 ? 'CF / HM' : `20/${snellenDenom}`;
+
+      return {
+        L_anat, L_opt, A_max, effAccom, P_lens, P_total,
+        objSpec, V_out, z_f, eyeRefErrorD, defocusD,
+        effAperture, blurCircleMm, totalOpacity, snellenStr, snellenDenom
+      };
+    }
+
+    /** C. Target Binocular Motility, Eyelid Ptosis & Torsion Kinematics */
+    function computeMotilityTargets(lesions, gazeMode, gazeTarget, headTilt) {
+      // Base desired gaze angles in degrees: gx > 0 = Patient's Right (viewer left), gy > 0 = Up
+      let desOD_X = 0, desOD_Y = 0, desOS_X = 0, desOS_Y = 0;
+
+      if (gazeMode === 'near') {
+        // Near convergence: OD adducts (looks Patient's Left, -X), OS adducts (looks Patient's Right, +X)
+        desOD_X = -17.0;
+        desOS_X = +17.0;
+        desOD_Y = -4.0;
+        desOS_Y = -4.0;
+      } else {
+        desOD_X = gazeTarget.x * 26.0;
+        desOS_X = gazeTarget.x * 26.0;
+        desOD_Y = gazeTarget.y * 19.0;
+        desOS_Y = gazeTarget.y * 19.0;
+      }
+
+      // Apply Conjugate PPRF Lesion FIRST (R PPRF blocks conjugate horizontal gaze to Patient's Right, gx > 0)
+      if (lesions.has('pprf_r') && gazeMode !== 'near' && desOD_X > 0) {
+        desOD_X = 0;
+        desOS_X = 0;
+      }
+
+      let odX = desOD_X, odY = desOD_Y, odTorsion = 0, odPtosis = 0;
+      let osX = desOS_X, osY = desOS_Y, osTorsion = 0, osPtosis = 0;
+      let hasINONystagmus = false;
+
+      // R Cavernous Sinus (CN III + IV + VI + Sympathetic)
+      if (lesions.has('cav_r')) {
+        odX = 2.0; // Frozen near midline
+        odY = -1.5;
+        odPtosis = 0.86;
+      } else {
+        // R CN III (Compressive or Microvascular)
+        if (lesions.has('cn3_comp_r') || lesions.has('cn3_micro_r')) {
+          // Unopposed LR + SO -> Down and Out (Exotropia +X, Hypotropia -Y)
+          const abductRange = desOD_X > 0 ? desOD_X * 0.85 : desOD_X * 0.08;
+          odX = clamp(15.5 + abductRange * 0.55, 8.0, 29.0);
+          odY = clamp(-9.5 + (desOD_Y < 0 ? desOD_Y * 0.25 : 0), -18.0, -5.5);
+          odPtosis = 0.84;
+        }
+
+        // R CN IV (Trochlear / Right Superior Oblique)
+        if (lesions.has('cn4_r')) {
+          // Right Hypertropia (+Y) worse on Left gaze (gazeX < 0) and Right head tilt (headTilt > 0)
+          const gazeFactor = gazeMode === 'near' ? 0.55 : clamp((1 - gazeTarget.x) * 0.5, 0.15, 1.0); // 1.0 on Left gaze, 0.5 primary, 0.15 Right gaze
+          const tiltFactor = headTilt === 1 ? 1.55 : (headTilt === -1 ? 0.35 : 1.0);
+          const hyperDeg = 4.6 * (0.45 + 0.95 * gazeFactor) * tiltFactor;
+          odY = clamp(odY + hyperDeg, -18, 22);
+          // Excyclotorsion of OD (positive value will rotate 12 o'clock temporally = viewer's left = CCW)
+          odTorsion += 8.5 * tiltFactor;
+        }
+
+        // R CN VI (Abducens / Right Lateral Rectus)
+        if (lesions.has('cn6_r')) {
+          // Esotropia (-X) + cannot abduct past midline (odX <= -2)
+          const restrictedX = desOD_X > 0 ? -2.0 : desOD_X;
+          odX = clamp(restrictedX - 10.5 * (desOD_X >= 0 ? 1 : 0.45), -27.0, -1.5);
+        }
+
+        // R MLF (Right INO): impaired OD adduction on conjugate Left gaze ONLY; Near Convergence SPARED!
+        if (lesions.has('mlf_r') && gazeMode !== 'near') {
+          if (desOD_X < -2.0) {
+            odX = Math.max(odX, -3.5); // OD lags behind at midline
+            hasINONystagmus = true;    // Contralateral OS abducting nystagmus
+          }
+        }
+      }
+
+      // L CN VI (Left Lateral Rectus)
+      if (lesions.has('cn6_l')) {
+        const restrictedX = desOS_X < 0 ? 2.0 : desOS_X;
+        osX = clamp(restrictedX + 10.5 * (desOS_X <= 0 ? 1 : 0.45), 1.5, 27.0);
+      }
+
+      // R Horner Syndrome (Mild 1.8 mm Ptosis)
+      if (lesions.has('horner_r')) {
+        odPtosis = Math.max(odPtosis, 0.28);
+      }
+
+      // Strabismus mismatch vector (OD relative to OS in patient degrees, accounting for normal convergence)
+      const expectedDx = gazeMode === 'near' ? -34.0 : 0.0;
+      const errX = (odX - osX) - expectedDx; // >0 = Exotropia, <0 = Esotropia
+      const errY = odY - osY;                // >0 = R Hypertropia, <0 = R Hypotropia
+
+      let alignLabel = 'Orthophoric';
+      let diplopiaType = 'None';
+      if (lesions.has('cav_r')) {
+        alignLabel = 'R Frozen Globe';
+        diplopiaType = 'Complex Multi-Planar';
+      } else if (lesions.has('pprf_r') && lesions.has('mlf_r')) {
+        alignLabel = 'One-and-a-Half';
+        diplopiaType = Math.abs(errX) > 4 ? 'Horizontal (L Gaze)' : 'Gaze Palsy (R)';
+      } else if (lesions.has('cn3_comp_r') || lesions.has('cn3_micro_r')) {
+        alignLabel = 'R Exo + Hypotropia';
+        diplopiaType = 'Horiz + Vert (if lid lifted)';
+      } else if (lesions.has('mlf_r')) {
+        alignLabel = 'Right INO (MLF)';
+        diplopiaType = Math.abs(errX) > 4 ? 'Horizontal (L Gaze)' : 'None (Conv. Spared)';
+      } else if (lesions.has('cn6_r') || lesions.has('cn6_l')) {
+        alignLabel = lesions.has('cn6_r') ? 'R Esotropia (CN VI)' : 'L Esotropia (CN VI)';
+        diplopiaType = 'Horizontal Uncrossed';
+      } else if (lesions.has('cn4_r')) {
+        alignLabel = `R Hypertropia (${errY.toFixed(1)}°)`;
+        diplopiaType = 'Vertical + Torsional';
+      } else if (Math.abs(errX) > 3 || Math.abs(errY) > 2) {
+        alignLabel = 'Strabismus';
+        diplopiaType = 'Binocular Diplopia';
+      }
+
+      return {
+        odX, odY, odTorsion, odPtosis,
+        osX, osY, osTorsion, osPtosis,
+        errX, errY, hasINONystagmus,
+        alignLabel, diplopiaType
+      };
+    }
+
+    /** D. Target Pupillary Diameters (mm), Kinetics Tau & RAPD Calculation */
+    function computePupilTargets(lesions, drops, iopRes, lightMode, activeFlashEye, gazeMode) {
+      // Illumination levels hitting OD and OS (0 = dark, 0.45 = room, 1.0 = bright penlight)
+      let lumOD = 0.45, lumOS = 0.45;
+      if (lightMode === 'dark') { lumOD = 0.02; lumOS = 0.02; }
+      else if (lightMode === 'flash_od' || (lightMode === 'autoswing' && activeFlashEye === 'od')) { lumOD = 1.0; lumOS = 0.08; }
+      else if (lightMode === 'flash_os' || (lightMode === 'autoswing' && activeFlashEye === 'os')) { lumOD = 0.08; lumOS = 1.0; }
+
+      // Afferent optic nerve transmission (0..1)
+      let affOD = 1.0, affOS = 1.0;
+      if (lesions.has('cn2_r')) affOD = 0.12;
+      if (lesions.has('cn2_l')) affOS = 0.12;
+      if (lesions.has('tract_l')) affOD = Math.min(affOD, 0.72);
+      if (lesions.has('tract_r')) affOS = Math.min(affOS, 0.72);
+
+      // Total pretectal consensual light drive (0..1)
+      const driveOD = lumOD * affOD;
+      const driveOS = lumOS * affOS;
+      const totalLightDrive = clamp(Math.max(driveOD, driveOS) + 0.12 * Math.min(driveOD, driveOS), 0.02, 1.0);
+
+      const isNear = gazeMode === 'near';
+
+      // Helper for one eye's target pupil diameter (mm) & response time constant (s)
+      function evalEyePupil(isOD) {
+        const isDark = totalLightDrive < 0.15;
+        // Normal baseline curve: dark=6.2mm, room=3.8mm, bright flash=2.3mm
+        let lightEffect = totalLightDrive;
+        let nearEffect = isNear ? 1.0 : 0.0;
+
+        // Dorsal Midbrain (Argyll Robertson): light reflex abolished, small baseline, intact brisk near!
+        if (lesions.has('midbrain_ar')) {
+          const diam = isNear ? 1.85 : (isDark ? 2.85 : 2.40);
+          return { diam, tauConstrict: 0.25, tauDilate: 0.55 };
+        }
+
+        // Base physiological diameter from light & near
+        let diam = 6.2 - 3.9 * Math.pow(lightEffect, 0.65);
+        if (isNear) diam = Math.min(diam, 2.55);
+        let tauConstrict = 0.22;
+        let tauDilate = 0.45;
+
+        // Eye-specific efferent lesions & drops (primarily OD in clinical presets)
+        if (isOD) {
+          // 1. Acute Angle-Closure Glaucoma (mid-dilated fixed ischemic iris)
+          if (iopRes.angleClosed && iopRes.iop >= 36 && !drops.lpi) {
+            diam = 5.4;
+          }
+
+          // 2. Cavernous sinus (combined CN III + sympathetic -> mid-dilated fixed)
+          if (lesions.has('cav_r')) {
+            diam = 5.6;
+          }
+
+          // 3. Compressive CN III (blown fixed parasympathetic pupil)
+          if (lesions.has('cn3_comp_r')) {
+            diam = 7.3;
+          }
+
+          // 4. Adie Tonic Pupil (poor light reaction, slow tonic near constriction!)
+          if (lesions.has('adie_r')) {
+            diam = isNear ? 3.1 : (isDark ? 6.4 : 6.0);
+            tauConstrict = isNear ? 1.35 : 0.90;
+            tauDilate = 1.90;
+          }
+
+          // 5. Horner Syndrome (loss of dilator tone + DILATION LAG in dark!)
+          if (lesions.has('horner_r')) {
+            const hornerMax = 4.05;
+            diam = Math.min(diam, hornerMax) - (isDark ? 0.0 : 0.55 * (1 - lightEffect));
+            diam = clamp(diam, 2.1, hornerMax);
+            tauDilate = 2.30; // Classic Horner's dilation lag!
+          }
+
+          // 6. Diagnostic & Therapeutic Drops on OD
+          if (drops.apraclonidine) {
+            if (lesions.has('horner_r')) {
+              diam = Math.max(diam, 5.1); // α1 supersensitivity REVERSES Horner's anisocoria!
+            } else {
+              diam = Math.max(2.2, diam - 0.4);
+            }
+          }
+          if (drops.cocaine) {
+            if (!lesions.has('horner_r')) {
+              diam = Math.min(7.2, diam + 1.9);
+            } // Fails to dilate Horner's OD -> widens anisocoria!
+          }
+          if (drops.pilo0125) {
+            if (lesions.has('adie_r')) {
+              diam = 2.4; // Cholinergic supersensitivity constricts Adie pupil strongly!
+            } else {
+              diam = Math.max(2.1, diam - 0.2);
+            }
+          }
+          if (drops.pilo2) {
+            // Constricts CN III, Adie, Normal, and AACG — UNLESS blocked by Atropine!
+            if (!drops.atropineOD) {
+              diam = 2.15;
+            }
+          }
+          if (drops.atropineOD) {
+            // Pharmacologic M3 receptor blockade: fixed dilated, resistant to Pilocarpine 2%!
+            diam = 7.6;
+          }
+        } else {
+          // OS (control eye for bilateral diagnostic drops)
+          if (drops.apraclonidine) diam = Math.max(2.2, diam - 0.45);
+          if (drops.cocaine) diam = Math.min(7.1, diam + 1.85);
+          if (drops.pilo0125) diam = Math.max(2.1, diam - 0.2);
+        }
+
+        return { diam: clamp(diam, 1.6, 8.2), tauConstrict, tauDilate };
+      }
+
+      const odP = evalEyePupil(true);
+      const osP = evalEyePupil(false);
+
+      // RAPD Status
+      let rapdStr = 'No RAPD';
+      let rapdLvl = 'ok';
+      if (affOD < 0.3 && affOS > 0.8) { rapdStr = 'R RAPD +3'; rapdLvl = 'rose'; }
+      else if (affOS < 0.3 && affOD > 0.8) { rapdStr = 'L RAPD +3'; rapdLvl = 'rose'; }
+      else if (affOD < 0.8 && affOS > 0.9) { rapdStr = 'R RAPD +1'; rapdLvl = 'amber'; }
+      else if (affOS < 0.8 && affOD > 0.9) { rapdStr = 'L RAPD +1'; rapdLvl = 'amber'; }
+
+      // Pupil Light vs Near summary
+      let lnSummary = 'PERRLA · Intact';
+      if (lesions.has('midbrain_ar')) lnSummary = 'Light-Near Dissociation (AR)';
+      else if (lesions.has('adie_r')) lnSummary = 'R Tonic Near · Poor Light';
+      else if (drops.atropineOD) lnSummary = 'R Pharmacologic Fixed Mydriasis';
+      else if (lesions.has('cn3_comp_r') || lesions.has('cav_r')) lnSummary = 'R Fixed Dilated (Efferent CN III)';
+      else if (lesions.has('horner_r')) lnSummary = drops.apraclonidine ? 'R Horner Reversed (Apraclonidine)' : 'R Miosis + Dilation Lag';
+      else if (rapdLvl === 'rose') lnSummary = `${rapdStr} (Consensual Intact)`;
+
+      return { odP, osP, rapdStr, rapdLvl, lnSummary, totalLightDrive };
+    }
+
+    /** E. Visual Field Perimetry Sensitivity Function (dB in [0, 34]) */
+    function evalPerimetryDB(eye, degX, degY, lesions, iopRes) {
+      // degX > 0 = Patient's Right visual field; degY > 0 = Superior visual field
+      const r = Math.hypot(degX, degY);
+      if (r > 60) return null;
+
+      // Baseline physiological sensitivity hill of vision (34 dB at fovea -> 24 dB at 58°)
+      let db = 34.0 - 0.16 * r;
+
+      // Physiological blind spot (15° temporal, 1.5° inferior; radius ~3.8°)
+      const bsX = eye === 'os' ? -15.0 : 15.0;
+      const bsDist = Math.hypot(degX - bsX, degY + 1.5);
+      if (bsDist < 4.5) {
+        const bsDrop = 32.0 * Math.exp(-(bsDist * bsDist) / (2 * 2.1 * 2.1));
+        db = Math.max(0, db - bsDrop);
+      }
+
+      // Smooth hemifield step helper
+      const smoothPos = (val, edge = 0, w = 2.6) => 1 / (1 + Math.exp(-(val - edge) / w));
+
+      // 1. Optic Nerve (Monocular central/cecocentral scotoma)
+      if ((eye === 'od' && lesions.has('cn2_r')) || (eye === 'os' && lesions.has('cn2_l'))) {
+        const cenDrop = 30.0 * Math.exp(-(r * r) / (2 * 16.5 * 16.5)) + 6.0;
+        db -= cenDrop;
+      }
+
+      // 2. Optic Chiasm (Bitemporal Hemianopia)
+      if (lesions.has('chiasm')) {
+        const isTemp = eye === 'os' ? smoothPos(-degX, 0.5, 2.2) : smoothPos(degX, 0.5, 2.2);
+        db -= 31.0 * isTemp;
+      }
+
+      // 3. Optic Tract (Incongruous Homonymous Hemianopia)
+      if (lesions.has('tract_l')) {
+        // Right homonymous, slightly incongruous margin between OS and OD
+        const shift = eye === 'od' ? -1.5 : 5.5;
+        const depth = eye === 'od' ? 31.0 : 25.5;
+        db -= depth * smoothPos(degX, shift, 3.8);
+      }
+      if (lesions.has('tract_r')) {
+        const shift = eye === 'os' ? -1.5 : 5.5;
+        const depth = eye === 'os' ? 31.0 : 25.5;
+        db -= depth * smoothPos(-degX, shift, 3.8);
+      }
+
+      // 4. Left Meyer's Loop (Right Superior Quadrantanopia — "Pie in the sky")
+      if (lesions.has('meyer_l')) {
+        const quad = smoothPos(degX, 0.5, 2.4) * smoothPos(degY, 0.5, 2.4);
+        db -= 30.5 * quad;
+      }
+
+      // 5. Left Parietal Radiation (Right Inferior Quadrantanopia — "Pie on the floor")
+      if (lesions.has('parietal_l')) {
+        const quad = smoothPos(degX, 0.5, 2.4) * smoothPos(-degY, 0.5, 2.4);
+        db -= 30.5 * quad;
+      }
+
+      // 6. Left V1 Occipital Cortex (Congruous Right Homonymous Hemianopia with 5° Macular Sparing)
+      if (lesions.has('v1_l')) {
+        const macSpare = smoothPos(r, 6.2, 1.4);
+        db -= 32.0 * smoothPos(degX, 0.5, 1.8) * macSpare;
+      }
+
+      // 7. Glaucomatous Arcuate Scotoma & Nasal Step (OD when IOP >= 25 mmHg)
+      if (eye === 'od' && iopRes.iop >= 25) {
+        const sev = clamp((iopRes.iop - 24) / 28, 0.15, 1.0);
+        // Superior Bjerrum arcuate band arching from blind spot (+15, 0) over fovea into nasal field (degX < 0)
+        const arcR = Math.hypot(degX - 1.5, degY - 4.0);
+        const inUpperArc = Math.exp(-Math.pow(arcR - 17.0, 2) / (2 * 4.5 * 4.5)) * smoothPos(degY, -2, 2.5) * smoothPos(18 - degX, 0, 3.5);
+        // Nasal step (OD nasal = degX < -16, degY near horizontal)
+        const nasalStep = smoothPos(-degX, 22, 3.5) * smoothPos(degY, -1.5, 2.0) * smoothPos(24 - degY, 0, 4.0);
+        db -= 26.0 * sev * clamp(inUpperArc + 0.85 * nasalStep, 0, 1);
+      }
+
+      return clamp(db, 0, 34.0);
+    }
+
+    function summarizeVisualFields(lesions, iopRes) {
+      const parts = [];
+      if (lesions.has('cn2_r')) parts.push('OD Central Scotoma');
+      if (lesions.has('cn2_l')) parts.push('OS Central Scotoma');
+      if (lesions.has('chiasm')) parts.push('Bitemporal Hemianopia');
+      if (lesions.has('tract_l')) parts.push('Incongruous R Homon.');
+      if (lesions.has('tract_r')) parts.push('Incongruous L Homon.');
+      if (lesions.has('meyer_l')) parts.push('R Sup. Quadrantanopia');
+      if (lesions.has('parietal_l')) parts.push('R Inf. Quadrantanopia');
+      if (lesions.has('v1_l')) parts.push('R Homon. Macular-Sparing');
+      if (iopRes.iop >= 26) parts.push('OD Arcuate/Nasal Step');
+      return parts.length ? parts.join(' + ') : 'Full OU';
+    }
+
+    function summarizeLocalization(lesions, drops, iopRes) {
+      if (lesions.size === 0 && !drops.atropineOD && iopRes.iop < 26) return 'Intact Neuro-Ophthalmic Pathways';
+      const tags = [];
+      if (lesions.has('pprf_r') && lesions.has('mlf_r')) tags.push('R Pons (PPRF+MLF)');
+      else {
+        if (lesions.has('pprf_r')) tags.push('R PPRF');
+        if (lesions.has('mlf_r')) tags.push('R MLF (INO)');
+      }
+      if (lesions.has('cav_r')) tags.push('R Cavernous Sinus');
+      if (lesions.has('cn3_comp_r')) tags.push('R CN III (Compressive)');
+      if (lesions.has('cn3_micro_r')) tags.push('R CN III (Microvascular)');
+      if (lesions.has('cn4_r')) tags.push('R CN IV (Trochlear)');
+      if (lesions.has('cn6_r')) tags.push('R CN VI (Abducens)');
+      if (lesions.has('cn6_l')) tags.push('L CN VI');
+      if (lesions.has('horner_r')) tags.push('R Oculosympathetic');
+      if (lesions.has('adie_r')) tags.push('R Ciliary Ganglion');
+      if (lesions.has('midbrain_ar')) tags.push('Dorsal Midbrain (AR)');
+      if (lesions.has('cn2_r')) tags.push('R Optic Nerve');
+      if (lesions.has('cn2_l')) tags.push('L Optic Nerve');
+      if (lesions.has('chiasm')) tags.push('Optic Chiasm');
+      if (lesions.has('tract_l')) tags.push('L Optic Tract');
+      if (lesions.has('tract_r')) tags.push('R Optic Tract');
+      if (lesions.has('meyer_l')) tags.push("L Meyer's Loop");
+      if (lesions.has('parietal_l')) tags.push('L Parietal Rad.');
+      if (lesions.has('v1_l')) tags.push('L V1 Occipital');
+      if (drops.atropineOD) tags.push('OD Pharmacologic M3 Block');
+      if (iopRes.angleClosed && iopRes.iop >= 30) tags.push('OD Angle Closure');
+      else if (iopRes.iop >= 26) tags.push('Ocular Hypertension');
+      return tags.join(' · ');
+    }
+
+    function recomputeStaticState() {
+      const iopRes = computeGoldmannIOP(state.iop, state.drops);
+      const motility = computeMotilityTargets(state.lesions, state.gazeMode, state.gazeTarget, state.headTilt);
+      const pupils = computePupilTargets(state.lesions, state.drops, iopRes, state.lightMode, state.anim.activeFlashEye, state.gazeMode);
+      const optics = computeOptics(state.optics, state.lesions, state.drops, iopRes, state.anim.odPupil, state.pinhole);
+      const vfSummary = summarizeVisualFields(state.lesions, iopRes);
+      const localization = summarizeLocalization(state.lesions, state.drops, iopRes);
+
+      state.computed = { iopRes, motility, pupils, optics, vfSummary, localization };
+
+      renderKPIStrip();
+      renderEyesFooterAndDiplopia();
+      renderPathwaySVG();
+      renderGoldmannStrip();
+      drawPerimetryCanvas();
+      drawOpticsCanvas();
+    }
+
+    /* =========================================================================
+       4. KPI STRIP, DIPLOPIA VIEW, GOLDMANN BAR & SVG PATHWAY MAP
+       ========================================================================= */
+    function renderKPIStrip() {
+      const c = state.computed;
+      if (!c) return;
+      const ref = state.pinnedSnap;
+
+      const odP = state.anim.odPupil;
+      const osP = state.anim.osPupil;
+      const aniso = Math.abs(odP - osP);
+      const iopVal = c.iopRes.iop;
+
+      const iopDeltaHTML = ref
+        ? (() => {
+            const diff = iopVal - ref.iop;
+            if (Math.abs(diff) < 0.2) return '<span class="font-mono text-[9.5px] text-zinc-400">&mdash;</span>';
+            const cls = diff > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400';
+            return `<span class="font-mono text-[9.5px] tabular-nums ${cls}">${diff > 0 ? '+' : ''}${diff.toFixed(1)}</span>`;
+          })()
+        : '';
+
+      const iopBadgeCls = {
+        ok: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        amber: 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+        rose: 'border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-400'
+      }[c.iopRes.statusLvl];
+
+      const rapdCls = {
+        ok: 'text-emerald-600 dark:text-emerald-400',
+        amber: 'text-amber-600 dark:text-amber-400',
+        rose: 'text-rose-600 dark:text-rose-400 font-semibold'
+      }[c.pupils.rapdLvl];
+
+      const rxSign = c.optics.eyeRefErrorD > 0.05 ? '+' : '';
+      const rxText = `${rxSign}${c.optics.eyeRefErrorD.toFixed(2)} D`;
+
+      const tiles = [
+        {
+          title: 'Alignment / Motility',
+          right: '',
+          val: c.motility.alignLabel,
+          valCls: c.motility.alignLabel === 'Orthophoric' ? 'text-tealLight dark:text-tealDark' : 'text-amber-600 dark:text-amber-400',
+          sub: `Diplopia: ${c.motility.diplopiaType}`
+        },
+        {
+          title: 'Pupils OD / OS',
+          right: `<span class="font-mono text-[9.5px] ${rapdCls}">${c.pupils.rapdStr}</span>`,
+          val: `${odP.toFixed(1)} / ${osP.toFixed(1)} mm`,
+          valCls: aniso >= 0.5 ? 'text-amber-600 dark:text-amber-400' : 'text-[#09090b] dark:text-[#f4f4f5]',
+          sub: `Anisocoria Δ ${aniso.toFixed(1)} mm`
+        },
+        {
+          title: 'Visual Fields',
+          right: '',
+          val: c.vfSummary,
+          valCls: c.vfSummary === 'Full OU' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
+          sub: 'Humphrey 60° OU Perimetry'
+        },
+        {
+          title: 'Refractive & VA (OD)',
+          right: state.pinhole ? '<span class="font-mono text-[9px] text-tealLight dark:text-tealDark">PH 1.5mm</span>' : '',
+          val: `${rxText} · ${c.optics.snellenStr}`,
+          valCls: c.optics.snellenDenom > 30 ? 'text-amber-600 dark:text-amber-400' : 'text-[#09090b] dark:text-[#f4f4f5]',
+          sub: `Rx ${state.optics.sphereRx >= 0 ? '+' : ''}${state.optics.sphereRx.toFixed(2)} D · Blur ${(c.optics.blurCircleMm * 1000).toFixed(0)} µm`
+        },
+        {
+          title: 'IOP (Goldmann)',
+          right: iopDeltaHTML,
+          val: `${iopVal.toFixed(1)} mmHg`,
+          valCls: c.iopRes.statusLvl === 'rose' ? 'text-rose-600 dark:text-rose-400' : (c.iopRes.statusLvl === 'amber' ? 'text-amber-600 dark:text-amber-400' : 'text-[#09090b] dark:text-[#f4f4f5]'),
+          subHTML: `<span class="inline-block font-mono text-[9px] px-1.5 py-0.2 rounded border ${iopBadgeCls}">${c.iopRes.status}</span>`
+        },
+        {
+          title: 'Localization',
+          right: '',
+          val: c.localization,
+          valCls: c.localization.startsWith('Intact') ? 'text-emerald-600 dark:text-emerald-400' : 'text-violet-700 dark:text-violet-300',
+          sub: state.lesions.size > 0 ? `${state.lesions.size} active lesion${state.lesions.size > 1 ? 's' : ''}` : 'Click SVG map to lesion'
+        }
+      ];
+
+      document.getElementById('kpi-strip').innerHTML = tiles.map(t => `
+        <div class="px-3 py-2 flex flex-col justify-between min-w-0">
+          <div class="flex items-center justify-between gap-1 text-[9.5px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span class="truncate">${t.title}</span>
+            ${t.right}
+          </div>
+          <div class="font-mono text-[13px] font-semibold tabular-nums leading-snug mt-0.5 truncate ${t.valCls}" title="${t.val}">${t.val}</div>
+          <div class="mt-0.5 truncate">${t.subHTML ? t.subHTML : `<span class="font-mono text-[9.5px] text-zinc-400 dark:text-zinc-500 tabular-nums">${t.sub}</span>`}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('hdr-summary-badge').textContent = c.localization;
+    }
+
+    function renderEyesFooterAndDiplopia() {
+      const c = state.computed;
+      if (!c) return;
+      const m = c.motility;
+
+      let hirsch = 'Centered OU';
+      if (Math.abs(m.errX) > 3.5 || Math.abs(m.errY) > 2.5) {
+        const parts = [];
+        if (m.errX > 3.5) parts.push('OD Nasal Reflex (XT)');
+        else if (m.errX < -3.5) parts.push('OD Temporal Reflex (ET)');
+        if (m.errY > 2.5) parts.push('OD Inferior Reflex (RHT)');
+        else if (m.errY < -2.5) parts.push('OD Superior Reflex (Hypo)');
+        hirsch = parts.join(' · ');
+      }
+
+      document.getElementById('ft-hirschberg').textContent = hirsch;
+      document.getElementById('ft-diplopia').textContent = m.diplopiaType;
+      document.getElementById('ft-pupil-ln').textContent = c.pupils.lnSummary;
+
+      // Update Cardinal Pad status readout
+      const gazeName = state.gazeMode === 'near'
+        ? 'Near Convergence'
+        : (state.gazeMode === 'cursor'
+            ? 'Follow Cursor'
+            : (() => {
+                const gx = state.gazeTarget.x, gy = state.gazeTarget.y;
+                if (gx === 0 && gy === 0) return 'Primary';
+                const v = gy > 0 ? 'Up' : (gy < 0 ? 'Down' : '');
+                const h = gx > 0 ? 'Right' : (gx < 0 ? 'Left' : '');
+                return [v, h].filter(Boolean).join('-');
+              })());
+      const lightMap = { room: 'Room Light', dark: 'Dark Room', flash_od: 'Penlight OD', flash_os: 'Penlight OS', autoswing: 'Auto-Swing' };
+      document.getElementById('pad-status').innerHTML = `Gaze: <strong class="text-tealLight dark:text-tealDark">${gazeName}</strong><br/>Light: ${lightMap[state.lightMode]}`;
+
+      // Diplopia View SVG
+      const dipSvg = document.getElementById('diplopia-svg');
+      const dipDesc = document.getElementById('diplopia-desc');
+      if (dipSvg && state.diplopiaView) {
+        const isDark = document.documentElement.classList.contains('dark');
+        const colOS = isDark ? '#2dd4bf' : '#0f766e';
+        const colOD = '#fb7185';
+        // Perceived target shift: if OD deviates Right (+errX), OD image shifts Left (crossed diplopia)
+        // If OD is hypertropic (+errY), OD image is perceived LOWER!
+        const dx = clamp(-m.errX * 2.1, -52, 52);
+        const dy = clamp(m.errY * 1.4, -14, 14);
+        const rot = clamp(-m.odTorsion, -20, 20);
+        const isFused = Math.hypot(dx, dy) < 2.5 && Math.abs(rot) < 1.5;
+
+        dipSvg.innerHTML = `
+          <!-- Reference OS Image (Teal Crosshair) -->
+          <g transform="translate(90, 24)">
+            <line x1="-18" y1="0" x2="18" y2="0" stroke="${colOS}" stroke-width="1.8" />
+            <line x1="0" y1="-11" x2="0" y2="11" stroke="${colOS}" stroke-width="1.8" />
+            <circle cx="0" cy="0" r="3" fill="${colOS}" />
+          </g>
+          <!-- OD Perceived Image (Rose Ghost Crosshair with Offset & Torsion) -->
+          <g transform="translate(${(90 + dx).toFixed(1)}, ${(24 + dy).toFixed(1)}) rotate(${rot.toFixed(1)})" opacity="${isFused ? 0.35 : 0.92}">
+            <line x1="-18" y1="0" x2="18" y2="0" stroke="${colOD}" stroke-width="1.6" stroke-dasharray="3 2" />
+            <line x1="0" y1="-11" x2="0" y2="11" stroke="${colOD}" stroke-width="1.6" stroke-dasharray="3 2" />
+            <circle cx="0" cy="0" r="2.6" fill="none" stroke="${colOD}" stroke-width="1.4" />
+          </g>
+        `;
+        if (dipDesc) {
+          dipDesc.textContent = isFused
+            ? 'Single fused binocular vision (OS teal + OD rose aligned).'
+            : `Binocular diplopia: OD ghost image shifted ${Math.abs(dx) > 2 ? (dx < 0 ? 'crossed left' : 'uncrossed right') : ''}${Math.abs(dy) > 2 ? (Math.abs(dx) > 2 ? ' & ' : '') + (dy > 0 ? 'inferiorly' : 'superiorly') : ''}${Math.abs(rot) > 2 ? ` with ${Math.abs(m.odTorsion).toFixed(0)}° cyclotorsion` : ''}.`;
+        }
+      }
+    }
+
+    function renderGoldmannStrip() {
+      const iop = state.computed.iopRes;
+      const eqCol = iop.statusLvl === 'rose' ? 'text-rose-600 dark:text-rose-400' : (iop.statusLvl === 'amber' ? 'text-amber-600 dark:text-amber-400' : 'text-tealLight dark:text-tealDark');
+      document.getElementById('goldmann-eq').innerHTML =
+        `IOP = (${iop.F.toFixed(2)} &minus; ${iop.U.toFixed(2)}) / ${iop.C.toFixed(3)} + ${iop.Pv.toFixed(1)} = <strong class="${eqCol}">${iop.iop.toFixed(1)} mmHg</strong>`;
+
+      const pct = clamp((iop.iop / 65.0) * 100, 4, 100);
+      const bar = document.getElementById('iop-gauge-bar');
+      const lbl = document.getElementById('iop-gauge-label');
+      bar.style.width = `${pct.toFixed(1)}%`;
+      bar.className = `h-full rounded-full transition-all duration-200 ${iop.statusLvl === 'rose' ? 'bg-rose-500' : (iop.statusLvl === 'amber' ? 'bg-amber-500' : 'bg-teal-500')}`;
+      lbl.textContent = iop.status;
+      lbl.className = `font-mono text-[10px] font-medium w-20 text-right shrink-0 ${iop.statusLvl === 'rose' ? 'text-rose-600 dark:text-rose-400' : (iop.statusLvl === 'amber' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400')}`;
+
+      const angBadge = document.getElementById('angle-status-badge');
+      if (iop.angleClosed) {
+        angBadge.textContent = 'Closed Angle';
+        angBadge.className = 'font-mono text-[10px] font-medium px-2 py-0.5 rounded border border-rose-500/35 bg-rose-500/10 text-rose-600 dark:text-rose-400 shrink-0';
+      } else {
+        angBadge.textContent = 'Open Angle';
+        angBadge.className = 'font-mono text-[10px] font-medium px-2 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 shrink-0';
+      }
+    }
+
+    /* --- Interactive Neuroanatomical Pathway SVG Map (2 Modes) --- */
+    function renderPathwaySVG() {
+      const svg = document.getElementById('pathway-svg');
+      if (!svg) return;
+      const isDark = document.documentElement.classList.contains('dark');
+      const L = state.lesions;
+
+      const bgNode = isDark ? '#141418' : '#ffffff';
+      const borderCol = isDark ? '#32323a' : '#d4d4d8';
+      const txtMain = isDark ? '#f4f4f5' : '#09090b';
+      const txtSub = isDark ? '#a1a1aa' : '#52525b';
+      const teal = isDark ? '#2dd4bf' : '#0f766e';
+      const sky = isDark ? '#38bdf8' : '#0284c7';
+      const amber = isDark ? '#fbbf24' : '#d97706';
+      const rose = '#fb7185';
+      const violet = isDark ? '#a78bfa' : '#7c3aed';
+
+      const nodeBtn = (id, x, y, w, h, label, sub = '') => {
+        const active = L.has(id);
+        return `
+          <g data-lesion="${id}" class="cursor-pointer">
+            <rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="6"
+              fill="${active ? (isDark ? 'rgba(251,113,133,0.18)' : 'rgba(225,29,72,0.11)') : bgNode}"
+              stroke="${active ? rose : borderCol}" stroke-width="${active ? 1.8 : 1.1}"
+              class="${active ? 'lesion-pulse' : ''}" />
+            <text x="${x}" y="${sub ? y - 2 : y + 3}" text-anchor="middle" fill="${active ? rose : txtMain}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">${label}</text>
+            ${sub ? `<text x="${x}" y="${y + 8.5}" text-anchor="middle" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="7">${sub}</text>` : ''}
+            ${active ? `<circle cx="${x + w / 2 - 4}" cy="${y - h / 2 + 4}" r="6" fill="${rose}" /><text x="${x + w / 2 - 4}" y="${y - h / 2 + 6.8}" text-anchor="middle" fill="#ffffff" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="700">&times;</text>` : ''}
+          </g>
+        `;
+      };
+
+      if (state.mapMode === 'visual') {
+        // Fiber dimming downstream of lesions
+        const dimCN2R = L.has('cn2_r') ? 0.22 : 0.85;
+        const dimCN2L = L.has('cn2_l') ? 0.22 : 0.85;
+        const dimChiasm = L.has('chiasm') ? 0.22 : 0.82;
+        const dimTractL = (L.has('tract_l')) ? 0.22 : 0.85;
+        const dimTractR = (L.has('tract_r')) ? 0.22 : 0.85;
+        const dimMeyerL = (L.has('tract_l') || L.has('meyer_l')) ? 0.22 : 0.85;
+        const dimParL = (L.has('tract_l') || L.has('parietal_l')) ? 0.22 : 0.85;
+        const dimV1L = (L.has('tract_l') || L.has('v1_l')) ? 0.22 : 0.85;
+        const dimSymp = L.has('horner_r') ? 0.22 : 0.80;
+        const dimPara = (L.has('midbrain_ar') || L.has('adie_r')) ? 0.22 : 0.82;
+
+        svg.innerHTML = `
+          <!-- Anatomical Orientation Tags -->
+          <text x="14" y="14" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8">R HEMISPHERE (OD)</text>
+          <text x="406" y="14" text-anchor="end" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="8">L HEMISPHERE (OS)</text>
+
+          <!-- Left & Right Retinas (Top) -->
+          <circle cx="135" cy="34" r="15" fill="${bgNode}" stroke="${teal}" stroke-width="1.4" />
+          <text x="135" y="37" text-anchor="middle" fill="${teal}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">OD</text>
+          <circle cx="285" cy="34" r="15" fill="${bgNode}" stroke="${sky}" stroke-width="1.4" />
+          <text x="285" y="37" text-anchor="middle" fill="${sky}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">OS</text>
+
+          <!-- Optic Nerve & Chiasm Pathways -->
+          <path d="M 135 49 L 175 88" fill="none" stroke="${teal}" stroke-width="2.2" opacity="${dimCN2R}" />
+          <path d="M 285 49 L 245 88" fill="none" stroke="${sky}" stroke-width="2.2" opacity="${dimCN2L}" />
+          <!-- Chiasm crossing -->
+          <path d="M 175 88 L 245 120" fill="none" stroke="${teal}" stroke-width="1.8" opacity="${Math.min(dimCN2R, dimChiasm)}" />
+          <path d="M 245 88 L 175 120" fill="none" stroke="${sky}" stroke-width="1.8" opacity="${Math.min(dimCN2L, dimChiasm)}" />
+          <!-- Uncrossed temporal fibers -->
+          <path d="M 130 48 C 132 88, 152 104, 175 120" fill="none" stroke="${teal}" stroke-width="1.6" opacity="${dimCN2R}" />
+          <path d="M 290 48 C 288 88, 268 104, 245 120" fill="none" stroke="${sky}" stroke-width="1.6" opacity="${dimCN2L}" />
+
+          <!-- Optic Tracts -> LGN -> Radiations -> V1 -->
+          <path d="M 175 120 L 135 160 L 150 232" fill="none" stroke="${teal}" stroke-width="1.9" opacity="${dimTractR}" />
+          <path d="M 245 120 L 285 156" fill="none" stroke="${sky}" stroke-width="2.1" opacity="${dimTractL}" />
+          <!-- Left Meyer's Loop (Outer/Temporal) & Parietal Radiation (Inner) -->
+          <path d="M 285 156 C 350 166, 355 210, 278 232" fill="none" stroke="${sky}" stroke-width="1.8" opacity="${dimMeyerL}" />
+          <path d="M 285 156 C 258 182, 255 206, 272 232" fill="none" stroke="${violet}" stroke-width="1.8" opacity="${dimParL}" />
+
+          <!-- Pupillary Parasympathetic Arc (Teal Dashed) -->
+          <path d="M 210 132 L 210 154 C 140 154, 72 135, 68 92 L 118 40" fill="none" stroke="${teal}" stroke-width="1.3" stroke-dasharray="3 3" opacity="${dimPara}" />
+          <!-- Sympathetic Chain (Amber Dashed) -->
+          <path d="M 48 228 L 48 164 L 64 114 L 122 44" fill="none" stroke="${amber}" stroke-width="1.4" stroke-dasharray="4 3" opacity="${dimSymp}" />
+
+          <!-- Clickable Lesion Nodes -->
+          ${nodeBtn('cn2_r', 152, 68, 56, 20, 'R CN II')}
+          ${nodeBtn('cn2_l', 268, 68, 56, 20, 'L CN II')}
+          ${nodeBtn('chiasm', 210, 100, 62, 22, 'Chiasm')}
+          ${nodeBtn('tract_r', 150, 136, 68, 20, 'R Tract')}
+          ${nodeBtn('tract_l', 270, 136, 68, 20, 'L Tract')}
+          ${nodeBtn('meyer_l', 346, 192, 76, 24, 'L Meyer', 'Temporal')}
+          ${nodeBtn('parietal_l', 262, 192, 74, 24, 'L Parietal', 'Superior')}
+          ${nodeBtn('v1_l', 276, 240, 84, 24, 'L V1 Cortex', 'PCA Occip.')}
+          ${nodeBtn('midbrain_ar', 202, 158, 72, 24, 'Pretectum', 'Argyll Rob.')}
+          ${nodeBtn('adie_r', 68, 98, 78, 24, 'R Ciliary G.', 'Adie Pupil')}
+          ${nodeBtn('horner_r', 56, 198, 86, 24, 'R Sympath.', 'Horner')}
+        `;
+      } else {
+        // OCULOMOTOR & BRAINSTEM PATHWAY MAP
+        const dimPPRF = L.has('pprf_r') ? 0.22 : 0.85;
+        const dimMLF = L.has('mlf_r') ? 0.22 : 0.85;
+        const dimCN3 = (L.has('cn3_comp_r') || L.has('cn3_micro_r') || L.has('cav_r')) ? 0.22 : 0.85;
+        const dimCN4 = (L.has('cn4_r') || L.has('cav_r')) ? 0.22 : 0.85;
+        const dimCN6R = (L.has('cn6_r') || L.has('cav_r')) ? 0.22 : 0.85;
+        const dimCN6L = L.has('cn6_l') ? 0.22 : 0.85;
+
+        svg.innerHTML = `
+          <!-- Brainstem Region Backdrops -->
+          <rect x="86" y="74" width="248" height="72" rx="10" fill="${isDark ? '#18181c' : '#f4f4f5'}" stroke="${borderCol}" stroke-dasharray="3 3" />
+          <text x="94" y="87" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="7.5">MIDBRAIN (CN III / IV)</text>
+
+          <rect x="86" y="156" width="248" height="94" rx="10" fill="${isDark ? '#18181c' : '#f4f4f5'}" stroke="${borderCol}" stroke-dasharray="3 3" />
+          <text x="94" y="169" fill="${txtSub}" font-family="JetBrains Mono, monospace" font-size="7.5">PONS (PPRF · CN VI · MLF)</text>
+
+          <!-- Target Eyes (Top) -->
+          <circle cx="116" cy="28" r="15" fill="${bgNode}" stroke="${teal}" stroke-width="1.4" />
+          <text x="116" y="31" text-anchor="middle" fill="${teal}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">OD</text>
+          <circle cx="304" cy="28" r="15" fill="${bgNode}" stroke="${sky}" stroke-width="1.4" />
+          <text x="304" y="31" text-anchor="middle" fill="${sky}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">OS</text>
+
+          <!-- Oculomotor Pathways -->
+          <!-- R PPRF -> R CN VI -> OD LR -->
+          <path d="M 148 226 L 148 192 L 60 120 L 106 39" fill="none" stroke="${teal}" stroke-width="1.8" opacity="${Math.min(dimPPRF, dimCN6R)}" />
+          <!-- L CN VI -> OS LR -->
+          <path d="M 278 192 L 352 120 L 312 39" fill="none" stroke="${sky}" stroke-width="1.8" opacity="${dimCN6L}" />
+          <!-- L CN VI interneuron crosses to R MLF -> ascends to R CN III (OD MR) -->
+          <path d="M 278 192 L 194 166 L 160 112 L 116 43" fill="none" stroke="${amber}" stroke-width="2.0" stroke-dasharray="4 2" opacity="${dimMLF}" />
+          <!-- R CN III -> Cavernous Sinus -> OD -->
+          <path d="M 152 110 L 66 56 L 104 34" fill="none" stroke="${teal}" stroke-width="1.8" opacity="${dimCN3}" />
+          <!-- R CN IV -> OD SO -->
+          <path d="M 248 118 L 122 41" fill="none" stroke="${violet}" stroke-width="1.6" opacity="${dimCN4}" />
+
+          <!-- Clickable Lesion Nodes -->
+          ${nodeBtn('cav_r', 52, 62, 82, 24, 'R Cav. Sinus', 'III+IV+VI')}
+          ${nodeBtn('cn3_comp_r', 152, 102, 82, 22, 'R CN III Comp', 'Pupil Blown')}
+          ${nodeBtn('cn3_micro_r', 152, 130, 82, 22, 'R CN III Micro', 'Pupil-Spar.')}
+          ${nodeBtn('cn4_r', 268, 114, 78, 24, 'R CN IV', 'Trochlear')}
+          ${nodeBtn('mlf_r', 208, 174, 72, 24, 'R MLF', 'Right INO')}
+          ${nodeBtn('cn6_r', 132, 198, 70, 22, 'R CN VI', 'Abducens')}
+          ${nodeBtn('cn6_l', 284, 198, 70, 22, 'L CN VI', 'Abducens')}
+          ${nodeBtn('pprf_r', 142, 232, 86, 22, 'R PPRF', 'R Gaze Ctr')}
+        `;
+      }
+    }
+
+    /* =========================================================================
+       5. STRICT ZERO-STRETCH HI-DPI CANVAS RENDERERS (3 CANVASES)
+       ========================================================================= */
+    const eyesWrap = document.getElementById('eyes-wrap');
+    const eyesCanvas = document.getElementById('eyes-canvas');
+    const eyesCtx = eyesCanvas.getContext('2d');
+
+    const vfWrap = document.getElementById('vf-wrap');
+    const vfCanvas = document.getElementById('vf-canvas');
+    const vfCtx = vfCanvas.getContext('2d');
+
+    const opticsWrap = document.getElementById('optics-wrap');
+    const opticsCanvas = document.getElementById('optics-canvas');
+    const opticsCtx = opticsCanvas.getContext('2d');
+
+    // STRICT ANTI-STRETCH CANVAS SIZING HELPER
+    function syncCanvas(wrapper, canvas) {
+      if (!wrapper || !canvas) return false;
+      const w = wrapper.clientWidth;
+      const h = wrapper.clientHeight;
+      if (!(w > 10 && h > 10 && w < 4000 && h < 2000)) return false;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const tw = Math.round(w * dpr);
+      const th = Math.round(h * dpr);
+      if (canvas.width !== tw || canvas.height !== th) {
+        canvas.width = tw;
+        canvas.height = th;
+        return true;
+      }
+      return false;
+    }
+
+    function getTheme() {
+      const isDark = document.documentElement.classList.contains('dark');
+      return {
+        isDark,
+        bg: isDark ? '#0b0b0e' : '#ffffff',
+        bgSub: isDark ? '#111113' : '#fafafa',
+        grid: isDark ? 'rgba(63, 63, 70, 0.35)' : '#e4e4e7',
+        axis: isDark ? '#3f3f46' : '#a1a1aa',
+        txt: isDark ? '#f4f4f5' : '#09090b',
+        muted: isDark ? '#a1a1aa' : '#71717a',
+        teal: isDark ? '#2dd4bf' : '#0f766e',
+        tealRGB: isDark ? '45, 212, 191' : '15, 118, 110',
+        amber: isDark ? '#fbbf24' : '#d97706',
+        rose: isDark ? '#fb7185' : '#e11d48',
+        sky: isDark ? '#38bdf8' : '#0284c7',
+        violet: isDark ? '#a78bfa' : '#7c3aed',
+        skin: isDark ? '#232329' : '#e7e5e4',
+        lidBorder: isDark ? '#3f3f46' : '#a1a1aa'
+      };
+    }
+
+    /* --- CANVAS 1: 60FPS BINOCULAR MOTILITY, EYELIDS & PUPILLARY BENCH --- */
+    function drawEyesCanvas() {
+      if (!eyesCanvas.width || !eyesCanvas.height || !state.computed) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = eyesCanvas.width / dpr;
+      const H = eyesCanvas.height / dpr;
+      const C = getTheme();
+      const ctx = eyesCtx;
+      const a = state.anim;
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      // Ambient exam room backdrop (dims gently in dark or penlight mode)
+      const isDarkRoom = state.lightMode === 'dark' || state.lightMode === 'flash_od' || state.lightMode === 'flash_os' || state.lightMode === 'autoswing';
+      ctx.fillStyle = isDarkRoom ? (C.isDark ? '#050507' : '#18181b') : C.bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Rotate face slightly if Head Tilt R/L is active (Patient Tilt Right = CCW from viewer's face-on view!)
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.rotate((-a.headAngleDeg * Math.PI) / 180);
+      ctx.translate(-W / 2, -H / 2);
+
+      // Subtle bridge of nose & brow reference marks
+      ctx.strokeStyle = isDarkRoom ? 'rgba(161,161,170,0.16)' : (C.isDark ? 'rgba(161,161,170,0.14)' : 'rgba(113,113,122,0.18)');
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(W / 2, H * 0.36);
+      ctx.lineTo(W / 2, H * 0.62);
+      ctx.stroke();
+
+      const eyeSpan = Math.min(W * 0.24, 152);
+      const eyeRx = Math.min(W * 0.145, 76);
+      const eyeRy = Math.min(H * 0.21, 38);
+      const eyeY = H * 0.48;
+      const odCx = W / 2 - eyeSpan; // OD (Right Eye) on viewer's LEFT
+      const osCx = W / 2 + eyeSpan; // OS (Left Eye) on viewer's RIGHT
+
+      // Compute subtle abducting nystagmus offset on OS when R MLF INO active on Left gaze
+      let osNystagDeg = 0;
+      if (state.computed.motility.hasINONystagmus) {
+        const cyc = (a.nystagClock * 2.6) % 1.0; // ~2.6 Hz sawtooth
+        // Fast phase abducting (Patient's Left = -X), slow phase drifting nasally (+X)
+        osNystagDeg = cyc < 0.16 ? (-5.5 * (cyc / 0.16)) : (-5.5 * (1 - (cyc - 0.16) / 0.84));
+      }
+
+      const drawSingleEye = (cx, cy, label, gX, gY, torsionDeg, ptosisFrac, pupilMm, isLit, opacityPct) => {
+        const irisR = eyeRy * 0.80;
+        // Convert patient gaze degrees to screen pixel displacement (gX > 0 = Patient Right = viewer LEFT = -screenX)
+        const maxShiftX = eyeRx * 0.46;
+        const maxShiftY = eyeRy * 0.40;
+        const dx = clamp((-gX / 28.0) * maxShiftX, -maxShiftX, maxShiftX);
+        const dy = clamp((-gY / 20.0) * maxShiftY, -maxShiftY, maxShiftY);
+        const ix = cx + dx;
+        const iy = cy + dy;
+
+        // Almond palpebral fissure path
+        const fissurePath = () => {
+          ctx.beginPath();
+          ctx.moveTo(cx - eyeRx, cy + 2);
+          ctx.bezierCurveTo(cx - eyeRx * 0.45, cy - eyeRy * 1.15, cx + eyeRx * 0.45, cy - eyeRy * 1.15, cx + eyeRx, cy + 2);
+          ctx.bezierCurveTo(cx + eyeRx * 0.45, cy + eyeRy * 1.02, cx - eyeRx * 0.45, cy + eyeRy * 1.02, cx - eyeRx, cy + 2);
+          ctx.closePath();
+        };
+
+        // 1. Sclera base clipped to palpebral fissure
+        ctx.save();
+        fissurePath();
+        ctx.clip();
+
+        const sclGrad = ctx.createRadialGradient(cx, cy, irisR * 0.5, cx, cy, eyeRx * 1.08);
+        sclGrad.addColorStop(0, isDarkRoom ? '#d4d4d8' : '#f8fafc');
+        sclGrad.addColorStop(0.75, isDarkRoom ? '#a1a1aa' : '#e2e8f0');
+        sclGrad.addColorStop(1, isDarkRoom ? '#71717a' : '#cbd5e1');
+        ctx.fillStyle = sclGrad;
+        ctx.fillRect(cx - eyeRx - 4, cy - eyeRy - 6, eyeRx * 2 + 8, eyeRy * 2 + 12);
+
+        // 2. Iris & Radial Stroma Fibers + Torsion Ticks
+        ctx.save();
+        ctx.translate(ix, iy);
+        // OD excyclotorsion rotates 12 o'clock temporally (viewer's left = CCW = negative angle)
+        ctx.rotate((-torsionDeg * Math.PI) / 180);
+
+        const irisGrad = ctx.createRadialGradient(0, 0, irisR * 0.25, 0, 0, irisR);
+        irisGrad.addColorStop(0, '#0f766e');
+        irisGrad.addColorStop(0.55, '#115e59');
+        irisGrad.addColorStop(0.88, '#134e4a');
+        irisGrad.addColorStop(1, '#042f2e');
+        ctx.beginPath();
+        ctx.arc(0, 0, irisR, 0, Math.PI * 2);
+        ctx.fillStyle = irisGrad;
+        ctx.fill();
+
+        // Radial iris fibers
+        ctx.strokeStyle = 'rgba(45, 212, 191, 0.24)';
+        ctx.lineWidth = 0.85;
+        for (let k = 0; k < 28; k++) {
+          const ang = (k / 28) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(ang) * irisR * 0.35, Math.sin(ang) * irisR * 0.35);
+          ctx.lineTo(Math.cos(ang) * irisR * 0.92, Math.sin(ang) * irisR * 0.92);
+          ctx.stroke();
+        }
+
+        // Subtle 12 o'clock & 6 o'clock torsion reference ticks (visible when torsion > 2°)
+        if (Math.abs(torsionDeg) > 1.5) {
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(0, -irisR * 0.96); ctx.lineTo(0, -irisR * 0.65);
+          ctx.moveTo(0, irisR * 0.65); ctx.lineTo(0, irisR * 0.96);
+          ctx.stroke();
+        }
+
+        // 3. Dynamic Pupil Aperture (scaled accurately from mm: 11.5 mm iris diameter)
+        const pupilR = clamp((pupilMm / 11.5) * irisR, irisR * 0.14, irisR * 0.78);
+        ctx.beginPath();
+        ctx.arc(0, 0, pupilR, 0, Math.PI * 2);
+        ctx.fillStyle = '#050507';
+        ctx.fill();
+
+        // Cataract / Corneal Edema cloudiness inside pupil
+        if (opacityPct > 5) {
+          ctx.beginPath();
+          ctx.arc(0, 0, pupilR * 0.96, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(226, 232, 240, ${(opacityPct / 135).toFixed(2)})`;
+          ctx.fill();
+        }
+
+        // Limbus border ring
+        ctx.beginPath();
+        ctx.arc(0, 0, irisR, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(9, 9, 11, 0.55)';
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+        ctx.restore();
+
+        // 4. Corneal Hirschberg Light Reflex Dot (fixed relative to orbit center -> accurately decentered in strabismus!)
+        const rxRef = cx - 2.5;
+        const ryRef = cy - 3.5;
+        ctx.beginPath();
+        ctx.arc(rxRef, ryRef, isLit ? 3.2 : 2.3, 0, Math.PI * 2);
+        ctx.fillStyle = isLit ? '#ffffff' : 'rgba(255,255,255,0.90)';
+        ctx.fill();
+
+        // 5. Dynamic Upper Eyelid Ptosis Curtain + Lower Lid
+        const openTopY = cy - eyeRy * 0.98;
+        const closedY = cy + eyeRy * 0.76;
+        const lidEdgeY = openTopY + ptosisFrac * (closedY - openTopY);
+        ctx.fillStyle = isDarkRoom ? '#18181b' : C.skin;
+        ctx.beginPath();
+        ctx.rect(cx - eyeRx - 6, cy - eyeRy * 1.4, eyeRx * 2 + 12, Math.max(0, lidEdgeY - (cy - eyeRy * 1.4)));
+        ctx.fill();
+
+        // Upper lid margin crease
+        ctx.strokeStyle = C.lidBorder;
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.moveTo(cx - eyeRx, cy + 2);
+        ctx.quadraticCurveTo(cx, lidEdgeY + (ptosisFrac > 0.1 ? 5 : -5), cx + eyeRx, cy + 2);
+        ctx.stroke();
+
+        // Soft directional penlight glow if illuminated
+        if (isLit) {
+          const beam = ctx.createRadialGradient(cx, cy, 4, cx, cy, eyeRx * 1.15);
+          beam.addColorStop(0, 'rgba(254, 249, 195, 0.36)');
+          beam.addColorStop(0.55, 'rgba(254, 240, 138, 0.12)');
+          beam.addColorStop(1, 'rgba(254, 240, 138, 0)');
+          ctx.fillStyle = beam;
+          ctx.fillRect(cx - eyeRx, cy - eyeRy, eyeRx * 2, eyeRy * 2);
+        }
+
+        ctx.restore(); // End palpebral clip
+
+        // Outer palpebral outline
+        fissurePath();
+        ctx.strokeStyle = isDarkRoom ? '#52525b' : C.lidBorder;
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+
+        // Crisp Monospace Labels Above & Below Each Eye
+        ctx.font = '600 10px "JetBrains Mono", monospace';
+        ctx.fillStyle = isDarkRoom ? '#d4d4d8' : C.txt;
+        ctx.textAlign = 'center';
+        ctx.fillText(label, cx, cy - eyeRy - 13);
+
+        ctx.font = '500 10.5px "JetBrains Mono", monospace';
+        ctx.fillStyle = isLit ? '#fbbf24' : C.teal;
+        ctx.fillText(`${pupilMm.toFixed(1)} mm${isLit ? ' · LIGHT' : ''}`, cx, cy + eyeRy + 21);
+
+        if (ptosisFrac > 0.15) {
+          ctx.font = '500 9px "JetBrains Mono", monospace';
+          ctx.fillStyle = C.rose;
+          ctx.fillText(ptosisFrac > 0.5 ? 'Severe Ptosis' : 'Mild Ptosis (1.8mm)', cx, cy + eyeRy + 35);
+        } else if (Math.abs(torsionDeg) > 2) {
+          ctx.font = '500 9px "JetBrains Mono", monospace';
+          ctx.fillStyle = C.amber;
+          ctx.fillText(`Excyclotorsion ${Math.abs(torsionDeg).toFixed(0)}°`, cx, cy + eyeRy + 35);
+        }
+      };
+
+      const odLit = state.lightMode === 'flash_od' || (state.lightMode === 'autoswing' && a.activeFlashEye === 'od');
+      const osLit = state.lightMode === 'flash_os' || (state.lightMode === 'autoswing' && a.activeFlashEye === 'os');
+
+      drawSingleEye(odCx, eyeY, 'OD · RIGHT EYE', a.odX, a.odY, a.odTorsion, a.odPtosis, a.odPupil, odLit, state.computed.optics.totalOpacity);
+      drawSingleEye(osCx, eyeY, 'OS · LEFT EYE', a.osX + osNystagDeg, a.osY, a.osTorsion, a.osPtosis, a.osPupil, osLit, 0);
+
+      ctx.restore(); // End Head Tilt rotation
+
+      // Corner Head-Tilt & Nystagmus HUD badges
+      if (state.headTilt !== 0) {
+        ctx.font = '600 9.5px "JetBrains Mono", monospace';
+        ctx.fillStyle = C.amber;
+        ctx.textAlign = 'left';
+        ctx.fillText(`HEAD TILT: ${state.headTilt > 0 ? 'RIGHT (12°)' : 'LEFT (12°)'}`, 12, 18);
+      }
+      if (state.computed.motility.hasINONystagmus) {
+        ctx.font = '600 9.5px "JetBrains Mono", monospace';
+        ctx.fillStyle = C.sky;
+        ctx.textAlign = 'right';
+        ctx.fillText('OS Abducting Nystagmus (INO)', W - 12, 18);
+      }
+      if (state.lightMode === 'autoswing') {
+        ctx.font = '600 9.5px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#fbbf24';
+        ctx.textAlign = 'center';
+        ctx.fillText(`SWINGING FLASHLIGHT → ${a.activeFlashEye === 'od' ? 'ILLUMINATING OD' : 'ILLUMINATING OS'}`, W / 2, 18);
+      }
+
+      ctx.restore();
+    }
+
+    /* --- CANVAS 2: VISUAL FIELD PERIMETRY (OS LEFT, OD RIGHT) --- */
+    function drawPerimetryCanvas() {
+      if (!vfCanvas.width || !vfCanvas.height || !state.computed) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = vfCanvas.width / dpr;
+      const H = vfCanvas.height / dpr;
+      const C = getTheme();
+      const ctx = vfCtx;
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(0, 0, W, H);
+
+      const R = Math.min(W * 0.215, H * 0.37, 94);
+      const cy = H * 0.53;
+      const osCx = W * 0.265;
+      const odCx = W * 0.735;
+
+      const drawField = (eye, cx, title) => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.clip();
+
+        // Continuous smooth grayscale sensitivity grid (step = 4px for crisp high-speed fill)
+        const step = 4;
+        for (let py = cy - R; py <= cy + R; py += step) {
+          for (let px = cx - R; px <= cx + R; px += step) {
+            const dx = ((px - cx) / R) * 60;
+            const dy = ((cy - py) / R) * 60;
+            if (dx * dx + dy * dy > 3660) continue;
+            const db = evalPerimetryDB(eye, dx, dy, state.lesions, state.computed.iopRes);
+            const norm = clamp(db / 34.0, 0, 1);
+            // Smooth grayscale mapping tuned for dark & light theme
+            const lum = C.isDark
+              ? Math.round(14 + Math.pow(norm, 1.35) * 195)
+              : Math.round(16 + Math.pow(norm, 1.35) * 234);
+            ctx.fillStyle = `rgb(${lum},${lum},${lum})`;
+            ctx.fillRect(px - 0.5, py - 0.5, step + 1, step + 1);
+          }
+        }
+
+        // Concentric 10°, 20°, 30°, 60° rings & meridians
+        ctx.strokeStyle = C.isDark ? 'rgba(9,9,11,0.38)' : 'rgba(9,9,11,0.25)';
+        ctx.lineWidth = 0.85;
+        for (const deg of [10, 20, 30]) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, (deg / 60) * R, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
+        ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
+        ctx.stroke();
+
+        ctx.restore(); // End clip
+
+        // Outer ring & clinical labels
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.strokeStyle = C.axis;
+        ctx.lineWidth = 1.25;
+        ctx.stroke();
+
+        ctx.font = '600 10px "JetBrains Mono", monospace';
+        ctx.fillStyle = C.txt;
+        ctx.textAlign = 'center';
+        ctx.fillText(title, cx, cy - R - 10);
+
+        ctx.font = '500 8px "JetBrains Mono", monospace';
+        ctx.fillStyle = C.muted;
+        ctx.fillText(eye === 'os' ? 'TEMP' : 'NASAL', cx - R + 12, cy + R + 14);
+        ctx.fillText(eye === 'os' ? 'NASAL' : 'TEMP', cx + R - 12, cy + R + 14);
+      };
+
+      drawField('os', osCx, 'OS (LEFT EYE)');
+      drawField('od', odCx, 'OD (RIGHT EYE)');
+
+      // Compute Mean Deviation (MD) approximation
+      let sumOS = 0, sumOD = 0, nPts = 0;
+      for (let gx = -48; gx <= 48; gx += 12) {
+        for (let gy = -48; gy <= 48; gy += 12) {
+          const r = Math.hypot(gx, gy);
+          if (r > 54) continue;
+          const normBase = 34.0 - 0.16 * r;
+          sumOS += evalPerimetryDB('os', gx, gy, state.lesions, state.computed.iopRes) - normBase;
+          sumOD += evalPerimetryDB('od', gx, gy, state.lesions, state.computed.iopRes) - normBase;
+          nPts++;
+        }
+      }
+      const mdOS = sumOS / Math.max(1, nPts);
+      const mdOD = sumOD / Math.max(1, nPts);
+      document.getElementById('vf-pattern-lbl').textContent = state.computed.vfSummary;
+      document.getElementById('vf-md-lbl').textContent = `MD: OS ${mdOS.toFixed(1)} · OD ${mdOD.toFixed(1)} dB`;
+
+      // Hover Crosshair & Tooltip
+      const tipEl = document.getElementById('vf-tooltip');
+      if (state.vfHover) {
+        const h = state.vfHover;
+        ctx.beginPath();
+        ctx.arc(h.x, h.y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = C.teal;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        if (tipEl) {
+          const hDir = h.eye === 'od' ? (h.degX >= 0 ? 'Temp' : 'Nasal') : (h.degX <= 0 ? 'Temp' : 'Nasal');
+          const vDir = h.degY >= 0 ? 'Sup' : 'Inf';
+          tipEl.textContent = `${h.eye.toUpperCase()} ${Math.abs(h.degX).toFixed(0)}° ${hDir}, ${Math.abs(h.degY).toFixed(0)}° ${vDir} · ${h.dB.toFixed(0)} dB`;
+          tipEl.classList.remove('hidden');
+        }
+      } else if (tipEl) {
+        tipEl.classList.add('hidden');
+      }
+
+      ctx.restore();
+    }
+
+    /* --- CANVAS 3: PARAXIAL GULLSTRAND OCULAR RAY-TRACING BENCH --- */
+    function drawOpticsCanvas() {
+      if (!opticsCanvas.width || !opticsCanvas.height || !state.computed) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = opticsCanvas.width / dpr;
+      const H = opticsCanvas.height / dpr;
+      const C = getTheme();
+      const ctx = opticsCtx;
+      const opt = state.computed.optics;
+      const iop = state.computed.iopRes;
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(0, 0, W, H);
+
+      const midY = H * 0.54;
+      const pxPerMm = Math.min((W - 220) / 31.0, (H - 46) / 21.0, 14.5);
+      const corneaX = Math.max(150, W * 0.34);
+      const specX = corneaX - 42;
+      const lensX = corneaX + 3.8 * pxPerMm;
+      const retinaX = corneaX + opt.L_opt * pxPerMm;
+      const focalX = corneaX + clamp(opt.z_f, 10, 38) * pxPerMm;
+      const globeR = 11.2 * pxPerMm;
+      const globeCx = corneaX + (opt.L_opt - 11.2) * pxPerMm;
+
+      // Subtle Optical Axis
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = C.grid;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(16, midY);
+      ctx.lineTo(W - 16, midY);
+      ctx.stroke();
+      ctx.restore();
+
+      // 1. Schematic Globe Wall & Vitreous Chamber
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(corneaX + opt.L_opt * 0.52 * pxPerMm, midY, opt.L_opt * 0.49 * pxPerMm, globeR * 0.88, 0, 0, Math.PI * 2);
+      ctx.fillStyle = C.isDark ? 'rgba(24, 24, 28, 0.92)' : 'rgba(244, 244, 245, 0.90)';
+      ctx.fill();
+      ctx.strokeStyle = C.axis;
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      // Retina / Fovea highlighted arc along posterior pole
+      ctx.beginPath();
+      ctx.arc(retinaX - globeR * 0.78, midY, globeR * 0.78, -0.58, 0.58);
+      ctx.strokeStyle = C.amber;
+      ctx.lineWidth = 2.6;
+      ctx.stroke();
+      ctx.restore();
+
+      // 2. Cornea Curve & Anterior Chamber Angle
+      const corneaH = 5.4 * pxPerMm;
+      const bulge = clamp((opt.cornealPower - 43.0) * 0.25 + 2.6, 1.4, 5.2) * pxPerMm;
+      ctx.beginPath();
+      ctx.moveTo(corneaX + 2.2 * pxPerMm, midY - corneaH);
+      ctx.quadraticCurveTo(corneaX - bulge, midY, corneaX + 2.2 * pxPerMm, midY + corneaH);
+      ctx.strokeStyle = C.sky;
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+
+      // Angle / Trabecular Meshwork indicator dot (Rose if closed angle, Emerald if open)
+      const angleY = midY - corneaH * 0.92;
+      ctx.beginPath();
+      ctx.arc(corneaX + 2.2 * pxPerMm, angleY, 3.2, 0, Math.PI * 2);
+      ctx.fillStyle = iop.angleClosed ? C.rose : C.teal;
+      ctx.fill();
+
+      // 3. Crystalline Lens (thickens with accommodation, clouds with cataract opacity)
+      const lensHalfH = 4.3 * pxPerMm;
+      const lensHalfW = (1.65 + opt.effAccom * 0.11) * pxPerMm;
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(lensX, midY, lensHalfW, lensHalfH, 0, 0, Math.PI * 2);
+      const opFrac = opt.totalOpacity / 100;
+      ctx.fillStyle = C.isDark
+        ? `rgba(${Math.round(56 + opFrac * 170)}, ${Math.round(189 + opFrac * 45)}, ${Math.round(248 - opFrac * 30)}, ${(0.18 + opFrac * 0.45).toFixed(2)})`
+        : `rgba(${Math.round(2 + opFrac * 180)}, ${Math.round(132 + opFrac * 60)}, ${Math.round(199 - opFrac * 15)}, ${(0.14 + opFrac * 0.48).toFixed(2)})`;
+      ctx.fill();
+      ctx.strokeStyle = C.sky;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      ctx.restore();
+
+      // 4. Iris Blades (dynamically linked to OD pupil aperture, or 1.5mm Pinhole!)
+      const halfAperturePx = clamp((opt.effAperture * 0.5) * pxPerMm * 0.85, 4, lensHalfH * 0.92);
+      const irisX = corneaX + (iop.angleClosed ? 2.4 : 2.9) * pxPerMm;
+      ctx.strokeStyle = C.isDark ? '#52525b' : '#52525b';
+      ctx.lineWidth = 3.0;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(irisX, midY - corneaH * 0.92);
+      ctx.lineTo(irisX, midY - halfAperturePx);
+      ctx.moveTo(irisX, midY + corneaH * 0.92);
+      ctx.lineTo(irisX, midY + halfAperturePx);
+      ctx.stroke();
+
+      // Pinhole Occluder Bar if active
+      if (state.pinhole) {
+        const phX = specX - 18;
+        ctx.strokeStyle = C.amber;
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(phX, midY - corneaH * 1.15);
+        ctx.lineTo(phX, midY - 4.5);
+        ctx.moveTo(phX, midY + 4.5);
+        ctx.lineTo(phX, midY + corneaH * 1.15);
+        ctx.stroke();
+      }
+
+      // 5. Optional External Corrective Spectacle Lens (Biconcave for Myopia -, Biconvex for Hyperopia +)
+      if (Math.abs(state.optics.sphereRx) >= 0.12) {
+        const rx = state.optics.sphereRx;
+        const lh = corneaH * 1.12;
+        const curve = clamp(Math.abs(rx) * 1.1, 2.5, 9.5);
+        ctx.save();
+        ctx.beginPath();
+        if (rx < 0) {
+          // Biconcave diverging lens
+          ctx.moveTo(specX - 5, midY - lh);
+          ctx.lineTo(specX + 5, midY - lh);
+          ctx.quadraticCurveTo(specX + 5 - curve * 0.6, midY, specX + 5, midY + lh);
+          ctx.lineTo(specX - 5, midY + lh);
+          ctx.quadraticCurveTo(specX - 5 + curve * 0.6, midY, specX - 5, midY - lh);
+        } else {
+          // Biconvex converging lens
+          ctx.moveTo(specX, midY - lh);
+          ctx.quadraticCurveTo(specX + curve, midY, specX, midY + lh);
+          ctx.quadraticCurveTo(specX - curve, midY, specX, midY - lh);
+        }
+        ctx.closePath();
+        ctx.fillStyle = C.isDark ? 'rgba(167, 139, 250, 0.22)' : 'rgba(124, 58, 237, 0.16)';
+        ctx.fill();
+        ctx.strokeStyle = C.violet;
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 6. Trace 5 Crisp Paraxial Optical Rays through Spectacle -> Cornea/Lens -> Focal Plane -> Retina
+      const rayFracs = [-0.92, -0.46, 0, 0.46, 0.92];
+      const inSlopeFactor = opt.objSpec.vergence < 0 ? clamp(Math.abs(opt.objSpec.vergence) * 0.08, 0, 0.42) : 0;
+      const isEmmetropic = Math.abs(opt.defocusD) < 0.28;
+      const rayCol = isEmmetropic ? C.teal : C.amber;
+
+      ctx.save();
+      ctx.strokeStyle = rayCol;
+      ctx.lineWidth = 1.35;
+      for (const rf of rayFracs) {
+        const yAtLens = midY + rf * halfAperturePx;
+        const yAtSpec = yAtLens - rf * halfAperturePx * (state.optics.sphereRx * 0.025);
+        const yStart = yAtSpec - rf * halfAperturePx * inSlopeFactor;
+
+        // Compute exact y where the refracted ray hits the retina plane
+        const dxFocal = Math.max(8, focalX - lensX);
+        const slopeAfter = (midY - yAtLens) / dxFocal;
+        const yAtRetina = yAtLens + slopeAfter * (retinaX - lensX);
+
+        ctx.beginPath();
+        ctx.moveTo(18, yStart);
+        ctx.lineTo(specX, yAtSpec);
+        ctx.lineTo(lensX, yAtLens);
+        ctx.lineTo(retinaX, yAtRetina);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Focal Point Marker & Retinal Blur Circle Indicator
+      ctx.beginPath();
+      ctx.arc(focalX, midY, 3.8, 0, Math.PI * 2);
+      ctx.fillStyle = isEmmetropic ? C.teal : C.rose;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Blur Circle vertical bar on Retina if defocused
+      const retBlurHalfPx = Math.abs((halfAperturePx / Math.max(8, focalX - lensX)) * (retinaX - focalX));
+      if (retBlurHalfPx > 1.5) {
+        ctx.strokeStyle = C.rose;
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(retinaX + 2, midY - retBlurHalfPx);
+        ctx.lineTo(retinaX + 2, midY + retBlurHalfPx);
+        ctx.stroke();
+      }
+
+      // Labels below eye structures
+      ctx.font = '500 8.5px "JetBrains Mono", monospace';
+      ctx.fillStyle = C.muted;
+      ctx.textAlign = 'center';
+      if (Math.abs(state.optics.sphereRx) >= 0.12) ctx.fillText(`Rx ${state.optics.sphereRx > 0 ? '+' : ''}${state.optics.sphereRx.toFixed(2)}D`, specX, H - 8);
+      ctx.fillText('Cornea', corneaX, H - 8);
+      ctx.fillText('Lens', lensX, H - 8);
+      ctx.fillText('Retina', retinaX, H - 8);
+
+      // Corner Technical Optics HUD (Top Left & Top Right)
+      ctx.font = '500 9.5px "JetBrains Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = C.muted;
+      ctx.fillText(`Axial L: ${opt.L_anat.toFixed(2)} mm   Power: ${opt.P_total.toFixed(1)} D   z_f: ${opt.z_f.toFixed(2)} mm`, 12, 16);
+
+      ctx.textAlign = 'right';
+      ctx.fillStyle = isEmmetropic ? C.teal : C.amber;
+      const errTag = Math.abs(opt.eyeRefErrorD) < 0.2 ? 'Emmetropia' : (opt.eyeRefErrorD < 0 ? `Myopia (${opt.eyeRefErrorD.toFixed(2)} D)` : `Hyperopia (+${opt.eyeRefErrorD.toFixed(2)} D)`);
+      ctx.fillText(`${errTag} · Blur ${(opt.blurCircleMm * 1000).toFixed(0)} µm · VA ${opt.snellenStr}`, W - 12, 16);
+
+      ctx.restore();
+    }
+
+    /* =========================================================================
+       6. RIGHT CONSOLE 4-TAB BUILDERS
+       ========================================================================= */
+    function buildPathologiesTab() {
+      const el = document.getElementById('tab-pathologies');
+      const groups = [...new Set(PATHOLOGIES.map(p => p.group))];
+
+      el.innerHTML = groups.map(grp => `
+        <div class="space-y-1.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 px-0.5">${grp}</div>
+          ${PATHOLOGIES.filter(p => p.group === grp).map(pr => `
+            <button data-preset="${pr.id}" type="button" class="preset-card w-full text-left px-2.5 py-2 rounded-lg border transition-colors flex items-center justify-between gap-2">
+              <span class="text-xs font-medium text-[#09090b] dark:text-[#f4f4f5] truncate">${pr.name}</span>
+              <span class="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/70 shrink-0">${pr.tag}</span>
+            </button>
+          `).join('')}
+        </div>
+      `).join('') + `
+        <!-- Active Syndrome Clinical Pearl Box -->
+        <div class="p-3 rounded-lg border border-tealLight/35 dark:border-tealDark/35 bg-teal-500/[0.06] space-y-1">
+          <div class="font-mono text-[9.5px] font-semibold uppercase tracking-wider text-tealLight dark:text-tealDark">Localization &amp; Clinical Pearl</div>
+          <p id="active-pearl-text" class="text-[11.5px] leading-relaxed text-zinc-700 dark:text-zinc-300"></p>
+        </div>
+      `;
+
+      el.querySelectorAll('.preset-card').forEach(btn => {
+        btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+      });
+      highlightActivePreset();
+    }
+
+    function applyPreset(presetId) {
+      const pr = PATHOLOGIES.find(p => p.id === presetId);
+      if (!pr) return;
+      state.presetId = pr.id;
+      state.lesions = new Set(pr.lesions || []);
+      state.optics = { ...NORMAL_OPTICS, ...(pr.optics || {}) };
+      state.iop = { ...NORMAL_IOP, ...(pr.iop || {}) };
+      state.drops = { ...NORMAL_DROPS, ...(pr.drops || {}) };
+      state.pinhole = false;
+      state.headTilt = 0;
+
+      // Auto-switch pathway map mode to match lesion category for immediate visual feedback
+      const motorLesions = ['cn3_comp_r', 'cn3_micro_r', 'cn4_r', 'cn6_r', 'cn6_l', 'mlf_r', 'pprf_r', 'cav_r'];
+      if (pr.lesions.some(l => motorLesions.includes(l))) {
+        state.mapMode = 'motor';
+      } else if (pr.lesions.length > 0) {
+        state.mapMode = 'visual';
+      }
+
+      // Auto-select Primary gaze unless INO (showcase Left gaze) or CN IV (showcase Primary)
+      state.gazeMode = 'cardinal';
+      state.gazeTarget = pr.id === 'mlf_ino' ? { x: -1, y: 0 } : (pr.id === 'cn6_palsy' ? { x: 1, y: 0 } : { x: 0, y: 0 });
+      if (pr.id === 'optic_neuritis') state.lightMode = 'autoswing';
+      else if (pr.id === 'horner') state.lightMode = 'dark';
+      else state.lightMode = 'room';
+
+      highlightActivePreset();
+      buildPharmacologyTab();
+      buildOpticsTab();
+      syncAllToolbarButtons();
+      recomputeStaticState();
+    }
+
+    function highlightActivePreset() {
+      document.querySelectorAll('.preset-card').forEach(btn => {
+        const active = btn.dataset.preset === state.presetId;
+        btn.className = `preset-card w-full text-left px-2.5 py-2 rounded-lg border transition-colors flex items-center justify-between gap-2 ${
+          active
+            ? 'border-tealLight/60 dark:border-tealDark/50 bg-teal-500/[0.08]'
+            : 'border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 hover:border-zinc-300 dark:hover:border-zinc-700'
+        }`;
+      });
+      const pr = PATHOLOGIES.find(p => p.id === state.presetId);
+      const pearlEl = document.getElementById('active-pearl-text');
+      if (pearlEl) {
+        pearlEl.textContent = pr
+          ? pr.pearl
+          : (state.lesions.size > 0
+              ? [...state.lesions].map(id => LESION_META[id]?.note).filter(Boolean).join(' ')
+              : 'Custom ocular / pharmacologic configuration active.');
+      }
+    }
+
+    /* --- TAB 2: PHARMACOLOGY & MANUAL LESION SWITCHES --- */
+    function buildPharmacologyTab() {
+      const el = document.getElementById('tab-pharmacology');
+      const d = state.drops;
+
+      const pupilDrops = [
+        { key: 'apraclonidine', name: 'Apraclonidine 0.5%', desc: 'Reverses Horner anisocoria (α1 supersens.); mildly constricts normal eye.' },
+        { key: 'cocaine',       name: 'Cocaine 4%',          desc: 'Dilates normal eye via NE reuptake block; fails in Horner -> widens anisocoria.' },
+        { key: 'pilo0125',      name: 'Dilute Pilocarpine 0.125%', desc: 'Constricts Adie tonic pupil (cholinergic supersens.); minimal normal effect.' },
+        { key: 'pilo2',         name: 'Pilocarpine 2%',      desc: 'Constricts CN III & opens angle; fails to constrict Atropine mydriasis.' },
+        { key: 'atropineOD',    name: 'Tropicamide / Atropine (OD)', desc: 'Pharmacologic M3 block -> fixed dilated OD resistant to Pilocarpine 2%.' }
+      ];
+
+      const iopMeds = [
+        { key: 'latanoprost',   name: 'Latanoprost (PGF2α)', desc: '+0.75 µL/min uveoscleral outflow (U).' },
+        { key: 'timolol',       name: 'Timolol 0.5% (β-block)', desc: '−35% aqueous humor production (F).' },
+        { key: 'acetazolamide', name: 'Acetazolamide IV (CAI)', desc: '−45% aqueous humor production (F).' },
+        { key: 'lpi',           name: 'Laser Peripheral Iridotomy', desc: 'Relieves pupillary block in angle closure, restoring C.' }
+      ];
+
+      const manualLesions = [
+        'cn2_r', 'chiasm', 'tract_l', 'meyer_l', 'parietal_l', 'v1_l',
+        'cn3_comp_r', 'cn3_micro_r', 'cn4_r', 'cn6_r', 'mlf_r', 'pprf_r',
+        'horner_r', 'adie_r', 'midbrain_ar'
+      ];
+
+      const dropBtn = (item, colorCls) => {
+        const on = Boolean(d[item.key]);
+        return `
+          <button data-drop="${item.key}" type="button" class="w-full text-left px-2.5 py-2 rounded-lg border transition-colors ${
+            on ? colorCls : 'border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 hover:border-zinc-300 dark:hover:border-zinc-700'
+          }">
+            <div class="flex items-center justify-between gap-2 text-xs font-medium">
+              <span class="text-[#09090b] dark:text-[#f4f4f5]">${item.name}</span>
+              <span class="font-mono text-[9.5px] ${on ? 'font-semibold' : 'text-zinc-400'}">${on ? 'ACTIVE' : 'OFF'}</span>
+            </div>
+            <p class="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-snug">${item.desc}</p>
+          </button>
+        `;
+      };
+
+      el.innerHTML = `
+        <div class="flex items-center justify-between pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">
+          <span class="text-[11px] text-zinc-500 dark:text-zinc-400">Stackable ophthalmic drops &amp; lesions</span>
+          <button id="btn-clear-drops" type="button" class="text-[11px] font-medium text-violet-700 dark:text-violet-300 hover:underline">Clear Drops</button>
+        </div>
+
+        <div class="space-y-1.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-violet-600 dark:text-violet-400">Diagnostic Pupil Drops</div>
+          ${pupilDrops.map(x => dropBtn(x, 'border-violet-500/60 bg-violet-500/12 text-violet-700 dark:text-violet-300')).join('')}
+        </div>
+
+        <div class="space-y-1.5 pt-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-sky-600 dark:text-sky-400">Glaucoma / IOP Therapy</div>
+          ${iopMeds.map(x => dropBtn(x, 'border-sky-500/60 bg-sky-500/12 text-sky-700 dark:text-sky-300')).join('')}
+        </div>
+
+        <div class="space-y-2 pt-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-rose-600 dark:text-rose-400">Quick Manual Lesion Toggles</span>
+            <button id="btn-clear-lesions" type="button" class="text-[10px] font-mono text-zinc-400 hover:text-rose-500">clear lesions</button>
+          </div>
+          <div class="grid grid-cols-3 gap-1">
+            ${manualLesions.map(id => {
+              const on = state.lesions.has(id);
+              return `
+                <button data-lesion-toggle="${id}" type="button" class="px-1.5 py-1.5 rounded-md border text-[10px] font-mono truncate transition-colors ${
+                  on
+                    ? 'border-rose-500/60 bg-rose-500/15 text-rose-700 dark:text-rose-300 font-semibold'
+                    : 'border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 text-zinc-600 dark:text-zinc-400 hover:border-rose-500/40'
+                }" title="${LESION_META[id].name}">${LESION_META[id].label}</button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+
+      el.querySelectorAll('[data-drop]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const k = btn.dataset.drop;
+          state.drops[k] = !state.drops[k];
+          buildPharmacologyTab();
+          updateDropBadge();
+          recomputeStaticState();
+        });
+      });
+
+      el.querySelectorAll('[data-lesion-toggle]').forEach(btn => {
+        btn.addEventListener('click', () => toggleLesion(btn.dataset.lesionToggle));
+      });
+
+      document.getElementById('btn-clear-drops').addEventListener('click', () => {
+        state.drops = { ...NORMAL_DROPS };
+        buildPharmacologyTab();
+        updateDropBadge();
+        recomputeStaticState();
+      });
+
+      document.getElementById('btn-clear-lesions').addEventListener('click', () => {
+        state.lesions.clear();
+        state.presetId = 'custom';
+        highlightActivePreset();
+        buildPharmacologyTab();
+        recomputeStaticState();
+      });
+
+      updateDropBadge();
+    }
+
+    function updateDropBadge() {
+      const n = Object.values(state.drops).filter(Boolean).length;
+      const b = document.getElementById('tab-drop-badge');
+      if (b) {
+        b.textContent = String(n);
+        b.classList.toggle('hidden', n === 0);
+      }
+    }
+
+    function toggleLesion(id) {
+      if (state.lesions.has(id)) state.lesions.delete(id);
+      else state.lesions.add(id);
+      state.presetId = 'custom';
+      state.inspectedNode = id;
+      updateAnatomicalInspector(id);
+      highlightActivePreset();
+      buildPharmacologyTab();
+      recomputeStaticState();
+    }
+
+    function updateAnatomicalInspector(id) {
+      const el = document.getElementById('anatomical-inspector');
+      if (!el || !id || !LESION_META[id]) return;
+      const m = LESION_META[id];
+      const on = state.lesions.has(id);
+      el.innerHTML = `<strong class="${on ? 'text-rose-600 dark:text-rose-400' : 'text-tealLight dark:text-tealDark'}">${m.name}${on ? ' [LESIONED]' : ''}:</strong> ${m.note}`;
+    }
+
+    /* --- TAB 3: OPTICS & GOLDMANN IOP SLIDERS --- */
+    function buildOpticsTab() {
+      const el = document.getElementById('tab-optics');
+      const o = state.optics;
+      const iop = state.iop;
+      const aMax = Math.max(0.5, 15.0 - 0.25 * o.age);
+      const effAccom = state.drops.atropineOD ? 0 : Math.min(o.accomDemand, aMax);
+      const objLabel = OBJECT_DISTANCES[o.objectDistIdx]?.label || 'Infinity (0 D)';
+
+      const sRow = (id, label, valText, min, max, step, val, cls = '') => `
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-[11.5px] gap-2">
+            <span class="font-medium text-zinc-700 dark:text-zinc-300 truncate">${label}</span>
+            <span id="ov-${id}" class="font-mono tabular-nums text-[#09090b] dark:text-[#f4f4f5] shrink-0">${valText}</span>
+          </div>
+          <input id="os-${id}" type="range" class="clinical-slider ${cls}" min="${min}" max="${max}" step="${step}" value="${val}" />
+        </div>
+      `;
+
+      el.innerHTML = `
+        <!-- Quick Optical Presets -->
+        <div class="space-y-1.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Quick Optical Presets</div>
+          <div class="flex flex-wrap gap-1.5">
+            ${QUICK_OPTICAL_PRESETS.map(p => `
+              <button data-optpreset="${p.id}" type="button" class="px-2 py-1 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-zinc-900/40 hover:border-tealLight/60 dark:hover:border-tealDark/60 text-[10.5px] font-medium text-zinc-700 dark:text-zinc-200 transition-colors">${p.label}</button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Optical Bench Sliders -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-2.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-tealLight dark:text-tealDark pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">Gullstrand Optical Bench (OD)</div>
+          ${sRow('axial', 'Axial Length', `${o.axialLength.toFixed(2)} mm`, 19.5, 29.5, 0.05, o.axialLength)}
+          ${sRow('cornea', 'Corneal Power', `${o.cornealPower.toFixed(1)} D`, 37.0, 52.0, 0.25, o.cornealPower)}
+          ${sRow('accom', 'Accom. Demand (Eff / Max)', `${effAccom.toFixed(1)} / ${aMax.toFixed(1)} D`, 0.0, 12.0, 0.25, o.accomDemand)}
+          ${sRow('objdist', 'Object Distance', objLabel, 0, 6, 1, o.objectDistIdx)}
+          ${sRow('sphere', 'Corrective Lens Sphere', `${o.sphereRx > 0 ? '+' : ''}${o.sphereRx.toFixed(2)} D`, -10.0, 10.0, 0.25, o.sphereRx)}
+          ${sRow('age', 'Patient Age (Presbyopia)', `${o.age} yr (A_max ${aMax.toFixed(1)}D)`, 20, 80, 1, o.age)}
+          ${sRow('opacity', 'Cataract / Media Opacity', `${o.opacity}%`, 0, 100, 2, o.opacity)}
+        </div>
+
+        <!-- Goldmann Aqueous Dynamics Sliders -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-2.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-sky-600 dark:text-sky-400 pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">Goldmann Aqueous Dynamics</div>
+          ${sRow('iopF', 'Aqueous Production (F)', `${iop.F.toFixed(2)} µL/min`, 0.5, 4.0, 0.05, iop.F, 'iop-slider')}
+          ${sRow('iopC', 'Trabecular Facility (C)', `${iop.C.toFixed(3)} µL/m/mmHg`, 0.02, 0.50, 0.005, iop.C, 'iop-slider')}
+          ${sRow('iopU', 'Uveoscleral Outflow (U)', `${iop.U.toFixed(2)} µL/min`, 0.10, 1.80, 0.05, iop.U, 'iop-slider')}
+          ${sRow('iopPv', 'Episcleral Venous P (Pv)', `${iop.Pv.toFixed(1)} mmHg`, 5.0, 20.0, 0.5, iop.Pv, 'iop-slider')}
+        </div>
+      `;
+
+      el.querySelectorAll('[data-optpreset]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const p = QUICK_OPTICAL_PRESETS.find(x => x.id === btn.dataset.optpreset);
+          if (!p) return;
+          state.optics = { ...state.optics, ...p.vals };
+          buildOpticsTab();
+          recomputeStaticState();
+        });
+      });
+
+      const bind = (id, fn) => {
+        const s = document.getElementById(`os-${id}`);
+        if (s) s.addEventListener('input', () => { fn(parseFloat(s.value)); recomputeStaticState(); });
+      };
+
+      bind('axial', v => { state.optics.axialLength = v; document.getElementById('ov-axial').textContent = `${v.toFixed(2)} mm`; });
+      bind('cornea', v => { state.optics.cornealPower = v; document.getElementById('ov-cornea').textContent = `${v.toFixed(1)} D`; });
+      bind('accom', v => {
+        state.optics.accomDemand = v;
+        const am = Math.max(0.5, 15.0 - 0.25 * state.optics.age);
+        const eff = state.drops.atropineOD ? 0 : Math.min(v, am);
+        document.getElementById('ov-accom').textContent = `${eff.toFixed(1)} / ${am.toFixed(1)} D`;
+      });
+      bind('objdist', v => {
+        const idx = Math.round(v);
+        state.optics.objectDistIdx = idx;
+        document.getElementById('ov-objdist').textContent = OBJECT_DISTANCES[idx].label;
+      });
+      bind('sphere', v => { state.optics.sphereRx = v; document.getElementById('ov-sphere').textContent = `${v > 0 ? '+' : ''}${v.toFixed(2)} D`; });
+      bind('age', v => {
+        state.optics.age = Math.round(v);
+        const am = Math.max(0.5, 15.0 - 0.25 * state.optics.age);
+        const eff = state.drops.atropineOD ? 0 : Math.min(state.optics.accomDemand, am);
+        document.getElementById('ov-age').textContent = `${state.optics.age} yr (A_max ${am.toFixed(1)}D)`;
+        document.getElementById('ov-accom').textContent = `${eff.toFixed(1)} / ${am.toFixed(1)} D`;
+      });
+      bind('opacity', v => { state.optics.opacity = Math.round(v); document.getElementById('ov-opacity').textContent = `${state.optics.opacity}%`; });
+
+      bind('iopF', v => { state.iop.F = v; document.getElementById('ov-iopF').textContent = `${v.toFixed(2)} µL/min`; });
+      bind('iopC', v => {
+        state.iop.C = v;
+        state.iop.angleClosed = v <= 0.06;
+        document.getElementById('ov-iopC').textContent = `${v.toFixed(3)} µL/m/mmHg`;
+      });
+      bind('iopU', v => { state.iop.U = v; document.getElementById('ov-iopU').textContent = `${v.toFixed(2)} µL/min`; });
+      bind('iopPv', v => { state.iop.Pv = v; document.getElementById('ov-iopPv').textContent = `${v.toFixed(1)} mmHg`; });
+    }
+
+    /* --- TAB 4: BEDSIDE DIAGNOSTIC CHALLENGES --- */
+    function buildChallengesTab() {
+      const el = document.getElementById('tab-challenges');
+      el.innerHTML = `
+        <div class="space-y-2">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Automated Bedside Protocols</div>
+          ${BEDSIDE_CHALLENGES.map(ch => `
+            <button data-challenge="${ch.id}" type="button" class="w-full text-left p-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50/40 dark:bg-zinc-900/30 hover:border-tealLight/60 dark:hover:border-tealDark/60 hover:bg-teal-500/[0.04] transition-colors">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-medium text-[#09090b] dark:text-[#f4f4f5]">${ch.name}</span>
+                <span class="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/25 shrink-0">${ch.tag}</span>
+              </div>
+              <p class="mt-1 text-[10.5px] text-zinc-500 dark:text-zinc-400 leading-snug">${ch.desc}</p>
+            </button>
+          `).join('')}
+        </div>
+
+        <div class="pt-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Before &rarr; After Protocol Log</span>
+            <button id="btn-clear-chlog" type="button" class="text-[10px] font-mono text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">clear</button>
+          </div>
+          <div id="challenge-log-list" class="space-y-1.5"></div>
+        </div>
+      `;
+
+      el.querySelectorAll('[data-challenge]').forEach(btn => {
+        btn.addEventListener('click', () => runBedsideChallenge(btn.dataset.challenge));
+      });
+      document.getElementById('btn-clear-chlog').addEventListener('click', () => {
+        state.challengeLog = [];
+        renderChallengeLog();
+      });
+      renderChallengeLog();
+    }
+
+    function runBedsideChallenge(id) {
+      let title = '', result = '';
+
+      if (id === 'swing_rapd') {
+        state.lightMode = 'autoswing';
+        state.anim.swingClock = 0;
+        syncAllToolbarButtons();
+        const iopRes = state.computed.iopRes;
+        const pOS = computePupilTargets(state.lesions, state.drops, iopRes, 'flash_os', 'os', 'cardinal');
+        const pOD = computePupilTargets(state.lesions, state.drops, iopRes, 'flash_od', 'od', 'cardinal');
+        title = 'Swinging Flashlight Test (Auto-Swing ON)';
+        result = `Flash OS: OD ${pOS.odP.diam.toFixed(1)} / OS ${pOS.osP.diam.toFixed(1)} mm → Flash OD: OD ${pOD.odP.diam.toFixed(1)} / OS ${pOD.osP.diam.toFixed(1)} mm · Conclusion: ${pOD.rapdStr}`;
+        recomputeStaticState();
+      } else if (id === 'parks_3step') {
+        if (state.lesions.size === 0) applyPreset('cn4_palsy');
+        const s1 = computeMotilityTargets(state.lesions, 'cardinal', { x: 0, y: 0 }, 0);
+        const s2L = computeMotilityTargets(state.lesions, 'cardinal', { x: -1, y: 0 }, 0);
+        const s2R = computeMotilityTargets(state.lesions, 'cardinal', { x: 1, y: 0 }, 0);
+        const s3R = computeMotilityTargets(state.lesions, 'cardinal', { x: 0, y: 0 }, 1);
+        const s3L = computeMotilityTargets(state.lesions, 'cardinal', { x: 0, y: 0 }, -1);
+
+        // Pose eyes in classic Step 3 provocative tilt
+        state.gazeMode = 'cardinal';
+        state.gazeTarget = { x: -1, y: 0 };
+        state.headTilt = 1;
+        state.diplopiaView = true;
+        syncAllToolbarButtons();
+        recomputeStaticState();
+
+        const isol = state.lesions.has('cn4_r') ? 'Right Superior Oblique (R CN IV Palsy)' : (Math.abs(s1.errY) < 1.5 ? 'No Isolated Cyclovertical Palsy' : 'Complex Vertical Deviation');
+        title = 'Parks-Bielschowsky 3-Step Protocol';
+        result = `1) Primary RHT ${s1.errY.toFixed(1)}° · 2) L Gaze ${s2L.errY.toFixed(1)}° vs R Gaze ${s2R.errY.toFixed(1)}° · 3) Tilt R ${s3R.errY.toFixed(1)}° vs Tilt L ${s3L.errY.toFixed(1)}° → ${isol}`;
+      } else if (id === 'anisocoria_workup') {
+        const iopRes = state.computed.iopRes;
+        const pBright = computePupilTargets(state.lesions, state.drops, iopRes, 'room', null, 'cardinal');
+        const pDark = computePupilTargets(state.lesions, state.drops, iopRes, 'dark', null, 'cardinal');
+        const aBright = Math.abs(pBright.odP.diam - pBright.osP.diam);
+        const aDark = Math.abs(pDark.odP.diam - pDark.osP.diam);
+
+        let dropStep = 'No significant anisocoria.';
+        if (aDark > aBright + 0.25) {
+          state.drops.apraclonidine = true;
+          const pApra = computePupilTargets(state.lesions, state.drops, iopRes, 'room', null, 'cardinal');
+          dropStep = `Worse in DARK (${aDark.toFixed(1)} vs ${aBright.toFixed(1)}mm) → Apraclonidine 0.5% applied: OD ${pApra.odP.diam.toFixed(1)} / OS ${pApra.osP.diam.toFixed(1)} mm (${pApra.odP.diam > pApra.osP.diam ? 'Anisocoria REVERSED → R Horner Confirmed!' : 'No reversal'}).`;
+        } else if (aBright >= 0.6) {
+          if (state.lesions.has('adie_r')) {
+            state.drops.pilo0125 = true;
+            const pDil = computePupilTargets(state.lesions, state.drops, iopRes, 'room', null, 'cardinal');
+            dropStep = `Worse in LIGHT (${aBright.toFixed(1)}mm) → Dilute Pilocarpine 0.125%: OD constricted to ${pDil.odP.diam.toFixed(1)} mm → R Adie Tonic Pupil Confirmed!`;
+          } else {
+            state.drops.pilo2 = true;
+            const pP2 = computePupilTargets(state.lesions, state.drops, iopRes, 'room', null, 'cardinal');
+            dropStep = `Worse in LIGHT (${aBright.toFixed(1)}mm) → Pilocarpine 2%: OD ${pP2.odP.diam.toFixed(1)} mm (${pP2.odP.diam < 3.0 ? 'Constricts → Parasympathetic CN III lesion' : 'No constriction → Pharmacologic M3 Blockade!'})`;
+          }
+        }
+        buildPharmacologyTab();
+        recomputeStaticState();
+        title = 'Anisocoria Dark/Light + Drop Workup';
+        result = `Room ${pBright.odP.diam.toFixed(1)}/${pBright.osP.diam.toFixed(1)}mm · Dark ${pDark.odP.diam.toFixed(1)}/${pDark.osP.diam.toFixed(1)}mm · ${dropStep}`;
+      } else if (id === 'ino_conv') {
+        if (!state.lesions.has('mlf_r')) applyPreset('mlf_ino');
+        const conjL = computeMotilityTargets(state.lesions, 'cardinal', { x: -1, y: 0 }, 0);
+        const conv = computeMotilityTargets(state.lesions, 'near', { x: 0, y: 0 }, 0);
+        state.gazeMode = 'near';
+        syncAllToolbarButtons();
+        recomputeStaticState();
+        title = 'INO Convergence Dissociation Test';
+        result = `Left Gaze: OD adducted to ${conjL.odX.toFixed(1)}° (impaired, OS nystagmus) → Near Convergence: OD adducted to ${conv.odX.toFixed(1)}° (SPARED! Confirms MLF vs MR muscle/CN III).`;
+      } else if (id === 'aacg_rescue') {
+        if (!state.iop.angleClosed) applyPreset('aacg');
+        const before = { iop: state.computed.iopRes.iop, va: state.computed.optics.snellenStr, angle: 'Closed' };
+        state.pinnedSnap = { iop: before.iop };
+        syncPinUI();
+        state.drops.acetazolamide = true;
+        state.drops.timolol = true;
+        state.drops.pilo2 = true;
+        state.drops.lpi = true;
+        state.optics.opacity = 6; // Corneal edema clears as IOP falls
+        buildPharmacologyTab();
+        buildOpticsTab();
+        recomputeStaticState();
+        const after = state.computed;
+        title = 'Acute Angle-Closure Crisis Rescue';
+        result = `IOP ${before.iop.toFixed(1)} → ${after.iopRes.iop.toFixed(1)} mmHg · Angle Closed → ${after.iopRes.angleClosed ? 'Closed' : 'Open (LPI)'} · VA ${before.va} → ${after.optics.snellenStr}`;
+      }
+
+      state.challengeLog.unshift({ title, result });
+      if (state.challengeLog.length > 5) state.challengeLog.pop();
+      renderChallengeLog();
+    }
+
+    function renderChallengeLog() {
+      const el = document.getElementById('challenge-log-list');
+      if (!el) return;
+      if (state.challengeLog.length === 0) {
+        el.innerHTML = '<div class="text-[11px] text-zinc-400 dark:text-zinc-500">Run a bedside protocol above to log diagnostic findings.</div>';
+        return;
+      }
+      el.innerHTML = state.challengeLog.map(item => `
+        <div class="p-2 rounded-md border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-white dark:bg-zinc-900/50">
+          <div class="text-[10.5px] font-medium text-tealLight dark:text-tealDark">${item.title}</div>
+          <div class="font-mono text-[10px] text-zinc-600 dark:text-zinc-300 mt-0.5 tabular-nums leading-snug">${item.result}</div>
+        </div>
+      `).join('');
+    }
+
+    /* =========================================================================
+       7. TOOLBAR SYNC, EVENT WIRING, STRICT RESIZE OBSERVER & 60FPS LOOP
+       ========================================================================= */
+    function switchSidebarTab(tabId) {
+      state.activeTab = tabId;
+      document.querySelectorAll('.side-tab').forEach(btn => {
+        const on = btn.dataset.tab === tabId;
+        btn.className = `side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center gap-1 ${
+          on ? 'bg-white dark:bg-zinc-800 text-[#09090b] dark:text-[#f4f4f5] shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-zinc-200'
+        }`;
+      });
+      ['pathologies', 'pharmacology', 'optics', 'challenges'].forEach(id => {
+        document.getElementById(`tab-${id}`).classList.toggle('hidden', id !== tabId);
+      });
+    }
+
+    function syncAllToolbarButtons() {
+      document.querySelectorAll('.gmode-btn').forEach(b => {
+        const on = b.dataset.gazemode === state.gazeMode;
+        b.className = `gmode-btn px-2 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+      document.querySelectorAll('.tilt-btn').forEach(b => {
+        const on = parseInt(b.dataset.tilt, 10) === state.headTilt;
+        b.className = `tilt-btn px-1.5 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-amber-600 dark:text-amber-400 font-medium shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+      document.querySelectorAll('.light-btn').forEach(b => {
+        const on = b.dataset.light === state.lightMode;
+        b.className = `light-btn px-1.5 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+      document.querySelectorAll('.mapmode-btn').forEach(b => {
+        const on = b.dataset.mapmode === state.mapMode;
+        b.className = `mapmode-btn px-2 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+      document.querySelectorAll('.gpad-btn').forEach(b => {
+        const gx = parseInt(b.dataset.gx, 10), gy = parseInt(b.dataset.gy, 10);
+        const on = state.gazeMode === 'cardinal' && gx === state.gazeTarget.x && gy === state.gazeTarget.y;
+        b.className = `gpad-btn py-1.5 rounded border text-center transition-colors ${
+          on
+            ? 'border-tealLight/60 dark:border-tealDark/60 bg-teal-500/15 text-tealLight dark:text-tealDark font-semibold'
+            : 'border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-600 dark:text-zinc-300 hover:border-tealLight/40'
+        }`;
+      });
+
+      const dipBtn = document.getElementById('btn-diplopia-view');
+      dipBtn.className = `px-2 py-1 rounded-md border transition-colors ${
+        state.diplopiaView
+          ? 'border-rose-500/50 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-medium'
+          : 'border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-600 dark:text-zinc-300'
+      }`;
+      document.getElementById('diplopia-panel').classList.toggle('hidden', !state.diplopiaView);
+
+      const phBtn = document.getElementById('btn-pinhole');
+      phBtn.className = `px-2.5 py-1 rounded-md border transition-colors ${
+        state.pinhole
+          ? 'border-amber-500/60 bg-amber-500/15 text-amber-700 dark:text-amber-300 font-medium'
+          : 'border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-600 dark:text-zinc-300'
+      }`;
+    }
+
+    function syncPinUI() {
+      const pinned = Boolean(state.pinnedSnap);
+      document.getElementById('pin-dot').classList.toggle('hidden', !pinned);
+      document.getElementById('pin-label').textContent = pinned ? 'Pinned' : 'Pin Baseline';
+      document.getElementById('btn-pin-baseline').className = `h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors ${
+        pinned
+          ? 'border-tealLight/60 dark:border-tealDark/60 bg-teal-500/10 text-tealLight dark:text-tealDark'
+          : 'bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border-[#e4e4e7] dark:border-borderDark text-zinc-700 dark:text-zinc-200'
+      }`;
+    }
+
+    function wireEvents() {
+      // Theme Toggle
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        const val = isDark ? 'dark' : 'light';
+        try {
+          localStorage.setItem('medlab-theme', val);
+          localStorage.setItem('theme', val);
+        } catch (_) {}
+        renderPathwaySVG();
+        renderEyesFooterAndDiplopia();
+        drawPerimetryCanvas();
+        drawOpticsCanvas();
+      });
+
+      // Pin Baseline Toggle
+      document.getElementById('btn-pin-baseline').addEventListener('click', () => {
+        if (state.pinnedSnap) {
+          state.pinnedSnap = null;
+        } else if (state.computed) {
+          state.pinnedSnap = { iop: state.computed.iopRes.iop };
+        }
+        syncPinUI();
+        renderKPIStrip();
+      });
+
+      // Reset
+      document.getElementById('btn-reset').addEventListener('click', () => {
+        state.pinnedSnap = null;
+        state.diplopiaView = false;
+        syncPinUI();
+        applyPreset('normal');
+      });
+
+      // Sidebar Tabs
+      document.querySelectorAll('.side-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchSidebarTab(btn.dataset.tab));
+      });
+
+      // Gaze Mode Pills
+      document.querySelectorAll('.gmode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.gazeMode = btn.dataset.gazemode;
+          syncAllToolbarButtons();
+          recomputeStaticState();
+        });
+      });
+
+      // 3x3 Cardinal Gaze Pad
+      document.querySelectorAll('.gpad-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.gazeMode = 'cardinal';
+          state.gazeTarget = { x: parseInt(btn.dataset.gx, 10), y: parseInt(btn.dataset.gy, 10) };
+          syncAllToolbarButtons();
+          recomputeStaticState();
+        });
+      });
+
+      // Follow Cursor tracking on Eyes Canvas
+      const handleEyePointer = (clientX, clientY) => {
+        if (state.gazeMode !== 'cursor') return;
+        const rect = eyesWrap.getBoundingClientRect();
+        const nx = clamp(((clientX - rect.left) / rect.width) * 2 - 1, -1, 1); // viewer right = +nx
+        const ny = clamp(((clientY - rect.top) / rect.height) * 2 - 1, -1, 1); // viewer down = +ny
+        // Convert viewer coords to Patient's Perspective: Patient Right = -nx, Up = -ny
+        state.gazeTarget = { x: -nx, y: -ny };
+        recomputeStaticState();
+      };
+      eyesWrap.addEventListener('mousemove', e => handleEyePointer(e.clientX, e.clientY));
+      eyesWrap.addEventListener('touchmove', e => { if (e.touches[0]) handleEyePointer(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+
+      // Head Tilt Buttons
+      document.querySelectorAll('.tilt-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.headTilt = parseInt(btn.dataset.tilt, 10);
+          syncAllToolbarButtons();
+          recomputeStaticState();
+        });
+      });
+
+      // Lighting / Swinging Flashlight Buttons
+      document.querySelectorAll('.light-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.lightMode = btn.dataset.light;
+          if (state.lightMode === 'autoswing') state.anim.swingClock = 0;
+          syncAllToolbarButtons();
+          recomputeStaticState();
+        });
+      });
+
+      // Diplopia View Toggle
+      document.getElementById('btn-diplopia-view').addEventListener('click', () => {
+        state.diplopiaView = !state.diplopiaView;
+        syncAllToolbarButtons();
+        renderEyesFooterAndDiplopia();
+      });
+
+      // Pathway Map Mode Toggle
+      document.querySelectorAll('.mapmode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.mapMode = btn.dataset.mapmode;
+          syncAllToolbarButtons();
+          renderPathwaySVG();
+        });
+      });
+
+      // Click & Hover on SVG Pathway Nodes
+      const svgMap = document.getElementById('pathway-svg');
+      svgMap.addEventListener('click', e => {
+        const g = e.target.closest('[data-lesion]');
+        if (!g) return;
+        toggleLesion(g.getAttribute('data-lesion'));
+      });
+      svgMap.addEventListener('mouseover', e => {
+        const g = e.target.closest('[data-lesion]');
+        if (g) updateAnatomicalInspector(g.getAttribute('data-lesion'));
+      });
+
+      // Auto-Refract (Best Rx) Button
+      document.getElementById('btn-auto-refract').addEventListener('click', () => {
+        if (!state.computed) return;
+        const bestRx = clamp(Math.round(state.computed.optics.eyeRefErrorD * 4) / 4, -10.0, 10.0);
+        state.optics.sphereRx = bestRx;
+        buildOpticsTab();
+        recomputeStaticState();
+      });
+
+      // Pinhole Test Toggle
+      document.getElementById('btn-pinhole').addEventListener('click', () => {
+        state.pinhole = !state.pinhole;
+        syncAllToolbarButtons();
+        recomputeStaticState();
+      });
+
+      // Perimetry Hover Coordinate & Sensitivity Inspection
+      const handleVFMove = (clientX, clientY) => {
+        const rect = vfWrap.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        const W = rect.width, H = rect.height;
+        const R = Math.min(W * 0.215, H * 0.37, 94);
+        const cy = H * 0.53;
+        const osCx = W * 0.265;
+        const odCx = W * 0.735;
+
+        const dOS = Math.hypot(x - osCx, y - cy);
+        const dOD = Math.hypot(x - odCx, y - cy);
+        if (dOS <= R) {
+          const degX = ((x - osCx) / R) * 60;
+          const degY = ((cy - y) / R) * 60;
+          const dB = evalPerimetryDB('os', degX, degY, state.lesions, state.computed.iopRes);
+          state.vfHover = { eye: 'os', degX, degY, dB, x, y };
+        } else if (dOD <= R) {
+          const degX = ((x - odCx) / R) * 60;
+          const degY = ((cy - y) / R) * 60;
+          const dB = evalPerimetryDB('od', degX, degY, state.lesions, state.computed.iopRes);
+          state.vfHover = { eye: 'od', degX, degY, dB, x, y };
+        } else {
+          state.vfHover = null;
+        }
+        drawPerimetryCanvas();
+      };
+      vfWrap.addEventListener('mousemove', e => handleVFMove(e.clientX, e.clientY));
+      vfWrap.addEventListener('mouseleave', () => { state.vfHover = null; drawPerimetryCanvas(); });
+      vfWrap.addEventListener('touchmove', e => { if (e.touches[0]) handleVFMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+      vfWrap.addEventListener('touchend', () => { state.vfHover = null; drawPerimetryCanvas(); });
+
+      // STRICT ANTI-STRETCH RESIZE OBSERVER: Observe WRAPPERS ONLY!
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(entries => {
+          for (const entry of entries) {
+            if (entry.target === eyesWrap && syncCanvas(eyesWrap, eyesCanvas)) drawEyesCanvas();
+            if (entry.target === vfWrap && syncCanvas(vfWrap, vfCanvas)) drawPerimetryCanvas();
+            if (entry.target === opticsWrap && syncCanvas(opticsWrap, opticsCanvas)) drawOpticsCanvas();
+          }
+        });
+        ro.observe(eyesWrap);
+        ro.observe(vfWrap);
+        ro.observe(opticsWrap);
+      }
+
+      window.addEventListener('resize', () => {
+        if (syncCanvas(eyesWrap, eyesCanvas)) drawEyesCanvas();
+        if (syncCanvas(vfWrap, vfCanvas)) drawPerimetryCanvas();
+        if (syncCanvas(opticsWrap, opticsCanvas)) drawOpticsCanvas();
+      });
+    }
+
+    /* --- 60FPS Real-Time Kinematics & Pupillary Kinetics Animation Loop --- */
+    let lastTS = 0;
+    let kpiRefreshAccum = 0;
+
+    function animate(ts) {
+      if (!lastTS) lastTS = ts;
+      const dt = clamp((ts - lastTS) / 1000, 0.001, 0.05);
+      lastTS = ts;
+
+      try {
+        const a = state.anim;
+
+        // 1. Update Auto-Swing 2.2s alternating flashlight timer
+        if (state.lightMode === 'autoswing') {
+          a.swingClock += dt;
+          const newEye = Math.floor(a.swingClock / 2.2) % 2 === 0 ? 'os' : 'od';
+          if (newEye !== a.activeFlashEye) {
+            a.activeFlashEye = newEye;
+            if (state.computed) {
+              state.computed.pupils = computePupilTargets(state.lesions, state.drops, state.computed.iopRes, state.lightMode, a.activeFlashEye, state.gazeMode);
+            }
+          }
+        } else {
+          a.activeFlashEye = null;
+        }
+
+        a.nystagClock += dt;
+
+        if (state.computed) {
+          const m = state.computed.motility;
+          const p = state.computed.pupils;
+
+          // Smooth exponential eye tracking & ptosis kinematics
+          const kEye = 1 - Math.exp(-dt * 12.0);
+          a.odX += (m.odX - a.odX) * kEye;
+          a.odY += (m.odY - a.odY) * kEye;
+          a.odTorsion += (m.odTorsion - a.odTorsion) * kEye;
+          a.odPtosis += (m.odPtosis - a.odPtosis) * kEye;
+
+          a.osX += (m.osX - a.osX) * kEye;
+          a.osY += (m.osY - a.osY) * kEye;
+          a.osTorsion += (m.osTorsion - a.osTorsion) * kEye;
+          a.osPtosis += (m.osPtosis - a.osPtosis) * kEye;
+
+          const tgtHead = state.headTilt * 11.5;
+          a.headAngleDeg += (tgtHead - a.headAngleDeg) * (1 - Math.exp(-dt * 8.0));
+
+          // First-order physiological pupillary constriction & dilation kinetics (includes Horner's dilation lag!)
+          const prevODPupil = a.odPupil;
+          const tauOD = p.odP.diam < a.odPupil ? p.odP.tauConstrict : p.odP.tauDilate;
+          const tauOS = p.osP.diam < a.osPupil ? p.osP.tauConstrict : p.osP.tauDilate;
+          a.odPupil += (p.odP.diam - a.odPupil) * (1 - Math.exp(-dt / Math.max(0.05, tauOD)));
+          a.osPupil += (p.osP.diam - a.osPupil) * (1 - Math.exp(-dt / Math.max(0.05, tauOS)));
+
+          // Keep optical bench iris aperture & KPI pupil diameter synchronized cleanly (~8 Hz when changing)
+          kpiRefreshAccum += dt;
+          if (kpiRefreshAccum >= 0.12 && (Math.abs(a.odPupil - prevODPupil) > 0.004 || state.lightMode === 'autoswing')) {
+            kpiRefreshAccum = 0;
+            state.computed.optics = computeOptics(state.optics, state.lesions, state.drops, state.computed.iopRes, a.odPupil, state.pinhole);
+            renderKPIStrip();
+            drawOpticsCanvas();
+          }
+
+          drawEyesCanvas();
+        }
+      } catch (err) {
+        console.error('Neuro-Ophtho animation error:', err);
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    // Bootstrap cleanly on window load
+    window.addEventListener('load', () => {
+      buildPathologiesTab();
+      buildPharmacologyTab();
+      buildOpticsTab();
+      buildChallengesTab();
+      wireEvents();
+
+      switchSidebarTab('pathologies');
+      syncAllToolbarButtons();
+      syncPinUI();
+
+      syncCanvas(eyesWrap, eyesCanvas);
+      syncCanvas(vfWrap, vfCanvas);
+      syncCanvas(opticsWrap, opticsCanvas);
+
+      recomputeStaticState();
+      requestAnimationFrame(animate);
+    });
+  })();
+  </script>
+</body>
+</html>
