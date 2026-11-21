@@ -1,1 +1,2895 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PK/PD Lab — MedLab Clinical Pharmacology &amp; Anesthesia Simulator</title>
 
+  <!-- Prevent theme flash prior to first paint (syncs medlab-theme & theme; defaults to obsidian dark) -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Typography: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#111113',
+            borderDark: '#27272a',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Minimal scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(113, 113, 122, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(113, 113, 122, 0.45);
+    }
+
+    /* Swiss-Precision Clinical Sliders */
+    input[type="range"].clinical-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      border-radius: 9999px;
+      background: #e4e4e7;
+      outline: none;
+      cursor: pointer;
+    }
+    .dark input[type="range"].clinical-slider {
+      background: #27272a;
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      transition: transform 0.1s ease;
+    }
+    .dark input[type="range"].clinical-slider::-webkit-slider-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"].clinical-slider.pd-slider::-webkit-slider-thumb {
+      background: #7c3aed;
+    }
+    .dark input[type="range"].clinical-slider.pd-slider::-webkit-slider-thumb {
+      background: #a78bfa;
+    }
+    input[type="range"].clinical-slider::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    }
+    .dark input[type="range"].clinical-slider::-moz-range-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+    input[type="range"].clinical-slider.pd-slider::-moz-range-thumb {
+      background: #7c3aed;
+    }
+    .dark input[type="range"].clinical-slider.pd-slider::-moz-range-thumb {
+      background: #a78bfa;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-canvasLight text-[#09090b] dark:bg-obsidian dark:text-[#fafafa] transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
+
+  <!-- ==================== 1. COMPACT STICKY HEADER ==================== -->
+  <header class="sticky top-0 z-40 w-full border-b border-[#e4e4e7] dark:border-borderDark bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+
+      <!-- Left: Relative Back Link + Title + Active Drug Badge -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors shrink-0">
+          &larr; MedLab
+        </a>
+        <div class="flex items-center gap-2 min-w-0">
+          <h1 class="text-[15px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa] shrink-0">PK/PD Lab</h1>
+          <span id="hdr-drug-badge" class="font-mono text-[10.5px] font-medium px-2 py-0.5 rounded-md border border-tealLight/30 dark:border-tealDark/30 bg-teal-500/10 text-tealLight dark:text-tealDark truncate">Propofol · 3-Comp IV</span>
+          <span id="hdr-preset-badge" class="hidden md:inline text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-[240px]">Propofol Standard TIVA</span>
+        </div>
+      </div>
+
+      <!-- Right: Pin Baseline, Clear Ghost, Reset, Theme Toggle -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button id="btn-pin-baseline" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-zinc-700 dark:text-zinc-200 transition-colors" title="Snapshot current curves & KPIs as ghost comparison">
+          Pin Baseline
+        </button>
+
+        <button id="btn-clear-ghost" type="button" class="hidden h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-amber-700 dark:text-amber-300 transition-colors" title="Remove pinned ghost overlay">
+          Clear Ghost
+        </button>
+
+        <button id="btn-reset" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white transition-colors">
+          Reset
+        </button>
+
+        <button id="theme-toggle" type="button" aria-label="Toggle dark and light theme" title="Switch Dark / Light mode" class="w-8 h-8 rounded-lg flex items-center justify-center border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-white transition-colors">
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. TOP 6-TILE CLINICAL TELEMETRY STRIP ==================== -->
+  <section class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 pt-3.5 shrink-0">
+    <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+      <div id="telemetry-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-[#e4e4e7]/80 dark:divide-borderDark/80">
+        <!-- Populated dynamically via JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. MAIN 2-COLUMN CLINICAL WORKBENCH ==================== -->
+  <main class="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 min-w-0">
+
+    <!-- LEFT / MAIN VISUALIZATION COLUMN (8 cols on lg+) -->
+    <div class="lg:col-span-8 flex flex-col gap-4 min-h-0 min-w-0">
+
+      <!-- 1. INTERACTIVE SVG 3-COMPARTMENT + EFFECT-SITE SCHEMATIC -->
+      <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+        <div class="px-4 py-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <div class="flex items-center gap-2 min-w-0">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa]">Mammillary PK &amp; Effect-Site Schematic</h2>
+            <span id="svg-inspect-badge" class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-zinc-600 dark:text-zinc-400 tabular-nums">Inspect: Peak Ce</span>
+          </div>
+          <span class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400">Hover chart below to scrub compartments</span>
+        </div>
+
+        <div class="relative w-full h-44 sm:h-48 overflow-hidden select-none bg-zinc-50/40 dark:bg-obsidian/40">
+          <svg id="pk-svg" viewBox="0 0 880 184" preserveAspectRatio="xMidYMid meet" class="w-full h-full block" role="img" aria-label="Multi-compartment pharmacokinetic and effect-site diagram"></svg>
+        </div>
+      </section>
+
+      <!-- 2. PRIMARY CANVAS: CONCENTRATION-TIME & EFFECT PROFILE (LOCKED h-72 sm:h-80) -->
+      <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+        <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa]">Concentration&ndash;Time &amp; Effect Profile</h2>
+            <div class="hidden sm:flex items-center gap-2 text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+              <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-tealLight dark:bg-tealDark inline-block"></span>C&#8321; Plasma</span>
+              <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-amber-600 dark:bg-amber-400 inline-block"></span>C&#8337; Effect</span>
+              <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-violet-600 dark:bg-violet-400 inline-block"></span>Effect %</span>
+            </div>
+          </div>
+
+          <!-- Header Toggles: Linear/Semi-Log, C2/C3, Effect % -->
+          <div class="flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
+            <div class="inline-flex rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5">
+              <button data-yscale="linear" type="button" class="yscale-btn px-2 py-0.5 rounded transition-colors">Linear</button>
+              <button data-yscale="log" type="button" class="yscale-btn px-2 py-0.5 rounded transition-colors">Semi-Log</button>
+            </div>
+            <button id="toggle-tissues" type="button" class="px-2 py-0.5 rounded border transition-colors">C&#8322;/C&#8323;</button>
+            <button id="toggle-effect" type="button" class="px-2 py-0.5 rounded border transition-colors">Effect %</button>
+          </div>
+        </div>
+
+        <!-- STRICT LOCKED CANVAS WRAPPER -->
+        <div id="conc-canvas-wrap" class="relative w-full h-72 sm:h-80 overflow-hidden cursor-crosshair">
+          <canvas id="conc-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+          <div id="conc-tooltip" class="pointer-events-none hidden absolute top-3 left-3 z-20 min-w-[188px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-950/95 px-3 py-2 shadow-lg backdrop-blur-sm text-[10.5px] font-mono"></div>
+        </div>
+      </section>
+
+      <!-- 3. DUAL SECONDARY CANVAS GRID (2 cols on lg, each locked h-64) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0 min-w-0">
+
+        <!-- Left Card: Context-Sensitive Half-Time (CSHT) -->
+        <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+          <div class="px-3.5 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 shrink-0">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa] truncate">Context-Sensitive Half-Time</h2>
+            <span class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 shrink-0">50% &middot; 80% Decr.</span>
+          </div>
+
+          <!-- STRICT LOCKED CANVAS WRAPPER -->
+          <div id="csht-canvas-wrap" class="relative w-full h-64 overflow-hidden cursor-crosshair">
+            <canvas id="csht-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+            <div id="csht-tooltip" class="pointer-events-none hidden absolute top-2.5 left-2.5 z-20 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-950/95 px-2.5 py-1.5 shadow-lg backdrop-blur-sm text-[10.5px] font-mono"></div>
+          </div>
+        </section>
+
+        <!-- Right Card: Pharmacodynamics: Hill Curve & Hysteresis -->
+        <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0 min-w-0">
+          <div class="px-3.5 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa] truncate">Pharmacodynamics</h2>
+            <div class="inline-flex rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[10px] font-mono shrink-0">
+              <button data-pdmode="hill" type="button" class="pdmode-btn px-2 py-0.5 rounded transition-colors">Hill Curve</button>
+              <button data-pdmode="hysteresis" type="button" class="pdmode-btn px-2 py-0.5 rounded transition-colors">Hysteresis</button>
+            </div>
+          </div>
+
+          <!-- STRICT LOCKED CANVAS WRAPPER -->
+          <div id="pd-canvas-wrap" class="relative w-full h-64 overflow-hidden cursor-crosshair">
+            <canvas id="pd-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+            <div id="pd-tooltip" class="pointer-events-none hidden absolute top-2.5 right-2.5 z-20 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-950/95 px-2.5 py-1.5 shadow-lg backdrop-blur-sm text-[10.5px] font-mono"></div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- 4. BOTTOM LIVE CLINICAL PHARMACOLOGY INTERPRETATION BAR -->
+      <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark px-4 py-3 shrink-0">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+          <div class="flex flex-wrap items-center gap-1.5" id="interp-badges"></div>
+          <span id="interp-kinetics-tag" class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400">1st-Order Linear Elimination</span>
+        </div>
+        <p id="interp-text" class="text-[12px] leading-relaxed text-zinc-700 dark:text-zinc-300"></p>
+      </section>
+
+    </div>
+
+    <!-- RIGHT CONTROL SIDEBAR (4 cols on lg+) -->
+    <aside class="lg:col-span-4 rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col min-h-[480px] lg:max-h-[calc(100vh-180px)] overflow-hidden min-w-0">
+      <!-- 4-Tab Segmented Switcher -->
+      <div class="p-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 shrink-0">
+        <div class="grid grid-cols-4 rounded-lg bg-zinc-100/90 dark:bg-obsidian p-0.5 gap-0.5 border border-[#e4e4e7]/80 dark:border-borderDark/80">
+          <button data-tab="presets" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors">Presets</button>
+          <button data-tab="dosing" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors">Dosing</button>
+          <button data-tab="pk" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors">PK/Patient</button>
+          <button data-tab="pd" type="button" class="side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center gap-1">
+            <span>PD/Rec</span>
+            <span id="tab-pd-dot" class="hidden w-1.5 h-1.5 rounded-full bg-violet-500 dark:bg-violet-400"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Tab Body -->
+      <div class="flex-1 overflow-y-auto p-3 min-h-0">
+        <div id="tab-presets" class="space-y-3"></div>
+        <div id="tab-dosing" class="hidden space-y-3.5"></div>
+        <div id="tab-pk" class="hidden space-y-3.5"></div>
+        <div id="tab-pd" class="hidden space-y-3.5"></div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ==================== 4. MINIMAL FOOTER ==================== -->
+  <footer class="w-full border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-white/70 dark:bg-obsidian/90 shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+      <span class="font-medium text-[#09090b] dark:text-[#fafafa]">MedLab &middot; PK/PD Lab</span>
+      <span>Multi-compartment PK/PD, TCI &amp; CSHT simulator for educational study only. Not for clinical dosing.</span>
+    </div>
+  </footer>
+
+  <!-- ==================== PK/PD ENGINE & UI CONTROLLER ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    /* =========================================================================
+       1. NUMERIC UTILITIES
+       ========================================================================= */
+    const clamp = (v, lo, hi) => (Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo);
+    const LN2 = Math.LN2;
+
+    /* =========================================================================
+       2. BUILT-IN CLINICAL DRUG LIBRARY (Published Adult 70 kg PK/PD Profiles)
+          Unit convention:
+          - If doseUnit = 'mg' and volumes in L -> mg/L = ug/mL (concScale = 1)
+          - If doseUnit = 'ug' and volumes in L -> ug/L = ng/mL (concScale = 1)
+       ========================================================================= */
+    const DRUG_LIBRARY = {
+      propofol: {
+        id: 'propofol',
+        name: 'Propofol',
+        compLabel: '3-Comp IV',
+        nComp: 3,
+        timeUnit: 'min',
+        doseUnit: 'mg',
+        concUnit: 'µg/mL',
+        allowOral: false,
+        lipophilic: true,
+        // PK (70 kg Marsh/Schnider composite)
+        V1: 16.0, V2: 32.0, V3: 200.0,
+        CL: 1.85, Q2: 1.75, Q3: 0.65,
+        t12_ke0: 2.6,
+        ka: 0, F: 1.0,
+        fRenal: 0.05, fHep: 0.90,
+        mmEnabled: false, Vmax: 10.0, Km: 5.0,
+        // PD (Hypnosis / BIS suppression)
+        EC50: 3.4, gamma: 2.5, Emax: 100, alpha: 1.0,
+        winLo: 2.0, winHi: 6.0, toxic: 8.0,
+        effectLabel: 'Hypnosis / Sedation',
+        // Default Dosing & Horizon
+        defaultDosing: {
+          mode: 'bolus_inf', route: 'iv',
+          bolus: 140, bolusMax: 350, bolusStep: 5,
+          infRate: 8.5, infRateMax: 25, infRateStep: 0.25,
+          infStop: 90,
+          maintDose: 80, maintMax: 300, maintStep: 5,
+          interval: 30, intervalMin: 10, intervalMax: 120, intervalStep: 5,
+          infDurInterm: 2,
+          tciSite: 'ce', tciTarget: 3.8, tciMax: 10, tciStep: 0.1,
+          horizon: 180, horizonMin: 60, horizonMax: 480, horizonStep: 15
+        },
+        antagName: 'Reversal',
+        antagHalfLife: 25
+      },
+
+      fentanyl: {
+        id: 'fentanyl',
+        name: 'Fentanyl',
+        compLabel: '3-Comp IV',
+        nComp: 3,
+        timeUnit: 'min',
+        doseUnit: 'µg',
+        concUnit: 'ng/mL',
+        allowOral: false,
+        lipophilic: true,
+        // PK (70 kg Shafer 1990)
+        V1: 12.7, V2: 28.0, V3: 225.0,
+        CL: 0.62, Q2: 1.95, Q3: 0.72,
+        t12_ke0: 4.7,
+        ka: 0, F: 1.0,
+        fRenal: 0.08, fHep: 0.92,
+        mmEnabled: false, Vmax: 5.0, Km: 2.0,
+        // PD (Analgesia / µ-Opioid Resp. Depression)
+        EC50: 1.8, gamma: 2.3, Emax: 100, alpha: 1.0,
+        winLo: 1.0, winHi: 3.0, toxic: 4.5,
+        effectLabel: 'µ-Opioid Analgesia',
+        defaultDosing: {
+          mode: 'bolus_inf', route: 'iv',
+          bolus: 150, bolusMax: 500, bolusStep: 10,
+          infRate: 1.9, infRateMax: 8.0, infRateStep: 0.1,
+          infStop: 240,
+          maintDose: 75, maintMax: 300, maintStep: 5,
+          interval: 60, intervalMin: 15, intervalMax: 180, intervalStep: 15,
+          infDurInterm: 2,
+          tciSite: 'ce', tciTarget: 2.2, tciMax: 6.5, tciStep: 0.1,
+          horizon: 480, horizonMin: 120, horizonMax: 720, horizonStep: 30
+        },
+        antagName: 'Naloxone',
+        antagHalfLife: 32
+      },
+
+      remifentanil: {
+        id: 'remifentanil',
+        name: 'Remifentanil',
+        compLabel: '3-Comp IV',
+        nComp: 3,
+        timeUnit: 'min',
+        doseUnit: 'µg',
+        concUnit: 'ng/mL',
+        allowOral: false,
+        lipophilic: false,
+        // PK (70 kg Minto 1997 — non-specific plasma/tissue esterase hydrolysis)
+        V1: 5.1, V2: 9.8, V3: 5.4,
+        CL: 2.60, Q2: 2.05, Q3: 0.076,
+        t12_ke0: 1.2,
+        ka: 0, F: 1.0,
+        fRenal: 0.04, fHep: 0.06, // 90% organ-independent blood esterases!
+        mmEnabled: false, Vmax: 20.0, Km: 4.0,
+        EC50: 3.8, gamma: 2.4, Emax: 100, alpha: 1.0,
+        winLo: 2.0, winHi: 6.0, toxic: 9.0,
+        effectLabel: 'µ-Opioid Analgesia',
+        defaultDosing: {
+          mode: 'tci', route: 'iv',
+          bolus: 40, bolusMax: 150, bolusStep: 5,
+          infRate: 10.5, infRateMax: 30, infRateStep: 0.5,
+          infStop: 120,
+          maintDose: 30, maintMax: 100, maintStep: 5,
+          interval: 15, intervalMin: 5, intervalMax: 60, intervalStep: 5,
+          infDurInterm: 1,
+          tciSite: 'ce', tciTarget: 4.5, tciMax: 12.0, tciStep: 0.2,
+          horizon: 160, horizonMin: 60, horizonMax: 480, horizonStep: 20
+        },
+        antagName: 'Naloxone',
+        antagHalfLife: 32
+      },
+
+      midazolam: {
+        id: 'midazolam',
+        name: 'Midazolam',
+        compLabel: '3-Comp IV',
+        nComp: 3,
+        timeUnit: 'min',
+        doseUnit: 'µg',
+        concUnit: 'ng/mL',
+        allowOral: false,
+        lipophilic: true,
+        // PK (70 kg adult — CYP3A4 dependent)
+        V1: 15.0, V2: 34.0, V3: 68.0,
+        CL: 0.44, Q2: 1.15, Q3: 0.28,
+        t12_ke0: 3.8,
+        ka: 0, F: 1.0,
+        fRenal: 0.05, fHep: 0.92,
+        mmEnabled: false, Vmax: 80.0, Km: 100.0,
+        EC50: 85.0, gamma: 2.2, Emax: 100, alpha: 1.0,
+        winLo: 40.0, winHi: 120.0, toxic: 200.0,
+        effectLabel: 'GABA-A Sedation',
+        defaultDosing: {
+          mode: 'bolus_inf', route: 'iv',
+          bolus: 2500, bolusMax: 10000, bolusStep: 250,
+          infRate: 42.0, infRateMax: 160, infRateStep: 2,
+          infStop: 180,
+          maintDose: 2000, maintMax: 8000, maintStep: 250,
+          interval: 60, intervalMin: 15, intervalMax: 180, intervalStep: 15,
+          infDurInterm: 2,
+          tciSite: 'ce', tciTarget: 90, tciMax: 250, tciStep: 5,
+          horizon: 360, horizonMin: 120, horizonMax: 600, horizonStep: 30
+        },
+        antagName: 'Flumazenil',
+        antagHalfLife: 45
+      },
+
+      vancomycin: {
+        id: 'vancomycin',
+        name: 'Vancomycin',
+        compLabel: '2-Comp IV',
+        nComp: 2,
+        timeUnit: 'h',
+        doseUnit: 'mg',
+        concUnit: 'µg/mL',
+        allowOral: false,
+        lipophilic: false,
+        // PK (70 kg 2-comp IV, fe = 0.90)
+        V1: 22.0, V2: 30.0, V3: 0,
+        CL: 4.50, Q2: 12.0, Q3: 0,
+        t12_ke0: 0.8,
+        ka: 0, F: 1.0,
+        fRenal: 0.90, fHep: 0.05,
+        mmEnabled: false, Vmax: 120, Km: 20,
+        EC50: 15.5, gamma: 2.5, Emax: 100, alpha: 1.0,
+        winLo: 15.0, winHi: 35.0, toxic: 35.0,
+        effectLabel: 'Antimicrobial Activity',
+        defaultDosing: {
+          mode: 'intermittent', route: 'iv',
+          bolus: 1750, bolusMax: 3000, bolusStep: 50,
+          infRate: 85, infRateMax: 250, infRateStep: 5,
+          infStop: 48,
+          maintDose: 1000, maintMax: 2500, maintStep: 50,
+          interval: 12, intervalMin: 6, intervalMax: 48, intervalStep: 2,
+          infDurInterm: 1.0,
+          tciSite: 'c1', tciTarget: 20, tciMax: 45, tciStep: 1,
+          horizon: 72, horizonMin: 24, horizonMax: 168, horizonStep: 12
+        },
+        antagName: 'Antagonist',
+        antagHalfLife: 4
+      },
+
+      digoxin: {
+        id: 'digoxin',
+        name: 'Digoxin',
+        compLabel: '2-Comp PO/IV',
+        nComp: 2,
+        timeUnit: 'h',
+        doseUnit: 'µg',
+        concUnit: 'ng/mL',
+        allowOral: true,
+        lipophilic: false,
+        // PK (70 kg 2-comp, narrow TI, fe = 0.70, slow tissue distribution)
+        V1: 42.0, V2: 410.0, V3: 0,
+        CL: 8.40, Q2: 34.0, Q3: 0,
+        t12_ke0: 2.5,
+        ka: 0.90, F: 0.75,
+        fRenal: 0.70, fHep: 0.25,
+        mmEnabled: false, Vmax: 12, Km: 1.2,
+        EC50: 0.95, gamma: 2.1, Emax: 100, alpha: 1.0,
+        winLo: 0.5, winHi: 1.2, toxic: 2.0,
+        effectLabel: 'Na⁺/K⁺-ATPase Inotropy',
+        defaultDosing: {
+          mode: 'intermittent', route: 'oral',
+          bolus: 500, bolusMax: 1500, bolusStep: 25,
+          infRate: 8.0, infRateMax: 25, infRateStep: 0.5,
+          infStop: 96,
+          maintDose: 250, maintMax: 750, maintStep: 25,
+          interval: 24, intervalMin: 8, intervalMax: 48, intervalStep: 4,
+          infDurInterm: 0.5,
+          tciSite: 'c1', tciTarget: 0.9, tciMax: 2.5, tciStep: 0.05,
+          horizon: 168, horizonMin: 48, horizonMax: 240, horizonStep: 24
+        },
+        antagName: 'Digoxin-Fab',
+        antagHalfLife: 12
+      },
+
+      phenytoin: {
+        id: 'phenytoin',
+        name: 'Phenytoin',
+        compLabel: '1-Comp Nonlinear MM',
+        nComp: 1,
+        timeUnit: 'h',
+        doseUnit: 'mg',
+        concUnit: 'µg/mL',
+        allowOral: true,
+        lipophilic: false,
+        // PK (70 kg 1-comp saturable Michaelis-Menten hepatic CYP2C9)
+        V1: 45.0, V2: 0, V3: 0,
+        CL: 1.50, Q2: 0, Q3: 0,
+        t12_ke0: 1.0,
+        ka: 0.55, F: 0.90,
+        fRenal: 0.05, fHep: 0.95,
+        mmEnabled: true, Vmax: 20.5, Km: 4.5, // Vmax = 20.5 mg/h (~492 mg/d), Km = 4.5 ug/mL
+        EC50: 12.5, gamma: 2.4, Emax: 100, alpha: 1.0,
+        winLo: 10.0, winHi: 20.0, toxic: 25.0,
+        effectLabel: 'Na⁺ Channel Stabilization',
+        defaultDosing: {
+          mode: 'intermittent', route: 'oral',
+          bolus: 750, bolusMax: 1500, bolusStep: 25,
+          infRate: 15.0, infRateMax: 30, infRateStep: 0.5,
+          infStop: 120,
+          maintDose: 400, maintMax: 700, maintStep: 10,
+          interval: 24, intervalMin: 8, intervalMax: 36, intervalStep: 4,
+          infDurInterm: 1.0,
+          tciSite: 'c1', tciTarget: 15, tciMax: 30, tciStep: 0.5,
+          horizon: 168, horizonMin: 72, horizonMax: 240, horizonStep: 24
+        },
+        antagName: 'Antagonist',
+        antagHalfLife: 6
+      }
+    };
+
+    /* Classic Hughes/Shafer Reference Benchmarks for CSHT Overlay (all in min) */
+    const CSHT_BENCHMARKS = [
+      { id: 'remi', label: 'Remifentanil', V1: 5.1, V2: 9.8, V3: 5.4, CL: 2.60, Q2: 2.05, Q3: 0.076 },
+      { id: 'prop', label: 'Propofol',     V1: 16.0, V2: 32.0, V3: 200.0, CL: 1.85, Q2: 1.75, Q3: 0.65 },
+      { id: 'alf',  label: 'Alfentanil',   V1: 11.1, V2: 14.3, V3: 15.6, CL: 0.35, Q2: 1.42, Q3: 0.25 },
+      { id: 'fent', label: 'Fentanyl',     V1: 12.7, V2: 28.0, V3: 225.0, CL: 0.62, Q2: 1.95, Q3: 0.72 },
+    ];
+
+    /* 9 Clinical Scenario Presets */
+    const SCENARIO_PRESETS = [
+      {
+        id: 'propofol_tiva',
+        name: 'Propofol Standard TIVA',
+        tag: 'Bolus + 90m',
+        drug: 'propofol',
+        desc: '140 mg induction + 8.5 mg/min × 90 min infusion -> rapid redistribution wake-up.',
+        dosing: { mode: 'bolus_inf', bolus: 140, infRate: 8.5, infStop: 90, horizon: 165 }
+      },
+      {
+        id: 'fentanyl_4h',
+        name: 'Fentanyl 4h Infusion',
+        tag: '↑↑ CSHT',
+        drug: 'fentanyl',
+        desc: '4-hour infusion saturates lipophilic V₃ -> steep context-sensitive prolongation of offset.',
+        dosing: { mode: 'bolus_inf', bolus: 150, infRate: 1.9, infStop: 240, horizon: 480 }
+      },
+      {
+        id: 'remi_tci',
+        name: 'Remifentanil TCI',
+        tag: 'Esterase Offset',
+        drug: 'remifentanil',
+        desc: 'Effect-site TCI (4.5 ng/mL) for 120 min -> flat ~3.5 min CSHT & rapid wake-up.',
+        dosing: { mode: 'tci', tciSite: 'ce', tciTarget: 4.5, infStop: 120, horizon: 160 }
+      },
+      {
+        id: 'shock_induction',
+        name: 'Hemorrhagic Shock Induction',
+        tag: '↓CO · ↓V₁',
+        drug: 'propofol',
+        desc: 'CO 0.45× contracts central V₁ & Q₂/Q₃ -> standard 140 mg bolus triggers severe toxic overshoot!',
+        dosing: { mode: 'bolus_inf', bolus: 140, infRate: 6.0, infStop: 60, horizon: 120 },
+        patient: { cardiacOutput: 0.45 }
+      },
+      {
+        id: 'morbid_obesity',
+        name: 'Morbid Obesity TIVA',
+        tag: '135 kg · ↑↑V₃',
+        drug: 'propofol',
+        desc: '135 kg adiposity expands lipophilic V₃ reservoir -> delayed wake-up after prolonged infusion.',
+        dosing: { mode: 'bolus_inf', bolus: 180, infRate: 10.5, infStop: 180, horizon: 320 },
+        patient: { weight: 135 }
+      },
+      {
+        id: 'vanco_ckd4',
+        name: 'Vancomycin Load vs CKD 4',
+        tag: 'eGFR 22',
+        drug: 'vancomycin',
+        desc: 'eGFR 22 mL/min slashes renal CL (fe=0.90) -> prolonged t½. Try "Skip Loading Dose" or adjust q24h!',
+        dosing: { mode: 'intermittent', bolus: 1750, maintDose: 1000, interval: 24, infDurInterm: 1.0, horizon: 96 },
+        patient: { egfr: 22 }
+      },
+      {
+        id: 'midaz_cyp3a4',
+        name: 'Midazolam + CYP3A4 Inhibitor',
+        tag: 'Clarithromycin',
+        drug: 'midazolam',
+        desc: 'CYP3A4 inhibition (0.25×) collapses hepatic clearance -> toxic accumulation & delayed emergence.',
+        dosing: { mode: 'bolus_inf', bolus: 2500, infRate: 42, infStop: 180, horizon: 420 },
+        patient: { hepatic: 0.25 }
+      },
+      {
+        id: 'phenytoin_mm',
+        name: 'Phenytoin Zero-Order Saturation',
+        tag: 'Nonlinear MM',
+        drug: 'phenytoin',
+        desc: '470 mg/d approaches V_max (492 mg/d) -> tiny dose increase causes disproportionate toxic surge!',
+        dosing: { mode: 'intermittent', route: 'oral', bolus: 0, maintDose: 470, interval: 24, horizon: 168 }
+      },
+      {
+        id: 'opioid_naloxone',
+        name: 'Opioid Overdose + Naloxone',
+        tag: 'Schild Shift',
+        drug: 'fentanyl',
+        desc: 'High fentanyl overdose reversed at 90 min by competitive Naloxone bolus (watch re-narcotization!).',
+        dosing: { mode: 'bolus_inf', bolus: 350, infRate: 3.2, infStop: 120, horizon: 300 },
+        rescue: { active: true, time: 90, magnitude: 14.0 }
+      }
+    ];
+
+    const DEFAULT_PATIENT = {
+      weight: 70,          // kg (40–160)
+      egfr: 100,           // mL/min (5–130)
+      hepatic: 1.0,        // CYP450 / hepatic activity (0.2–2.5)
+      cardiacOutput: 1.0,  // Relative CO (0.4–1.5)
+      fuScale: 1.0         // Relative plasma unbound fraction f_u (0.5–2.0)
+    };
+
+    const DEFAULT_PD_MODS = {
+      compAntag: 0.0,      // Steady-state competitive [B]/KB (0–20)
+      nonCompAntag: 0.0,   // Non-competitive / irreversible [B]/KB (0–5)
+      synergy: 1.0         // Leftward EC50 synergy divisor (0.5–4.0)
+    };
+
+    /* =========================================================================
+       3. APPLICATION STATE
+       ========================================================================= */
+    const state = {
+      drugId: 'propofol',
+      presetId: 'propofol_tiva',
+      pk: {},
+      dosing: {},
+      patient: { ...DEFAULT_PATIENT },
+      pd: {},
+      pdMods: { ...DEFAULT_PD_MODS },
+      rescue: { active: false, time: 60, magnitude: 12.0 },
+      // View toggles
+      activeTab: 'presets',
+      yScale: 'linear',      // 'linear' | 'log'
+      showTissues: false,
+      showEffect: true,
+      pdMode: 'hill',        // 'hill' | 'hysteresis'
+      // Hover & Baseline Pinning
+      hoverTimeIdx: null,    // null -> inspect Peak Ce in SVG
+      cshtHoverIdx: null,
+      pdHover: null,
+      pinnedSim: null,
+      sim: null
+    };
+
+    /* =========================================================================
+       4. EFFECTIVE PHYSIOLOGICAL PK SCALING & EXACT CSHT SOLVER
+       ========================================================================= */
+    function computeEffectivePK(drug, pk, patient) {
+      const wtRatio = clamp(patient.weight / 70.0, 0.5, 2.5);
+      const co = clamp(patient.cardiacOutput, 0.35, 1.6);
+      const fu = clamp(patient.fuScale, 0.4, 2.5);
+
+      // Shock / Low CO contracts central compartment V1 & reduces intercompartmental perfusion Q2, Q3
+      const coV1Factor = Math.pow(co, 0.65);
+      const coQFactor = Math.pow(co, 0.85);
+
+      // Adiposity expands lipophilic peripheral V3 strongly, hydrophilic modestly
+      const excessWt = Math.max(0, patient.weight - 70.0);
+      const leanScale = 0.65 + 0.35 * wtRatio;
+      const v1 = Math.max(0.5, pk.V1 * leanScale * coV1Factor * (0.85 + 0.15 * fu));
+      const v2 = pk.V2 > 0 ? Math.max(0.5, pk.V2 * Math.pow(wtRatio, 0.85) * (0.75 + 0.25 * fu)) : 0;
+      const v3 = pk.V3 > 0
+        ? Math.max(0.5, pk.V3 * (drug.lipophilic ? (wtRatio + (excessWt / 70.0) * 1.15) : wtRatio) * (0.75 + 0.25 * fu))
+        : 0;
+
+      const q2 = pk.Q2 > 0 ? pk.Q2 * Math.pow(wtRatio, 0.75) * coQFactor : 0;
+      const q3 = pk.Q3 > 0 ? pk.Q3 * Math.pow(wtRatio, 0.75) * coQFactor : 0;
+
+      // Clearance scaling via renal (eGFR), hepatic (CYP450 * CO^0.35), and organ-independent (esterase) fractions
+      const fRen = drug.fRenal;
+      const fHep = drug.fHep;
+      const fOther = Math.max(0, 1 - fRen - fHep);
+      const renFactor = clamp(patient.egfr / 100.0, 0.04, 1.5);
+      const hepFactor = clamp(patient.hepatic * Math.pow(co, 0.30), 0.12, 3.0);
+      const clScale = (fRen * renFactor + fHep * hepFactor + fOther) * Math.pow(wtRatio, 0.55) * (0.75 + 0.25 * fu);
+
+      const cl = Math.max(0.01, pk.CL * clScale);
+      const vmax = Math.max(0.1, pk.Vmax * hepFactor * Math.pow(wtRatio, 0.65));
+      const km = Math.max(0.1, pk.Km / Math.pow(fu, 0.6));
+      const ke0 = LN2 / Math.max(0.05, pk.t12_ke0);
+
+      // Micro rate constants
+      const k10 = cl / v1;
+      const k12 = v2 > 0 ? q2 / v1 : 0;
+      const k21 = v2 > 0 ? q2 / v2 : 0;
+      const k13 = v3 > 0 ? q3 / v1 : 0;
+      const k31 = v3 > 0 ? q3 / v3 : 0;
+      const vss = v1 + v2 + v3;
+
+      return {
+        V1: v1, V2: v2, V3: v3, Vss: vss,
+        CL: cl, Q2: q2, Q3: q3,
+        ke0, t12_ke0: pk.t12_ke0,
+        ka: pk.ka, F: pk.F,
+        mmEnabled: pk.mmEnabled, Vmax: vmax, Km: km,
+        k10, k12, k21, k13, k31,
+        fu
+      };
+    }
+
+    /**
+     * Exact Context-Sensitive Half-Time (50% & 80% decrement) Solver
+     * Uses exact closed-form peripheral loading under constant plasma concentration C1 = 1
+     * (C2(T) = 1 - exp(-k21*T), C3(T) = 1 - exp(-k31*T)), followed by high-accuracy RK4 free decay.
+     */
+    const CSHT_DURATIONS_MIN = [1, 5, 10, 15, 25, 40, 60, 90, 120, 150, 180, 220, 260, 300, 360, 420, 480];
+
+    function solveCSHTCurve(effMin, mmParams = null) {
+      // effMin has rates strictly in min^-1 (V in L, CL/Q in L/min)
+      const { V1, V2, V3, k10, k12, k21, k13, k31 } = effMin;
+      const isMM = Boolean(mmParams && mmParams.mmEnabled);
+      const cInit = isMM ? mmParams.cRef : 1.0;
+
+      // Choose stable decay step size based on stiffest rate constant
+      const maxRate = Math.max(0.005, k10 + k12 + k13, k21, k31);
+      const baseDt = clamp(0.18 / maxRate, 0.02, 0.5);
+
+      const d50 = [];
+      const d80 = [];
+
+      for (let i = 0; i < CSHT_DURATIONS_MIN.length; i++) {
+        const T = CSHT_DURATIONS_MIN[i];
+        // Exact closed-form tissue equilibration after holding C1 = cInit for duration T
+        let c1 = cInit;
+        let c2 = V2 > 0 ? cInit * (1 - Math.exp(-k21 * T)) : 0;
+        let c3 = V3 > 0 ? cInit * (1 - Math.exp(-k31 * T)) : 0;
+
+        let t = 0;
+        let t50 = null;
+        let t80 = null;
+        const maxDecTime = 600; // cap search at 600 min
+
+        const deriv = (x1, x2, x3) => {
+          const elim = isMM
+            ? (mmParams.VmaxMin * x1) / ((mmParams.Km + x1) * V1)
+            : k10 * x1;
+          const dx1 = -elim - k12 * (x1 - x2) - k13 * (x1 - x3);
+          const dx2 = V2 > 0 ? k21 * (x1 - x2) : 0;
+          const dx3 = V3 > 0 ? k31 * (x1 - x3) : 0;
+          return [dx1, dx2, dx3];
+        };
+
+        let guard = 0;
+        while (t < maxDecTime && t80 === null && guard++ < 8000) {
+          // Adaptive step expansion as rapid phase finishes
+          const h = t < 20 ? baseDt : (t < 80 ? Math.min(0.6, baseDt * 2.5) : Math.min(1.5, baseDt * 5));
+          const prevC1 = c1;
+
+          const r1 = deriv(c1, c2, c3);
+          const r2 = deriv(Math.max(0, c1 + 0.5 * h * r1[0]), Math.max(0, c2 + 0.5 * h * r1[1]), Math.max(0, c3 + 0.5 * h * r1[2]));
+          const r3 = deriv(Math.max(0, c1 + 0.5 * h * r2[0]), Math.max(0, c2 + 0.5 * h * r2[1]), Math.max(0, c3 + 0.5 * h * r2[2]));
+          const r4 = deriv(Math.max(0, c1 + h * r3[0]), Math.max(0, c2 + h * r3[1]), Math.max(0, c3 + h * r3[2]));
+
+          c1 = Math.max(0, c1 + (h / 6) * (r1[0] + 2 * r2[0] + 2 * r3[0] + r4[0]));
+          c2 = Math.max(0, c2 + (h / 6) * (r1[1] + 2 * r2[1] + 2 * r3[1] + r4[1]));
+          c3 = Math.max(0, c3 + (h / 6) * (r1[2] + 2 * r2[2] + 2 * r3[2] + r4[2]));
+
+          const fracPrev = prevC1 / cInit;
+          const fracCurr = c1 / cInit;
+
+          if (t50 === null && fracCurr <= 0.50) {
+            const alpha = (fracPrev - 0.50) / Math.max(1e-9, fracPrev - fracCurr);
+            t50 = t + clamp(alpha, 0, 1) * h;
+          }
+          if (t80 === null && fracCurr <= 0.20) {
+            const alpha = (fracPrev - 0.20) / Math.max(1e-9, fracPrev - fracCurr);
+            t80 = t + clamp(alpha, 0, 1) * h;
+          }
+          t += h;
+        }
+
+        d50.push(t50 !== null ? t50 : maxDecTime);
+        d80.push(t80 !== null ? t80 : maxDecTime);
+      }
+
+      return { durations: CSHT_DURATIONS_MIN, d50, d80 };
+    }
+
+    // Precompute the 4 reference CSHT curves once at startup
+    const PRECOMPUTED_CSHT_REFS = CSHT_BENCHMARKS.map(b => {
+      const effMin = {
+        V1: b.V1, V2: b.V2, V3: b.V3,
+        k10: b.CL / b.V1,
+        k12: b.Q2 / b.V1, k21: b.Q2 / b.V2,
+        k13: b.Q3 / b.V1, k31: b.Q3 / b.V3
+      };
+      return { id: b.id, label: b.label, curve: solveCSHTCurve(effMin) };
+    });
+
+    /* =========================================================================
+       5. PHARMACODYNAMIC SIGMOIDAL HILL EQUATION + RECEPTOR INTERACTION ENGINE
+       ========================================================================= */
+    function computePDEffect(ce, pd, pdMods, fuScale, rescueAntagB = 0) {
+      // Unbound free fraction scales effective concentration reaching receptor
+      const cEff = Math.max(0, ce * (0.70 + 0.30 * fuScale));
+      const compTotal = Math.max(0, pdMods.compAntag + rescueAntagB);
+      const nonComp = Math.max(0, pdMods.nonCompAntag);
+      const syn = Math.max(0.25, pdMods.synergy);
+
+      // Competitive antagonist -> Schild parallel rightward shift: EC50_eff = EC50 * (1 + [B]/KB) / synergy
+      const ec50Eff = Math.max(1e-5, (pd.EC50 * (1 + compTotal)) / syn);
+      // Non-competitive antagonist & partial agonist intrinsic activity alpha -> depress Emax
+      const emaxEff = clamp((pd.Emax * pd.alpha) / (1 + nonComp), 0, 100);
+
+      const g = clamp(pd.gamma, 0.4, 6.0);
+      const num = Math.pow(cEff, g);
+      const den = Math.pow(ec50Eff, g) + num;
+      const effect = den > 0 ? (emaxEff * num) / den : 0;
+
+      return { effect: clamp(effect, 0, 100), ec50Eff, emaxEff };
+    }
+
+    /* =========================================================================
+       6. MULTI-COMPARTMENT MAMMILLARY + EFFECT-SITE + TCI RK4 ODE SOLVER
+       ========================================================================= */
+    function runPKPDSimulation() {
+      const drug = DRUG_LIBRARY[state.drugId];
+      const eff = computeEffectivePK(drug, state.pk, state.patient);
+      const dos = state.dosing;
+      const horizon = Math.max(10, dos.horizon);
+      const N_OUT = 360;
+      const dtOut = horizon / N_OUT;
+
+      // Determine safe RK4 substep from stiffest eigenvalue/rate constant
+      const maxRate = Math.max(
+        0.02,
+        eff.k10 + eff.k12 + eff.k13,
+        eff.k21,
+        eff.k31,
+        eff.ke0,
+        eff.ka || 0
+      );
+      const maxSafeDt = 0.22 / maxRate;
+      const subSteps = clamp(Math.ceil(dtOut / maxSafeDt), 2, 40);
+      const h = dtOut / subSteps;
+
+      // Antagonist rescue clearance rate constant
+      const kAntag = LN2 / Math.max(1.0, drug.antagHalfLife);
+
+      // Helper for Effect-Site TCI exact unit-bolus impulse peak calculation
+      let tciCeBolus = 0;
+      let tciPauseUntil = 0;
+      if (dos.mode === 'tci' && dos.tciSite === 'ce') {
+        // Compute exact peak Ce & t_peak for a unit bolus (A1=1) using quick RK4 pass
+        let u1 = 1.0 / eff.V1, u2 = 0, u3 = 0, ue = 0;
+        let maxUe = 0, tPeak = 0;
+        const scanMax = Math.min(horizon * 0.5, eff.t12_ke0 * 6.5);
+        const hScan = clamp(0.12 / maxRate, 0.01, 0.2);
+        const nScan = Math.min(2000, Math.ceil(scanMax / hScan));
+        for (let k = 0; k < nScan; k++) {
+          const dUnit = (x1, x2, x3, xe) => {
+            const elim = eff.mmEnabled ? (eff.Vmax / (eff.Km * eff.V1)) * x1 : eff.k10 * x1;
+            return [
+              -elim - eff.k12 * (x1 - x2) - eff.k13 * (x1 - x3),
+              eff.V2 > 0 ? eff.k21 * (x1 - x2) : 0,
+              eff.V3 > 0 ? eff.k31 * (x1 - x3) : 0,
+              eff.ke0 * (x1 - xe)
+            ];
+          };
+          const a = dUnit(u1, u2, u3, ue);
+          const b = dUnit(u1 + 0.5 * hScan * a[0], u2 + 0.5 * hScan * a[1], u3 + 0.5 * hScan * a[2], ue + 0.5 * hScan * a[3]);
+          const c = dUnit(u1 + 0.5 * hScan * b[0], u2 + 0.5 * hScan * b[1], u3 + 0.5 * hScan * b[2], ue + 0.5 * hScan * b[3]);
+          const d = dUnit(u1 + hScan * c[0], u2 + hScan * c[1], u3 + hScan * c[2], ue + hScan * c[3]);
+          u1 = Math.max(0, u1 + (hScan / 6) * (a[0] + 2 * b[0] + 2 * c[0] + d[0]));
+          u2 = Math.max(0, u2 + (hScan / 6) * (a[1] + 2 * b[1] + 2 * c[1] + d[1]));
+          u3 = Math.max(0, u3 + (hScan / 6) * (a[2] + 2 * b[2] + 2 * c[2] + d[2]));
+          ue = Math.max(0, ue + (hScan / 6) * (a[3] + 2 * b[3] + 2 * c[3] + d[3]));
+          if (ue > maxUe) {
+            maxUe = ue;
+            tPeak = (k + 1) * hScan;
+          } else if (k > 8 && ue < maxUe * 0.995) {
+            break;
+          }
+        }
+        tciCeBolus = maxUe > 1e-6 ? dos.tciTarget / maxUe : dos.tciTarget * eff.V1;
+        tciPauseUntil = tPeak;
+      }
+
+      // State amounts: Ag (gut), A1 (central), A2 (fast periph), A3 (slow periph), Ce (effect conc), B (rescue antag)
+      let Ag = 0, A1 = 0, A2 = 0, A3 = 0, Ce = 0, antagB = 0;
+
+      // Initial Bolus / Loading Dose at t = 0
+      const isOral = drug.allowOral && dos.route === 'oral';
+      if (dos.mode === 'bolus_inf') {
+        if (isOral) Ag += dos.bolus * eff.F;
+        else A1 += dos.bolus;
+      } else if (dos.mode === 'tci') {
+        A1 += dos.tciSite === 'ce' ? tciCeBolus : (dos.tciTarget * eff.V1);
+      } else if (dos.mode === 'intermittent') {
+        // If bolus (loading dose) > 0, dose 0 uses loading dose, else uses maintenance dose
+        const firstDose = dos.bolus > 0 ? dos.bolus : dos.maintDose;
+        if (isOral) {
+          Ag += firstDose * eff.F;
+        } else if (dos.infDurInterm <= h * 1.5) {
+          A1 += firstDose;
+        }
+      }
+
+      // Infusion rate function R_in(t, curA1, curA2, curA3) in doseUnit / timeUnit
+      function getInfusionRate(t, a1, a2, a3) {
+        if (dos.mode === 'bolus_inf') {
+          return t <= dos.infStop ? dos.infRate : 0;
+        }
+        if (dos.mode === 'tci') {
+          if (t > dos.infStop) return 0;
+          if (dos.tciSite === 'ce' && t < tciPauseUntil) return 0;
+          const cTgt = dos.tciTarget;
+          const c1 = a1 / eff.V1;
+          const c2 = eff.V2 > 0 ? a2 / eff.V2 : 0;
+          const c3 = eff.V3 > 0 ? a3 / eff.V3 : 0;
+          const elimRate = eff.mmEnabled
+            ? (eff.Vmax * cTgt) / (eff.Km + cTgt)
+            : eff.CL * cTgt;
+          const distRate = eff.Q2 * (cTgt - c2) + eff.Q3 * (cTgt - c3);
+          // Mild proportional correction holds target razor-flat even under nonlinear MM
+          const corr = (cTgt - c1) * eff.V1 * 1.6;
+          return Math.max(0, elimRate + distRate + corr);
+        }
+        // Intermittent IV short infusion
+        if (!isOral && dos.infDurInterm > h * 1.5) {
+          const tau = Math.max(1, dos.interval);
+          const doseIdx = Math.floor(t / tau);
+          const tInDose = t - doseIdx * tau;
+          if (tInDose < dos.infDurInterm) {
+            const doseAmt = (doseIdx === 0 && dos.bolus > 0) ? dos.bolus : dos.maintDose;
+            return doseAmt / dos.infDurInterm;
+          }
+        }
+        return 0;
+      }
+
+      const times = new Float32Array(N_OUT + 1);
+      const C1_arr = new Float32Array(N_OUT + 1);
+      const C2_arr = new Float32Array(N_OUT + 1);
+      const C3_arr = new Float32Array(N_OUT + 1);
+      const Ce_arr = new Float32Array(N_OUT + 1);
+      const Ag_arr = new Float32Array(N_OUT + 1);
+      const Eff_arr = new Float32Array(N_OUT + 1);
+      const Antag_arr = new Float32Array(N_OUT + 1);
+
+      let auc = 0;
+      let peakC1 = 0, peakCe = 0, peakCeIdx = 0, peakEffect = 0;
+      let timeInWindow = 0;
+      let nextDoseNum = 1;
+      let rescueFired = false;
+
+      const recordStep = idx => {
+        const c1 = A1 / eff.V1;
+        const c2 = eff.V2 > 0 ? A2 / eff.V2 : 0;
+        const c3 = eff.V3 > 0 ? A3 / eff.V3 : 0;
+        const pdRes = computePDEffect(Ce, state.pd, state.pdMods, eff.fu, antagB);
+
+        times[idx] = idx * dtOut;
+        C1_arr[idx] = c1;
+        C2_arr[idx] = c2;
+        C3_arr[idx] = c3;
+        Ce_arr[idx] = Ce;
+        Ag_arr[idx] = Ag;
+        Eff_arr[idx] = pdRes.effect;
+        Antag_arr[idx] = antagB;
+
+        if (c1 > peakC1) peakC1 = c1;
+        if (Ce > peakCe) { peakCe = Ce; peakCeIdx = idx; }
+        if (pdRes.effect > peakEffect) peakEffect = pdRes.effect;
+        if (idx > 0) {
+          auc += 0.5 * (C1_arr[idx - 1] + c1) * dtOut;
+          if (c1 >= drug.winLo && c1 <= drug.winHi) timeInWindow += dtOut;
+        }
+      };
+
+      recordStep(0);
+
+      for (let i = 1; i <= N_OUT; i++) {
+        let tCur = (i - 1) * dtOut;
+
+        for (let s = 0; s < subSteps; s++) {
+          // Check intermittent bolus/oral scheduled dose crossing
+          if (dos.mode === 'intermittent') {
+            const tau = Math.max(1, dos.interval);
+            const tNextDose = nextDoseNum * tau;
+            if (tCur <= tNextDose && tCur + h > tNextDose) {
+              if (isOral) Ag += dos.maintDose * eff.F;
+              else if (dos.infDurInterm <= h * 1.5) A1 += dos.maintDose;
+              nextDoseNum++;
+            }
+          }
+
+          // Check timed Antagonist Rescue Bolus event
+          if (state.rescue.active && !rescueFired && tCur >= state.rescue.time) {
+            antagB += state.rescue.magnitude;
+            rescueFired = true;
+          }
+
+          const deriv = (tVal, g, a1, a2, a3, ce, b) => {
+            const c1 = Math.max(0, a1 / eff.V1);
+            const c2 = eff.V2 > 0 ? Math.max(0, a2 / eff.V2) : 0;
+            const c3 = eff.V3 > 0 ? Math.max(0, a3 / eff.V3) : 0;
+            const rIn = getInfusionRate(tVal, a1, a2, a3);
+            const absRate = (isOral && eff.ka > 0) ? eff.ka * g : 0;
+            const elimRate = eff.mmEnabled
+              ? (eff.Vmax * c1) / (eff.Km + c1)
+              : eff.CL * c1;
+            const q12 = eff.V2 > 0 ? eff.Q2 * (c1 - c2) : 0;
+            const q13 = eff.V3 > 0 ? eff.Q3 * (c1 - c3) : 0;
+
+            return [
+              -absRate,
+              rIn + absRate - elimRate - q12 - q13,
+              q12,
+              q13,
+              eff.ke0 * (c1 - ce),
+              -kAntag * b
+            ];
+          };
+
+          const k1 = deriv(tCur, Ag, A1, A2, A3, Ce, antagB);
+          const k2 = deriv(tCur + 0.5 * h,
+            Math.max(0, Ag + 0.5 * h * k1[0]), Math.max(0, A1 + 0.5 * h * k1[1]),
+            Math.max(0, A2 + 0.5 * h * k1[2]), Math.max(0, A3 + 0.5 * h * k1[3]),
+            Math.max(0, Ce + 0.5 * h * k1[4]), Math.max(0, antagB + 0.5 * h * k1[5]));
+          const k3 = deriv(tCur + 0.5 * h,
+            Math.max(0, Ag + 0.5 * h * k2[0]), Math.max(0, A1 + 0.5 * h * k2[1]),
+            Math.max(0, A2 + 0.5 * h * k2[2]), Math.max(0, A3 + 0.5 * h * k2[3]),
+            Math.max(0, Ce + 0.5 * h * k2[4]), Math.max(0, antagB + 0.5 * h * k2[5]));
+          const k4 = deriv(tCur + h,
+            Math.max(0, Ag + h * k3[0]), Math.max(0, A1 + h * k3[1]),
+            Math.max(0, A2 + h * k3[2]), Math.max(0, A3 + h * k3[3]),
+            Math.max(0, Ce + h * k3[4]), Math.max(0, antagB + h * k3[5]));
+
+          Ag = Math.max(0, Ag + (h / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]));
+          A1 = Math.max(0, A1 + (h / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]));
+          A2 = Math.max(0, A2 + (h / 6) * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]));
+          A3 = Math.max(0, A3 + (h / 6) * (k1[3] + 2 * k2[3] + 2 * k3[3] + k4[3]));
+          Ce = Math.max(0, Ce + (h / 6) * (k1[4] + 2 * k2[4] + 2 * k3[4] + k4[4]));
+          antagB = Math.max(0, antagB + (h / 6) * (k1[5] + 2 * k2[5] + 2 * k3[5] + k4[5]));
+
+          tCur += h;
+        }
+
+        recordStep(i);
+      }
+
+      // Compute Wake-Up / Offset Time (time after infusion stop to drop below therapeutic floor winLo)
+      let wakeUpTime = null;
+      if (dos.mode === 'bolus_inf' || dos.mode === 'tci') {
+        const stopIdx = Math.min(N_OUT, Math.round((dos.infStop / horizon) * N_OUT));
+        if (Ce_arr[stopIdx] >= drug.winLo) {
+          for (let i = stopIdx; i <= N_OUT; i++) {
+            if (Ce_arr[i] < drug.winLo) {
+              wakeUpTime = times[i] - dos.infStop;
+              break;
+            }
+          }
+          if (wakeUpTime === null) wakeUpTime = -(horizon - dos.infStop); // negative sentinel = "> X"
+        } else {
+          wakeUpTime = 0;
+        }
+      }
+
+      // Terminal half-life approximation (Vss / CL * ln2, or slowest peripheral rate bound)
+      let termHalfLife = LN2 * (eff.Vss / Math.max(0.01, eff.CL));
+      if (eff.V3 > 0 && eff.k31 > 0) {
+        termHalfLife = Math.max(termHalfLife, (LN2 / eff.k31) * 0.92);
+      }
+      if (eff.mmEnabled) {
+        const cRef = Math.max(1.0, peakC1 * 0.65);
+        const effCL_MM = eff.Vmax / (eff.Km + cRef);
+        termHalfLife = LN2 * (eff.V1 / Math.max(0.01, effCL_MM));
+      }
+
+      // Compute Active CSHT Curve (converted to min^-1 for unified 0–480 min CSHT chart)
+      const timeToMin = drug.timeUnit === 'h' ? 60.0 : 1.0;
+      const effMin = {
+        V1: eff.V1, V2: eff.V2, V3: eff.V3,
+        k10: eff.k10 / timeToMin,
+        k12: eff.k12 / timeToMin, k21: eff.k21 / timeToMin,
+        k13: eff.k13 / timeToMin, k31: eff.k31 / timeToMin
+      };
+      const mmInfo = eff.mmEnabled
+        ? { mmEnabled: true, VmaxMin: eff.Vmax / timeToMin, Km: eff.Km, cRef: (drug.winLo + drug.winHi) * 0.5 }
+        : null;
+      const csht = solveCSHTCurve(effMin, mmInfo);
+
+      // Interpolate CSHT at active infusion duration (in minutes)
+      const activeInfDurMin = (dos.mode === 'bolus_inf' || dos.mode === 'tci')
+        ? clamp(dos.infStop * timeToMin, 1, 480)
+        : clamp(dos.interval * timeToMin, 1, 480);
+      let activeCSHT50 = csht.d50[0];
+      for (let i = 1; i < csht.durations.length; i++) {
+        if (activeInfDurMin <= csht.durations[i]) {
+          const frac = (activeInfDurMin - csht.durations[i - 1]) / (csht.durations[i] - csht.durations[i - 1]);
+          activeCSHT50 = csht.d50[i - 1] + frac * (csht.d50[i] - csht.d50[i - 1]);
+          break;
+        }
+        activeCSHT50 = csht.d50[i];
+      }
+
+      const finalC1 = C1_arr[N_OUT];
+      const ttrPct = (timeInWindow / horizon) * 100;
+      const pdSummary = computePDEffect(peakCe, state.pd, state.pdMods, eff.fu, 0);
+
+      return {
+        drug, eff,
+        times, C1: C1_arr, C2: C2_arr, C3: C3_arr, Ce: Ce_arr, Ag: Ag_arr, Effect: Eff_arr, AntagB: Antag_arr,
+        csht, activeInfDurMin, activeCSHT50,
+        metrics: {
+          peakC1, peakCe, peakCeIdx, finalC1, auc,
+          effCL: eff.CL, Vss: eff.Vss,
+          termHalfLife, csht50: activeCSHT50,
+          peakEffect, ttrPct, wakeUpTime,
+          ec50Eff: pdSummary.ec50Eff, emaxEff: pdSummary.emaxEff,
+          tciCeBolus
+        }
+      };
+    }
+
+    function recompute() {
+      try {
+        state.sim = runPKPDSimulation();
+        renderHeaderBadges();
+        renderTelemetry();
+        renderPKSchematic();
+        renderInterpretation();
+        drawConcCanvas();
+        drawCSHTCanvas();
+        drawPDCanvas();
+      } catch (err) {
+        console.error('PK/PD Lab solver error:', err);
+      }
+    }
+
+    /* =========================================================================
+       7. TELEMETRY, SVG COMPARTMENT SCHEMATIC & CLINICAL INTERPRETATION
+       ========================================================================= */
+    function renderHeaderBadges() {
+      const d = DRUG_LIBRARY[state.drugId];
+      document.getElementById('hdr-drug-badge').textContent = `${d.name} · ${d.compLabel}`;
+      const pr = SCENARIO_PRESETS.find(p => p.id === state.presetId);
+      document.getElementById('hdr-preset-badge').textContent = pr ? pr.name : 'Custom Regimen';
+    }
+
+    function formatDelta(curr, ref, dec = 1) {
+      if (!Number.isFinite(curr) || !Number.isFinite(ref)) return '';
+      const diff = curr - ref;
+      const eps = dec === 0 ? 0.5 : (dec === 1 ? 0.05 : 0.005);
+      if (Math.abs(diff) < eps) return '<span class="font-mono text-[9.5px] text-zinc-400">&mdash;</span>';
+      const sign = diff > 0 ? '+' : '';
+      const cls = diff > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-sky-600 dark:text-sky-400';
+      return `<span class="font-mono text-[9.5px] tabular-nums ${cls}">${sign}${diff.toFixed(dec)}</span>`;
+    }
+
+    function renderTelemetry() {
+      const sim = state.sim;
+      const m = sim.metrics;
+      const d = sim.drug;
+      const refM = state.pinnedSim && state.pinnedSim.drug.id === d.id ? state.pinnedSim.metrics : null;
+
+      const decC = d.winHi < 5 ? 2 : (d.winHi < 25 ? 1 : 0);
+      const peakToxic = m.peakC1 >= d.toxic || m.peakCe >= d.toxic;
+      const peakSub = m.peakCe < d.winLo;
+      const peakCls = peakToxic ? 'text-rose-600 dark:text-rose-400' : (peakSub ? 'text-amber-600 dark:text-amber-400' : 'text-tealLight dark:text-tealDark');
+
+      const wakeStr = m.wakeUpTime === null
+        ? 'N/A (Interm.)'
+        : (m.wakeUpTime < 0 ? `> ${Math.round(-m.wakeUpTime)} ${d.timeUnit}` : `${m.wakeUpTime.toFixed(1)} ${d.timeUnit}`);
+
+      const tiles = [
+        {
+          title: 'Peak C₁ / Cₑ',
+          delta: refM ? formatDelta(m.peakCe, refM.peakCe, decC) : '',
+          val: `${m.peakC1.toFixed(decC)} / ${m.peakCe.toFixed(decC)}`,
+          unit: d.concUnit,
+          sub: `Window ${d.winLo}–${d.winHi} · Tox >${d.toxic}`,
+          cls: peakCls
+        },
+        {
+          title: 'Final C₁ · AUC',
+          delta: refM ? formatDelta(m.finalC1, refM.finalC1, decC) : '',
+          val: `${m.finalC1.toFixed(decC)}`,
+          unit: d.concUnit,
+          sub: `AUC ${m.auc < 100 ? m.auc.toFixed(1) : Math.round(m.auc)} ${d.concUnit}·${d.timeUnit}`,
+          cls: m.finalC1 >= d.toxic ? 'text-rose-600 dark:text-rose-400' : 'text-[#09090b] dark:text-[#fafafa]'
+        },
+        {
+          title: 'Eff. CL · Vss',
+          delta: refM ? formatDelta(m.effCL, refM.effCL, 2) : '',
+          val: `${m.effCL.toFixed(2)}`,
+          unit: `L/${d.timeUnit}`,
+          sub: `Vss ${Math.round(m.Vss)} L · V₁ ${sim.eff.V1.toFixed(1)} L`,
+          cls: 'text-[#09090b] dark:text-[#fafafa]'
+        },
+        {
+          title: 'Term. t½ · CSHT',
+          delta: refM ? formatDelta(m.csht50, refM.csht50, 1) : '',
+          val: `${m.termHalfLife < 100 ? m.termHalfLife.toFixed(1) : Math.round(m.termHalfLife)} ${d.timeUnit}`,
+          unit: '',
+          sub: `CSHT ${m.csht50 >= 599 ? '>600' : m.csht50.toFixed(1)} min @${Math.round(sim.activeInfDurMin)}m`,
+          cls: 'text-[#09090b] dark:text-[#fafafa]'
+        },
+        {
+          title: 'Peak Effect · TTR',
+          delta: refM ? formatDelta(m.peakEffect, refM.peakEffect, 0) : '',
+          val: `${Math.round(m.peakEffect)}%`,
+          unit: '',
+          sub: `Time in Window: ${Math.round(m.ttrPct)}%`,
+          cls: m.peakEffect > 88 ? 'text-violet-700 dark:text-violet-300' : 'text-[#09090b] dark:text-[#fafafa]'
+        },
+        {
+          title: 'Wake-Up Offset',
+          delta: refM && m.wakeUpTime !== null && refM.wakeUpTime !== null && m.wakeUpTime >= 0 && refM.wakeUpTime >= 0
+            ? formatDelta(m.wakeUpTime, refM.wakeUpTime, 1) : '',
+          val: wakeStr,
+          unit: '',
+          sub: `Cₑ < ${d.winLo} ${d.concUnit} post-stop`,
+          cls: (m.wakeUpTime !== null && m.wakeUpTime < 0) ? 'text-amber-600 dark:text-amber-400' : 'text-[#09090b] dark:text-[#fafafa]'
+        }
+      ];
+
+      document.getElementById('telemetry-grid').innerHTML = tiles.map(t => `
+        <div class="px-3.5 py-2.5 flex flex-col justify-between min-w-0">
+          <div class="flex items-center justify-between gap-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span class="truncate">${t.title}</span>
+            ${t.delta}
+          </div>
+          <div class="flex items-baseline gap-1 mt-1 min-w-0">
+            <span class="font-mono text-[15px] font-semibold tabular-nums leading-tight truncate ${t.cls}">${t.val}</span>
+            ${t.unit ? `<span class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 shrink-0">${t.unit}</span>` : ''}
+          </div>
+          <div class="text-[9.5px] font-mono text-zinc-400 dark:text-zinc-500 mt-0.5 truncate tabular-nums">${t.sub}</div>
+        </div>
+      `).join('');
+    }
+
+    /* --- Interactive SVG 3-Compartment + Effect-Site Schematic --- */
+    function renderPKSchematic() {
+      const svg = document.getElementById('pk-svg');
+      const sim = state.sim;
+      if (!svg || !sim) return;
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const d = sim.drug;
+      const eff = sim.eff;
+      const idx = state.hoverTimeIdx !== null ? clamp(state.hoverTimeIdx, 0, sim.times.length - 1) : sim.metrics.peakCeIdx;
+
+      const tInsp = sim.times[idx];
+      const c1 = sim.C1[idx], c2 = sim.C2[idx], c3 = sim.C3[idx], ce = sim.Ce[idx], ag = sim.Ag[idx];
+      const effPct = sim.Effect[idx];
+      const decC = d.winHi < 5 ? 2 : (d.winHi < 25 ? 1 : 0);
+
+      document.getElementById('svg-inspect-badge').textContent = state.hoverTimeIdx !== null
+        ? `t = ${tInsp.toFixed(1)} ${d.timeUnit}`
+        : `Peak Cₑ (${tInsp.toFixed(1)} ${d.timeUnit})`;
+
+      const bgBox = isDark ? '#141418' : '#ffffff';
+      const borderCol = isDark ? '#2e2e36' : '#d4d4d8';
+      const textMain = isDark ? '#fafafa' : '#09090b';
+      const textSub = isDark ? '#a1a1aa' : '#52525b';
+      const teal = isDark ? '#2dd4bf' : '#0f766e';
+      const amber = isDark ? '#fbbf24' : '#d97706';
+      const sky = isDark ? '#38bdf8' : '#0284c7';
+      const violet = isDark ? '#a78bfa' : '#7c3aed';
+      const rose = isDark ? '#fb7185' : '#e11d48';
+
+      const maxScaleC = Math.max(d.toxic * 1.1, sim.metrics.peakC1 * 1.05, 0.1);
+      const isOral = d.allowOral && state.dosing.route === 'oral';
+      const hasV2 = eff.V2 > 0;
+      const hasV3 = eff.V3 > 0;
+
+      const boxFill = (x, y, w, h, frac, color, title, valStr, subStr, active = true) => {
+        const f = clamp(frac, 0, 1);
+        const fh = Math.max(0, (h - 4) * f);
+        const op = active ? 1 : 0.34;
+        return `
+          <g opacity="${op}">
+            <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${bgBox}" stroke="${active ? color : borderCol}" stroke-width="${active ? 1.35 : 1}" stroke-opacity="${active ? 0.72 : 0.6}" />
+            <rect x="${x + 2}" y="${y + h - 2 - fh}" width="${w - 4}" height="${fh}" rx="6" fill="${color}" fill-opacity="${isDark ? 0.18 : 0.13}" />
+            <text x="${x + w / 2}" y="${y + 18}" text-anchor="middle" fill="${textSub}" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600">${title}</text>
+            <text x="${x + w / 2}" y="${y + 39}" text-anchor="middle" fill="${textMain}" font-family="JetBrains Mono, monospace" font-size="13" font-weight="600">${valStr}</text>
+            <text x="${x + w / 2}" y="${y + 56}" text-anchor="middle" fill="${textSub}" font-family="JetBrains Mono, monospace" font-size="8.5">${subStr}</text>
+          </g>
+        `;
+      };
+
+      const gutFrac = isOral ? clamp(ag / Math.max(1, state.dosing.maintDose || state.dosing.bolus || 100), 0, 1) : 0;
+      const elimLabel = eff.mmEnabled ? `Saturable MM (Vm ${eff.Vmax.toFixed(1)})` : `Linear k₁₀ ${eff.k10.toFixed(3)} /${d.timeUnit}`;
+
+      svg.innerHTML = `
+        <defs>
+          <marker id="pk-arr" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 1 2 L 8 5 L 1 8 z" fill="${teal}" />
+          </marker>
+          <marker id="pk-arr-amb" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 1 2 L 8 5 L 1 8 z" fill="${amber}" />
+          </marker>
+          <marker id="pk-arr-rose" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 1 2 L 8 5 L 1 8 z" fill="${rose}" />
+          </marker>
+        </defs>
+
+        <!-- GUT / DEPOT (Left, x=18) -->
+        ${boxFill(18, 46, 114, 68, gutFrac, sky, isOral ? 'GUT / DEPOT (Ag)' : 'IV ROUTE', isOral ? `${Math.round(ag)} ${d.doseUnit}` : 'Direct IV', isOral ? `ka ${eff.ka.toFixed(2)} · F ${Math.round(eff.F * 100)}%` : '100% Bioavail.', isOral)}
+        <line x1="132" y1="80" x2="174" y2="80" stroke="${teal}" stroke-width="1.4" stroke-dasharray="${isOral ? '4 3' : '0'}" marker-end="url(#pk-arr)" opacity="${isOral ? 0.9 : 0.5}" />
+        <text x="153" y="72" text-anchor="middle" fill="${textSub}" font-family="JetBrains Mono, monospace" font-size="8.5">${isOral ? 'kₐ' : 'Dose'}</text>
+
+        <!-- CENTRAL PLASMA C1 (x=178) -->
+        ${boxFill(178, 38, 150, 84, c1 / maxScaleC, c1 >= d.toxic ? rose : teal, 'CENTRAL PLASMA (C₁)', `${c1.toFixed(decC)} ${d.concUnit}`, `V₁ = ${eff.V1.toFixed(1)} L · CL = ${eff.CL.toFixed(2)}`, true)}
+
+        <!-- ELIMINATION ARROW DOWN FROM C1 -->
+        <line x1="253" y1="122" x2="253" y2="154" stroke="${rose}" stroke-width="1.5" marker-end="url(#pk-arr-rose)" />
+        <rect x="178" y="156" width="150" height="20" rx="5" fill="${isDark ? '#18181b' : '#f4f4f5'}" stroke="${eff.mmEnabled ? amber : rose}" stroke-width="0.9" stroke-opacity="0.65" />
+        <text x="253" y="169" text-anchor="middle" fill="${eff.mmEnabled ? amber : rose}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">${elimLabel}</text>
+
+        <!-- FAST PERIPHERAL C2 (Top Middle-Right, x=396, y=14) -->
+        <line x1="328" y1="62" x2="392" y2="48" stroke="${teal}" stroke-width="1.3" opacity="${hasV2 ? 0.85 : 0.25}" marker-end="url(#pk-arr)" marker-start="url(#pk-arr)" />
+        <text x="360" y="42" text-anchor="middle" fill="${textSub}" font-family="JetBrains Mono, monospace" font-size="8">${hasV2 ? `k₁₂ ${eff.k12.toFixed(2)}` : '—'}</text>
+        <text x="360" y="67" text-anchor="middle" fill="${textSub}" font-family="JetBrains Mono, monospace" font-size="8">${hasV2 ? `k₂₁ ${eff.k21.toFixed(2)}` : ''}</text>
+        ${boxFill(396, 14, 152, 68, hasV2 ? c2 / maxScaleC : 0, sky, 'FAST PERIPHERAL (C₂)', hasV2 ? `${c2.toFixed(decC)} ${d.concUnit}` : 'Inactive', hasV2 ? `V₂ = ${eff.V2.toFixed(1)} L · Q₂ = ${eff.Q2.toFixed(2)}` : '1-Comp Model', hasV2)}
+
+        <!-- SLOW PERIPHERAL C3 (Bottom Middle-Right, x=396, y=102) -->
+        <line x1="328" y1="98" x2="392" y2="132" stroke="${teal}" stroke-width="1.3" opacity="${hasV3 ? 0.85 : 0.25}" marker-end="url(#pk-arr)" marker-start="url(#pk-arr)" />
+        <text x="360" y="106" text-anchor="middle" fill="${textSub}" font-family="JetBrains Mono, monospace" font-size="8">${hasV3 ? `k₁₃ ${eff.k13.toFixed(3)}` : '—'}</text>
+        <text x="360" y="135" text-anchor="middle" fill="${textSub}" font-family="JetBrains Mono, monospace" font-size="8">${hasV3 ? `k₃₁ ${eff.k31.toFixed(4)}` : ''}</text>
+        ${boxFill(396, 102, 152, 68, hasV3 ? c3 / maxScaleC : 0, amber, 'SLOW / FAT (C₃)', hasV3 ? `${c3.toFixed(decC)} ${d.concUnit}` : 'Inactive', hasV3 ? `V₃ = ${Math.round(eff.V3)} L · Q₃ = ${eff.Q3.toFixed(2)}` : '2-Comp Model', hasV3)}
+
+        <!-- EFFECT-SITE BIOPHASE Ce (Far Right, x=626) -->
+        <path d="M 328 80 L 584 80 L 622 80" fill="none" stroke="${amber}" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#pk-arr-amb)" />
+        <text x="586" y="72" text-anchor="middle" fill="${amber}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">kₑ₀ ${eff.ke0.toFixed(2)}</text>
+        <text x="586" y="94" text-anchor="middle" fill="${textSub}" font-family="JetBrains Mono, monospace" font-size="8">t½ ${eff.t12_ke0.toFixed(1)}${d.timeUnit}</text>
+
+        ${boxFill(626, 22, 236, 138, ce / maxScaleC, violet, 'EFFECT-SITE BIOPHASE (Cₑ)', `${ce.toFixed(decC)} ${d.concUnit}`, `PD Effect: ${effPct.toFixed(0)}%  ·  EC₅₀,eff ${sim.metrics.ec50Eff.toFixed(decC)}`, true)}
+
+        <!-- PD Effect Bar inside Effect-Site Card -->
+        <rect x="644" y="102" width="200" height="8" rx="4" fill="${isDark ? '#27272a' : '#e4e4e7'}" />
+        <rect x="644" y="102" width="${Math.round(clamp(effPct / 100, 0, 1) * 200)}" height="8" rx="4" fill="${violet}" />
+        <text x="644" y="128" fill="${textSub}" font-family="Inter, sans-serif" font-size="9.5">${d.effectLabel}</text>
+        <text x="844" y="128" text-anchor="end" fill="${violet}" font-family="JetBrains Mono, monospace" font-size="10" font-weight="600">${effPct.toFixed(1)}%</text>
+        <text x="744" y="146" text-anchor="middle" fill="${sim.AntagB[idx] > 0.1 || state.pdMods.compAntag > 0.05 || state.pdMods.nonCompAntag > 0.05 ? amber : textSub}" font-family="JetBrains Mono, monospace" font-size="8.5">
+          ${sim.AntagB[idx] > 0.1 ? `${d.antagName} Active ([B]/K_B=${sim.AntagB[idx].toFixed(1)})` : (state.pdMods.compAntag > 0.05 ? `Comp. Antag [B]/K_B=${state.pdMods.compAntag.toFixed(1)}` : (state.pdMods.nonCompAntag > 0.05 ? `Non-Comp [B]/K_B=${state.pdMods.nonCompAntag.toFixed(1)}` : 'Intact Receptor Response'))}
+        </text>
+      `;
+    }
+
+    function renderInterpretation() {
+      const sim = state.sim;
+      const d = sim.drug;
+      const m = sim.metrics;
+      const eff = sim.eff;
+      const badges = [];
+      const sentences = [];
+
+      if (m.peakC1 >= d.toxic || m.peakCe >= d.toxic) {
+        badges.push({ text: `Toxic Exposure (> ${d.toxic} ${d.concUnit})`, lvl: 'rose' });
+      } else if (m.peakCe >= d.winLo && m.peakCe <= d.winHi) {
+        badges.push({ text: 'Therapeutic Target Achieved', lvl: 'ok' });
+      } else if (m.peakCe < d.winLo) {
+        badges.push({ text: 'Subtherapeutic Exposure', lvl: 'amber' });
+      }
+
+      if (eff.mmEnabled) {
+        const satRatio = m.peakC1 / (eff.Km + m.peakC1);
+        badges.push({ text: `Michaelis-Menten (${Math.round(satRatio * 100)}% Saturated)`, lvl: satRatio > 0.75 ? 'rose' : 'amber' });
+        sentences.push(`Saturable hepatic enzymes (V_max ${eff.Vmax.toFixed(1)} ${d.doseUnit}/${d.timeUnit}, K_m ${eff.Km.toFixed(1)} ${d.concUnit}) transition from first-order to zero-order elimination near K_m; small dose increases trigger disproportionate toxic spikes.`);
+      } else if (d.id === 'remifentanil') {
+        badges.push({ text: 'Context-Insensitive Esterase Clearance', lvl: 'ok' });
+        sentences.push(`Ultra-rapid organ-independent blood esterase clearance (CL ${eff.CL.toFixed(2)} L/min) keeps CSHT flat (~${m.csht50.toFixed(1)} min) regardless of infusion duration.`);
+      } else if (d.nComp === 3 && m.csht50 > 45) {
+        badges.push({ text: `High Context-Sensitivity (CSHT ${Math.round(m.csht50)}m)`, lvl: 'amber' });
+        sentences.push(`Prolonged infusion loads the slow lipophilic V₃ reservoir (${Math.round(eff.V3)} L). Once stopped, slow back-redistribution sustains plasma C₁ and prolongs emergence.`);
+      }
+
+      if (state.patient.cardiacOutput < 0.7) {
+        badges.push({ text: 'Shock-Contracted V₁ Overdose Risk', lvl: 'rose' });
+        sentences.push(`Low cardiac output (${state.patient.cardiacOutput.toFixed(2)}×) shrinks central V₁ (${eff.V1.toFixed(1)} L) and slows redistribution (Q₂/Q₃), magnifying induction peak concentrations—reduce bolus doses by 30–50%.`);
+      }
+      if (state.patient.egfr < 45 && d.fRenal >= 0.5) {
+        badges.push({ text: `Renal Impairment (eGFR ${state.patient.egfr})`, lvl: 'amber' });
+        sentences.push(`High renal clearance fraction (fe=${Math.round(d.fRenal * 100)}%) prolongs terminal t½ to ${m.termHalfLife.toFixed(1)} ${d.timeUnit}. A loading dose (based on Vss) achieves immediate target levels while maintenance interval must be extended.`);
+      }
+      if (state.patient.hepatic < 0.6 && d.fHep >= 0.6) {
+        badges.push({ text: `CYP/Hepatic Inhibition (${state.patient.hepatic.toFixed(2)}×)`, lvl: 'rose' });
+        sentences.push(`Impaired hepatic metabolism sharply cuts CL (${eff.CL.toFixed(2)} L/${d.timeUnit}), causing progressive accumulation and delayed offset.`);
+      }
+      if (state.rescue.active) {
+        badges.push({ text: `${d.antagName} Rescue @ ${state.rescue.time}${d.timeUnit}`, lvl: 'info' });
+        sentences.push(`Competitive ${d.antagName} bolus shifts EC₅₀ rightward without lowering plasma agonist C₁; if ${d.antagName} clears faster (t½ ${d.antagHalfLife} ${d.timeUnit}) than the agonist, observe rebound effect (re-narcotization).`);
+      } else if (state.pdMods.compAntag > 0.1) {
+        badges.push({ text: 'Competitive Schild Shift (↑EC₅₀)', lvl: 'info' });
+        sentences.push(`Competitive antagonist increases EC₅₀ to ${m.ec50Eff.toFixed(2)} ${d.concUnit} while preserving E_max (${Math.round(m.emaxEff)}%)—surmountable with higher agonist dose.`);
+      } else if (state.pdMods.nonCompAntag > 0.1) {
+        badges.push({ text: 'Non-Competitive Block (↓E_max)', lvl: 'amber' });
+        sentences.push(`Non-competitive/irreversible antagonism reduces E_max to ${Math.round(m.emaxEff)}% without shifting EC₅₀—insurmountable by higher agonist concentrations.`);
+      }
+
+      if (sentences.length === 0) {
+        sentences.push(`${d.name} (${d.compLabel}): Effective CL ${eff.CL.toFixed(2)} L/${d.timeUnit}, Vss ${Math.round(eff.Vss)} L, effect-site equilibration t½(ke0) ${eff.t12_ke0.toFixed(1)} ${d.timeUnit}. Hysteresis lag between C₁ and Cₑ governs onset speed after bolus dosing.`);
+      }
+
+      const bStyles = {
+        ok: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        info: 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300',
+        amber: 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+        rose: 'border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-400'
+      };
+
+      document.getElementById('interp-badges').innerHTML = badges.map(b =>
+        `<span class="font-mono text-[10px] font-medium px-2 py-0.5 rounded-md border ${bStyles[b.lvl]}">${b.text}</span>`
+      ).join('');
+      document.getElementById('interp-kinetics-tag').textContent = eff.mmEnabled
+        ? `Nonlinear Michaelis-Menten · Vmax ${eff.Vmax.toFixed(1)} · Km ${eff.Km.toFixed(1)}`
+        : `1st-Order Linear · Vss ${Math.round(eff.Vss)} L · CL ${eff.CL.toFixed(2)} L/${d.timeUnit}`;
+      document.getElementById('interp-text').textContent = sentences.join(' ');
+    }
+
+    /* =========================================================================
+       8. STRICTLY LOCKED HI-DPI CANVAS RENDERERS (3 CANVASES)
+       ========================================================================= */
+    const concWrap = document.getElementById('conc-canvas-wrap');
+    const concCanvas = document.getElementById('conc-canvas');
+    const concCtx = concCanvas.getContext('2d');
+
+    const cshtWrap = document.getElementById('csht-canvas-wrap');
+    const cshtCanvas = document.getElementById('csht-canvas');
+    const cshtCtx = cshtCanvas.getContext('2d');
+
+    const pdWrap = document.getElementById('pd-canvas-wrap');
+    const pdCanvas = document.getElementById('pd-canvas');
+    const pdCtx = pdCanvas.getContext('2d');
+
+    // STRICT ZERO-STRETCH CANVAS RESIZE HELPER
+    function syncCanvasToWrapper(wrapper, canvas) {
+      if (!wrapper || !canvas) return false;
+      const w = wrapper.clientWidth;
+      const h = wrapper.clientHeight;
+      if (!(w > 10 && h > 10 && w < 4000 && h < 2000)) return false;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const tw = Math.round(w * dpr);
+      const th = Math.round(h * dpr);
+      if (canvas.width !== tw || canvas.height !== th) {
+        canvas.width = tw;
+        canvas.height = th;
+        return true;
+      }
+      return false;
+    }
+
+    function getPalette() {
+      const isDark = document.documentElement.classList.contains('dark');
+      return {
+        isDark,
+        bg: isDark ? '#0b0b0e' : '#ffffff',
+        grid: isDark ? 'rgba(63, 63, 70, 0.35)' : '#e4e4e7',
+        gridFaint: isDark ? 'rgba(63, 63, 70, 0.22)' : '#f4f4f5',
+        axis: isDark ? '#3f3f46' : '#a1a1aa',
+        tick: '#71717a',
+        label: isDark ? '#a1a1aa' : '#52525b',
+        teal: isDark ? '#2dd4bf' : '#0f766e',
+        tealRGB: isDark ? '45, 212, 191' : '15, 118, 110',
+        amber: isDark ? '#fbbf24' : '#d97706',
+        sky: isDark ? '#38bdf8' : '#0284c7',
+        violet: isDark ? '#a78bfa' : '#7c3aed',
+        rose: isDark ? '#fb7185' : '#e11d48',
+        ghost: isDark ? 'rgba(161, 161, 170, 0.48)' : 'rgba(113, 113, 122, 0.48)',
+        dotCore: isDark ? '#ffffff' : '#09090b'
+      };
+    }
+
+    /* --- A. CONCENTRATION-TIME & EFFECT PROFILE CANVAS --- */
+    function drawConcCanvas() {
+      if (!concCanvas.width || !concCanvas.height || !state.sim) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = concCanvas.width / dpr;
+      const H = concCanvas.height / dpr;
+      const C = getPalette();
+      const ctx = concCtx;
+      const sim = state.sim;
+      const d = sim.drug;
+      const dos = state.dosing;
+      const refSim = state.pinnedSim && state.pinnedSim.drug.id === d.id ? state.pinnedSim : null;
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      const pad = { l: 48, r: state.showEffect ? 42 : 16, t: 22, b: 32 };
+      const pw = Math.max(40, W - pad.l - pad.r);
+      const ph = Math.max(40, H - pad.t - pad.b);
+
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(pad.l, pad.t, pw, ph);
+
+      const horizon = dos.horizon;
+      const maxPeak = Math.max(
+        d.toxic * 1.25,
+        sim.metrics.peakC1 * 1.12,
+        sim.metrics.peakCe * 1.12,
+        refSim ? refSim.metrics.peakC1 * 1.12 : 0
+      );
+      const logMin = Math.max(0.02, d.winLo * 0.08);
+      const logMax = maxPeak * 1.25;
+
+      const xOfT = t => pad.l + (t / horizon) * pw;
+      const yOfC = c => {
+        if (state.yScale === 'log') {
+          const lv = Math.log10(clamp(c, logMin, logMax));
+          return pad.t + ph - ((lv - Math.log10(logMin)) / (Math.log10(logMax) - Math.log10(logMin))) * ph;
+        }
+        return pad.t + ph - (clamp(c, 0, maxPeak) / maxPeak) * ph;
+      };
+      const yOfEff = e => pad.t + ph - (clamp(e, 0, 100) / 100) * ph;
+
+      // Gridlines
+      ctx.strokeStyle = C.grid;
+      ctx.lineWidth = 1;
+      for (let k = 0; k <= 4; k++) {
+        const gy = Math.round(pad.t + (k / 4) * ph) + 0.5;
+        ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l + pw, gy); ctx.stroke();
+      }
+      const xStepCount = 6;
+      for (let k = 0; k <= xStepCount; k++) {
+        const gx = Math.round(pad.l + (k / xStepCount) * pw) + 0.5;
+        ctx.strokeStyle = C.gridFaint;
+        ctx.beginPath(); ctx.moveTo(gx, pad.t); ctx.lineTo(gx, pad.t + ph); ctx.stroke();
+      }
+
+      // Clip interior
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pad.l, pad.t, pw, ph);
+      ctx.clip();
+
+      // Therapeutic Window Band
+      const yWinTop = yOfC(d.winHi);
+      const yWinBot = yOfC(d.winLo);
+      ctx.fillStyle = `rgba(${C.tealRGB}, ${C.isDark ? 0.095 : 0.075})`;
+      ctx.fillRect(pad.l, yWinTop, pw, Math.max(2, yWinBot - yWinTop));
+
+      // Toxic Zone Shade & Dashed Threshold
+      const yTox = yOfC(d.toxic);
+      if (yTox > pad.t) {
+        ctx.fillStyle = C.isDark ? 'rgba(251, 113, 133, 0.07)' : 'rgba(225, 29, 72, 0.055)';
+        ctx.fillRect(pad.l, pad.t, pw, yTox - pad.t);
+        ctx.save();
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = C.rose;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(pad.l, Math.round(yTox) + 0.5); ctx.lineTo(pad.l + pw, Math.round(yTox) + 0.5); ctx.stroke();
+        ctx.fillStyle = C.rose;
+        ctx.font = '500 8.5px "JetBrains Mono", monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(`Toxic > ${d.toxic} ${d.concUnit}`, pad.l + pw - 5, Math.max(pad.t + 10, yTox - 4));
+        ctx.restore();
+      }
+
+      // Infusion Duration Bar at top of plot (for Bolus+Inf or TCI)
+      if (dos.mode === 'bolus_inf' || dos.mode === 'tci') {
+        const infXEnd = Math.min(pad.l + pw, xOfT(dos.infStop));
+        ctx.fillStyle = `rgba(${C.tealRGB}, 0.25)`;
+        ctx.fillRect(pad.l, pad.t + 2, Math.max(2, infXEnd - pad.l), 5);
+        ctx.fillStyle = C.teal;
+        ctx.font = '500 8.5px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(
+          dos.mode === 'tci' ? `TCI (${dos.tciSite.toUpperCase()} ${dos.tciTarget}) → ${dos.infStop}${d.timeUnit}` : `Infusion → ${dos.infStop}${d.timeUnit}`,
+          pad.l + 5,
+          pad.t + 16
+        );
+
+        // Vertical Stop marker
+        ctx.save();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = `rgba(${C.tealRGB}, 0.45)`;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(Math.round(infXEnd) + 0.5, pad.t); ctx.lineTo(Math.round(infXEnd) + 0.5, pad.t + ph); ctx.stroke();
+        ctx.restore();
+      }
+
+      // Timed Antagonist Rescue Marker
+      if (state.rescue.active && state.rescue.time <= horizon) {
+        const rx = Math.round(xOfT(state.rescue.time)) + 0.5;
+        ctx.save();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = C.violet;
+        ctx.lineWidth = 1.3;
+        ctx.beginPath(); ctx.moveTo(rx, pad.t); ctx.lineTo(rx, pad.t + ph); ctx.stroke();
+        ctx.fillStyle = C.violet;
+        ctx.font = '600 8.5px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${d.antagName} Rescue`, rx + 4, pad.t + 28);
+        ctx.restore();
+      }
+
+      const strokeArr = (arr, mapY, color, width, dash = null, timesArr = sim.times) => {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.lineJoin = 'round';
+        if (dash) ctx.setLineDash(dash);
+        ctx.beginPath();
+        for (let i = 0; i < arr.length; i++) {
+          const x = xOfT(timesArr[i]);
+          const y = mapY(arr[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      };
+
+      // Pinned Ghost Baseline Curve (C1)
+      if (refSim) {
+        strokeArr(refSim.C1, yOfC, C.ghost, 1.5, [5, 4], refSim.times);
+      }
+
+      // Optional Tissue Curves C2 & C3
+      if (state.showTissues) {
+        if (sim.eff.V2 > 0) strokeArr(sim.C2, yOfC, C.sky, 1.35, [2, 2]);
+        if (sim.eff.V3 > 0) strokeArr(sim.C3, yOfC, C.isDark ? 'rgba(251, 191, 36, 0.55)' : 'rgba(217, 119, 6, 0.55)', 1.35, [2, 3]);
+      }
+
+      // Optional PD Effect % Overlay (Right Y-Axis)
+      if (state.showEffect) {
+        strokeArr(sim.Effect, yOfEff, C.violet, 1.65);
+      }
+
+      // Effect-Site Ce (Dashed Amber)
+      strokeArr(sim.Ce, yOfC, C.amber, 1.85, [5, 3]);
+
+      // Plasma C1 (Primary Solid Teal)
+      strokeArr(sim.C1, yOfC, C.teal, 2.2);
+
+      // Interactive Hover Crosshair & Tooltip
+      const tipEl = document.getElementById('conc-tooltip');
+      if (state.hoverTimeIdx !== null) {
+        const idx = clamp(state.hoverTimeIdx, 0, sim.times.length - 1);
+        const hx = Math.round(xOfT(sim.times[idx])) + 0.5;
+        ctx.save();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = C.isDark ? 'rgba(244,244,245,0.45)' : 'rgba(24,24,27,0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, pad.t + ph); ctx.stroke();
+        ctx.setLineDash([]);
+
+        const dots = [
+          { y: yOfC(sim.C1[idx]), col: C.teal },
+          { y: yOfC(sim.Ce[idx]), col: C.amber },
+        ];
+        if (state.showEffect) dots.push({ y: yOfEff(sim.Effect[idx]), col: C.violet });
+        for (const dt of dots) {
+          ctx.beginPath(); ctx.arc(hx, dt.y, 3.8, 0, Math.PI * 2);
+          ctx.fillStyle = dt.col; ctx.fill();
+          ctx.strokeStyle = C.bg; ctx.lineWidth = 1.3; ctx.stroke();
+        }
+        ctx.restore();
+
+        if (tipEl) {
+          const decC = d.winHi < 5 ? 2 : (d.winHi < 25 ? 1 : 0);
+          tipEl.innerHTML = `
+            <div class="text-[10px] text-zinc-500 dark:text-zinc-400 pb-1 mb-1 border-b border-zinc-200 dark:border-zinc-800">t = ${sim.times[idx].toFixed(1)} ${d.timeUnit}</div>
+            <div class="space-y-0.5 tabular-nums">
+              <div class="flex justify-between gap-3"><span style="color:${C.teal}">C₁ Plasma</span><strong>${sim.C1[idx].toFixed(decC)} ${d.concUnit}</strong></div>
+              <div class="flex justify-between gap-3"><span style="color:${C.amber}">Cₑ Effect</span><strong>${sim.Ce[idx].toFixed(decC)} ${d.concUnit}</strong></div>
+              ${sim.eff.V2 > 0 ? `<div class="flex justify-between gap-3 text-zinc-500 dark:text-zinc-400"><span>C₂ / C₃</span><span>${sim.C2[idx].toFixed(decC)}${sim.eff.V3 > 0 ? ' / ' + sim.C3[idx].toFixed(decC) : ''}</span></div>` : ''}
+              <div class="flex justify-between gap-3"><span style="color:${C.violet}">PD Effect</span><strong>${sim.Effect[idx].toFixed(1)}%</strong></div>
+            </div>
+          `;
+          tipEl.classList.remove('hidden');
+          const tipLeft = hx > W * 0.62 ? Math.max(10, hx - 205) : Math.min(W - 200, hx + 12);
+          tipEl.style.left = `${tipLeft}px`;
+        }
+      } else if (tipEl) {
+        tipEl.classList.add('hidden');
+      }
+
+      ctx.restore(); // End clip
+
+      // Crisp Axis Border & Ticks
+      ctx.strokeStyle = C.axis;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pad.l + 0.5, pad.t + 0.5, pw - 1, ph - 1);
+
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = C.tick;
+      ctx.textAlign = 'center';
+      for (let k = 0; k <= xStepCount; k++) {
+        const tv = (k / xStepCount) * horizon;
+        ctx.fillText(`${Math.round(tv)}${d.timeUnit}`, pad.l + (k / xStepCount) * pw, pad.t + ph + 13);
+      }
+
+      // Left Y-Axis (Concentration)
+      ctx.textAlign = 'right';
+      const decAxis = d.winHi < 4 ? 1 : 0;
+      if (state.yScale === 'log') {
+        const logLo = Math.log10(logMin), logHi = Math.log10(logMax);
+        for (let k = 0; k <= 4; k++) {
+          const val = Math.pow(10, logLo + (k / 4) * (logHi - logLo));
+          const y = pad.t + ph - (k / 4) * ph;
+          ctx.fillText(val < 1 ? val.toFixed(2) : (val < 10 ? val.toFixed(1) : Math.round(val)), pad.l - 5, y + 3);
+        }
+      } else {
+        for (let k = 0; k <= 4; k++) {
+          const val = (k / 4) * maxPeak;
+          const y = pad.t + ph - (k / 4) * ph;
+          ctx.fillText(val.toFixed(decAxis), pad.l - 5, y + 3);
+        }
+      }
+
+      // Right Y-Axis (Effect %)
+      if (state.showEffect) {
+        ctx.textAlign = 'left';
+        ctx.fillStyle = C.violet;
+        for (const ep of [0, 25, 50, 75, 100]) {
+          ctx.fillText(`${ep}%`, pad.l + pw + 5, yOfEff(ep) + 3);
+        }
+      }
+
+      // Left Y-Axis Title
+      ctx.save();
+      ctx.fillStyle = C.label;
+      ctx.font = '500 9px Inter, sans-serif';
+      ctx.translate(11, pad.t + ph / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.fillText(`Conc (${d.concUnit})`, 0, 0);
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    /* --- B. CONTEXT-SENSITIVE HALF-TIME (CSHT) CANVAS --- */
+    function drawCSHTCanvas() {
+      if (!cshtCanvas.width || !cshtCanvas.height || !state.sim) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = cshtCanvas.width / dpr;
+      const H = cshtCanvas.height / dpr;
+      const C = getPalette();
+      const ctx = cshtCtx;
+      const sim = state.sim;
+      const csht = sim.csht;
+      const refSim = state.pinnedSim ? state.pinnedSim : null;
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      const pad = { l: 42, r: 16, t: 16, b: 32 };
+      const pw = Math.max(40, W - pad.l - pad.r);
+      const ph = Math.max(40, H - pad.t - pad.b);
+
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(pad.l, pad.t, pw, ph);
+
+      const maxX = 480; // minutes
+      const activePeak50 = Math.max(...csht.d50);
+      const maxY = activePeak50 > 260 ? Math.min(600, Math.ceil((activePeak50 * 1.1) / 60) * 60) : 280;
+
+      const xOfM = m => pad.l + (clamp(m, 0, maxX) / maxX) * pw;
+      const yOfT = t => pad.t + ph - (clamp(t, 0, maxY) / maxY) * ph;
+
+      // Grid
+      ctx.strokeStyle = C.grid;
+      ctx.lineWidth = 1;
+      for (let k = 0; k <= 4; k++) {
+        const gy = Math.round(pad.t + (k / 4) * ph) + 0.5;
+        ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l + pw, gy); ctx.stroke();
+      }
+      for (const xt of [0, 120, 240, 360, 480]) {
+        const gx = Math.round(xOfM(xt)) + 0.5;
+        ctx.beginPath(); ctx.moveTo(gx, pad.t); ctx.lineTo(gx, pad.t + ph); ctx.stroke();
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pad.l, pad.t, pw, ph);
+      ctx.clip();
+
+      // Subtle Reference Benchmark Curves (Remifentanil, Propofol, Alfentanil, Fentanyl)
+      const refStroke = C.isDark ? 'rgba(161, 161, 170, 0.30)' : 'rgba(113, 113, 122, 0.34)';
+      const refText = C.isDark ? 'rgba(161, 161, 170, 0.62)' : 'rgba(82, 82, 91, 0.65)';
+      ctx.font = '400 8px "JetBrains Mono", monospace';
+      for (const b of PRECOMPUTED_CSHT_REFS) {
+        ctx.save();
+        ctx.strokeStyle = refStroke;
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        for (let i = 0; i < b.curve.durations.length; i++) {
+          const x = xOfM(b.curve.durations[i]);
+          const y = yOfT(b.curve.d50[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Subtle label near right end
+        const lastIdx = b.id === 'fent' ? 12 : b.curve.durations.length - 1;
+        const lx = xOfM(b.curve.durations[lastIdx]);
+        const ly = yOfT(b.curve.d50[lastIdx]);
+        ctx.fillStyle = refText;
+        ctx.textAlign = 'right';
+        ctx.fillText(b.label, Math.min(pad.l + pw - 3, lx - 2), clamp(ly - 4, pad.t + 10, pad.t + ph - 4));
+        ctx.restore();
+      }
+
+      // Pinned Baseline Ghost CSHT Curve
+      if (refSim && refSim.csht) {
+        ctx.save();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = C.ghost;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        for (let i = 0; i < refSim.csht.durations.length; i++) {
+          const x = xOfM(refSim.csht.durations[i]);
+          const y = yOfT(refSim.csht.d50[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Active Drug 80% Decrement Time Curve (Dashed Amber)
+      ctx.save();
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = C.amber;
+      ctx.lineWidth = 1.45;
+      ctx.beginPath();
+      for (let i = 0; i < csht.durations.length; i++) {
+        const x = xOfM(csht.durations[i]);
+        const y = yOfT(csht.d80[i]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // Active Drug 50% CSHT Curve (Solid Teal)
+      ctx.save();
+      ctx.strokeStyle = C.teal;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      for (let i = 0; i < csht.durations.length; i++) {
+        const x = xOfM(csht.durations[i]);
+        const y = yOfT(csht.d50[i]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // Current Infusion Duration Vertical Marker & Operating Point
+      const curX = xOfM(sim.activeInfDurMin);
+      const curY = yOfT(sim.activeCSHT50);
+      ctx.save();
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = `rgba(${C.tealRGB}, 0.55)`;
+      ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.moveTo(Math.round(curX) + 0.5, pad.t); ctx.lineTo(Math.round(curX) + 0.5, pad.t + ph); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(curX, curY, 4.2, 0, Math.PI * 2);
+      ctx.fillStyle = C.dotCore; ctx.fill();
+      ctx.strokeStyle = C.teal; ctx.lineWidth = 2; ctx.stroke();
+      ctx.restore();
+
+      // Hover Crosshair
+      const tipEl = document.getElementById('csht-tooltip');
+      if (state.cshtHoverIdx !== null) {
+        const idx = clamp(state.cshtHoverIdx, 0, csht.durations.length - 1);
+        const hx = Math.round(xOfM(csht.durations[idx])) + 0.5;
+        ctx.save();
+        ctx.setLineDash([2, 2]);
+        ctx.strokeStyle = C.isDark ? 'rgba(244,244,245,0.4)' : 'rgba(24,24,27,0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, pad.t + ph); ctx.stroke();
+        ctx.restore();
+
+        if (tipEl) {
+          const v50 = csht.d50[idx];
+          const v80 = csht.d80[idx];
+          tipEl.innerHTML = `
+            <div class="text-zinc-500 dark:text-zinc-400 text-[9.5px] mb-0.5">Infusion: ${csht.durations[idx]} min</div>
+            <div class="tabular-nums" style="color:${C.teal}">50% CSHT: <strong>${v50 >= 599 ? '>600' : v50.toFixed(1)} min</strong></div>
+            <div class="tabular-nums" style="color:${C.amber}">80% Decr: <strong>${v80 >= 599 ? '>600' : v80.toFixed(1)} min</strong></div>
+          `;
+          tipEl.classList.remove('hidden');
+        }
+      } else if (tipEl) {
+        tipEl.classList.add('hidden');
+      }
+
+      ctx.restore(); // End clip
+
+      // Frame & Ticks
+      ctx.strokeStyle = C.axis;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pad.l + 0.5, pad.t + 0.5, pw - 1, ph - 1);
+
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = C.tick;
+      ctx.textAlign = 'center';
+      for (const xt of [0, 120, 240, 360, 480]) {
+        ctx.fillText(`${xt}m`, xOfM(xt), pad.t + ph + 12);
+      }
+      ctx.textAlign = 'right';
+      for (let k = 0; k <= 4; k++) {
+        const yv = (k / 4) * maxY;
+        ctx.fillText(String(Math.round(yv)), pad.l - 5, pad.t + ph - (k / 4) * ph + 3);
+      }
+
+      ctx.fillStyle = C.label;
+      ctx.font = '500 9px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Infusion Duration (min)', pad.l + pw / 2, H - 6);
+
+      ctx.save();
+      ctx.translate(11, pad.t + ph / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('Decrement (min)', 0, 0);
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    /* --- C. PHARMACODYNAMICS CANVAS: HILL DOSE-RESPONSE vs HYSTERESIS LOOP --- */
+    function drawPDCanvas() {
+      if (!pdCanvas.width || !pdCanvas.height || !state.sim) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = pdCanvas.width / dpr;
+      const H = pdCanvas.height / dpr;
+      const C = getPalette();
+      const ctx = pdCtx;
+      const sim = state.sim;
+      const d = sim.drug;
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      const pad = { l: 42, r: 16, t: 16, b: 32 };
+      const pw = Math.max(40, W - pad.l - pad.r);
+      const ph = Math.max(40, H - pad.t - pad.b);
+
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(pad.l, pad.t, pw, ph);
+
+      const yOfE = e => pad.t + ph - (clamp(e, 0, 100) / 100) * ph;
+      const inspIdx = state.hoverTimeIdx !== null ? clamp(state.hoverTimeIdx, 0, sim.times.length - 1) : sim.metrics.peakCeIdx;
+
+      // Horizontal Grid
+      ctx.strokeStyle = C.grid;
+      ctx.lineWidth = 1;
+      for (let k = 0; k <= 4; k++) {
+        const gy = Math.round(pad.t + (k / 4) * ph) + 0.5;
+        ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l + pw, gy); ctx.stroke();
+      }
+
+      if (state.pdMode === 'hill') {
+        const cMin = Math.max(0.01, state.pd.EC50 * 0.04);
+        const cMax = Math.max(d.toxic * 3.5, state.pd.EC50 * 30);
+        const logLo = Math.log10(cMin), logHi = Math.log10(cMax);
+        const xOfLogC = c => pad.l + ((Math.log10(clamp(c, cMin, cMax)) - logLo) / (logHi - logLo)) * pw;
+
+        // Vertical log gridlines
+        for (let k = 0; k <= 4; k++) {
+          const gx = Math.round(pad.l + (k / 4) * pw) + 0.5;
+          ctx.beginPath(); ctx.moveTo(gx, pad.t); ctx.lineTo(gx, pad.t + ph); ctx.stroke();
+        }
+
+        ctx.save();
+        ctx.beginPath(); ctx.rect(pad.l, pad.t, pw, ph); ctx.clip();
+
+        // Baseline Unmodified Agonist Curve (Ghost Dashed)
+        ctx.save();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = C.ghost;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        for (let i = 0; i <= 120; i++) {
+          const cv = Math.pow(10, logLo + (i / 120) * (logHi - logLo));
+          const ev = (state.pd.Emax * Math.pow(cv, state.pd.gamma)) / (Math.pow(state.pd.EC50, state.pd.gamma) + Math.pow(cv, state.pd.gamma));
+          const x = xOfLogC(cv), y = yOfE(ev);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Active Shifted Curve (at inspected timestamp's rescue antagonist level + steady pdMods)
+        const activeB = sim.AntagB[inspIdx];
+        const sampleMeta = computePDEffect(state.pd.EC50, state.pd, state.pdMods, sim.eff.fu, activeB);
+
+        ctx.save();
+        ctx.strokeStyle = C.violet;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        for (let i = 0; i <= 120; i++) {
+          const cv = Math.pow(10, logLo + (i / 120) * (logHi - logLo));
+          const res = computePDEffect(cv, state.pd, state.pdMods, sim.eff.fu, activeB);
+          const x = xOfLogC(cv), y = yOfE(res.effect);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // EC50,eff & Emax,eff Hairline Guides
+        const ecX = xOfLogC(sampleMeta.ec50Eff);
+        const halfY = yOfE(sampleMeta.emaxEff * 0.5);
+        const emaxY = yOfE(sampleMeta.emaxEff);
+        ctx.save();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = C.amber;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, Math.round(halfY) + 0.5);
+        ctx.lineTo(Math.round(ecX) + 0.5, Math.round(halfY) + 0.5);
+        ctx.lineTo(Math.round(ecX) + 0.5, pad.t + ph);
+        ctx.stroke();
+        ctx.fillStyle = C.amber;
+        ctx.font = '500 8.5px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`EC₅₀ ${sampleMeta.ec50Eff.toFixed(d.winHi < 5 ? 2 : 1)}`, clamp(ecX + 4, pad.l + 4, pad.l + pw - 64), pad.t + ph - 6);
+
+        if (sampleMeta.emaxEff < 99) {
+          ctx.strokeStyle = C.rose;
+          ctx.beginPath(); ctx.moveTo(pad.l, Math.round(emaxY) + 0.5); ctx.lineTo(pad.l + pw, Math.round(emaxY) + 0.5); ctx.stroke();
+          ctx.fillStyle = C.rose;
+          ctx.fillText(`Emax ${Math.round(sampleMeta.emaxEff)}%`, pad.l + 5, Math.max(pad.t + 11, emaxY - 4));
+        }
+        ctx.restore();
+
+        // Live Operating Point (Peak or Scrubbed Ce)
+        const opCe = sim.Ce[inspIdx];
+        const opEff = sim.Effect[inspIdx];
+        const ox = xOfLogC(opCe), oy = yOfE(opEff);
+        ctx.beginPath(); ctx.arc(ox, oy, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = C.dotCore; ctx.fill();
+        ctx.strokeStyle = C.teal; ctx.lineWidth = 2.2; ctx.stroke();
+
+        // Hover tooltip on Hill Curve
+        const tipEl = document.getElementById('pd-tooltip');
+        if (state.pdHover && state.pdHover.x >= pad.l && state.pdHover.x <= pad.l + pw) {
+          const frac = (state.pdHover.x - pad.l) / pw;
+          const hConc = Math.pow(10, logLo + frac * (logHi - logLo));
+          const hRes = computePDEffect(hConc, state.pd, state.pdMods, sim.eff.fu, activeB);
+          const hx = Math.round(state.pdHover.x) + 0.5;
+          ctx.save();
+          ctx.setLineDash([2, 2]);
+          ctx.strokeStyle = C.isDark ? 'rgba(244,244,245,0.4)' : 'rgba(24,24,27,0.35)';
+          ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, pad.t + ph); ctx.stroke();
+          ctx.restore();
+          if (tipEl) {
+            tipEl.innerHTML = `
+              <div class="tabular-nums text-zinc-700 dark:text-zinc-200">
+                <div>Cₑ: <strong>${hConc.toFixed(d.winHi < 5 ? 2 : 1)} ${d.concUnit}</strong></div>
+                <div style="color:${C.violet}">Effect: <strong>${hRes.effect.toFixed(1)}%</strong></div>
+              </div>
+            `;
+            tipEl.classList.remove('hidden');
+          }
+        } else if (tipEl) {
+          tipEl.classList.add('hidden');
+        }
+
+        ctx.restore(); // End clip
+
+        // X-Axis Log Ticks
+        ctx.font = '9px "JetBrains Mono", monospace';
+        ctx.fillStyle = C.tick;
+        ctx.textAlign = 'center';
+        for (let k = 0; k <= 4; k++) {
+          const val = Math.pow(10, logLo + (k / 4) * (logHi - logLo));
+          ctx.fillText(val < 1 ? val.toFixed(2) : (val < 10 ? val.toFixed(1) : Math.round(val)), pad.l + (k / 4) * pw, pad.t + ph + 12);
+        }
+        ctx.fillStyle = C.label;
+        ctx.font = '500 9px Inter, sans-serif';
+        ctx.fillText(`Log Concentration (${d.concUnit})`, pad.l + pw / 2, H - 6);
+      } else {
+        // HYSTERESIS LOOP MODE: C1 vs Effect % (Counterclockwise Loop) vs Collapsed Ce Curve
+        const cMax = Math.max(d.toxic * 1.15, sim.metrics.peakC1 * 1.08, 0.5);
+        const xOfC = c => pad.l + (clamp(c, 0, cMax) / cMax) * pw;
+
+        for (let k = 0; k <= 4; k++) {
+          const gx = Math.round(pad.l + (k / 4) * pw) + 0.5;
+          ctx.beginPath(); ctx.moveTo(gx, pad.t); ctx.lineTo(gx, pad.t + ph); ctx.stroke();
+        }
+
+        ctx.save();
+        ctx.beginPath(); ctx.rect(pad.l, pad.t, pw, ph); ctx.clip();
+
+        // Collapsed Effect-Site Ce vs Effect curve (Dashed Amber)
+        ctx.save();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = C.amber;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let i = 0; i < sim.Ce.length; i++) {
+          const x = xOfC(sim.Ce[i]), y = yOfE(sim.Effect[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Plasma C1 vs Effect Hysteresis Loop (Solid Teal)
+        ctx.save();
+        ctx.strokeStyle = C.teal;
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        for (let i = 0; i < sim.C1.length; i++) {
+          const x = xOfC(sim.C1[i]), y = yOfE(sim.Effect[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Subtle Legend inside top-left
+        ctx.font = '500 8.5px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = C.teal;
+        ctx.fillText('— C₁ Hysteresis (CCW)', pad.l + 6, pad.t + 12);
+        ctx.fillStyle = C.amber;
+        ctx.fillText('-- Cₑ Collapsed', pad.l + 6, pad.t + 23);
+
+        // Scrubbed/Peak Bead on Plasma Hysteresis Loop
+        const bx = xOfC(sim.C1[inspIdx]);
+        const by = yOfE(sim.Effect[inspIdx]);
+        ctx.beginPath(); ctx.arc(bx, by, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = C.dotCore; ctx.fill();
+        ctx.strokeStyle = C.teal; ctx.lineWidth = 2.2; ctx.stroke();
+
+        const tipEl = document.getElementById('pd-tooltip');
+        if (tipEl) tipEl.classList.add('hidden');
+
+        ctx.restore(); // End clip
+
+        ctx.font = '9px "JetBrains Mono", monospace';
+        ctx.fillStyle = C.tick;
+        ctx.textAlign = 'center';
+        const dec = d.winHi < 5 ? 1 : 0;
+        for (let k = 0; k <= 4; k++) {
+          ctx.fillText(((k / 4) * cMax).toFixed(dec), pad.l + (k / 4) * pw, pad.t + ph + 12);
+        }
+        ctx.fillStyle = C.label;
+        ctx.font = '500 9px Inter, sans-serif';
+        ctx.fillText(`Plasma C₁ (${d.concUnit})`, pad.l + pw / 2, H - 6);
+      }
+
+      // Common Frame & Left Y-Axis (Effect %)
+      ctx.strokeStyle = C.axis;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pad.l + 0.5, pad.t + 0.5, pw - 1, ph - 1);
+
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = C.tick;
+      ctx.textAlign = 'right';
+      for (const e of [0, 25, 50, 75, 100]) {
+        ctx.fillText(`${e}%`, pad.l - 5, yOfE(e) + 3);
+      }
+      ctx.save();
+      ctx.fillStyle = C.label;
+      ctx.font = '500 9px Inter, sans-serif';
+      ctx.translate(11, pad.t + ph / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.fillText('Effect (%)', 0, 0);
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    function drawAllCanvases() {
+      drawConcCanvas();
+      drawCSHTCanvas();
+      drawPDCanvas();
+    }
+
+    /* =========================================================================
+       9. LOADING DRUGS & SCENARIO PRESETS
+       ========================================================================= */
+    function loadDrug(drugId, presetOverride = null) {
+      const d = DRUG_LIBRARY[drugId];
+      if (!d) return;
+      state.drugId = drugId;
+      state.presetId = presetOverride ? presetOverride.id : 'custom';
+
+      state.pk = {
+        V1: d.V1, V2: d.V2, V3: d.V3,
+        CL: d.CL, Q2: d.Q2, Q3: d.Q3,
+        t12_ke0: d.t12_ke0, ka: d.ka, F: d.F,
+        mmEnabled: d.mmEnabled, Vmax: d.Vmax, Km: d.Km
+      };
+      state.dosing = { ...d.defaultDosing, ...(presetOverride?.dosing || {}) };
+      state.patient = { ...DEFAULT_PATIENT, ...(presetOverride?.patient || {}) };
+      state.pd = { EC50: d.EC50, gamma: d.gamma, Emax: d.Emax, alpha: d.alpha };
+      state.pdMods = { ...DEFAULT_PD_MODS, ...(presetOverride?.pdMods || {}) };
+      state.rescue = presetOverride?.rescue
+        ? { ...presetOverride.rescue }
+        : { active: false, time: Math.round(state.dosing.horizon * 0.45), magnitude: 12.0 };
+      state.hoverTimeIdx = null;
+
+      buildAllSidebarTabs();
+      recompute();
+    }
+
+    function applyScenarioPreset(presetId) {
+      const pr = SCENARIO_PRESETS.find(p => p.id === presetId);
+      if (!pr) return;
+      loadDrug(pr.drug, pr);
+    }
+
+    /* =========================================================================
+       10. RIGHT SIDEBAR 4-TAB BUILDERS (PRESETS, DOSING, PK/PATIENT, PD/REC)
+       ========================================================================= */
+    function buildAllSidebarTabs() {
+      buildPresetsTab();
+      buildDosingTab();
+      buildPKTab();
+      buildPDTab();
+      updatePDDot();
+    }
+
+    function sliderRowHTML({ id, label, val, unit, min, max, step, dec, isPD = false }) {
+      return `
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-[11.5px] gap-2">
+            <span class="font-medium text-zinc-700 dark:text-zinc-300 truncate">${label}</span>
+            <span class="font-mono tabular-nums text-[#09090b] dark:text-[#fafafa] shrink-0">
+              <span id="v-${id}">${Number(val).toFixed(dec)}</span>
+              <span class="text-[10px] text-zinc-400 dark:text-zinc-500">${unit}</span>
+            </span>
+          </div>
+          <input id="s-${id}" type="range" class="clinical-slider ${isPD ? 'pd-slider' : ''}" min="${min}" max="${max}" step="${step}" value="${val}" />
+        </div>
+      `;
+    }
+
+    function bindSlider(id, dec, onChange) {
+      const el = document.getElementById(`s-${id}`);
+      const lbl = document.getElementById(`v-${id}`);
+      if (!el) return;
+      el.addEventListener('input', () => {
+        const v = parseFloat(el.value);
+        if (lbl) lbl.textContent = v.toFixed(dec);
+        state.presetId = 'custom';
+        onChange(v);
+        highlightPresetCards();
+        recompute();
+      });
+    }
+
+    /* --- TAB 1: PRESETS --- */
+    function buildPresetsTab() {
+      const el = document.getElementById('tab-presets');
+      const drugs = Object.values(DRUG_LIBRARY);
+
+      el.innerHTML = `
+        <div class="space-y-2">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Drug Library (7 Profiles)</div>
+          <div class="flex flex-wrap gap-1.5">
+            ${drugs.map(d => `
+              <button data-drug-pick="${d.id}" type="button" class="px-2.5 py-1 rounded-md border text-[11px] font-medium transition-colors ${
+                d.id === state.drugId
+                  ? 'border-tealLight/60 dark:border-tealDark/60 bg-teal-500/10 text-tealLight dark:text-tealDark'
+                  : 'border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-zinc-900/40 text-zinc-600 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600'
+              }">${d.name}</button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="space-y-1.5 pt-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 mb-1">Clinical Scenarios (9 Presets)</div>
+          ${SCENARIO_PRESETS.map(pr => `
+            <button data-scenario="${pr.id}" type="button" class="scenario-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1">
+              <div class="flex items-center justify-between gap-2 w-full">
+                <span class="text-xs font-medium text-[#09090b] dark:text-[#fafafa]">${pr.name}</span>
+                <span class="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/70 shrink-0">${pr.tag}</span>
+              </div>
+              <p class="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug">${pr.desc}</p>
+            </button>
+          `).join('')}
+        </div>
+      `;
+
+      el.querySelectorAll('[data-drug-pick]').forEach(btn => {
+        btn.addEventListener('click', () => loadDrug(btn.dataset.drugPick));
+      });
+      el.querySelectorAll('[data-scenario]').forEach(btn => {
+        btn.addEventListener('click', () => applyScenarioPreset(btn.dataset.scenario));
+      });
+      highlightPresetCards();
+    }
+
+    function highlightPresetCards() {
+      document.querySelectorAll('.scenario-card').forEach(btn => {
+        const active = btn.dataset.scenario === state.presetId;
+        btn.className = `scenario-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1 ${
+          active
+            ? 'border-tealLight/60 dark:border-tealDark/50 bg-teal-500/[0.06] dark:bg-teal-400/[0.08]'
+            : 'border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 hover:border-zinc-300 dark:hover:border-zinc-700'
+        }`;
+      });
+    }
+
+    /* --- TAB 2: DOSING --- */
+    function buildDosingTab() {
+      const el = document.getElementById('tab-dosing');
+      const d = DRUG_LIBRARY[state.drugId];
+      const dos = state.dosing;
+      const modeBtnCls = m => `dos-mode-btn py-1 rounded text-[11px] font-medium transition-colors ${
+        dos.mode === m ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-zinc-200'
+      }`;
+
+      let modeControlsHTML = '';
+      if (dos.mode === 'bolus_inf') {
+        modeControlsHTML = [
+          sliderRowHTML({ id: 'bolus', label: 'Loading Bolus', val: dos.bolus, unit: d.doseUnit, min: 0, max: dos.bolusMax, step: dos.bolusStep, dec: 0 }),
+          sliderRowHTML({ id: 'infRate', label: 'Continuous Infusion Rate', val: dos.infRate, unit: `${d.doseUnit}/${d.timeUnit}`, min: 0, max: dos.infRateMax, step: dos.infRateStep, dec: dos.infRateStep < 1 ? 1 : 0 }),
+          sliderRowHTML({ id: 'infStop', label: 'Infusion Stop Time', val: dos.infStop, unit: d.timeUnit, min: Math.round(dos.horizon * 0.05), max: dos.horizon, step: d.timeUnit === 'min' ? 5 : 2, dec: 0 }),
+        ].join('');
+      } else if (dos.mode === 'intermittent') {
+        modeControlsHTML = [
+          sliderRowHTML({ id: 'bolus', label: 'Initial Loading Dose (0 = None)', val: dos.bolus, unit: d.doseUnit, min: 0, max: dos.bolusMax, step: dos.bolusStep, dec: 0 }),
+          sliderRowHTML({ id: 'maintDose', label: 'Maintenance Dose', val: dos.maintDose, unit: d.doseUnit, min: 0, max: dos.maintMax, step: dos.maintStep, dec: 0 }),
+          sliderRowHTML({ id: 'interval', label: 'Dosing Interval (τ)', val: dos.interval, unit: d.timeUnit, min: dos.intervalMin, max: dos.intervalMax, step: dos.intervalStep, dec: 0 }),
+        ].join('');
+      } else {
+        modeControlsHTML = `
+          <div class="flex items-center justify-between gap-2 pb-1">
+            <span class="text-[11.5px] font-medium text-zinc-700 dark:text-zinc-300">TCI Target Compartment</span>
+            <div class="inline-flex rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[10px] font-mono">
+              <button data-tcisite="c1" type="button" class="tcisite-btn px-2 py-0.5 rounded ${dos.tciSite === 'c1' ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500'}">Plasma C₁</button>
+              <button data-tcisite="ce" type="button" class="tcisite-btn px-2 py-0.5 rounded ${dos.tciSite === 'ce' ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500'}">Effect Cₑ</button>
+            </div>
+          </div>
+          ${sliderRowHTML({ id: 'tciTarget', label: 'Target Concentration', val: dos.tciTarget, unit: d.concUnit, min: Math.max(0.1, d.winLo * 0.25), max: dos.tciMax, step: dos.tciStep, dec: dos.tciStep < 0.1 ? 2 : 1 })}
+          ${sliderRowHTML({ id: 'infStop', label: 'TCI Stop Time (Wake-Up)', val: dos.infStop, unit: d.timeUnit, min: Math.round(dos.horizon * 0.1), max: dos.horizon, step: d.timeUnit === 'min' ? 5 : 2, dec: 0 })}
+        `;
+      }
+
+      el.innerHTML = `
+        <!-- Regimen Mode Switcher -->
+        <div class="space-y-1.5">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Dosing Regimen</div>
+          <div class="grid grid-cols-3 rounded-lg bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5 gap-0.5">
+            <button data-dmode="bolus_inf" type="button" class="${modeBtnCls('bolus_inf')}">Bolus + Inf</button>
+            <button data-dmode="intermittent" type="button" class="${modeBtnCls('intermittent')}">Intermittent</button>
+            <button data-dmode="tci" type="button" class="${modeBtnCls('tci')}">TCI</button>
+          </div>
+        </div>
+
+        ${d.allowOral ? `
+          <div class="flex items-center justify-between gap-2 p-2 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25">
+            <span class="text-xs font-medium text-zinc-700 dark:text-zinc-300">Administration Route</span>
+            <div class="inline-flex rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[10px] font-mono">
+              <button data-route="iv" type="button" class="route-btn px-2.5 py-0.5 rounded ${dos.route === 'iv' ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500'}">IV</button>
+              <button data-route="oral" type="button" class="route-btn px-2.5 py-0.5 rounded ${dos.route === 'oral' ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500'}">Oral (PO)</button>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Contextual Regimen Sliders -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-3">
+          ${modeControlsHTML}
+          <div class="pt-2 border-t border-[#e4e4e7]/70 dark:border-borderDark/70">
+            ${sliderRowHTML({ id: 'horizon', label: 'Simulation Horizon', val: dos.horizon, unit: d.timeUnit, min: dos.horizonMin, max: dos.horizonMax, step: dos.horizonStep, dec: 0 })}
+          </div>
+        </div>
+
+        <!-- One-Click Bedside Challenges -->
+        <div class="space-y-2 pt-1">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Bedside Challenges</div>
+          <div class="grid grid-cols-2 gap-1.5">
+            <button id="ch-skip-load" type="button" class="px-2.5 py-2 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-zinc-900/40 hover:border-tealLight/60 dark:hover:border-tealDark/60 text-left text-[11px] font-medium text-zinc-700 dark:text-zinc-200 transition-colors">Skip Loading Dose</button>
+            <button id="ch-rescue-bolus" type="button" class="px-2.5 py-2 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-zinc-900/40 hover:border-tealLight/60 dark:hover:border-tealDark/60 text-left text-[11px] font-medium text-zinc-700 dark:text-zinc-200 transition-colors">+50% Loading Bolus</button>
+            <button id="ch-double-dose" type="button" class="px-2.5 py-2 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-zinc-900/40 hover:border-amber-500/60 text-left text-[11px] font-medium text-zinc-700 dark:text-zinc-200 transition-colors">Double Maint. Dose</button>
+            <button id="ch-antag-rescue" type="button" class="px-2.5 py-2 rounded-lg border ${state.rescue.active ? 'border-violet-500/60 bg-violet-500/10 text-violet-700 dark:text-violet-300' : 'border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-zinc-900/40 text-zinc-700 dark:text-zinc-200'} hover:border-violet-500/60 text-left text-[11px] font-medium transition-colors">${state.rescue.active ? `Clear ${d.antagName}` : `${d.antagName} Rescue`}</button>
+          </div>
+        </div>
+      `;
+
+      el.querySelectorAll('[data-dmode]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.dosing.mode = btn.dataset.dmode;
+          state.presetId = 'custom';
+          buildDosingTab();
+          highlightPresetCards();
+          recompute();
+        });
+      });
+
+      el.querySelectorAll('[data-route]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.dosing.route = btn.dataset.route;
+          state.presetId = 'custom';
+          buildDosingTab();
+          recompute();
+        });
+      });
+
+      el.querySelectorAll('[data-tcisite]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.dosing.tciSite = btn.dataset.tcisite;
+          state.presetId = 'custom';
+          buildDosingTab();
+          recompute();
+        });
+      });
+
+      bindSlider('bolus', 0, v => { state.dosing.bolus = v; });
+      bindSlider('infRate', dos.infRateStep < 1 ? 1 : 0, v => { state.dosing.infRate = v; });
+      bindSlider('infStop', 0, v => { state.dosing.infStop = v; });
+      bindSlider('maintDose', 0, v => { state.dosing.maintDose = v; });
+      bindSlider('interval', 0, v => { state.dosing.interval = v; });
+      bindSlider('tciTarget', dos.tciStep < 0.1 ? 2 : 1, v => { state.dosing.tciTarget = v; });
+      bindSlider('horizon', 0, v => {
+        state.dosing.horizon = v;
+        if (state.dosing.infStop > v) state.dosing.infStop = v;
+      });
+
+      // Bedside Challenge Handlers
+      document.getElementById('ch-skip-load').addEventListener('click', () => {
+        state.dosing.bolus = 0;
+        if (state.dosing.mode === 'tci') state.dosing.mode = 'bolus_inf';
+        state.presetId = 'custom';
+        buildDosingTab();
+        recompute();
+      });
+      document.getElementById('ch-rescue-bolus').addEventListener('click', () => {
+        const base = state.dosing.bolus > 0 ? state.dosing.bolus : (d.defaultDosing.bolus || d.defaultDosing.maintDose);
+        state.dosing.bolus = Math.min(state.dosing.bolusMax, Math.round(base * 1.5));
+        state.presetId = 'custom';
+        buildDosingTab();
+        recompute();
+      });
+      document.getElementById('ch-double-dose').addEventListener('click', () => {
+        if (state.dosing.mode === 'bolus_inf') {
+          state.dosing.infRate = Math.min(state.dosing.infRateMax, +(state.dosing.infRate * 2).toFixed(2));
+        } else if (state.dosing.mode === 'intermittent') {
+          state.dosing.maintDose = Math.min(state.dosing.maintMax, Math.round(state.dosing.maintDose * 2));
+        } else {
+          state.dosing.tciTarget = Math.min(state.dosing.tciMax, +(state.dosing.tciTarget * 1.5).toFixed(2));
+        }
+        state.presetId = 'custom';
+        buildDosingTab();
+        recompute();
+      });
+      document.getElementById('ch-antag-rescue').addEventListener('click', () => {
+        state.rescue.active = !state.rescue.active;
+        state.rescue.time = Math.round(state.dosing.horizon * 0.42);
+        state.rescue.magnitude = 14.0;
+        buildDosingTab();
+        buildPDTab();
+        updatePDDot();
+        recompute();
+      });
+    }
+
+    /* --- TAB 3: PK / PATIENT --- */
+    function buildPKTab() {
+      const el = document.getElementById('tab-pk');
+      const d = DRUG_LIBRARY[state.drugId];
+      const pk = state.pk;
+      const pt = state.patient;
+
+      el.innerHTML = `
+        <!-- Patient Physiology Modifiers -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-3">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">Patient Physiology Modifiers</div>
+          ${sliderRowHTML({ id: 'pt-weight', label: 'Body Weight / Adiposity', val: pt.weight, unit: 'kg', min: 40, max: 160, step: 5, dec: 0 })}
+          ${sliderRowHTML({ id: 'pt-egfr', label: `Renal eGFR (fe=${Math.round(d.fRenal * 100)}%)`, val: pt.egfr, unit: 'mL/m', min: 5, max: 130, step: 5, dec: 0 })}
+          ${sliderRowHTML({ id: 'pt-hep', label: `Hepatic / CYP450 (${Math.round(d.fHep * 100)}%)`, val: pt.hepatic, unit: '×', min: 0.2, max: 2.5, step: 0.05, dec: 2 })}
+          ${sliderRowHTML({ id: 'pt-co', label: 'Cardiac Output / Shock', val: pt.cardiacOutput, unit: '×', min: 0.4, max: 1.5, step: 0.05, dec: 2 })}
+          ${sliderRowHTML({ id: 'pt-fu', label: 'Unbound Protein Fraction (fᵤ)', val: pt.fuScale, unit: '×', min: 0.5, max: 2.0, step: 0.05, dec: 2 })}
+        </div>
+
+        <!-- Michaelis-Menten Saturable Elimination Toggle -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <div class="text-xs font-medium text-[#09090b] dark:text-[#fafafa]">Michaelis-Menten Saturation</div>
+              <div class="text-[10.5px] text-zinc-500 dark:text-zinc-400">Zero-order enzyme saturation (V_max, K_m)</div>
+            </div>
+            <button id="toggle-mm" type="button" role="switch" aria-checked="${pk.mmEnabled}" class="relative w-9 h-5 rounded-full transition-colors shrink-0 ${pk.mmEnabled ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-700'}">
+              <span class="block w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform ${pk.mmEnabled ? 'translate-x-4' : 'translate-x-0.5'}"></span>
+            </button>
+          </div>
+          ${pk.mmEnabled ? `
+            <div class="pt-2 border-t border-[#e4e4e7]/70 dark:border-borderDark/70 space-y-2.5">
+              ${sliderRowHTML({ id: 'pk-vmax', label: 'V_max (Max Elimination)', val: pk.Vmax, unit: `${d.doseUnit}/${d.timeUnit}`, min: Math.max(0.5, d.Vmax * 0.25), max: d.Vmax * 2.5, step: d.Vmax < 15 ? 0.5 : 1, dec: 1 })}
+              ${sliderRowHTML({ id: 'pk-km', label: 'K_m (Half-Sat. Conc)', val: pk.Km, unit: d.concUnit, min: Math.max(0.2, d.Km * 0.25), max: d.Km * 3.0, step: d.Km < 5 ? 0.2 : 0.5, dec: 1 })}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Direct Compartmental PK Parameters -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-3">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">Base PK Parameters</div>
+          ${sliderRowHTML({ id: 'pk-v1', label: 'Central Volume (V₁)', val: pk.V1, unit: 'L', min: Math.max(1, d.V1 * 0.3), max: d.V1 * 2.5, step: 0.5, dec: 1 })}
+          ${sliderRowHTML({ id: 'pk-cl', label: 'Base Clearance (CL)', val: pk.CL, unit: `L/${d.timeUnit}`, min: Math.max(0.05, d.CL * 0.15), max: d.CL * 2.5, step: d.CL < 1 ? 0.02 : 0.1, dec: 2 })}
+          ${d.V2 > 0 ? sliderRowHTML({ id: 'pk-v2', label: 'Fast Peripheral (V₂)', val: pk.V2, unit: 'L', min: Math.max(1, d.V2 * 0.3), max: d.V2 * 2.5, step: 1, dec: 0 }) : ''}
+          ${d.Q2 > 0 ? sliderRowHTML({ id: 'pk-q2', label: 'Fast Transfer (Q₂)', val: pk.Q2, unit: `L/${d.timeUnit}`, min: 0.05, max: d.Q2 * 2.5, step: d.Q2 < 2 ? 0.05 : 0.5, dec: 2 }) : ''}
+          ${d.V3 > 0 ? sliderRowHTML({ id: 'pk-v3', label: 'Slow/Fat Reservoir (V₃)', val: pk.V3, unit: 'L', min: Math.max(1, d.V3 * 0.2), max: d.V3 * 2.5, step: 2, dec: 0 }) : ''}
+          ${d.Q3 > 0 ? sliderRowHTML({ id: 'pk-q3', label: 'Slow Transfer (Q₃)', val: pk.Q3, unit: `L/${d.timeUnit}`, min: 0.01, max: d.Q3 * 2.5, step: 0.02, dec: 2 }) : ''}
+          ${sliderRowHTML({ id: 'pk-ke0', label: 'Effect-Site Lag t½(ke0)', val: pk.t12_ke0, unit: d.timeUnit, min: 0.2, max: Math.max(15, d.t12_ke0 * 4), step: 0.2, dec: 1 })}
+        </div>
+      `;
+
+      bindSlider('pt-weight', 0, v => { state.patient.weight = v; });
+      bindSlider('pt-egfr', 0, v => { state.patient.egfr = v; });
+      bindSlider('pt-hep', 2, v => { state.patient.hepatic = v; });
+      bindSlider('pt-co', 2, v => { state.patient.cardiacOutput = v; });
+      bindSlider('pt-fu', 2, v => { state.patient.fuScale = v; });
+
+      bindSlider('pk-v1', 1, v => { state.pk.V1 = v; });
+      bindSlider('pk-cl', 2, v => { state.pk.CL = v; });
+      bindSlider('pk-v2', 0, v => { state.pk.V2 = v; });
+      bindSlider('pk-q2', 2, v => { state.pk.Q2 = v; });
+      bindSlider('pk-v3', 0, v => { state.pk.V3 = v; });
+      bindSlider('pk-q3', 2, v => { state.pk.Q3 = v; });
+      bindSlider('pk-ke0', 1, v => { state.pk.t12_ke0 = v; });
+      bindSlider('pk-vmax', 1, v => { state.pk.Vmax = v; });
+      bindSlider('pk-km', 1, v => { state.pk.Km = v; });
+
+      document.getElementById('toggle-mm').addEventListener('click', () => {
+        state.pk.mmEnabled = !state.pk.mmEnabled;
+        state.presetId = 'custom';
+        buildPKTab();
+        recompute();
+      });
+    }
+
+    /* --- TAB 4: PD / RECEPTOR --- */
+    function buildPDTab() {
+      const el = document.getElementById('tab-pd');
+      const d = DRUG_LIBRARY[state.drugId];
+      const pd = state.pd;
+      const pm = state.pdMods;
+      const ecDec = d.winHi < 5 ? 2 : 1;
+
+      el.innerHTML = `
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-3">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">Hill E_max Parameters</div>
+          ${sliderRowHTML({ id: 'pd-ec50', label: 'Potency (EC₅₀)', val: pd.EC50, unit: d.concUnit, min: Math.max(0.1, d.EC50 * 0.2), max: d.EC50 * 3.0, step: d.EC50 < 2 ? 0.05 : 0.2, dec: ecDec, isPD: true })}
+          ${sliderRowHTML({ id: 'pd-gamma', label: 'Hill Slope (γ)', val: pd.gamma, unit: '', min: 0.6, max: 5.0, step: 0.1, dec: 1, isPD: true })}
+          ${sliderRowHTML({ id: 'pd-emax', label: 'Maximal Effect (E_max)', val: pd.Emax, unit: '%', min: 20, max: 100, step: 5, dec: 0, isPD: true })}
+          ${sliderRowHTML({ id: 'pd-alpha', label: 'Intrinsic Activity (α Partial/Full)', val: pd.alpha, unit: '', min: 0.1, max: 1.0, step: 0.05, dec: 2, isPD: true })}
+        </div>
+
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-3">
+          <div class="flex items-center justify-between pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">
+            <span class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Receptor Antagonists &amp; Synergy</span>
+            <button id="btn-reset-pdmods" type="button" class="text-[10px] font-mono text-violet-700 dark:text-violet-300 hover:underline">clear</button>
+          </div>
+          ${sliderRowHTML({ id: 'pm-comp', label: 'Competitive Antag [B]/K_B (↑EC₅₀)', val: pm.compAntag, unit: '×', min: 0, max: 15, step: 0.25, dec: 2, isPD: true })}
+          ${sliderRowHTML({ id: 'pm-noncomp', label: 'Non-Competitive [B]/K_B (↓E_max)', val: pm.nonCompAntag, unit: '×', min: 0, max: 4.0, step: 0.1, dec: 1, isPD: true })}
+          ${sliderRowHTML({ id: 'pm-syn', label: 'Synergistic Co-Drug (↓EC₅₀)', val: pm.synergy, unit: '×', min: 0.5, max: 3.5, step: 0.1, dec: 1, isPD: true })}
+        </div>
+
+        <!-- Timed Antagonist Rescue Bolus Event -->
+        <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <div class="text-xs font-medium text-[#09090b] dark:text-[#fafafa]">Timed ${d.antagName} Rescue Bolus</div>
+              <div class="text-[10.5px] text-zinc-500 dark:text-zinc-400">Acute reversal + re-narcotization kinetics</div>
+            </div>
+            <button id="toggle-rescue" type="button" role="switch" aria-checked="${state.rescue.active}" class="relative w-9 h-5 rounded-full transition-colors shrink-0 ${state.rescue.active ? 'bg-violet-600 dark:bg-violet-500' : 'bg-zinc-300 dark:bg-zinc-700'}">
+              <span class="block w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform ${state.rescue.active ? 'translate-x-4' : 'translate-x-0.5'}"></span>
+            </button>
+          </div>
+          ${state.rescue.active ? `
+            <div class="pt-2 border-t border-[#e4e4e7]/70 dark:border-borderDark/70 space-y-2.5">
+              ${sliderRowHTML({ id: 'resc-time', label: 'Injection Time', val: state.rescue.time, unit: d.timeUnit, min: Math.round(state.dosing.horizon * 0.05), max: Math.round(state.dosing.horizon * 0.9), step: d.timeUnit === 'min' ? 5 : 2, dec: 0, isPD: true })}
+              ${sliderRowHTML({ id: 'resc-mag', label: 'Antagonist Peak [B]/K_B', val: state.rescue.magnitude, unit: '×', min: 2, max: 30, step: 1, dec: 0, isPD: true })}
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      bindSlider('pd-ec50', ecDec, v => { state.pd.EC50 = v; });
+      bindSlider('pd-gamma', 1, v => { state.pd.gamma = v; });
+      bindSlider('pd-emax', 0, v => { state.pd.Emax = v; });
+      bindSlider('pd-alpha', 2, v => { state.pd.alpha = v; updatePDDot(); });
+      bindSlider('pm-comp', 2, v => { state.pdMods.compAntag = v; updatePDDot(); });
+      bindSlider('pm-noncomp', 1, v => { state.pdMods.nonCompAntag = v; updatePDDot(); });
+      bindSlider('pm-syn', 1, v => { state.pdMods.synergy = v; updatePDDot(); });
+      bindSlider('resc-time', 0, v => { state.rescue.time = v; });
+      bindSlider('resc-mag', 0, v => { state.rescue.magnitude = v; });
+
+      document.getElementById('btn-reset-pdmods').addEventListener('click', () => {
+        state.pdMods = { ...DEFAULT_PD_MODS };
+        state.pd.alpha = 1.0;
+        buildPDTab();
+        updatePDDot();
+        recompute();
+      });
+
+      document.getElementById('toggle-rescue').addEventListener('click', () => {
+        state.rescue.active = !state.rescue.active;
+        buildPDTab();
+        buildDosingTab();
+        updatePDDot();
+        recompute();
+      });
+    }
+
+    function updatePDDot() {
+      const any = state.pdMods.compAntag > 0.05 || state.pdMods.nonCompAntag > 0.05 || Math.abs(state.pdMods.synergy - 1) > 0.05 || state.pd.alpha < 0.98 || state.rescue.active;
+      document.getElementById('tab-pd-dot').classList.toggle('hidden', !any);
+    }
+
+    /* =========================================================================
+       11. UI STATE SYNC, EVENTS & STRICT RESIZE OBSERVER
+       ========================================================================= */
+    function switchSidebarTab(tabId) {
+      state.activeTab = tabId;
+      document.querySelectorAll('.side-tab').forEach(btn => {
+        const active = btn.dataset.tab === tabId;
+        btn.className = `side-tab py-1.5 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center gap-1 ${
+          active
+            ? 'bg-white dark:bg-zinc-800 text-[#09090b] dark:text-[#fafafa] shadow-sm'
+            : 'text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-zinc-200'
+        }`;
+      });
+      ['presets', 'dosing', 'pk', 'pd'].forEach(id => {
+        document.getElementById(`tab-${id}`).classList.toggle('hidden', id !== tabId);
+      });
+    }
+
+    function syncChartToggleUI() {
+      document.querySelectorAll('.yscale-btn').forEach(b => {
+        const on = b.dataset.yscale === state.yScale;
+        b.className = `yscale-btn px-2 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+      document.querySelectorAll('.pdmode-btn').forEach(b => {
+        const on = b.dataset.pdmode === state.pdMode;
+        b.className = `pdmode-btn px-2 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-medium shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+
+      const pillCls = on => `px-2 py-0.5 rounded border transition-colors ${
+        on
+          ? 'border-tealLight/50 dark:border-tealDark/50 bg-teal-500/10 text-tealLight dark:text-tealDark'
+          : 'border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500'
+      }`;
+      document.getElementById('toggle-tissues').className = pillCls(state.showTissues);
+      document.getElementById('toggle-effect').className = pillCls(state.showEffect);
+    }
+
+    function syncPinUI() {
+      const pinned = Boolean(state.pinnedSim);
+      const pinBtn = document.getElementById('btn-pin-baseline');
+      const clrBtn = document.getElementById('btn-clear-ghost');
+      pinBtn.textContent = pinned ? 'Pinned ✓' : 'Pin Baseline';
+      pinBtn.className = `h-8 px-2.5 rounded-lg border text-xs font-medium transition-colors ${
+        pinned
+          ? 'border-tealLight/60 dark:border-tealDark/60 bg-teal-500/10 text-tealLight dark:text-tealDark'
+          : 'bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border-[#e4e4e7] dark:border-borderDark text-zinc-700 dark:text-zinc-200'
+      }`;
+      clrBtn.classList.toggle('hidden', !pinned);
+    }
+
+    function wireEvents() {
+      // Theme Toggle
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const isDarkNow = document.documentElement.classList.toggle('dark');
+        const val = isDarkNow ? 'dark' : 'light';
+        try {
+          localStorage.setItem('medlab-theme', val);
+          localStorage.setItem('theme', val);
+        } catch (_) {}
+        renderPKSchematic();
+        drawAllCanvases();
+      });
+
+      // Pin Baseline & Clear Ghost
+      document.getElementById('btn-pin-baseline').addEventListener('click', () => {
+        if (!state.sim) return;
+        state.pinnedSim = state.sim;
+        syncPinUI();
+        renderTelemetry();
+        drawAllCanvases();
+      });
+      document.getElementById('btn-clear-ghost').addEventListener('click', () => {
+        state.pinnedSim = null;
+        syncPinUI();
+        renderTelemetry();
+        drawAllCanvases();
+      });
+
+      // Reset
+      document.getElementById('btn-reset').addEventListener('click', () => {
+        state.pinnedSim = null;
+        syncPinUI();
+        applyScenarioPreset('propofol_tiva');
+      });
+
+      // Sidebar Tabs
+      document.querySelectorAll('.side-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchSidebarTab(btn.dataset.tab));
+      });
+
+      // Chart Toggles
+      document.querySelectorAll('.yscale-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.yScale = btn.dataset.yscale;
+          syncChartToggleUI();
+          drawConcCanvas();
+        });
+      });
+      document.querySelectorAll('.pdmode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.pdMode = btn.dataset.pdmode;
+          syncChartToggleUI();
+          drawPDCanvas();
+        });
+      });
+      document.getElementById('toggle-tissues').addEventListener('click', () => {
+        state.showTissues = !state.showTissues;
+        syncChartToggleUI();
+        drawConcCanvas();
+      });
+      document.getElementById('toggle-effect').addEventListener('click', () => {
+        state.showEffect = !state.showEffect;
+        syncChartToggleUI();
+        drawConcCanvas();
+      });
+
+      // Primary Concentration Canvas Hover -> Scrubs Tooltip + SVG Schematic + PD Operating Bead!
+      const handleConcMove = clientX => {
+        if (!state.sim) return;
+        const rect = concWrap.getBoundingClientRect();
+        const padL = 48, padR = state.showEffect ? 42 : 16;
+        const pw = Math.max(40, rect.width - padL - padR);
+        const rel = (clientX - rect.left - padL) / pw;
+        if (rel >= 0 && rel <= 1) {
+          state.hoverTimeIdx = Math.round(rel * (state.sim.times.length - 1));
+        } else {
+          state.hoverTimeIdx = null;
+        }
+        renderPKSchematic();
+        drawConcCanvas();
+        drawPDCanvas();
+      };
+      concWrap.addEventListener('mousemove', e => handleConcMove(e.clientX));
+      concWrap.addEventListener('mouseleave', () => {
+        state.hoverTimeIdx = null;
+        renderPKSchematic();
+        drawConcCanvas();
+        drawPDCanvas();
+      });
+      concWrap.addEventListener('touchmove', e => { if (e.touches[0]) handleConcMove(e.touches[0].clientX); }, { passive: true });
+      concWrap.addEventListener('touchend', () => {
+        state.hoverTimeIdx = null;
+        renderPKSchematic();
+        drawConcCanvas();
+        drawPDCanvas();
+      });
+
+      // CSHT Canvas Hover
+      const handleCSHTMove = clientX => {
+        const rect = cshtWrap.getBoundingClientRect();
+        const padL = 42, padR = 16;
+        const pw = Math.max(40, rect.width - padL - padR);
+        const rel = (clientX - rect.left - padL) / pw;
+        if (rel >= 0 && rel <= 1) {
+          const mins = rel * 480;
+          let best = 0, bestD = Infinity;
+          for (let i = 0; i < CSHT_DURATIONS_MIN.length; i++) {
+            const dist = Math.abs(CSHT_DURATIONS_MIN[i] - mins);
+            if (dist < bestD) { bestD = dist; best = i; }
+          }
+          state.cshtHoverIdx = best;
+        } else {
+          state.cshtHoverIdx = null;
+        }
+        drawCSHTCanvas();
+      };
+      cshtWrap.addEventListener('mousemove', e => handleCSHTMove(e.clientX));
+      cshtWrap.addEventListener('mouseleave', () => { state.cshtHoverIdx = null; drawCSHTCanvas(); });
+      cshtWrap.addEventListener('touchmove', e => { if (e.touches[0]) handleCSHTMove(e.touches[0].clientX); }, { passive: true });
+      cshtWrap.addEventListener('touchend', () => { state.cshtHoverIdx = null; drawCSHTCanvas(); });
+
+      // PD Canvas Hover
+      pdWrap.addEventListener('mousemove', e => {
+        const rect = pdWrap.getBoundingClientRect();
+        state.pdHover = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        drawPDCanvas();
+      });
+      pdWrap.addEventListener('mouseleave', () => { state.pdHover = null; drawPDCanvas(); });
+
+      // STRICT ANTI-STRETCH RESIZE OBSERVER: Observe WRAPPERS ONLY!
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(entries => {
+          for (const entry of entries) {
+            if (entry.target === concWrap && syncCanvasToWrapper(concWrap, concCanvas)) drawConcCanvas();
+            if (entry.target === cshtWrap && syncCanvasToWrapper(cshtWrap, cshtCanvas)) drawCSHTCanvas();
+            if (entry.target === pdWrap && syncCanvasToWrapper(pdWrap, pdCanvas)) drawPDCanvas();
+          }
+        });
+        ro.observe(concWrap);
+        ro.observe(cshtWrap);
+        ro.observe(pdWrap);
+      }
+
+      window.addEventListener('resize', () => {
+        if (syncCanvasToWrapper(concWrap, concCanvas)) drawConcCanvas();
+        if (syncCanvasToWrapper(cshtWrap, cshtCanvas)) drawCSHTCanvas();
+        if (syncCanvasToWrapper(pdWrap, pdCanvas)) drawPDCanvas();
+      });
+    }
+
+    // Bootstrap cleanly on window load
+    window.addEventListener('load', () => {
+      wireEvents();
+      switchSidebarTab('presets');
+      syncChartToggleUI();
+      syncPinUI();
+
+      syncCanvasToWrapper(concWrap, concCanvas);
+      syncCanvasToWrapper(cshtWrap, cshtCanvas);
+      syncCanvasToWrapper(pdWrap, pdCanvas);
+
+      applyScenarioPreset('propofol_tiva');
+    });
+  })();
+  </script>
+</body>
+</html>
