@@ -550,7 +550,7 @@
     /* =========================================================================
        COUPLED NONLINEAR RK4 ODE KERNELS (FIXED & CALIBRATED)
        ========================================================================= */
-    function createInitialState(axisId) {
+       function createInitialState(axisId) {
       if (axisId === 'hpa') {
         return {
           t: 7.0, crh: 1.1, acth: 6.5, cortF: 18.0, adrenalMass: 1.0,
@@ -567,10 +567,15 @@
         };
       }
       return {
-        t: 0.0, F: 0.06, CL: 0.0, clAge: 0.0, e2Mem: 110.0,
-        lh: 6.2, fsh: 9.2, e2: 110.0, p4: 1.2, progestinPulse: 0.0,
-        cycleDay: 1.0, wasLuteal: 0.0,
+        t: 0.0, F: 0.06, CL1: 0.0, CL2: 0.0, CL3: 0.0, CL4: 0.0,
+        e2Mem: 85.0, lh: 6.5, fsh: 10.5, e2: 85.0, p4: 1.2,
+        progestinPulse: 0.0, cycleDay: 1.0, wasLuteal: 0.0,
       };
+    }
+
+    function evalClActivity(s) {
+      const clRaw = 0.20 * s.CL2 + 2.0 * s.CL3 + 1.7 * s.CL4;
+      return Math.pow(clRaw, 2.4) / (Math.pow(clRaw, 2.4) + Math.pow(0.34, 2.4));
     }
 
     function derivatives(axisId, s, p) {
@@ -597,7 +602,6 @@
         const cortSec = p.adrenalCap * s.adrenalMass * 35.0 * adrenalStim + p.autoAdrenal * 25.0;
         const d_cortF = cortSec - 0.68 * s.cortF;
 
-        // Autoimmune destruction (adrenalCap < 0.35) cannot undergo hyperplasia
         const intactScale = clamp(p.adrenalCap / 0.40, 0.22, 1.0);
         const massTarget = clamp((0.22 + 1.55 * (Math.pow(s.acth, 0.85) / (Math.pow(s.acth, 0.85) + Math.pow(5.5, 0.85)))) * intactScale, 0.18, 2.45);
         const d_adrenalMass = (massTarget - s.adrenalMass) / 120.0;
@@ -631,7 +635,6 @@
         const d_ft4 = (endoT4 + exoT4) - 0.10 * s.ft4;
         const d_ft3 = (0.275 * p.deiodinase * s.ft4 + 0.28 * endoT4) - 1.0 * s.ft3;
 
-        // Chronic destructive thyroiditis limits hypertrophic mass expansion
         const parenchymalLimit = p.thyroidCap < 0.30 ? 0.55 + 2.5 * p.thyroidCap : 2.85;
         const massTarget = clamp(0.32 + 1.85 * (stimDrive / (stimDrive + 2.8)), 0.28, parenchymalLimit);
         const d_thyroidMass = (massTarget - s.thyroidMass) / 16.0;
@@ -688,67 +691,64 @@
         };
       }
 
-      // AXIS 4: HPG · OVARIAN (Calibrated Self-Sustaining ~28-Day Coupled Limit Cycle)
+      // AXIS 4: HPG · OVARIAN (4-Stage Transit CL Limit Cycle — Guaranteed ~28d Period)
       const prlBlock = 1 / (1 + Math.pow(Math.max(0, p.prolactin - 12) / 38.0, 2.0));
+      const gnrhEff = Math.pow(p.gnrhDrive, 1.35) * prlBlock;
       const p4Exog = p.ocpDose * 36.0 + p.exoProgestin * 34.0 + s.progestinPulse;
-      // Subtract basal adrenal P4 (1.2) so normal follicular phase has zero spurious P4 blockade
       const p4Eff = Math.max(0, s.p4 - 1.2) + p4Exog;
       const e2Eff = s.e2 + p.ocpDose * 480.0;
 
-      // Central negative feedback (P4 slows GnRH pulse generator multiplicatively)
+      // Central negative feedback
       const p4Supp = (0.30 + 0.70 / (1 + Math.pow(p4Eff / 8.5, 1.8))) / (1 + 1.25 * p.ocpDose);
-      const negFB_LH = (0.12 + 0.88 / (1 + Math.pow(e2Eff / 48.0, 1.75))) * p4Supp;
-      const negFB_FSH = (0.06 + 0.94 / (1 + Math.pow(e2Eff / 38.0, 1.55) + 1.8 * s.F)) * p4Supp;
+      const negFB_LH = (0.14 + 0.86 / (1 + Math.pow(e2Eff / 32.0, 1.75))) * p4Supp;
+      const negFB_FSH = (0.045 + 0.955 / (1 + Math.pow(e2Eff / 32.0, 1.55) + 1.6 * s.F)) * p4Supp;
 
-      // Biphasic Positive Feedback: sustained E2 memory > 700 pmol/L with low P4 triggers LH/FSH surge
+      // Biphasic Positive Feedback: sustained E2 > 700 pmol/L with low P4 triggers LH/FSH surge
       const e2Excess = Math.max(0, s.e2Mem - 700.0);
-      const posE2 = Math.pow(e2Excess / 155.0, 3.0) / (1 + Math.pow(e2Excess / 155.0, 3.0));
+      const posE2 = Math.pow(e2Excess / 140.0, 3.0) / (1 + Math.pow(e2Excess / 140.0, 3.0));
       const p4Permit = 1 / (1 + Math.pow(p4Eff / 5.5, 3.0));
       const ocpPermit = 1 / (1 + Math.pow(p.ocpDose / 0.22, 2.5));
       const posFB = posE2 * p4Permit * ocpPermit;
 
-      // GnRH pulse frequency differentially tunes LH (+) vs FSH (-) -> PCOS LH:FSH > 2
       const freqLH = Math.pow(p.gnrhFreq, 1.22);
       const freqFSH = 1 / Math.pow(p.gnrhFreq, 0.76);
 
-      const lhTarget = p.gnrhDrive * prlBlock * freqLH * (32.0 * negFB_LH + 72.0 * posFB);
-      const fshTarget = p.gnrhDrive * prlBlock * freqFSH * (72.0 * negFB_FSH + 19.0 * posFB);
+      const lhTarget = gnrhEff * freqLH * (36.0 * negFB_LH + 82.0 * posFB);
+      const fshTarget = gnrhEff * freqFSH * (82.0 * negFB_FSH + 20.0 * posFB);
 
       const d_lh = 1.75 * (lhTarget - s.lh);
       const d_fsh = 1.45 * (fshTarget - s.fsh);
 
-      // Ovulation: LH surge (>22 IU/L) ruptures mature dominant follicle (F > 0.50)
-      const ovulLH = 1 / (1 + safeExp(-(s.lh - 22.0) / 3.2));
-      const ovulF = 1 / (1 + safeExp(-(s.F - 0.50) / 0.06));
+      // Ovulation: sharp LH surge (>24 IU/L) ruptures dominant follicle completely
+      const ovulLH = 1 / (1 + safeExp(-(s.lh - 24.0) / 2.0));
+      const ovulF = 1 / (1 + safeExp(-(s.F - 0.28) / 0.06));
       const ovul = ovulLH * ovulF;
 
-      // Dominant follicle recruitment (FSH window) + late-follicular LH-receptor autocrine maturation
-      const pcosCap = p.gnrhFreq > 1.35 ? Math.max(0.34, 1.05 - 1.15 * (p.gnrhFreq - 1.35)) : 1.18;
-      const fshDrive = Math.pow(s.fsh, 2.4) / (Math.pow(s.fsh, 2.4) + Math.pow(4.6, 2.4));
-      const lhDrive = Math.pow(s.lh, 2.0) / (Math.pow(s.lh, 2.0) + Math.pow(3.5, 2.0));
-      const p4InhibF = 1 / (1 + Math.pow(p4Eff / 5.5, 2.5));
+      // Follicular recruitment (FSH window) + late-follicular LH-dependent maturation
+      const pcosCap = p.gnrhFreq > 1.35 ? Math.max(0.34, 1.05 - 1.15 * (p.gnrhFreq - 1.35)) : 1.22;
+      const fshDrive = Math.pow(s.fsh, 3.2) / (Math.pow(s.fsh, 3.2) + Math.pow(5.0, 3.2));
+      const lhDrive = Math.pow(s.lh, 2.5) / (Math.pow(s.lh, 2.5) + Math.pow(3.8, 2.5));
+      const p4InhibF = 1 / (1 + Math.pow(p4Eff / 5.0, 2.5));
 
-      const fGrowth = p.ovarianReserve * (0.11 * fshDrive + 0.34 * s.F * lhDrive) * Math.max(0, 1 - s.F / pcosCap) * p4InhibF;
-      const fDecay = (0.075 + 0.60 * (p4Eff / (p4Eff + 6.0)) + 2.4 * ovul) * s.F;
+      const fGrowth = p.ovarianReserve * (0.052 * fshDrive + 0.34 * s.F * lhDrive) * Math.max(0, 1 - s.F / pcosCap) * p4InhibF;
+      const ovulFlux = 2.6 * ovul * s.F;
+      const fDecay = (0.075 + 0.65 * (p4Eff / (p4Eff + 6.0))) * s.F + ovulFlux;
       const d_F = fGrowth - fDecay;
 
-      // Corpus Luteum luteinization & ~13-day programmed luteolysis
-      const lutealLife = 1 / (1 + safeExp((s.clAge - 10.8) / 0.75));
-      const luteolysis = 1 - lutealLife;
-      const clForm = 2.8 * ovul * s.F;
-      const clMaint = 0.78 * s.CL * Math.max(0, 1.0 - s.CL) * lutealLife;
-      const clRegress = (0.04 + 0.95 * luteolysis) * s.CL;
-      const d_CL = clForm + clMaint - clRegress;
+      // 4-Stage Linear Corpus Luteum Transit Chain (kL = 0.48/d -> ~14d programmed luteolysis)
+      const kL = 0.48;
+      const d_CL1 = 1.45 * ovulFlux - kL * s.CL1;
+      const d_CL2 = kL * (s.CL1 - s.CL2);
+      const d_CL3 = kL * (s.CL2 - s.CL3);
+      const d_CL4 = kL * (s.CL3 - s.CL4);
 
-      const d_clAge = s.CL > 0.12 ? 1.0 : -4.0 * s.clAge;
-
-      // Ovarian E2 & P4 secretion
-      const e2Prod = p.ovarianReserve * (55.0 + 1400.0 * Math.pow(s.F, 1.9) + 520.0 * s.CL) + 18.0;
-      const p4Prod = 1.2 + 52.0 * p.ovarianReserve * s.CL;
+      const clAct = evalClActivity(s);
+      const e2Prod = p.ovarianReserve * (1450.0 * Math.pow(s.F, 1.55) + 460.0 * clAct) + 22.0;
+      const p4Prod = 1.2 + 52.0 * p.ovarianReserve * clAct;
 
       return {
-        t: 1, F: d_F, CL: d_CL, clAge: d_clAge,
-        e2Mem: (s.e2 - s.e2Mem) / 1.15,
+        t: 1, F: d_F, CL1: d_CL1, CL2: d_CL2, CL3: d_CL3, CL4: d_CL4,
+        e2Mem: (s.e2 - s.e2Mem) / 1.05,
         lh: d_lh, fsh: d_fsh,
         e2: 1.25 * (e2Prod - s.e2),
         p4: 1.35 * (p4Prod - s.p4),
@@ -798,18 +798,21 @@
         next.testisMass = clamp(next.testisMass, 0.22, 1.6);
       } else if (axisId === 'hpg_ovarian') {
         next.F = clamp(next.F, 0.01, 1.35);
-        next.CL = clamp(next.CL, 0.0, 1.35);
-        next.clAge = clamp(next.clAge, 0, 18);
+        next.CL1 = clamp(next.CL1, 0.0, 2.0);
+        next.CL2 = clamp(next.CL2, 0.0, 2.0);
+        next.CL3 = clamp(next.CL3, 0.0, 2.0);
+        next.CL4 = clamp(next.CL4, 0.0, 2.0);
         next.lh = clamp(next.lh, 0.1, 95);
         next.fsh = clamp(next.fsh, 0.1, 110);
         next.e2 = clamp(next.e2, 10, 2200);
         next.p4 = clamp(next.p4, 0.3, 85);
 
-        if (next.CL > 0.35) next.wasLuteal = 1.0;
-        if (next.wasLuteal > 0.5 && next.CL < 0.10 && next.clAge > 10.0) {
+        const clAct = evalClActivity(next);
+        if (clAct > 0.55) next.wasLuteal = 1.0;
+        if (next.wasLuteal > 0.5 && clAct < 0.08 && next.CL1 < 0.05) {
           next.cycleDay = 1.0;
           next.wasLuteal = 0.0;
-        } else if (next.cycleDay >= 29.0) {
+        } else if (next.cycleDay >= 29.5) {
           next.cycleDay = 1.0;
         }
       }
@@ -838,16 +841,18 @@
           totalT: s.totalT, freeT, inhibinB: s.inhibinB, testisMass: s.testisMass, posFB: 0,
         };
       }
+      const clAct = evalClActivity(s);
       const p4Eff = Math.max(0, s.p4 - 1.2) + p.ocpDose * 36.0 + p.exoProgestin * 34.0 + s.progestinPulse;
       const posActive = s.e2Mem > 700 && p4Eff < 7.5 && p.ocpDose < 0.25 && s.lh > 16 ? 1 : 0;
       const cyclePhaseNum = Math.min(28, Math.max(1, Math.floor(s.cycleDay)));
       return {
-        t: s.t, F: s.F, CL: s.CL, lh: s.lh, fsh: s.fsh, e2: s.e2, p4: s.p4,
+        t: s.t, F: s.F, CL: clAct, lh: s.lh, fsh: s.fsh, e2: s.e2, p4: s.p4,
         lhFshRatio: s.lh / Math.max(0.2, s.fsh), cyclePhaseNum, posFB: posActive,
       };
     }
 
-    // ==================== END OF STEP 1 — PASTE STEP 2 DIRECTLY BELOW ====================
+    
+       // ==================== END OF STEP 1 — PASTE STEP 2 DIRECTLY BELOW ====================
     /* =========================================================================
        APPLICATION STATE & HISTORY MANAGEMENT
        ========================================================================= */
