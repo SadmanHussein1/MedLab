@@ -1139,7 +1139,7 @@
         const tSigL = clamp((0.056 + (qtSec - 0.38) * 0.18) * tWidthK, 0.024, 0.11);
         const tSigR = clamp((0.036 + (qtSec - 0.38) * 0.10) * tWidthK, 0.018, 0.08);
         const dtST = t - (jPt + 0.048);
-        const dtT = t - tPeak;
+        const dtT = dt - tPeak;
 
         // Smooth ST plateau envelope from J-point into T-wave
         const stGate = smoothstep(qrsEnd - 0.014, qrsEnd + 0.018, dt) * (1 - smoothstep(tPeak - 0.02, tPeak + 0.06, dt));
@@ -1428,7 +1428,7 @@
 
         // U Wave (especially prominent in Hypokalemia)
         if (Math.abs(uAmp) > 0.008) {
-          const dtU = t - (tPeak + 0.125);
+          const dtU = dt - (tPeak + 0.125);
           v += uAmp * gauss(dtU, 0.042);
         }
       }
