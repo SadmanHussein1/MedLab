@@ -1,0 +1,2950 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>12-Lead ECG Lab — MedLab Clinical Electrocardiography</title>
+
+  <!-- Prevent theme flash prior to first paint (defaults to obsidian dark mode) -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter (UI) & JetBrains Mono (Intervals / Voltages / Axis) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#111113',
+            borderDark: '#27272a',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      overflow-x: hidden;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Minimal thin scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(113, 113, 122, 0.28); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(113, 113, 122, 0.48); }
+
+    /* Swiss-Precision Range Sliders */
+    input[type="range"].clinical-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      border-radius: 9999px;
+      background: #e4e4e7;
+      outline: none;
+      cursor: pointer;
+    }
+    .dark input[type="range"].clinical-slider {
+      background: #27272a;
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+      transition: transform 0.1s ease;
+    }
+    .dark input[type="range"].clinical-slider::-webkit-slider-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"].clinical-slider.k-slider::-webkit-slider-thumb {
+      background: #f59e0b;
+    }
+    .dark input[type="range"].clinical-slider.k-slider::-webkit-slider-thumb {
+      background: #fbbf24;
+    }
+    input[type="range"].clinical-slider::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+    }
+    .dark input[type="range"].clinical-slider::-moz-range-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-canvasLight text-[#09090b] dark:bg-obsidian dark:text-[#f4f4f5] transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
+
+  <!-- ==================== 1. STICKY HEADER (h-14) ==================== -->
+  <header class="sticky top-0 z-40 min-h-[3.5rem] w-full border-b border-[#e4e4e7] dark:border-borderDark bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md shrink-0">
+    <div class="w-full max-w-[1640px] mx-auto px-4 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2.5">
+
+      <!-- Left: Back link MedLab + Pulse Mark + Title -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="flex items-center gap-2 shrink-0 group focus:outline-none">
+          <span class="w-7 h-7 rounded-lg flex items-center justify-center border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark group-hover:border-tealLight/50 dark:group-hover:border-tealDark/50 transition-colors">
+            <svg class="w-4 h-4 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2.5 13h4l2.1-6.2 3.5 11.2 2.3-5h7.1" />
+            </svg>
+          </span>
+          <span class="text-[13px] font-medium text-zinc-600 dark:text-zinc-300 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors">MedLab</span>
+        </a>
+        <span class="text-zinc-300 dark:text-zinc-700 shrink-0">/</span>
+        <h1 class="text-[14.5px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] truncate">12-Lead ECG Lab</h1>
+      </div>
+
+      <!-- Center / Right Controls -->
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+
+        <!-- Study Lab vs Blinded Quiz -->
+        <div class="inline-flex items-center h-8 rounded-lg bg-zinc-100/90 dark:bg-surfaceDark border border-[#e4e4e7] dark:border-borderDark p-0.5 text-xs font-medium">
+          <button data-mode="study" type="button" class="mode-btn px-2.5 h-full rounded-md transition-colors">Study Lab</button>
+          <button data-mode="quiz" type="button" class="mode-btn px-2.5 h-full rounded-md transition-colors flex items-center gap-1.5">
+            <span>Blinded Quiz</span>
+            <span id="hdr-streak" class="hidden font-mono text-[10px] px-1.5 py-0.2 rounded bg-teal-500/15 text-tealLight dark:text-tealDark">0</span>
+          </button>
+        </div>
+
+        <!-- Paper Speed: 25 mm/s vs 50 mm/s -->
+        <div class="inline-flex items-center h-8 rounded-lg bg-zinc-100/90 dark:bg-surfaceDark border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[11px] font-mono" title="ECG Paper Sweep Speed">
+          <button data-speed="25" type="button" class="speed-btn px-2 h-full rounded-md transition-colors">25 mm/s</button>
+          <button data-speed="50" type="button" class="speed-btn px-2 h-full rounded-md transition-colors">50 mm/s</button>
+        </div>
+
+        <!-- Voltage Gain: 10 mm/mV vs 5 mm/mV -->
+        <div class="inline-flex items-center h-8 rounded-lg bg-zinc-100/90 dark:bg-surfaceDark border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[11px] font-mono" title="ECG Voltage Calibration Gain">
+          <button data-gain="10" type="button" class="gain-btn px-2 h-full rounded-md transition-colors">10 mm/mV</button>
+          <button data-gain="5" type="button" class="gain-btn px-2 h-full rounded-md transition-colors">5 mm/mV</button>
+        </div>
+
+        <!-- ECG Grid Style Selector -->
+        <div class="inline-flex items-center h-8 rounded-lg bg-zinc-100/90 dark:bg-surfaceDark border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[11px] font-medium" title="ECG Paper / Monitor Grid Theme">
+          <button data-grid="dark" type="button" class="grid-btn px-2 h-full rounded-md transition-colors">Dark Monitor</button>
+          <button data-grid="pink" type="button" class="grid-btn px-2 h-full rounded-md transition-colors">Thermal Pink</button>
+          <button data-grid="white" type="button" class="grid-btn px-2 h-full rounded-md transition-colors">Clean White</button>
+        </div>
+
+        <!-- Theme Toggle -->
+        <button id="theme-toggle" type="button" aria-label="Toggle dark and light theme" title="Switch Dark / Light mode" class="w-8 h-8 rounded-lg flex items-center justify-center border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-white transition-colors shrink-0">
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. TOP 6-KPI TELEMETRY STRIP ==================== -->
+  <section class="w-full max-w-[1640px] mx-auto px-4 sm:px-5 pt-3.5 shrink-0">
+    <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+      <div class="flex items-center justify-between px-3.5 py-1.5 border-b border-[#e4e4e7]/70 dark:border-borderDark/70 bg-zinc-50/70 dark:bg-zinc-950/40 text-[10.5px] font-mono">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">ECG Telemetry</span>
+          <span id="telemetry-status-pill" class="px-1.5 py-0.2 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 truncate">Normal Sinus Rhythm</span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="btn-peek-telemetry" type="button" class="hidden px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-colors">
+            Peek Telemetry: OFF
+          </button>
+          <span id="telemetry-cal-spec" class="text-zinc-400 dark:text-zinc-500">25 mm/s &middot; 10 mm/mV &middot; 0.05–150 Hz</span>
+        </div>
+      </div>
+      <div id="kpi-strip" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-[#e4e4e7]/80 dark:divide-borderDark/80">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. PRIMARY FULL-WIDTH 12-LEAD ECG CANVAS CARD ==================== -->
+  <section class="w-full max-w-[1640px] mx-auto px-4 sm:px-5 pt-3.5 shrink-0">
+    <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+      <!-- 12-Lead Toolbar -->
+      <div class="px-3.5 py-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 bg-zinc-50/60 dark:bg-zinc-950/40">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5]">Standard 12-Lead + Rhythm Strip</span>
+          <span class="hidden md:inline font-mono text-[10px] text-zinc-500 dark:text-zinc-400">Drag to measure calipers &middot; Click any lead to magnify</span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-1.5 text-[10.5px] font-mono">
+          <!-- Rhythm Strip Lead Selector -->
+          <div class="inline-flex items-center rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5">
+            <span class="px-1.5 text-[9.5px] text-zinc-400">Rhythm:</span>
+            <button data-rlead="II" type="button" class="rlead-btn px-2 py-0.5 rounded transition-colors">II</button>
+            <button data-rlead="V1" type="button" class="rlead-btn px-2 py-0.5 rounded transition-colors">V1</button>
+            <button data-rlead="V5" type="button" class="rlead-btn px-2 py-0.5 rounded transition-colors">V5</button>
+          </div>
+
+          <!-- Atrial Flutter Ratio Switch (visible only in Flutter) -->
+          <div id="flutter-ratio-wrap" class="hidden inline-flex items-center rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5">
+            <span class="px-1.5 text-[9.5px] text-zinc-400">Block:</span>
+            <button data-fratio="2" type="button" class="fratio-btn px-1.5 py-0.5 rounded transition-colors">2:1</button>
+            <button data-fratio="3" type="button" class="fratio-btn px-1.5 py-0.5 rounded transition-colors">3:1</button>
+          </div>
+
+          <!-- Caliper Controls -->
+          <button id="btn-caliper-mode" type="button" class="px-2 py-1 rounded-md border transition-colors">Calipers: ON</button>
+          <button id="btn-marching" type="button" class="px-2 py-1 rounded-md border transition-colors">Marching</button>
+          <button id="btn-clear-calipers" type="button" class="px-2 py-1 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white transition-colors">Clear</button>
+
+          <!-- Clean vs Realistic Noise/Drift -->
+          <button id="btn-noise" type="button" class="px-2 py-1 rounded-md border transition-colors">Clean</button>
+        </div>
+      </div>
+
+      <!-- STRICT ZERO-STRETCH LOCKED 12-LEAD CANVAS WRAPPER -->
+      <div id="ecg12-wrap" class="relative w-full h-[460px] sm:h-[520px] lg:h-[560px] overflow-hidden select-none cursor-crosshair touch-none">
+        <canvas id="ecg12-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 4. BOTTOM SPLIT WORKBENCH (7 COLS LEFT / 5 COLS RIGHT) ==================== -->
+  <main class="flex-1 w-full max-w-[1640px] mx-auto px-4 sm:px-5 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 min-w-0">
+
+    <!-- LEFT COLUMN (7 cols on lg+) -->
+    <div class="lg:col-span-7 flex flex-col gap-4 min-w-0 min-h-0">
+
+      <!-- ROW 1: SINGLE-LEAD MAGNIFIER + HEXAXIAL AXIS WHEEL -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 min-w-0">
+
+        <!-- Single-Lead Magnifier (7 of 12 sub-cols) -->
+        <section class="md:col-span-7 rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-w-0">
+          <div class="px-3.5 py-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <div class="flex items-center gap-2">
+              <h2 class="text-xs font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5]">Lead Magnifier</h2>
+              <span id="mag-lead-badge" class="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-500/15 text-tealLight dark:text-tealDark border border-teal-500/30">Lead V2</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <select id="mag-lead-select" aria-label="Select magnified lead" class="h-6 px-1.5 rounded border border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian font-mono text-[10.5px] text-[#09090b] dark:text-[#f4f4f5] focus:outline-none">
+                <option value="I">I</option><option value="II">II</option><option value="III">III</option>
+                <option value="aVR">aVR</option><option value="aVL">aVL</option><option value="aVF">aVF</option>
+                <option value="V1">V1</option><option value="V2" selected>V2</option><option value="V3">V3</option>
+                <option value="V4">V4</option><option value="V5">V5</option><option value="V6">V6</option>
+              </select>
+              <button id="btn-mag-brackets" type="button" class="px-2 py-0.5 rounded border font-mono text-[10px] transition-colors">Brackets</button>
+            </div>
+          </div>
+
+          <!-- STRICT ZERO-STRETCH LOCKED CANVAS WRAPPER -->
+          <div id="mag-wrap" class="relative w-full h-56 overflow-hidden select-none">
+            <canvas id="mag-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+          </div>
+
+          <div class="px-3.5 py-1.5 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/70 dark:bg-zinc-950/50 flex flex-wrap items-center justify-between gap-2 font-mono text-[10px] text-zinc-500 dark:text-zinc-400 tabular-nums shrink-0">
+            <span id="mag-st-readout">J+60 ST: +0.4 mm</span>
+            <span id="mag-sokolow-readout">Sokolow-Lyon: 26 mm</span>
+          </div>
+        </section>
+
+        <!-- Interactive Hexaxial Frontal Axis Wheel (5 of 12 sub-cols) -->
+        <section class="md:col-span-5 rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-w-0">
+          <div class="px-3.5 py-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 shrink-0">
+            <h2 class="text-xs font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] truncate">Hexaxial Axis Wheel</h2>
+            <span id="axis-zone-badge" class="font-mono text-[10px] px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 shrink-0">+55&deg; Normal</span>
+          </div>
+
+          <!-- STRICT ZERO-STRETCH LOCKED CANVAS WRAPPER -->
+          <div id="axis-wrap" class="relative w-full h-56 overflow-hidden select-none cursor-grab active:cursor-grabbing touch-none">
+            <canvas id="axis-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+          </div>
+
+          <div class="px-3.5 py-1.5 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/70 dark:bg-zinc-950/50 flex items-center justify-between font-mono text-[10px] text-zinc-500 dark:text-zinc-400 shrink-0">
+            <span>Drag vector &rarr; updates limb leads</span>
+            <span id="axis-limb-signs" class="tabular-nums">I+ II+ aVF+</span>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ROW 2: 7-STEP SYSTEMATIC INTERPRETATION (STUDY) OR BLINDED QUIZ CONSOLE -->
+      <section id="study-interp-card" class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5]">7-Step Systematic ECG Interpretation</h2>
+            <span id="interp-preset-badge" class="font-mono text-[10px] px-2 py-0.5 rounded-md border border-tealLight/30 dark:border-tealDark/30 bg-teal-500/10 text-tealLight dark:text-tealDark truncate">Normal Sinus Rhythm</span>
+          </div>
+          <button id="btn-copy-anki" type="button" class="h-7 px-2.5 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian hover:border-tealLight/50 dark:hover:border-tealDark/50 text-[11px] font-mono font-medium text-zinc-700 dark:text-zinc-200 transition-colors">
+            Copy Anki Cloze
+          </button>
+        </div>
+
+        <div id="seven-step-grid" class="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- BLINDED RAPID-FIRE QUIZ CONSOLE (Shown in Blinded Quiz Mode) -->
+      <section id="quiz-console-card" class="hidden rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-teal-500/15 text-tealLight dark:text-tealDark">Blinded Rapid-Fire</span>
+            <h2 id="quiz-case-title" class="text-[13px] font-semibold text-[#09090b] dark:text-[#f4f4f5]">Case #1</h2>
+          </div>
+          <div class="flex items-center gap-3 font-mono text-[11px] tabular-nums">
+            <span class="text-zinc-500">Score <strong id="quiz-score" class="text-[#09090b] dark:text-white">0/0</strong></span>
+            <span class="text-zinc-500">Streak <strong id="quiz-streak" class="text-tealLight dark:text-tealDark">0</strong></span>
+          </div>
+        </div>
+
+        <div class="p-4 space-y-3.5">
+          <!-- Clinical Vignette -->
+          <div class="p-3 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50/70 dark:bg-obsidian/70 space-y-1">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-mono text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Clinical Vignette</span>
+              <span id="quiz-vitals" class="font-mono text-[10.5px] text-zinc-500 dark:text-zinc-400 tabular-nums"></span>
+            </div>
+            <p id="quiz-vignette" class="text-[13px] leading-relaxed text-[#09090b] dark:text-[#f4f4f5]"></p>
+          </div>
+
+          <!-- Hint Bar -->
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Select ECG Diagnosis</span>
+            <button id="btn-quiz-hint" type="button" class="text-[11px] font-mono text-amber-600 dark:text-amber-400 hover:underline">Show Key Lead Hint</button>
+          </div>
+          <div id="quiz-hint-box" class="hidden p-2.5 rounded-lg border border-amber-500/35 bg-amber-500/10 text-xs text-amber-800 dark:text-amber-200"></div>
+
+          <!-- 4 MCQ Options -->
+          <div id="quiz-options" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+
+          <!-- Reveal & Explain Feedback -->
+          <div id="quiz-feedback" class="hidden rounded-lg border p-3.5 space-y-2 text-xs leading-relaxed"></div>
+
+          <!-- Actions -->
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <button id="btn-quiz-reveal" type="button" class="h-8 px-3 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:border-tealLight/50 transition-colors">
+              Reveal &amp; Explain
+            </button>
+            <button id="btn-quiz-next" type="button" class="h-8 px-4 rounded-lg bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian text-xs font-medium hover:opacity-90 transition-opacity">
+              Next Case &rarr;
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- RIGHT COLUMN (5 cols on lg+): 3-TAB CLINICAL CONTROL CONSOLE -->
+    <aside class="lg:col-span-5 rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col min-h-[520px] lg:max-h-[760px] overflow-hidden min-w-0 relative">
+      <!-- 3-Tab Segmented Switcher -->
+      <div class="p-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 shrink-0">
+        <div class="grid grid-cols-3 rounded-lg bg-zinc-100/90 dark:bg-obsidian p-0.5 gap-0.5 border border-[#e4e4e7]/80 dark:border-borderDark/80">
+          <button data-sidetab="pathologies" type="button" class="side-tab py-1.5 rounded-md text-xs font-medium transition-colors">Pathologies (25)</button>
+          <button data-sidetab="sandbox" type="button" class="side-tab py-1.5 rounded-md text-xs font-medium transition-colors">Sandbox &amp; K&#8314;</button>
+          <button data-sidetab="criteria" type="button" class="side-tab py-1.5 rounded-md text-xs font-medium transition-colors">Criteria Sheet</button>
+        </div>
+      </div>
+
+      <!-- Scrollable Tab Body -->
+      <div class="flex-1 overflow-y-auto p-3 min-h-0">
+        <!-- Tab 1: Pathologies -->
+        <div id="sidetab-pathologies" class="space-y-3"></div>
+        <!-- Tab 2: Sandbox & Electrolytes -->
+        <div id="sidetab-sandbox" class="hidden space-y-3.5"></div>
+        <!-- Tab 3: Criteria & Cheat Sheet -->
+        <div id="sidetab-criteria" class="hidden space-y-3"></div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ==================== 5. MINIMAL FOOTER ==================== -->
+  <footer class="w-full border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-white/70 dark:bg-obsidian/90 shrink-0">
+    <div class="w-full max-w-[1640px] mx-auto px-4 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+      <span class="font-medium text-[#09090b] dark:text-[#f4f4f5]">MedLab &middot; 12-Lead ECG Lab</span>
+      <span>Procedural Einthoven/Goldberger 12-lead ECG synthesizer &amp; caliper workbench for educational study only.</span>
+    </div>
+  </footer>
+
+  <!-- ==================== 12-LEAD ECG ENGINE & UI CONTROLLER ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    /* =========================================================================
+       1. CONSTANTS, LEAD GEOMETRY & MATH HELPERS
+       ========================================================================= */
+    const clamp = (v, lo, hi) => (Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo);
+    const DEG = Math.PI / 180;
+
+    const LEAD_GRID = [
+      ['I',   'aVR', 'V1', 'V4'],
+      ['II',  'aVL', 'V2', 'V5'],
+      ['III', 'aVF', 'V3', 'V6'],
+    ];
+    const ALL_LEADS = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'];
+    const LIMB_ANGLES = { I: 0, II: 60, III: 120, aVR: -150, aVL: -30, aVF: 90 };
+
+    // Normal precordial baseline morphology (mV) — Sokolow-Lyon baseline: |S_V1| 1.05 + R_V5 1.55 = 2.60 mV (26 mm)
+    const BASE_PRECORDIAL = {
+      V1: { p1: 0.06, p2: -0.04, q: 0.00, r: 0.22, s: -1.05, st: 0.02, t:  0.07, u: 0.02 },
+      V2: { p1: 0.08, p2:  0.00, q: 0.00, r: 0.52, s: -1.20, st: 0.04, t:  0.34, u: 0.03 },
+      V3: { p1: 0.08, p2:  0.00, q: 0.00, r: 0.92, s: -0.82, st: 0.03, t:  0.42, u: 0.03 },
+      V4: { p1: 0.08, p2:  0.00, q: -0.05, r: 1.42, s: -0.42, st: 0.02, t: 0.44, u: 0.02 },
+      V5: { p1: 0.07, p2:  0.00, q: -0.09, r: 1.55, s: -0.20, st: 0.00, t: 0.36, u: 0.01 },
+      V6: { p1: 0.06, p2:  0.00, q: -0.09, r: 1.28, s: -0.08, st: 0.00, t: 0.28, u: 0.01 },
+    };
+
+    function gauss(dt, sigma) {
+      const z = dt / sigma;
+      return Math.exp(-0.5 * z * z);
+    }
+
+    function asymGauss(dt, sL, sR) {
+      const s = dt < 0 ? sL : sR;
+      const z = dt / s;
+      return Math.exp(-0.5 * z * z);
+    }
+
+    function smoothstep(e0, e1, x) {
+      const t = clamp((x - e0) / (e1 - e0), 0, 1);
+      return t * t * (3 - 2 * t);
+    }
+
+    function projFrontal(amp, vecDeg, lead) {
+      return amp * Math.cos((vecDeg - LIMB_ANGLES[lead]) * DEG);
+    }
+
+    /* =========================================================================
+       2. 25 HIGH-YIELD CLINICAL ECG PRESETS + 7-STEP INTERPRETATION & QUIZ DATA
+       ========================================================================= */
+    const PRESETS = [
+      // --- GROUP 1: NORMAL & CONDUCTION ---
+      {
+        id: 'nsr', group: 'Normal & Conduction', name: 'Normal Sinus Rhythm', tag: '70 bpm · +55°',
+        severity: 'ok', focusLead: 'II', highlightLeads: ['II', 'V2', 'V5'],
+        params: { hr: 70, axis: 55, pr: 158, qrs: 86, qtc: 405, k: 4.2, rhythm: 'sinus', morph: 'normal' },
+        steps: [
+          ['Rate & Rhythm', 'Regular sinus rhythm at ~70 bpm; upright P wave in I, II, aVF preceding every QRS 1:1.'],
+          ['Frontal Axis', 'Normal axis (+55°): Lead I positive, Lead II tallest positive, aVF positive, aVR inverted.'],
+          ['P-Wave & PR', 'Normal P morphology (<120 ms, <2.5 mm); normal constant PR interval (120–200 ms).'],
+          ['QRS & Voltage', 'Narrow QRS (86 ms); normal precordial R-wave progression (V1 rS → V3/V4 transition → V5/V6 R).'],
+          ['ST-Segment', 'Isoelectric ST segments across all territories (mild physiologic J-point <0.5 mm in V2–V3).'],
+          ['T-Wave & QTc', 'Concordant asymmetric upright T-waves (except aVR); normal QTc (<440 ms M / <460 ms F).'],
+          ['Criteria & Action', 'Normal physiological 12-lead ECG. No acute ischemia, block, or electrolyte disturbance.']
+        ],
+        anki: 'Normal 12-lead ECG intervals: PR {{c1::120–200 ms}}, QRS {{c2::<120 ms}}, frontal axis {{c3::-30° to +90°}}, and QTc {{c4::<440–460 ms}}.',
+        vignette: null
+      },
+      {
+        id: 'lbbb', group: 'Normal & Conduction', name: 'Left Bundle Branch Block (LBBB)', tag: 'QRS 148ms',
+        severity: 'warn', focusLead: 'V6', highlightLeads: ['I', 'aVL', 'V1', 'V5', 'V6'],
+        params: { hr: 74, axis: -15, pr: 170, qrs: 148, qtc: 445, k: 4.2, rhythm: 'sinus', morph: 'lbbb' },
+        steps: [
+          ['Rate & Rhythm', 'Regular sinus rhythm at 74 bpm with 1:1 AV conduction.'],
+          ['Frontal Axis', 'Normal to leftward axis (-15°).'],
+          ['P-Wave & PR', 'Normal sinus P waves and PR interval (170 ms).'],
+          ['QRS & Voltage', 'Wide QRS (148 ms ≥ 120 ms): broad notched M-shaped monophasic R in I, aVL, V5, V6 (no septal Q); deep wide rS/QS in V1–V3.'],
+          ['ST-Segment', 'Appropriate discordance: ST/T vector opposes terminal QRS deflection (STE in V1–V3, mild STD in V5–V6).'],
+          ['T-Wave & QTc', 'Discordant T-wave inversion in I, aVL, V5, V6 — expected secondary repolarization abnormality.'],
+          ['Criteria & Action', 'Uncomplicated LBBB (Modified Sgarbossa NEGATIVE). Compare with prior ECG; evaluate structural heart disease / cardiomyopathy.']
+        ],
+        anki: 'Classic LBBB criteria ("WiLLiaM"): QRS {{c1::≥120 ms}}, deep wide rS/QS in {{c2::V1–V3}}, broad notched monophasic R (no septal Q) in {{c3::I, aVL, V5–V6}}, and {{c4::appropriate ST/T discordance}}.',
+        vignette: { demo: '68y M', text: 'Asymptomatic preoperative evaluation prior to elective hip arthroplasty; history of hypertension.', vitals: 'BP 138/82 · HR 74 · SpO₂ 98%', hint: 'Inspect QRS duration and notched monophasic R in I, aVL, V5–V6 with appropriate ST/T discordance.' }
+      },
+      {
+        id: 'lbbb_sgarbossa', group: 'Normal & Conduction', name: 'LBBB + Acute MI (Sgarbossa+)', tag: 'Concordant STE',
+        severity: 'crit', focusLead: 'V5', highlightLeads: ['V2', 'V3', 'V5', 'V6'],
+        params: { hr: 96, axis: -18, pr: 168, qrs: 150, qtc: 455, k: 4.2, rhythm: 'sinus', morph: 'lbbb_mi' },
+        steps: [
+          ['Rate & Rhythm', 'Sinus rhythm/mild tachycardia at 96 bpm.'],
+          ['Frontal Axis', 'Leftward axis (-18°).'],
+          ['P-Wave & PR', 'Normal sinus P-waves; PR 168 ms.'],
+          ['QRS & Voltage', 'Underlying LBBB morphology (QRS 150 ms, broad notched R in I/aVL/V5/V6, deep QS in V1–V3).'],
+          ['ST-Segment', 'CRITICAL: Concordant STE ≥1 mm in V5–V6 (positive QRS + STE!) AND concordant STD ≥1 mm in V2–V3 (negative QRS + STD!).'],
+          ['T-Wave & QTc', 'Hyperacute concordant T-waves in lateral leads breaking LBBB discordance rule.'],
+          ['Criteria & Action', 'Sgarbossa Score = 8 (5 pts concordant STE + 3 pts concordant STD) — STEMI EQUIVALENT! Emergent cath lab / PCI activation.']
+        ],
+        anki: 'Modified Sgarbossa positive in LBBB: concordant STE {{c1::≥1 mm}} in any lead (5 pts), concordant STD {{c2::≥1 mm}} in {{c3::V1–V3}} (3 pts), or discordant ST/S ratio {{c4::≤ -0.25}}.',
+        vignette: { demo: '71y M', text: 'Crushing substernal chest pain and diaphoresis for 45 minutes; known baseline LBBB on old chart.', vitals: 'BP 108/68 · HR 96 · SpO₂ 96%', hint: 'Check V5–V6 for CONCORDANT ST elevation and V2–V3 for CONCORDANT ST depression despite LBBB.' }
+      },
+      {
+        id: 'rbbb', group: 'Normal & Conduction', name: 'Right Bundle Branch Block (RBBB)', tag: 'rsR\' V1 · 140ms',
+        severity: 'warn', focusLead: 'V1', highlightLeads: ['V1', 'V2', 'I', 'V5', 'V6'],
+        params: { hr: 72, axis: 65, pr: 164, qrs: 140, qtc: 430, k: 4.2, rhythm: 'sinus', morph: 'rbbb' },
+        steps: [
+          ['Rate & Rhythm', 'Regular sinus rhythm at 72 bpm.'],
+          ['Frontal Axis', 'Normal frontal axis (+65°); if marked LAD/RAD check for bifascicular block.'],
+          ['P-Wave & PR', 'Normal P-waves and PR interval (164 ms).'],
+          ['QRS & Voltage', 'Wide QRS (140 ms): classic rsR\' ("rabbit ears") in V1–V2 with taller R\' peak; wide slurred terminal S-wave in I, aVL, V5, V6.'],
+          ['ST-Segment', 'Mild discordant downsloping ST depression limited to V1–V2 (secondary to delayed RV depolarization).'],
+          ['T-Wave & QTc', 'Discordant T-wave inversion in V1–V2; normal upright T-waves in V4–V6.'],
+          ['Criteria & Action', 'Complete RBBB ("MaRRoW"). Unlike LBBB, RBBB does NOT mask STEMI; new RBBB in chest pain still warrants urgent coronary evaluation.']
+        ],
+        anki: 'RBBB criteria ("MaRRoW"): QRS {{c1::≥120 ms}}, {{c2::rsR\'}} pattern in {{c3::V1–V2}}, and wide slurred S-wave in {{c4::I, aVL, V5–V6}}.',
+        vignette: { demo: '62y F', text: 'Routine clinic ECG for mild exertional fatigue; no chest pain or syncope.', vitals: 'BP 128/76 · HR 72 · SpO₂ 99%', hint: 'Look at V1–V2 for a triphasic rsR\' complex and V5–V6 / Lead I for a wide slurred terminal S wave.' }
+      },
+      {
+        id: 'wpw', group: 'Normal & Conduction', name: 'WPW Syndrome', tag: 'PR 95ms · Delta',
+        severity: 'warn', focusLead: 'V4', highlightLeads: ['II', 'III', 'aVF', 'V3', 'V4', 'V5'],
+        params: { hr: 78, axis: 15, pr: 95, qrs: 128, qtc: 425, k: 4.2, rhythm: 'sinus', morph: 'wpw' },
+        steps: [
+          ['Rate & Rhythm', 'Regular sinus rhythm at 78 bpm with ventricular pre-excitation via accessory pathway (Bundle of Kent).'],
+          ['Frontal Axis', 'Leftward/horizontal axis (+15°) with negative delta waves in III & aVF (pseudo-inferior infarct pattern).'],
+          ['P-Wave & PR', 'Markedly SHORT PR interval (95 ms < 120 ms) — impulse bypasses AV nodal delay.'],
+          ['QRS & Voltage', 'Widened QRS (128 ms) caused by a classic slurred upstroke (Delta wave) fusing immediately from the end of the P-wave.'],
+          ['ST-Segment', 'Secondary discordant ST-T changes opposing the delta wave polarity.'],
+          ['T-Wave & QTc', 'Mildly discordant T-waves in pre-excited leads; normal QTc.'],
+          ['Criteria & Action', 'Wolff-Parkinson-White pattern/syndrome. CRITICAL: In pre-excited AFib, AVOID AV-nodal blockers (Adenosine, Verapamil, Diltiazem, Digoxin, Amiodarone) → use Procainamide or synchronized DCCV!']
+        ],
+        anki: 'WPW triad: short PR {{c1::<120 ms}}, slurred {{c2::delta wave}}, and QRS {{c3::>110–120 ms}}. In pre-excited AFib, avoid {{c4::AV-nodal blockers}} (risk of VF) — use Procainamide or DCCV.',
+        vignette: { demo: '24y M', text: 'Intermittent episodes of sudden-onset fast palpitations lasting 15 minutes; currently asymptomatic in clinic.', vitals: 'BP 118/72 · HR 78 · SpO₂ 100%', hint: 'Measure the PR interval with calipers (<120 ms) and examine the slurred initial QRS upstroke in V3–V5.' }
+      },
+
+      // --- GROUP 2: ACUTE CORONARY SYNDROMES & ISCHEMIA ---
+      {
+        id: 'stemi_ant', group: 'ACS & Ischemia', name: 'Anterior STEMI (LAD)', tag: 'STE V1–V4',
+        severity: 'crit', focusLead: 'V2', highlightLeads: ['V1', 'V2', 'V3', 'V4', 'II', 'III', 'aVF'],
+        params: { hr: 94, axis: 40, pr: 160, qrs: 94, qtc: 435, k: 4.3, rhythm: 'sinus', morph: 'stemi_ant' },
+        steps: [
+          ['Rate & Rhythm', 'Sinus rhythm at 94 bpm (adrenergic stress response).'],
+          ['Frontal Axis', 'Normal axis (+40°).'],
+          ['P-Wave & PR', 'Normal sinus P-waves and PR interval (160 ms).'],
+          ['QRS & Voltage', 'Developing pathologic Q-waves and poor R-wave progression in V1–V3.'],
+          ['ST-Segment', 'CONVEX ("tombstone") ST elevation 3–5 mm across precordial leads V1–V4 (LAD territory) with reciprocal STD in inferior leads II, III, aVF.'],
+          ['T-Wave & QTc', 'Broad hyperacute T-waves fusing seamlessly with elevated J-points in V1–V4.'],
+          ['Criteria & Action', 'ACUTE ANTERIOR STEMI (proximal/mid LAD occlusion). Immediate Cath Lab / Primary PCI (<90 min), ASA + P2Y12i, UFH, monitor for VF/cardiogenic shock.']
+        ],
+        anki: 'Anterior STEMI (LAD): convex ST elevation in {{c1::V1–V4}} with reciprocal ST depression in {{c2::II, III, aVF}}.',
+        vignette: { demo: '58y M', text: 'Severe pressure-like chest pain radiating to the left jaw with nausea and cold sweats for 40 minutes.', vitals: 'BP 112/70 · HR 94 · SpO₂ 97%', hint: 'Examine V1–V4 for dramatic convex ST elevation and II, III, aVF for reciprocal depression.' }
+      },
+      {
+        id: 'stemi_inf', group: 'ACS & Ischemia', name: 'Inferior STEMI (RCA)', tag: 'STE III>II · aVF',
+        severity: 'crit', focusLead: 'III', highlightLeads: ['II', 'III', 'aVF', 'I', 'aVL'],
+        params: { hr: 58, axis: 62, pr: 185, qrs: 90, qtc: 425, k: 4.2, rhythm: 'sinus', morph: 'stemi_inf' },
+        steps: [
+          ['Rate & Rhythm', 'Mild sinus bradycardia at 58 bpm (classic Bezold-Jarisch vagal reflex / RCA SA-AV nodal ischemia).'],
+          ['Frontal Axis', 'Normal axis (+62°).'],
+          ['P-Wave & PR', 'Upper-normal PR (185 ms); monitor closely for AV block.'],
+          ['QRS & Voltage', 'Early Q-waves forming in III and aVF; normal precordial progression.'],
+          ['ST-Segment', 'Convex ST elevation in II, III, and aVF with STE III > STE II (strongly favors RCA over LCx), paired with crisp reciprocal STD in I and aVL.'],
+          ['T-Wave & QTc', 'Hyperacute T-waves in inferior leads; discordant inverted T in aVL.'],
+          ['Criteria & Action', 'ACUTE INFERIOR STEMI (RCA). Activate Primary PCI; obtain RIGHT-SIDED lead V4R to rule out RV infarction before giving Nitroglycerin (preload-dependent!).']
+        ],
+        anki: 'Inferior STEMI (II, III, aVF): STE in {{c1::III > II}} with reciprocal STD in {{c2::I and aVL}} points to {{c3::RCA}} occlusion; check {{c4::V4R}} before nitrates.',
+        vignette: { demo: '64y M', text: 'Epigastric burning, profuse diaphoresis, and lightheadedness after dinner.', vitals: 'BP 96/60 · HR 58 · SpO₂ 97%', hint: 'Inspect inferior leads II, III, aVF (note III > II) and reciprocal ST depression in aVL.' }
+      },
+      {
+        id: 'stemi_lat', group: 'ACS & Ischemia', name: 'High Lateral STEMI (LCx)', tag: 'STE I · aVL',
+        severity: 'crit', focusLead: 'aVL', highlightLeads: ['I', 'aVL', 'V5', 'V6', 'III', 'aVF'],
+        params: { hr: 88, axis: 10, pr: 158, qrs: 88, qtc: 420, k: 4.2, rhythm: 'sinus', morph: 'stemi_lat' },
+        steps: [
+          ['Rate & Rhythm', 'Regular sinus rhythm at 88 bpm.'],
+          ['Frontal Axis', 'Normal horizontal axis (+10°).'],
+          ['P-Wave & PR', 'Normal P-waves and PR interval.'],
+          ['QRS & Voltage', 'Normal narrow QRS (88 ms).'],
+          ['ST-Segment', 'Convex ST elevation in high lateral leads I, aVL (and V5–V6) with striking reciprocal ST depression in III and aVF ("South African Flag" pattern).'],
+          ['T-Wave & QTc', 'Hyperacute upright T in I, aVL; inverted reciprocal T in III, aVF.'],
+          ['Criteria & Action', 'ACUTE HIGH LATERAL STEMI (First Diagonal D1 or LCx). Subtle STE in aVL is easily missed — reciprocal STD in III/aVF confirms occlusion! Urgent PCI.']
+        ],
+        anki: 'High Lateral STEMI (LCx / D1): ST elevation in {{c1::I and aVL}} (± V5–V6) with prominent reciprocal ST depression in {{c2::III and aVF}}.',
+        vignette: { demo: '55y F', text: 'Tight left-sided chest and left shoulder pain for 50 minutes with mild dyspnea.', vitals: 'BP 132/80 · HR 88 · SpO₂ 98%', hint: 'Check Leads I and aVL for ST elevation paired with reciprocal depression in Lead III and aVF.' }
+      },
+      {
+        id: 'post_mi', group: 'ACS & Ischemia', name: 'Posterior MI', tag: 'STD+Tall R V1–V3',
+        severity: 'crit', focusLead: 'V2', highlightLeads: ['V1', 'V2', 'V3'],
+        params: { hr: 90, axis: 55, pr: 160, qrs: 90, qtc: 425, k: 4.2, rhythm: 'sinus', morph: 'post_mi' },
+        steps: [
+          ['Rate & Rhythm', 'Regular sinus rhythm at 90 bpm.'],
+          ['Frontal Axis', 'Normal axis (+55°).'],
+          ['P-Wave & PR', 'Normal sinus P-waves and PR interval.'],
+          ['QRS & Voltage', 'Abnormally TALL, BROAD R-waves in V1–V2 (R/S > 1) — mirror image of posterior Q-waves!'],
+          ['ST-Segment', 'Horizontal ST depression ≥2 mm strictly localized to V1–V3 (reciprocal mirror of posterior transmural STE).'],
+          ['T-Wave & QTc', 'Prominent upright T-waves in V1–V3 (mirror of posterior T-wave inversion).'],
+          ['Criteria & Action', 'ACUTE POSTERIOR STEMI EQUIVALENT (LCx or dominant RCA). Confirm with posterior leads V7–V9 (STE ≥0.5 mm) and activate emergent PCI!']
+        ],
+        anki: 'Posterior MI mirror signs in {{c1::V1–V3}}: horizontal {{c2::ST depression}}, tall broad {{c3::R-waves (R/S > 1)}}, and upright T-waves; confirm with {{c4::V7–V9}}.',
+        vignette: { demo: '61y M', text: 'Severe interscapular back and chest pain for 1 hour; initial triage read "no ST elevation."', vitals: 'BP 118/74 · HR 90 · SpO₂ 97%', hint: 'Flip V1–V3 upside down mentally: horizontal STD + tall broad R-waves + upright T waves.' }
+      },
+      {
+        id: 'wellens', group: 'ACS & Ischemia', name: "Wellens' Syndrome (Type A)", tag: 'Biphasic T V2–V3',
+        severity: 'crit', focusLead: 'V2', highlightLeads: ['V2', 'V3', 'V4'],
+        params: { hr: 68, axis: 48, pr: 162, qrs: 86, qtc: 440, k: 4.2, rhythm: 'sinus', morph: 'wellens' },
+        steps: [
+          ['Rate & Rhythm', 'Normal sinus rhythm at 68 bpm (typically recorded in a PAIN-FREE interval after chest pain resolved!).'],
+          ['Frontal Axis', 'Normal axis (+48°).'],
+          ['P-Wave & PR', 'Normal sinus P-waves and PR interval.'],
+          ['QRS & Voltage', 'Preserved precordial R-waves with NO pathologic Q-waves (myocardium still viable!).'],
+          ['ST-Segment', 'Isoelectric or minimally elevated (<1 mm) ST segment in V2–V3.'],
+          ['T-Wave & QTc', 'Pathognomonic BIPHASIC T-waves (initially positive, then sharply negative) in V2–V3 (Wellens Type A).'],
+          ['Criteria & Action', 'CRITICAL PROXIMAL LAD STENOSIS (~75% risk of massive anterior MI within days). DO NOT STRESS TEST! Admit, DAPT + anticoagulation, early invasive angiography.']
+        ],
+        anki: 'Wellens Type A: {{c1::biphasic (+/-) T-waves}} in {{c2::V2–V3}} during a pain-free state predicts critical {{c3::proximal LAD}} stenosis — {{c4::stress testing is contraindicated}}.',
+        vignette: { demo: '54y M', text: 'Had severe chest pain 2 hours ago that completely resolved on arrival to the ED; currently pain-free with mildly elevated hs-TnT.', vitals: 'BP 134/80 · HR 68 · SpO₂ 99%', hint: 'Inspect V2 and V3 carefully for crisp biphasic (+/-) T-waves with preserved R waves.' }
+      },
+
+      // --- GROUP 3: ARRHYTHMIAS & AV BLOCKS ---
+      {
+        id: 'afib', group: 'Arrhythmias & AV Blocks', name: 'Atrial Fibrillation (RVR)', tag: 'Irreg · 126 bpm',
+        severity: 'warn', focusLead: 'II', highlightLeads: ['II', 'V1'],
+        params: { hr: 126, axis: 48, pr: 0, qrs: 86, qtc: 410, k: 4.2, rhythm: 'afib', morph: 'normal' },
+        steps: [
+          ['Rate & Rhythm', 'Irregularly irregular ventricular response averaging ~126 bpm (use 10s rhythm strip beat count × 6).'],
+          ['Frontal Axis', 'Normal axis (+48°).'],
+          ['P-Wave & PR', 'ABSENT discrete P-waves; replaced by chaotic low-amplitude fibrillatory f-waves (best seen in V1 and II).'],
+          ['QRS & Voltage', 'Narrow supraventricular QRS complexes (86 ms).'],
+          ['ST-Segment', 'Isoelectric ST segments (rule out rate-related demand ischemia).'],
+          ['T-Wave & QTc', 'Normal T-wave morphology.'],
+          ['Criteria & Action', 'AFib with Rapid Ventricular Response. Check stability (DCCV if unstable); rate control (Metoprolol/Diltiazem), evaluate triggers (TSH, K⁺/Mg²⁺, sepsis) & CHA₂DS₂-VASc anticoagulation.']
+        ],
+        anki: 'Atrial Fibrillation hallmarks: {{c1::irregularly irregular}} R-R intervals, {{c2::absent P-waves}}, and chaotic fibrillatory baseline (best seen in {{c3::V1}}).',
+        vignette: { demo: '72y F', text: 'Palpitations, mild dyspnea, and irregular pulse noted since yesterday evening.', vitals: 'BP 126/78 · HR ~126 irreg · SpO₂ 97%', hint: 'Use Marching Calipers on the 10-second Lead II rhythm strip to confirm irregularly irregular R-R intervals and absent P waves.' }
+      },
+      {
+        id: 'aflutter', group: 'Arrhythmias & AV Blocks', name: 'Atrial Flutter (2:1 / 3:1)', tag: 'Sawtooth · 150',
+        severity: 'warn', focusLead: 'II', highlightLeads: ['II', 'III', 'aVF', 'V1'],
+        params: { hr: 150, axis: 55, pr: 0, qrs: 86, qtc: 415, k: 4.2, rhythm: 'aflutter', morph: 'normal', flutterRatio: 2 },
+        steps: [
+          ['Rate & Rhythm', 'Regular narrow-complex tachycardia at exactly 150 bpm (2:1 conduction of 300/min cavotricuspid isthmus macro-reentry; switchable to 3:1 = 100 bpm).'],
+          ['Frontal Axis', 'Normal axis (+55°).'],
+          ['P-Wave & PR', 'Classic continuous 300/min negative "SAWTOOTH" flutter F-waves in inferior leads II, III, aVF (upright in V1) with zero isoelectric baseline.'],
+          ['QRS & Voltage', 'Narrow QRS (86 ms).'],
+          ['ST-Segment', 'Baseline obscured by continuous atrial F-wave undulations.'],
+          ['T-Wave & QTc', 'T-waves superimposed on atrial flutter cycle.'],
+          ['Criteria & Action', 'Typical Atrial Flutter. Always suspect 2:1 Flutter in ANY regular narrow tachycardia at ~150 bpm! Same CHA₂DS₂-VASc anticoagulation rules as AFib; CTI ablation is >95% curative.']
+        ],
+        anki: 'Any regular narrow-complex tachycardia at exactly {{c1::150 bpm}} should trigger suspicion for {{c2::2:1 Atrial Flutter}} (300/min {{c3::sawtooth}} waves in II, III, aVF).',
+        vignette: { demo: '66y M', text: 'Sudden rapid regular heart racing while walking the dog; no chest pain.', vitals: 'BP 118/74 · HR 150 · SpO₂ 98%', hint: 'Measure the ventricular rate (~150 bpm) and inspect Leads II, III, aVF for continuous negative sawtooth F-waves.' }
+      },
+      {
+        id: 'avnrt', group: 'Arrhythmias & AV Blocks', name: 'AVNRT (Regular SVT)', tag: 'Narrow · 182 bpm',
+        severity: 'warn', focusLead: 'V1', highlightLeads: ['II', 'V1'],
+        params: { hr: 182, axis: 58, pr: 0, qrs: 82, qtc: 415, k: 4.2, rhythm: 'avnrt', morph: 'avnrt' },
+        steps: [
+          ['Rate & Rhythm', 'Clockwork-regular narrow-complex tachycardia at 182 bpm (RR = 330 ms).'],
+          ['Frontal Axis', 'Normal axis (+58°).'],
+          ['P-Wave & PR', 'Absent preceding sinus P-waves; retrograde P-waves buried in terminal QRS (tiny pseudo-r\' in V1 and pseudo-s in II).'],
+          ['QRS & Voltage', 'Crisp narrow QRS (82 ms).'],
+          ['ST-Segment', 'Mild rate-related horizontal ST depression possible without acute plaque rupture.'],
+          ['T-Wave & QTc', 'Normal concordant T-waves.'],
+          ['Criteria & Action', 'Paroxysmal SVT (Typical Slow-Fast AVNRT). Stable: Modified Valsalva maneuver → IV Adenosine 6 mg (then 12 mg) rapid push. Unstable: Synchronized DCCV.']
+        ],
+        anki: 'Regular narrow-complex SVT (AVNRT, 150–220 bpm): first-line stable treatment is {{c1::Modified Valsalva}} followed by rapid IV {{c2::Adenosine (6 mg → 12 mg)}}.',
+        vignette: { demo: '29y F', text: 'Abrupt onset of pounding neck pulsations ("frog sign") and rapid palpitations after drinking espresso.', vitals: 'BP 114/72 · HR 182 · SpO₂ 100%', hint: 'Use calipers to confirm clockwork regularity at ~182 bpm with narrow QRS and absent P waves.' }
+      },
+      {
+        id: 'avb1', group: 'Arrhythmias & AV Blocks', name: '1st-Degree AV Block', tag: 'PR 280 ms',
+        severity: 'ok', focusLead: 'II', highlightLeads: ['II', 'V1'],
+        params: { hr: 66, axis: 50, pr: 280, qrs: 88, qtc: 410, k: 4.2, rhythm: 'avb1', morph: 'normal' },
+        steps: [
+          ['Rate & Rhythm', 'Regular sinus rhythm at 66 bpm with intact 1:1 AV conduction (no dropped beats).'],
+          ['Frontal Axis', 'Normal axis (+50°).'],
+          ['P-Wave & PR', 'Constant, markedly prolonged PR interval of 280 ms (>200 ms = >1 large box).'],
+          ['QRS & Voltage', 'Narrow QRS (88 ms), localizing delay to the AV node.'],
+          ['ST-Segment', 'Isoelectric ST segments.'],
+          ['T-Wave & QTc', 'Normal upright T-waves and QTc.'],
+          ['Criteria & Action', '1st-Degree AV Delay. Usually benign (high vagal tone, beta-blockers, CCBs, digoxin); check for Lyme carditis or inferior ischemia if acute.']
+        ],
+        anki: '1st-Degree AV Block: constant PR interval {{c1::>200 ms}} with {{c2::1:1}} conduction (no dropped QRS complexes).',
+        vignette: { demo: '52y M', text: 'Routine follow-up ECG while taking metoprolol for hypertension; completely asymptomatic.', vitals: 'BP 124/76 · HR 66 · SpO₂ 99%', hint: 'Measure the PR interval in Lead II — notice it is constant and well over 1 large box (>200 ms) without dropped beats.' }
+      },
+      {
+        id: 'mobitz1', group: 'Arrhythmias & AV Blocks', name: 'Mobitz I (Wenckebach)', tag: 'PR ↑↑ → Drop',
+        severity: 'warn', focusLead: 'II', highlightLeads: ['II'],
+        params: { hr: 78, axis: 55, pr: 180, qrs: 88, qtc: 410, k: 4.2, rhythm: 'mobitz1', morph: 'normal' },
+        steps: [
+          ['Rate & Rhythm', 'Regularly irregular "grouped beating" (4:3 cycles): P-waves march regularly at ~78 bpm while every 4th P-wave fails to conduct.'],
+          ['Frontal Axis', 'Normal axis (+55°).'],
+          ['P-Wave & PR', 'Classic progressive PR prolongation: 180 ms → 245 ms → 315 ms → non-conducted P-wave, then PR resets to 180 ms!'],
+          ['QRS & Voltage', 'Narrow QRS (88 ms), indicating supra-Hisian (AV nodal) fatigue.'],
+          ['ST-Segment', 'Isoelectric ST segments.'],
+          ['T-Wave & QTc', 'Normal T-waves.'],
+          ['Criteria & Action', '2nd-Degree AV Block Mobitz Type I (Wenckebach). Usually benign/nodal (vagal, inferior MI, AV nodal blockers); observe if asymptomatic, Atropine if symptomatic bradycardia.']
+        ],
+        anki: 'Mobitz Type I (Wenckebach): progressive {{c1::PR prolongation}} culminating in a {{c2::dropped QRS}} with {{c3::grouped beating}} (usually narrow QRS, AV nodal).',
+        vignette: { demo: '46y M', text: 'Endurance cyclist with incidental paused beats noticed on wearable heart-rate monitor; asymptomatic.', vitals: 'BP 118/70 · HR 58 avg · SpO₂ 99%', hint: 'Measure consecutive PR intervals along the Lead II rhythm strip (180 → 245 → 315 ms → dropped beat).' }
+      },
+      {
+        id: 'mobitz2', group: 'Arrhythmias & AV Blocks', name: 'Mobitz II (High-Grade)', tag: 'Fixed PR → Drop',
+        severity: 'crit', focusLead: 'II', highlightLeads: ['II', 'V1'],
+        params: { hr: 80, axis: -10, pr: 170, qrs: 132, qtc: 430, k: 4.2, rhythm: 'mobitz2', morph: 'rbbb' },
+        steps: [
+          ['Rate & Rhythm', 'Regular P-waves at 80 bpm with abrupt intermittent non-conducted P-waves (3:2 / 4:3 intermittent drops).'],
+          ['Frontal Axis', 'Normal/leftward axis (-10°).'],
+          ['P-Wave & PR', 'CONSTANT PR interval (170 ms) before and after every dropped beat — ZERO progressive prolongation!'],
+          ['QRS & Voltage', 'Widened QRS (132 ms), reflecting infranodal His-Purkinje disease.'],
+          ['ST-Segment', 'Secondary repolarization changes from bundle branch disease.'],
+          ['T-Wave & QTc', 'Appropriate secondary T changes.'],
+          ['Criteria & Action', '2nd-Degree AV Block Mobitz Type II — HIGH RISK of abrupt progression to Complete Heart Block / Asystole! Place transcutaneous pacing pads; permanent pacemaker indicated (Atropine often ineffective/paradoxically worsens!).']
+        ],
+        anki: 'Mobitz Type II: {{c1::constant PR interval}} with abrupt {{c2::dropped QRS}} and usually {{c3::wide QRS}} (infranodal His-Purkinje) → requires {{c4::pacemaker}}.',
+        vignette: { demo: '78y M', text: 'Two episodes of sudden unexplained near-syncope over the past week without prodrome.', vitals: 'BP 112/64 · HR 54 avg · SpO₂ 97%', hint: 'Compare the PR interval before and after the dropped beat on the rhythm strip — it stays completely fixed!' }
+      },
+      {
+        id: 'avb3', group: 'Arrhythmias & AV Blocks', name: 'Complete Heart Block (3°)', tag: 'AV Dissoc · 38 bpm',
+        severity: 'crit', focusLead: 'II', highlightLeads: ['II', 'V1'],
+        params: { hr: 38, axis: 110, pr: 0, qrs: 154, qtc: 460, k: 4.2, rhythm: 'avb3', morph: 'escape' },
+        steps: [
+          ['Rate & Rhythm', 'COMPLETE AV DISSOCIATION: Atrial P-waves march independently at 80 bpm while a slow ventricular escape rhythm fires regularly at 38 bpm.'],
+          ['Frontal Axis', 'Rightward ventricular escape axis (+110°).'],
+          ['P-Wave & PR', 'No fixed relationship between P-waves and QRS complexes; P-waves visibly march right through QRS complexes and T-waves!'],
+          ['QRS & Voltage', 'Wide ventricular escape QRS (154 ms).'],
+          ['ST-Segment', 'Discordant ST/T opposite the wide ventricular escape complex.'],
+          ['T-Wave & QTc', 'Broad discordant T-waves.'],
+          ['Criteria & Action', '3rd-Degree (Complete) AV Block — EMERGENT! Apply transcutaneous pacing pads immediately, prepare transvenous/permanent pacemaker, rule out hyperkalemia/inferior MI/Lyme/drug toxicity.']
+        ],
+        anki: '3rd-Degree AV Block: complete {{c1::AV dissociation}} with regular P-P intervals marching independently through a slow regular {{c2::junctional or ventricular escape}} rhythm.',
+        vignette: { demo: '81y F', text: 'Brought in after witnessed syncope in the kitchen; dizzy and fatigued with cannon A-waves in neck veins.', vitals: 'BP 88/50 · HR 38 · SpO₂ 96%', hint: 'Turn ON Marching Calipers and measure P-to-P intervals across the 10-second Lead II rhythm strip — P waves march right through the slow wide QRS!' }
+      },
+      {
+        id: 'vt', group: 'Arrhythmias & AV Blocks', name: 'Monomorphic VT', tag: 'Wide · 172 · NW Axis',
+        severity: 'crit', focusLead: 'V3', highlightLeads: ['aVR', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'],
+        params: { hr: 172, axis: -130, pr: 0, qrs: 176, qtc: 450, k: 4.3, rhythm: 'vt', morph: 'vt' },
+        steps: [
+          ['Rate & Rhythm', 'Regular wide-complex tachycardia at 172 bpm (treat ANY regular WCT in structural heart disease as VT until proven otherwise!).'],
+          ['Frontal Axis', 'EXTREME / NORTHWEST AXIS (-130°) — dominant positive R wave in aVR (strong VT indicator!).'],
+          ['P-Wave & PR', 'AV dissociation (independent subtle atrial deflections unrelated to ventricular rate).'],
+          ['QRS & Voltage', 'Very wide QRS (176 ms > 160 ms) with NEGATIVE PRECORDIAL CONCORDANCE (deep QS across V1–V6 — Brugada Step 1 positive!).'],
+          ['ST-Segment', 'Marked discordant ST-T segments opposite broad QRS complexes.'],
+          ['T-Wave & QTc', 'Discordant upright T-waves across precordium.'],
+          ['Criteria & Action', 'MONOMORPHIC VENTRICULAR TACHYCARDIA. Pulseless → immediate unsynchronized Defibrillation + CPR. Pulse + Unstable → Synchronized DCCV. Pulse + Stable → IV Amiodarone / Procainamide.']
+        ],
+        anki: 'Brugada VT criteria: absence of RS complex in all precordial leads ({{c1::concordance}}), RS interval {{c2::>100 ms}}, {{c3::AV dissociation}}, or extreme {{c4::NW axis (-90° to -180°)}}.',
+        vignette: { demo: '69y M', text: 'History of prior anterior MI presents with sudden severe dizziness, diaphoresis, and palpitations.', vitals: 'BP 86/54 · HR 172 · SpO₂ 95%', hint: 'Check QRS width (>160 ms), extreme NW axis (-130° with upright aVR), and negative concordance across V1–V6.' }
+      },
+
+      // --- GROUP 4: ELECTROLYTES, PERICARDIUM & STRUCTURAL ---
+      {
+        id: 'hyperk', group: 'Electrolytes, Pericardium & Structural', name: 'Hyperkalemia (K⁺ 7.3)', tag: 'Peaked T · Wide QRS',
+        severity: 'crit', focusLead: 'V3', highlightLeads: ['V2', 'V3', 'V4', 'V5', 'II'],
+        params: { hr: 62, axis: 45, pr: 235, qrs: 145, qtc: 390, k: 7.3, rhythm: 'sinus', morph: 'normal' },
+        steps: [
+          ['Rate & Rhythm', 'Slowed sinus rhythm at 62 bpm (approaching sinoventricular conduction).'],
+          ['Frontal Axis', 'Normal axis (+45°).'],
+          ['P-Wave & PR', 'Markedly FLATTENED/low-amplitude P-waves with prolonged PR interval (~235 ms).'],
+          ['QRS & Voltage', 'Diffusely widened QRS (~145 ms) — ominous sign of imminent sine-wave VF/asystole!'],
+          ['ST-Segment', 'Shortened ST segment transitioning rapidly into narrow T upstroke.'],
+          ['T-Wave & QTc', 'Classic TALL, NARROW, SYMMETRIC "TENTED" PEAKED T-waves across V2–V5; shortened/normal QTc.'],
+          ['Criteria & Action', 'SEVERE HYPERKALEMIA (K⁺ ~7.3 mmol/L). IMMEDIATE: 1) IV Calcium Gluconate (stabilizes myocardium in <3 min), 2) IV Insulin + Dextrose + Albuterol (shift), 3) Diuretics/Binders/Dialysis (excrete).']
+        ],
+        anki: 'Hyperkalemia ECG progression: {{c1::tall narrow peaked T-waves}} → {{c2::flattened P & prolonged PR}} → {{c3::widened QRS}} → {{c4::sine-wave/VF}}. First drug: IV Calcium Gluconate.',
+        vignette: { demo: '65y M', text: 'CKD Stage 5 patient missed his last two hemodialysis sessions; presents with generalized muscle weakness.', vitals: 'BP 142/84 · HR 62 · SpO₂ 98%', hint: 'Inspect V2–V5 for narrow symmetric tented T-waves alongside flattened P waves and widened QRS.' }
+      },
+      {
+        id: 'hypok', group: 'Electrolytes, Pericardium & Structural', name: 'Hypokalemia (K⁺ 2.3)', tag: 'U-Waves · STD',
+        severity: 'warn', focusLead: 'V3', highlightLeads: ['V2', 'V3', 'V4', 'II'],
+        params: { hr: 84, axis: 55, pr: 172, qrs: 90, qtc: 465, k: 2.3, rhythm: 'sinus', morph: 'normal' },
+        steps: [
+          ['Rate & Rhythm', 'Sinus rhythm at 84 bpm (increased ventricular ectopy / Torsades risk).'],
+          ['Frontal Axis', 'Normal axis (+55°).'],
+          ['P-Wave & PR', 'Slightly prominent P-waves; normal/borderline PR.'],
+          ['QRS & Voltage', 'Normal narrow QRS (90 ms).'],
+          ['ST-Segment', 'Diffuse mild scooped ST depression across precordial & inferior leads.'],
+          ['T-Wave & QTc', 'Flattened T-waves followed by PROMINENT U-WAVES in V2–V4 (creating apparent long Q-U interval!).'],
+          ['Criteria & Action', 'SEVERE HYPOKALEMIA (K⁺ ~2.3 mmol/L). Replete KCl (IV/PO) and ALWAYS check & replete Magnesium (Mg²⁺ deficiency causes refractory hypokalemia!).']
+        ],
+        anki: 'Hypokalemia ECG triad: {{c1::ST depression}}, {{c2::flattened T-waves}}, and prominent {{c3::U-waves}} (best seen in V2–V4; creates pseudo-long QTc). Always check {{c4::Mg²⁺}}.',
+        vignette: { demo: '58y F', text: 'Intractable vomiting and high-dose loop diuretic use for 5 days; presents with leg cramps and palpitations.', vitals: 'BP 108/66 · HR 84 · SpO₂ 99%', hint: 'Zoom in on V2–V4: flattened T waves with mild ST depression and a distinct secondary hump (U-wave) after the T wave.' }
+      },
+      {
+        id: 'pericarditis', group: 'Electrolytes, Pericardium & Structural', name: 'Acute Pericarditis', tag: 'Diffuse STE · ↓PR',
+        severity: 'warn', focusLead: 'II', highlightLeads: ['I', 'II', 'aVR', 'V2', 'V4', 'V5', 'V6'],
+        params: { hr: 102, axis: 52, pr: 152, qrs: 86, qtc: 405, k: 4.2, rhythm: 'sinus', morph: 'pericarditis' },
+        steps: [
+          ['Rate & Rhythm', 'Mild sinus tachycardia at 102 bpm.'],
+          ['Frontal Axis', 'Normal axis (+52°).'],
+          ['P-Wave & PR', 'Pathognomonic DIFFUSE PR-SEGMENT DEPRESSION (baseline dips between P and Q in II, V2–V6) with reciprocal PR ELEVATION in aVR!'],
+          ['QRS & Voltage', 'Normal narrow QRS without pathologic Q-waves.'],
+          ['ST-Segment', 'Diffuse CONCAVE-UPWARD ("smiley face") ST elevation crossing multiple coronary territories (I, II, aVL, aVF, V2–V6) with reciprocal STD in aVR only.'],
+          ['T-Wave & QTc', 'Upright concordant T-waves; ST/T height ratio in V6 > 0.25 differentiates from benign early repolarization.'],
+          ['Criteria & Action', 'Stage 1 ACUTE PERICARDITIS. Treat with high-dose NSAID (Ibuprofen) + Colchicine (3 mo); echo to exclude tamponade/effusion.']
+        ],
+        anki: 'Acute Pericarditis Stage 1: diffuse {{c1::concave-upward STE}} across non-anatomic territories + {{c2::PR depression}}, with reciprocal {{c3::PR elevation & STD in aVR}}.',
+        vignette: { demo: '31y M', text: 'Sharp pleuritic substernal chest pain 1 week after a viral URI; pain worsens lying flat and improves leaning forward.', vitals: 'BP 124/76 · HR 102 · Temp 37.9°C', hint: 'Check Lead II and V4–V6 for concave STE + PR-segment depression, and check aVR for PR elevation + STD.' }
+      },
+      {
+        id: 'pe', group: 'Electrolytes, Pericardium & Structural', name: 'Pulmonary Embolism', tag: 'S1Q3T3 · TWI V1–V4',
+        severity: 'crit', focusLead: 'V2', highlightLeads: ['I', 'III', 'V1', 'V2', 'V3', 'V4'],
+        params: { hr: 118, axis: 105, pr: 148, qrs: 92, qtc: 425, k: 4.2, rhythm: 'sinus', morph: 'pe' },
+        steps: [
+          ['Rate & Rhythm', 'SINUS TACHYCARDIA at 118 bpm (most common ECG abnormality in acute PE!).'],
+          ['Frontal Axis', 'Right Axis Deviation (+105°) reflecting acute RV pressure overload.'],
+          ['P-Wave & PR', 'Prominent peaked P-waves in II; normal PR (148 ms).'],
+          ['QRS & Voltage', 'Classic S1Q3T3 McGinn-White pattern: deep S in Lead I + Q-wave in Lead III (paired with TWI in Lead III).'],
+          ['ST-Segment', 'Mild right-ventricular strain ST depression in V1–V3.'],
+          ['T-Wave & QTc', 'Simultaneous T-WAVE INVERSIONS in right precordial leads (V1–V4) AND inferior Lead III (highly specific for acute RV strain!).'],
+          ['Criteria & Action', 'ACUTE PULMONARY EMBOLISM (RV Strain pattern). Urgent CTPA + bedside echo; immediate anticoagulation (UFH/LMWH/DOAC) and risk-stratify for thrombolysis/thrombectomy.']
+        ],
+        anki: 'Acute PE ECG markers of RV strain: {{c1::sinus tachycardia}}, {{c2::T-wave inversions in V1–V4}} (+ III), {{c3::RAD}}, and {{c4::S1Q3T3}}.',
+        vignette: { demo: '54y F', text: 'Acute onset dyspnea and pleuritic chest pain 10 days after knee arthroscopy; mildly hypoxic.', vitals: 'BP 106/68 · HR 118 · SpO₂ 91% RA', hint: 'Look at HR (>100), Frontal Axis (RAD), Lead I (S wave), Lead III (Q + inverted T), and V1–V4 (T-wave inversions).' }
+      },
+      {
+        id: 'brugada', group: 'Electrolytes, Pericardium & Structural', name: 'Brugada Type 1', tag: 'Coved STE V1–V2',
+        severity: 'crit', focusLead: 'V1', highlightLeads: ['V1', 'V2'],
+        params: { hr: 68, axis: 50, pr: 168, qrs: 102, qtc: 410, k: 4.2, rhythm: 'sinus', morph: 'brugada' },
+        steps: [
+          ['Rate & Rhythm', 'Regular sinus rhythm at 68 bpm.'],
+          ['Frontal Axis', 'Normal axis (+50°).'],
+          ['P-Wave & PR', 'Normal P-waves and PR interval (168 ms).'],
+          ['QRS & Voltage', 'Incomplete RBBB-like rSr\' appearance in V1–V2 without wide lateral S waves.'],
+          ['ST-Segment', 'Pathognomonic Type 1 COVED ST elevation ≥2 mm in V1–V2 descending straight down into a negative T-wave.'],
+          ['T-Wave & QTc', 'Symmetric inverted T-waves in V1–V2; normal QTc.'],
+          ['Criteria & Action', 'BRUGADA TYPE 1 PATTERN (SCN5A Na⁺ channelopathy — polymorphic VT/VF sudden death risk!). Aggressive antipyretics for fever, avoid Class I Na⁺ blockers (Flecainide/Propafenone), EP consult for ICD if symptomatic/syncope.']
+        ],
+        anki: 'Brugada Type 1 diagnostic ECG: {{c1::coved ST elevation ≥2 mm}} descending into a {{c2::negative T-wave}} in {{c3::V1–V2}}. Avoid {{c4::fever & Class I Na⁺ blockers}}.',
+        vignette: { demo: '36y M', text: 'Unexplained nocturnal syncope during a febrile upper respiratory illness; brother died suddenly in sleep at age 32.', vitals: 'BP 122/74 · HR 68 · Temp 38.6°C', hint: 'Inspect V1 and V2 closely for high-takeoff COVED ST elevation sloping directly into an inverted T-wave.' }
+      },
+      {
+        id: 'lvh', group: 'Electrolytes, Pericardium & Structural', name: 'LVH with Strain', tag: 'S_V1+R_V5 46mm',
+        severity: 'warn', focusLead: 'V5', highlightLeads: ['I', 'aVL', 'V1', 'V5', 'V6'],
+        params: { hr: 72, axis: -20, pr: 166, qrs: 104, qtc: 435, k: 4.2, rhythm: 'sinus', morph: 'lvh' },
+        steps: [
+          ['Rate & Rhythm', 'Regular sinus rhythm at 72 bpm.'],
+          ['Frontal Axis', 'Leftward axis (-20°).'],
+          ['P-Wave & PR', 'Subtle left atrial abnormality (deep terminal negative P in V1); normal PR.'],
+          ['QRS & Voltage', 'Massive LV voltage: Sokolow-Lyon S_V1 (21.5 mm) + R_V5 (24.5 mm) = 46 mm (>35 mm); R in aVL > 12 mm!'],
+          ['ST-Segment', 'Downsloping ST depression in lateral leads I, aVL, V5, V6 ("LV strain pattern").'],
+          ['T-Wave & QTc', 'Asymmetric T-wave inversions (slow downslope, rapid upslope) in I, aVL, V5, V6.'],
+          ['Criteria & Action', 'Left Ventricular Hypertrophy with Secondary Repolarization Abnormality (Strain). Evaluate chronic hypertension, aortic stenosis, or HCM with TTE.']
+        ],
+        anki: 'LVH voltage criteria: Sokolow-Lyon {{c1::S_V1 + R_V5/V6 ≥ 35 mm}} or R_aVL {{c2::>11 mm}}; "strain" shows {{c3::downsloping STD & asymmetric TWI}} in I, aVL, V5–V6.',
+        vignette: { demo: '67y M', text: 'Long-standing poorly controlled hypertension and harsh crescendo-decrescendo systolic murmur at right upper sternal border.', vitals: 'BP 168/94 · HR 72 · SpO₂ 98%', hint: 'Measure S in V1 + R in V5 (Sokolow-Lyon >35 mm) and check V5–V6 / aVL for asymmetric T-wave inversions.' }
+      },
+      {
+        id: 'lqt', group: 'Electrolytes, Pericardium & Structural', name: 'Long QT Syndrome', tag: 'QTc ~540 ms',
+        severity: 'crit', focusLead: 'V3', highlightLeads: ['II', 'V2', 'V3', 'V4'],
+        params: { hr: 60, axis: 55, pr: 160, qrs: 88, qtc: 540, k: 4.0, rhythm: 'sinus', morph: 'lqt' },
+        steps: [
+          ['Rate & Rhythm', 'Regular sinus rhythm at 60 bpm (RR = 1000 ms, so QT = QTcB = QTcF = 540 ms!).'],
+          ['Frontal Axis', 'Normal axis (+55°).'],
+          ['P-Wave & PR', 'Normal sinus P-waves and PR interval.'],
+          ['QRS & Voltage', 'Normal narrow QRS (88 ms).'],
+          ['ST-Segment', 'Prolonged isoelectric ST segment delaying repolarization onset.'],
+          ['T-Wave & QTc', 'Markedly PROLONGED QT / QTc (~540 ms > 500 ms danger zone!) with broad T-waves extending past half the R-R interval!'],
+          ['Criteria & Action', 'LONG QT SYNDROME (High risk of R-on-T Torsades de Pointes!). Stop all QT-prolonging drugs (Macrolides, Fluoroquinolones, Haloperidol, Ondansetron, Class III), replete K⁺ >4.0 & Mg²⁺ >1.0; IV MgSO₄ if Torsades.']
+        ],
+        anki: 'QTc {{c1::>500 ms}} (or QT > {{c2::half the R-R interval}}) carries high risk of {{c3::Torsades de Pointes}}; acute drug of choice is IV {{c4::Magnesium Sulfate}}.',
+        vignette: { demo: '41y F', text: 'Self-limiting syncope while taking azithromycin and citalopram; baseline mild hypokalemia.', vitals: 'BP 116/72 · HR 60 · SpO₂ 99%', hint: 'Use calipers on Lead II or V3 to measure from QRS onset to the end of the T-wave (>500 ms, exceeding half the R-R interval).' }
+      }
+    ];
+
+    const PRESET_MAP = Object.fromEntries(PRESETS.map(p => [p.id, p]));
+    const QUIZ_POOL = PRESETS.filter(p => p.vignette !== null);
+
+    /* =========================================================================
+       3. APPLICATION STATE
+       ========================================================================= */
+    const state = {
+      appMode: 'study',        // 'study' | 'quiz'
+      presetId: 'nsr',
+      params: { ...PRESET_MAP.nsr.params },
+      speed: 25,               // 25 | 50 mm/s
+      gain: 10,                // 10 | 5 mm/mV
+      gridStyle: document.documentElement.classList.contains('dark') ? 'dark' : 'pink', // 'dark' | 'pink' | 'white'
+      rhythmLead: 'II',        // 'II' | 'V1' | 'V5'
+      selectedLead: 'V2',
+      caliperEnabled: true,
+      marching: false,
+      caliper: null,           // { x0, y0, x1, y1 } in canvas CSS px
+      realisticNoise: false,
+      showMagBrackets: true,
+      activeSideTab: 'pathologies',
+      peekTelemetry: false,
+      // Quiz state
+      quiz: {
+        order: [],
+        idx: 0,
+        caseNum: 1,
+        options: [],
+        answered: false,
+        chosenId: null,
+        hintShown: false,
+        score: 0,
+        total: 0,
+        streak: 0
+      },
+      // Cached generated beat schedule & highlight leads
+      schedule: null,
+      highlightLeads: []
+    };
+
+    /* =========================================================================
+       4. ELECTROPHYSIOLOGY ENGINE: BEAT SCHEDULE & 12-LEAD WAVEFORM SYNTHESIS
+       ========================================================================= */
+    function computeDerivedIntervals(p) {
+      const rrSec = 60 / Math.max(25, p.hr);
+      // Apply K+ modulation to PR, QRS, QTc when sandbox K deviates from 4.2
+      const kHyper = Math.max(0, p.k - 5.2) / 3.3; // 0..1 at K=8.5
+      const kHypo = Math.max(0, 3.6 - p.k) / 1.6;  // 0..1 at K=2.0
+      const kPRAdd = p.k > 6.2 ? (p.k - 6.2) * 32 : 0;
+      const kQRSAdd = p.k > 6.4 ? Math.pow((p.k - 6.4) / 2.1, 1.35) * 85 : 0;
+
+      const effPR = (p.rhythm === 'afib' || p.rhythm === 'aflutter' || p.rhythm === 'avnrt' || p.rhythm === 'avb3' || p.rhythm === 'vt')
+        ? null
+        : Math.round(clamp(p.pr + kPRAdd, 75, 380));
+
+      const effQRS = Math.round(clamp(p.qrs + kQRSAdd, 68, 220));
+
+      // Couple QT to QTc Target via Fridericia (QT = QTc * RR^(1/3)) and compute both QTcB and QTcF
+      const kQTShift = kHypo * 35 - kHyper * 28;
+      const targetQTc = clamp(p.qtc + kQTShift, 320, 620);
+      const qtMs = Math.round(clamp(targetQTc * Math.cbrt(rrSec), 240, 680));
+      const qtcB = Math.round(qtMs / Math.sqrt(rrSec));
+      const qtcF = Math.round(qtMs / Math.cbrt(rrSec));
+
+      return { rrSec, effPR, effQRS, qtMs, qtcB, qtcF, kHyper, kHypo };
+    }
+
+    function generateBeatSchedule(p) {
+      const iv = computeDerivedIntervals(p);
+      const pEvents = [];
+      const qrsEvents = [];
+      const tStart = -1.6;
+      const tEnd = 11.6;
+
+      if (p.rhythm === 'afib') {
+        // Deterministic pseudo-random irregularly irregular R-R intervals
+        const meanRR = 60 / clamp(p.hr, 40, 200);
+        const factors = [0.76, 1.24, 0.85, 1.12, 0.72, 1.34, 0.92, 1.18, 0.78, 1.06, 0.82, 1.28, 0.95, 0.74, 1.20];
+        let t = -1.1;
+        let idx = 0;
+        while (t < tEnd) {
+          const rr = clamp(meanRR * factors[idx % factors.length], 0.28, 1.45);
+          qrsEvents.push({ tQRS: t, rr, prSec: 0, idx });
+          t += rr;
+          idx++;
+        }
+      } else if (p.rhythm === 'aflutter') {
+        const fPeriod = 0.200; // 300/min atrial flutter
+        const ratio = p.flutterRatio || 2;
+        const rr = fPeriod * ratio;
+        let t = -1.0;
+        let idx = 0;
+        while (t < tEnd) {
+          qrsEvents.push({ tQRS: t, rr, prSec: 0, idx });
+          t += rr;
+          idx++;
+        }
+      } else if (p.rhythm === 'mobitz1') {
+        // 4:3 Wenckebach: regular atrial PP = 60/hr, PR = 180 -> 245 -> 315 -> DROP
+        const pp = 60 / clamp(p.hr, 55, 110);
+        const prSeq = [0.180, 0.245, 0.315, null];
+        let tP = -1.2;
+        let idx = 0;
+        while (tP < tEnd) {
+          const pr = prSeq[idx % 4];
+          pEvents.push({ tP, conducted: pr !== null, idx });
+          if (pr !== null) {
+            qrsEvents.push({ tQRS: tP + pr, rr: pp, prSec: pr, idx });
+          }
+          tP += pp;
+          idx++;
+        }
+      } else if (p.rhythm === 'mobitz2') {
+        // Regular atrial PP, constant PR = p.pr, every 3rd P dropped
+        const pp = 60 / clamp(p.hr, 55, 110);
+        const pr = clamp(p.pr, 120, 220) / 1000;
+        let tP = -1.2;
+        let idx = 0;
+        while (tP < tEnd) {
+          const drop = (idx % 3 === 2);
+          pEvents.push({ tP, conducted: !drop, idx });
+          if (!drop) {
+            qrsEvents.push({ tQRS: tP + pr, rr: pp, prSec: pr, idx });
+          }
+          tP += pp;
+          idx++;
+        }
+      } else if (p.rhythm === 'avb3') {
+        // Independent Atrial P-waves at 80 bpm & Ventricular Escape QRS at p.hr (38 bpm)
+        const pp = 60 / 80;
+        let tP = -1.15;
+        let pIdx = 0;
+        while (tP < tEnd) {
+          pEvents.push({ tP, conducted: false, idx: pIdx++ });
+          tP += pp;
+        }
+        const rr = 60 / clamp(p.hr, 28, 55);
+        let tQ = -0.85;
+        let qIdx = 0;
+        while (tQ < tEnd) {
+          qrsEvents.push({ tQRS: tQ, rr, prSec: 0, idx: qIdx++, isEscape: true });
+          tQ += rr;
+        }
+      } else if (p.rhythm === 'vt') {
+        const rr = 60 / clamp(p.hr, 120, 220);
+        let tQ = -1.0;
+        let idx = 0;
+        while (tQ < tEnd) {
+          qrsEvents.push({ tQRS: tQ, rr, prSec: 0, idx: idx++ });
+          tQ += rr;
+        }
+        // Subtle dissociated P-waves at 76 bpm
+        let tP = -0.9;
+        let pIdx = 0;
+        while (tP < tEnd) {
+          pEvents.push({ tP, conducted: false, idx: pIdx++, dissociated: true });
+          tP += 60 / 76;
+        }
+      } else {
+        // Sinus, AVNRT, 1st-deg AVB
+        const rr = 60 / clamp(p.hr, 30, 220);
+        const prSec = iv.effPR ? iv.effPR / 1000 : 0;
+        let tQ = -1.0;
+        let idx = 0;
+        while (tQ < tEnd) {
+          qrsEvents.push({ tQRS: tQ, rr, prSec, idx });
+          if (p.rhythm !== 'avnrt') {
+            pEvents.push({ tP: tQ - prSec, conducted: true, idx });
+          }
+          tQ += rr;
+          idx++;
+        }
+      }
+
+      return { pEvents, qrsEvents, iv };
+    }
+
+    /**
+     * Evaluate exact lead-specific ECG voltage (mV) at time t (seconds) for any of the 12 leads.
+     * Limb leads strictly obey Einthoven/Goldberger hexaxial projection (II = I + III, aVR+aVL+aVF = 0).
+     */
+    function evalLeadVoltage(lead, t, p, sched) {
+      const { pEvents, qrsEvents, iv } = sched;
+      const isLimb = lead in LIMB_ANGLES;
+      const morph = p.morph || 'normal';
+      const qrsSec = iv.effQRS / 1000;
+      const qtSec = iv.qtMs / 1000;
+      const qrsHalf = qrsSec * 0.5;
+      const k = p.k;
+
+      // Potassium continuous biophysical modifiers
+      const kHypo = iv.kHypo; // 0..1
+      const kHyper = iv.kHyper; // 0..1
+      const pAmpK = k > 6.0 ? clamp(1 - (k - 6.0) / 1.9, 0.04, 1.0) : (1 + kHypo * 0.18);
+      const tWidthK = k > 5.2 ? clamp(1 - (k - 5.2) / 5.5, 0.45, 1.0) : 1.0;
+      const tPeakBoostK = k > 5.2 ? Math.pow((k - 5.2) / 3.0, 1.25) * 0.72 : 0;
+      const sineFactor = k > 7.5 ? clamp((k - 7.5) / 1.0, 0, 1) : 0;
+
+      let v = 0;
+
+      // 1. CONTINUOUS ATRIAL BASELINE RHYTHMS (AFib f-waves & AFlutter 300/min sawtooth)
+      if (p.rhythm === 'afib') {
+        const ampF = (lead === 'V1' ? 0.075 : (lead === 'II' || lead === 'III' || lead === 'aVF' ? 0.055 : 0.032));
+        v += ampF * (
+          0.55 * Math.sin(2 * Math.PI * 6.4 * t + 0.4) +
+          0.35 * Math.sin(2 * Math.PI * 8.9 * t + 1.7) +
+          0.25 * Math.sin(2 * Math.PI * 11.3 * t + 2.9)
+        );
+      } else if (p.rhythm === 'aflutter') {
+        // 300/min sawtooth wave (period 0.200s): rapid upstroke, slow negative sawtooth downslope in II/III/aVF
+        const ph = ((t + 0.03) % 0.200 + 0.200) % 0.200 / 0.200; // 0..1
+        const saw = (ph < 0.72 ? (0.5 - ph / 0.72) : (-0.5 + (ph - 0.72) / 0.28));
+        if (lead === 'II' || lead === 'III' || lead === 'aVF') {
+          const s = lead === 'III' ? 0.22 : (lead === 'II' ? 0.19 : 0.20);
+          v += s * saw - 0.03;
+        } else if (lead === 'V1') {
+          v += -0.14 * saw + 0.04 * gauss(ph - 0.78, 0.12);
+        } else if (lead === 'aVR') {
+          v += -0.11 * saw;
+        } else {
+          v += 0.05 * saw;
+        }
+      }
+
+      // 2. DISCRETE P-WAVES (and Pericarditis PR-Segment Depression / aVR PR Elevation)
+      const pDur = 0.092;
+      for (let i = 0; i < pEvents.length; i++) {
+        const pe = pEvents[i];
+        const dtP = t - (pe.tP + pDur * 0.5);
+        if (dtP < -0.14 || dtP > 0.38) continue;
+
+        let pMag = pe.dissociated ? 0.09 : 0.145;
+        if (morph === 'pe') pMag *= 1.35;
+        pMag *= pAmpK;
+
+        if (isLimb) {
+          const pProj = projFrontal(pMag, 55, lead);
+          v += pProj * asymGauss(dtP, 0.022, 0.020);
+        } else {
+          const bp = BASE_PRECORDIAL[lead];
+          if (lead === 'V1') {
+            let negDepth = bp.p2;
+            if (morph === 'lvh') negDepth = -0.09; // Left atrial abnormality
+            v += (bp.p1 * pAmpK) * gauss(dtP + 0.014, 0.016) + (negDepth * pAmpK) * gauss(dtP - 0.018, 0.018);
+          } else {
+            v += (bp.p1 * pAmpK) * asymGauss(dtP, 0.022, 0.020);
+          }
+        }
+
+        // Acute Pericarditis: Crisp PR-segment depression (aVR PR elevation) between P-end and Q-onset
+        if (morph === 'pericarditis' && pe.conducted) {
+          const prSegMid = pe.tP + 0.115;
+          const prWin = gauss(t - prSegMid, 0.026);
+          if (lead === 'aVR') v += 0.085 * prWin;
+          else if (lead !== 'V1') v -= 0.085 * prWin;
+        }
+      }
+
+      // 3. QRS, DELTA WAVE, ST-SEGMENT, T-WAVE & U-WAVE FOR NEARBY BEATS
+      for (let i = 0; i < qrsEvents.length; i++) {
+        const qe = qrsEvents[i];
+        const tC = qe.tQRS + qrsHalf; // Center of QRS
+        const dt = t - tC;
+        if (dt < -0.22 || dt > qtSec + 0.35) continue;
+
+        const qrsEnd = qrsHalf;
+        const jPt = qrsEnd + 0.008;
+        const tPeak = clamp(qtSec - qrsHalf - 0.085, qrsHalf + 0.12, 0.56);
+        const tSigL = clamp((0.056 + (qtSec - 0.38) * 0.18) * tWidthK, 0.024, 0.11);
+        const tSigR = clamp((0.036 + (qtSec - 0.38) * 0.10) * tWidthK, 0.018, 0.08);
+        const dtST = t - (jPt + 0.048);
+        const dtT = t - tPeak;
+
+        // Smooth ST plateau envelope from J-point into T-wave
+        const stGate = smoothstep(qrsEnd - 0.014, qrsEnd + 0.018, dt) * (1 - smoothstep(tPeak - 0.02, tPeak + 0.06, dt));
+        // Concave ST envelope for Pericarditis ("smiley face")
+        const stConcave = smoothstep(qrsEnd - 0.01, qrsEnd + 0.015, dt) * (1 - smoothstep(tPeak - 0.06, tPeak + 0.02, dt)) * (0.65 + 0.35 * smoothstep(jPt, tPeak - 0.04, dt));
+
+        // ---- SPECIAL MORPHOLOGY: MONOMORPHIC VT (Broad negative precordial concordance + NW axis) ----
+        if (morph === 'vt') {
+          if (isLimb) {
+            const rLimb = projFrontal(1.45, p.axis, lead);
+            v += rLimb * asymGauss(dt, qrsSec * 0.24, qrsSec * 0.28);
+            v += -rLimb * 0.32 * asymGauss(dtT, 0.055, 0.045);
+          } else {
+            // Negative precordial concordance across V1–V6
+            const depth = { V1: -1.45, V2: -1.65, V3: -1.55, V4: -1.35, V5: -1.15, V6: -0.95 }[lead];
+            v += depth * asymGauss(dt, qrsSec * 0.22, qrsSec * 0.30);
+            v += (-depth * 0.22) * stGate + (-depth * 0.36) * asymGauss(dtT, 0.058, 0.046);
+          }
+          continue;
+        }
+
+        // ---- SPECIAL MORPHOLOGY: COMPLETE HEART BLOCK VENTRICULAR ESCAPE ----
+        if (morph === 'escape') {
+          if (isLimb) {
+            const amp = projFrontal(1.30, p.axis, lead);
+            v += amp * asymGauss(dt, qrsSec * 0.22, qrsSec * 0.26);
+            v += (-amp * 0.30) * asymGauss(dtT, 0.065, 0.050);
+          } else {
+            const amp = { V1: 0.95, V2: 0.72, V3: 0.35, V4: -0.55, V5: -0.95, V6: -1.05 }[lead];
+            v += amp * asymGauss(dt, qrsSec * 0.22, qrsSec * 0.26);
+            v += (-amp * 0.34) * asymGauss(dtT, 0.065, 0.050);
+          }
+          continue;
+        }
+
+        // ---- STANDARD + PATHOLOGY-MODULATED LIMB & PRECORDIAL SYNTHESIS ----
+        let qAmp = 0, rAmp = 0, sAmp = 0, r2Amp = 0, stAmp = 0, tAmp = 0, uAmp = 0;
+        let qrsWidthScale = 1.0;
+        let isMNotch = false;
+        let isSlurredS = false;
+        let isBrugada = false;
+        let isWellens = false;
+        let isDelta = false;
+        let deltaDir = 0;
+        let useConcaveST = (morph === 'pericarditis');
+
+        if (isLimb) {
+          // Pure Hexaxial Einthoven/Goldberger Projection (guarantees II = I + III!)
+          const axis = p.axis;
+          const qrsBaseAmp = morph === 'lvh' ? 1.55 : (morph === 'lbbb' || morph === 'lbbb_mi' ? 1.35 : 1.18);
+          qAmp = projFrontal(0.14, axis - 110, lead);
+          rAmp = projFrontal(qrsBaseAmp, axis, lead);
+          sAmp = projFrontal(0.24, axis + 125, lead);
+          tAmp = projFrontal(0.32, clamp(axis * 0.55 + 22, -30, 95), lead);
+          uAmp = projFrontal(0.02, 55, lead);
+
+          // Apply limb-lead pathology vectors (still using hexaxial projection for consistency!)
+          if (morph === 'lbbb' || morph === 'lbbb_mi') {
+            qAmp = 0;
+            if (lead === 'I' || lead === 'aVL') {
+              isMNotch = true;
+              rAmp = projFrontal(1.30, axis, lead);
+              sAmp = 0;
+              stAmp = -0.10;
+              tAmp = -0.30;
+            } else {
+              stAmp = -rAmp * 0.08;
+              tAmp = -rAmp * 0.24;
+            }
+          } else if (morph === 'rbbb') {
+            if (lead === 'I' || lead === 'aVL') {
+              isSlurredS = true;
+              sAmp = -0.45;
+            }
+          } else if (morph === 'wpw') {
+            isDelta = true;
+            deltaDir = projFrontal(0.46, 0, lead); // Negative delta in III & aVF (pseudo-inferior Q)
+            if (lead === 'III' || lead === 'aVF') { qAmp = -0.25; }
+            tAmp = -deltaDir * 0.45 + tAmp * 0.45;
+          } else if (morph === 'stemi_ant') {
+            // Reciprocal inferior STD (injury vector at -95°)
+            stAmp = projFrontal(0.20, -90, lead);
+            if (lead === 'I' || lead === 'aVL') stAmp += 0.06;
+            tAmp += stAmp * 1.1;
+          } else if (morph === 'stemi_inf') {
+            // Inferior RCA injury vector at +108° -> STE III > II > aVF, reciprocal STD in I & aVL!
+            stAmp = projFrontal(0.38, 108, lead);
+            qAmp += projFrontal(-0.34, 108, lead);
+            tAmp += stAmp * 1.15;
+          } else if (morph === 'stemi_lat') {
+            // High lateral LCx/D1 injury vector at -35° -> STE aVL > I, reciprocal STD III & aVF!
+            stAmp = projFrontal(0.32, -35, lead);
+            tAmp += stAmp * 1.15;
+          } else if (morph === 'pericarditis') {
+            // Diffuse pericardial vector at +55° -> concave STE in I, II, aVL, aVF; STD in aVR!
+            stAmp = projFrontal(0.22, 55, lead);
+            tAmp += projFrontal(0.14, 55, lead);
+          } else if (morph === 'pe') {
+            // S1Q3T3 + RAD
+            if (lead === 'I') sAmp = -0.46;
+            if (lead === 'III') { qAmp = -0.34; tAmp = -0.28; }
+            if (lead === 'aVF') tAmp = -0.10;
+          } else if (morph === 'lvh') {
+            if (lead === 'I' || lead === 'aVL') {
+              stAmp = -0.14;
+              tAmp = -0.38;
+            }
+          }
+        } else {
+          // Precordial Leads V1–V6
+          const bp = BASE_PRECORDIAL[lead];
+          qAmp = bp.q; rAmp = bp.r; sAmp = bp.s; stAmp = bp.st; tAmp = bp.t; uAmp = bp.u;
+
+          if (morph === 'lbbb' || morph === 'lbbb_mi') {
+            if (lead === 'V1' || lead === 'V2' || lead === 'V3') {
+              qAmp = 0;
+              rAmp = lead === 'V1' ? 0.08 : (lead === 'V2' ? 0.12 : 0.18);
+              sAmp = lead === 'V1' ? -1.85 : (lead === 'V2' ? -2.20 : -1.75);
+              stAmp = morph === 'lbbb_mi' && (lead === 'V2' || lead === 'V3') ? -0.22 : 0.24; // Concordant STD in V2-V3 for Sgarbossa+!
+              tAmp = morph === 'lbbb_mi' && (lead === 'V2' || lead === 'V3') ? -0.20 : 0.44;
+            } else if (lead === 'V4') {
+              qAmp = 0; rAmp = 0.72; sAmp = -0.65; stAmp = 0.05; tAmp = 0.05;
+            } else {
+              // V5, V6: Broad notched monophasic R (no septal Q)
+              isMNotch = true;
+              qAmp = 0; rAmp = lead === 'V5' ? 1.55 : 1.38; sAmp = 0;
+              if (morph === 'lbbb_mi') {
+                // Concordant STE >= 1mm in V5-V6 (Sgarbossa 5 pts!)
+                stAmp = lead === 'V5' ? 0.24 : 0.20;
+                tAmp = 0.38;
+              } else {
+                stAmp = -0.12;
+                tAmp = -0.34;
+              }
+            }
+          } else if (morph === 'rbbb') {
+            if (lead === 'V1' || lead === 'V2') {
+              qAmp = 0;
+              rAmp = lead === 'V1' ? 0.36 : 0.45;
+              sAmp = -0.26;
+              r2Amp = lead === 'V1' ? 1.08 : 0.92; // Tall secondary R' ("rabbit ears")
+              stAmp = -0.10;
+              tAmp = -0.36;
+            } else if (lead === 'V5' || lead === 'V6') {
+              isSlurredS = true;
+              sAmp = lead === 'V5' ? -0.58 : -0.46;
+            }
+          } else if (morph === 'wpw') {
+            isDelta = true;
+            deltaDir = { V1: -0.25, V2: 0.38, V3: 0.50, V4: 0.56, V5: 0.48, V6: 0.38 }[lead];
+            qAmp = 0;
+            if (lead === 'V2' || lead === 'V3' || lead === 'V4') {
+              rAmp *= 1.15;
+              tAmp *= 0.45;
+            }
+          } else if (morph === 'stemi_ant') {
+            const steMap = { V1: 0.24, V2: 0.50, V3: 0.48, V4: 0.34, V5: 0.12, V6: 0.02 };
+            stAmp = steMap[lead];
+            if (lead === 'V1' || lead === 'V2' || lead === 'V3') {
+              qAmp = lead === 'V1' ? -0.15 : -0.38;
+              rAmp *= 0.35;
+              tAmp = 0.62;
+            } else if (lead === 'V4') {
+              tAmp = 0.56;
+            }
+          } else if (morph === 'stemi_lat') {
+            if (lead === 'V5' || lead === 'V6') {
+              stAmp = lead === 'V5' ? 0.24 : 0.26;
+              tAmp = 0.48;
+            }
+          } else if (morph === 'post_mi') {
+            if (lead === 'V1' || lead === 'V2' || lead === 'V3') {
+              rAmp = lead === 'V1' ? 0.92 : (lead === 'V2' ? 1.25 : 1.18);
+              sAmp = lead === 'V1' ? -0.45 : (lead === 'V2' ? -0.50 : -0.45);
+              stAmp = lead === 'V1' ? -0.22 : (lead === 'V2' ? -0.30 : -0.25);
+              tAmp = lead === 'V1' ? 0.36 : 0.54;
+            }
+          } else if (morph === 'wellens') {
+            if (lead === 'V2' || lead === 'V3') {
+              isWellens = true;
+              stAmp = 0.03;
+            } else if (lead === 'V4') {
+              tAmp = -0.22;
+            }
+          } else if (morph === 'pericarditis') {
+            if (lead !== 'V1') {
+              stAmp = { V2: 0.20, V3: 0.24, V4: 0.25, V5: 0.24, V6: 0.20 }[lead];
+              tAmp += 0.12;
+            }
+          } else if (morph === 'pe') {
+            if (lead === 'V1' || lead === 'V2' || lead === 'V3' || lead === 'V4') {
+              stAmp = -0.06;
+              tAmp = { V1: -0.24, V2: -0.40, V3: -0.38, V4: -0.24 }[lead];
+            }
+          } else if (morph === 'brugada') {
+            if (lead === 'V1' || lead === 'V2') {
+              isBrugada = true;
+              rAmp = lead === 'V1' ? 0.45 : 0.55;
+              sAmp = -0.35;
+              stAmp = lead === 'V1' ? 0.34 : 0.28;
+              tAmp = -0.28;
+            }
+          } else if (morph === 'lvh') {
+            if (lead === 'V1') { sAmp = -2.15; rAmp = 0.14; stAmp = 0.08; tAmp = 0.26; }
+            if (lead === 'V2') { sAmp = -2.35; rAmp = 0.38; stAmp = 0.10; tAmp = 0.36; }
+            if (lead === 'V3') { sAmp = -1.30; rAmp = 1.15; }
+            if (lead === 'V4') { rAmp = 2.05; stAmp = -0.06; tAmp = -0.10; }
+            if (lead === 'V5') { rAmp = 2.45; sAmp = -0.18; stAmp = -0.16; tAmp = -0.44; }
+            if (lead === 'V6') { rAmp = 2.10; sAmp = -0.08; stAmp = -0.15; tAmp = -0.42; }
+          }
+        }
+
+        // ---- CONTINUOUS POTASSIUM ELECTROLYTE OVERLAY (2.0 -> 8.5 mmol/L) ----
+        if (kHypo > 0.01) {
+          stAmp -= kHypo * (isLimb ? 0.06 : 0.13);
+          tAmp *= (1 - kHypo * 0.78);
+          const uScale = (lead === 'V2' || lead === 'V3' || lead === 'V4') ? 0.34 : (lead === 'II' || lead === 'V5' ? 0.18 : 0.08);
+          uAmp += kHypo * uScale;
+        }
+        if (kHyper > 0.01 && !isWellens && !isBrugada) {
+          const tBoostLead = (lead === 'V2' || lead === 'V3' || lead === 'V4' || lead === 'V5') ? 1.15 : (lead === 'II' ? 0.72 : 0.45);
+          if (tAmp >= -0.05) {
+            tAmp += tPeakBoostK * tBoostLead;
+          }
+          // Extreme hyperkalemia (K > 7.5): smooth sine-wave fusion
+          if (sineFactor > 0.05) {
+            v += sineFactor * 0.65 * Math.sin(2 * Math.PI * (dt / (qrsSec * 2.1)));
+          }
+        }
+
+        // ---- RENDER INDIVIDUAL BEAT COMPONENTS ----
+        const qSig = qrsSec * 0.10;
+        const rSig = qrsSec * 0.13 * qrsWidthScale;
+        const sSig = qrsSec * 0.12;
+
+        if (isMNotch) {
+          // Broad M-shaped notched monophasic R (LBBB)
+          v += rAmp * 0.88 * gauss(dt + qrsSec * 0.21, qrsSec * 0.17);
+          v += rAmp * 0.94 * gauss(dt - qrsSec * 0.20, qrsSec * 0.17);
+          v += rAmp * 0.56 * gauss(dt, qrsSec * 0.16);
+        } else if (r2Amp !== 0) {
+          // Classic RBBB triphasic rsR'
+          v += rAmp * gauss(dt + qrsSec * 0.29, qrsSec * 0.10);
+          v += sAmp * gauss(dt + qrsSec * 0.05, qrsSec * 0.09);
+          v += r2Amp * asymGauss(dt - qrsSec * 0.24, qrsSec * 0.12, qrsSec * 0.16);
+        } else if (isBrugada) {
+          // Brugada Type 1: r-s + high-takeoff COVED ST sloping down into inverted T
+          v += rAmp * gauss(dt + qrsSec * 0.18, qrsSec * 0.13);
+          v += sAmp * gauss(dt - qrsSec * 0.10, qrsSec * 0.11);
+          const cove = smoothstep(qrsSec * 0.04, qrsSec * 0.26, dt) * (1 - smoothstep(tPeak - 0.04, tPeak + 0.02, dt));
+          const slopeFrac = clamp((dt - qrsSec * 0.22) / Math.max(0.08, tPeak - qrsSec * 0.22), 0, 1);
+          v += cove * (stAmp * (1 - 1.35 * slopeFrac));
+          v += tAmp * asymGauss(dtT - 0.015, 0.036, 0.036);
+          continue;
+        } else {
+          // Standard Q-R-S (with optional WPW delta ramp or RBBB slurred S)
+          if (isDelta) {
+            const deltaEnv = smoothstep(-qrsHalf - 0.022, -qrsHalf + 0.035, dt) * (1 - smoothstep(-0.005, 0.022, dt));
+            v += deltaDir * deltaEnv;
+          }
+          v += qAmp * gauss(dt + qrsSec * 0.30, qSig);
+          v += rAmp * gauss(dt, rSig);
+          if (isSlurredS) {
+            v += sAmp * asymGauss(dt - qrsSec * 0.30, qrsSec * 0.12, qrsSec * 0.21);
+          } else {
+            v += sAmp * gauss(dt - qrsSec * 0.30, sSig);
+          }
+          // AVNRT tiny retrograde pseudo-r' in V1 / pseudo-s in II
+          if (morph === 'avnrt') {
+            if (lead === 'V1') v += 0.16 * gauss(dt - qrsSec * 0.56, 0.012);
+            if (lead === 'II') v -= 0.14 * gauss(dt - qrsSec * 0.56, 0.012);
+          }
+        }
+
+        // ST Segment
+        if (Math.abs(stAmp) > 0.004) {
+          v += stAmp * (useConcaveST ? stConcave : stGate);
+        }
+
+        // T Wave (Wellens biphasic vs asymmetric/peaked)
+        if (isWellens) {
+          v += 0.24 * gauss(dtT + 0.036, 0.024) - 0.40 * gauss(dtT - 0.024, 0.032);
+        } else {
+          v += tAmp * asymGauss(dtT, tSigL, tSigR);
+        }
+
+        // U Wave (especially prominent in Hypokalemia)
+        if (Math.abs(uAmp) > 0.008) {
+          const dtU = t - (tPeak + 0.125);
+          v += uAmp * gauss(dtU, 0.042);
+        }
+      }
+
+      // 4. OPTIONAL REALISTIC BASELINE WANDER & SUBTLE MUSCLE TREMOR
+      if (state.realisticNoise) {
+        const seed = (lead.charCodeAt(0) + (lead.charCodeAt(1) || 0)) * 0.7;
+        const wander = 0.048 * Math.sin(2 * Math.PI * 0.24 * t + seed);
+        const micro = 0.014 * Math.sin(2 * Math.PI * 31.0 * t + seed * 3) + 0.010 * Math.sin(2 * Math.PI * 47.0 * t + seed);
+        v += wander + micro;
+      }
+
+      return v;
+    }
+
+    /** Compute quantitative Sokolow-Lyon (mm) and selected-lead J+60ms ST deviation (mm) */
+    function measureClinicalMarkers(p, sched) {
+      const refBeat = sched.qrsEvents.find(q => q.tQRS >= 0.8) || sched.qrsEvents[0];
+      if (!refBeat) return { sokolowMm: 26, stMm: 0 };
+      const qrsSec = sched.iv.effQRS / 1000;
+      const tC = refBeat.tQRS + qrsSec * 0.5;
+
+      // Sample S_V1 minimum and R_V5 maximum around QRS
+      let minV1 = 0, maxV5 = 0;
+      for (let dt = -qrsSec * 0.6; dt <= qrsSec * 0.6; dt += 0.004) {
+        const v1 = evalLeadVoltage('V1', tC + dt, p, sched);
+        const v5 = evalLeadVoltage('V5', tC + dt, p, sched);
+        if (v1 < minV1) minV1 = v1;
+        if (v5 > maxV5) maxV5 = v5;
+      }
+      const sokolowMm = Math.round((Math.abs(minV1) + Math.max(0, maxV5)) * 10);
+
+      // Selected lead ST deviation at J + 60 ms relative to TP baseline
+      const tTP = refBeat.tQRS - (refBeat.prSec > 0 ? refBeat.prSec + 0.05 : 0.06);
+      const baseV = evalLeadVoltage(state.selectedLead, tTP, p, sched);
+      const stV = evalLeadVoltage(state.selectedLead, refBeat.tQRS + qrsSec + 0.055, p, sched) - baseV;
+      const stMm = stV * 10; // 1 mV = 10 mm at standard calibration
+      return { sokolowMm, stMm };
+    }
+
+    /* =========================================================================
+       5. ZERO-STRETCH CANVAS SETUP & GRID PALETTES
+       ========================================================================= */
+    const ecgWrap = document.getElementById('ecg12-wrap');
+    const ecgCanvas = document.getElementById('ecg12-canvas');
+    const ecgCtx = ecgCanvas.getContext('2d');
+
+    const magWrap = document.getElementById('mag-wrap');
+    const magCanvas = document.getElementById('mag-canvas');
+    const magCtx = magCanvas.getContext('2d');
+
+    const axisWrap = document.getElementById('axis-wrap');
+    const axisCanvas = document.getElementById('axis-canvas');
+    const axisCtx = axisCanvas.getContext('2d');
+
+    // STRICT ZERO-STRETCH CANVAS SIZING GUARD
+    function syncCanvas(wrapper, canvas) {
+      if (!wrapper || !canvas) return false;
+      const w = wrapper.clientWidth;
+      const h = wrapper.clientHeight;
+      if (!(w > 10 && h > 10 && w < 4000 && h < 2000)) return false;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const tw = Math.round(w * dpr);
+      const th = Math.round(h * dpr);
+      if (canvas.width !== tw || canvas.height !== th) {
+        canvas.width = tw;
+        canvas.height = th;
+        return true;
+      }
+      return false;
+    }
+
+    function getGridTheme() {
+      if (state.gridStyle === 'pink') {
+        return {
+          bg: '#fff9f8',
+          minor: 'rgba(239, 108, 108, 0.22)',
+          major: 'rgba(220, 62, 62, 0.44)',
+          trace: '#18181b',
+          traceWidth: 1.45,
+          label: '#18181b',
+          sub: '#71717a',
+          div: 'rgba(24, 24, 27, 0.28)',
+          selBg: 'rgba(15, 118, 110, 0.08)',
+          selBorder: '#0f766e',
+          hlBorder: '#e11d48',
+          caliper: '#d97706',
+          caliperBg: 'rgba(217, 119, 6, 0.11)',
+          hudBg: 'rgba(255, 255, 255, 0.95)',
+          hudBorder: '#d4d4d8',
+          hudTxt: '#09090b'
+        };
+      }
+      if (state.gridStyle === 'white') {
+        return {
+          bg: '#ffffff',
+          minor: 'rgba(161, 161, 170, 0.22)',
+          major: 'rgba(113, 113, 122, 0.42)',
+          trace: '#09090b',
+          traceWidth: 1.45,
+          label: '#09090b',
+          sub: '#71717a',
+          div: 'rgba(24, 24, 27, 0.22)',
+          selBg: 'rgba(15, 118, 110, 0.07)',
+          selBorder: '#0f766e',
+          hlBorder: '#e11d48',
+          caliper: '#d97706',
+          caliperBg: 'rgba(217, 119, 6, 0.10)',
+          hudBg: 'rgba(255, 255, 255, 0.96)',
+          hudBorder: '#d4d4d8',
+          hudTxt: '#09090b'
+        };
+      }
+      // Dark Monitor
+      return {
+        bg: '#09090c',
+        minor: 'rgba(45, 212, 191, 0.09)',
+        major: 'rgba(45, 212, 191, 0.22)',
+        trace: '#2dd4bf',
+        traceWidth: 1.5,
+        label: '#f4f4f5',
+        sub: '#a1a1aa',
+        div: 'rgba(244, 244, 245, 0.20)',
+        selBg: 'rgba(45, 212, 191, 0.07)',
+        selBorder: '#2dd4bf',
+        hlBorder: '#f43f5e',
+        caliper: '#fbbf24',
+        caliperBg: 'rgba(251, 191, 36, 0.10)',
+        hudBg: 'rgba(9, 9, 11, 0.94)',
+        hudBorder: '#3f3f46',
+        hudTxt: '#f4f4f5'
+      };
+    }
+
+    function drawECGGrid(ctx, W, H, pxPerMm, G) {
+      ctx.fillStyle = G.bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Minor 1 mm grid (skip if < 2.2 px to avoid moire on tiny screens)
+      if (pxPerMm >= 2.2) {
+        ctx.strokeStyle = G.minor;
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        for (let x = 0; x <= W; x += pxPerMm) {
+          const rx = Math.round(x) + 0.5;
+          ctx.moveTo(rx, 0); ctx.lineTo(rx, H);
+        }
+        for (let y = 0; y <= H; y += pxPerMm) {
+          const ry = Math.round(y) + 0.5;
+          ctx.moveTo(0, ry); ctx.lineTo(W, ry);
+        }
+        ctx.stroke();
+      }
+
+      // Major 5 mm grid
+      const step5 = pxPerMm * 5;
+      ctx.strokeStyle = G.major;
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += step5) {
+        const rx = Math.round(x) + 0.5;
+        ctx.moveTo(rx, 0); ctx.lineTo(rx, H);
+      }
+      for (let y = 0; y <= H; y += step5) {
+        const ry = Math.round(y) + 0.5;
+        ctx.moveTo(0, ry); ctx.lineTo(W, ry);
+      }
+      ctx.stroke();
+    }
+
+    /* =========================================================================
+       6. PRIMARY 12-LEAD ECG + CALIBRATION + CALIPER RENDERER
+       ========================================================================= */
+    let ecgLayoutCache = null; // Stores exact geometry for click hit-testing & caliper math
+
+    function draw12LeadECG() {
+      if (!ecgCanvas.width || !ecgCanvas.height || !state.schedule) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = ecgCanvas.width / dpr;
+      const H = ecgCanvas.height / dpr;
+      const ctx = ecgCtx;
+      const G = getGridTheme();
+
+      // Exact physical paper calibration:
+      // 250 mm waveform width + 10 mm calibration area = 260 mm across canvas width
+      const padX = 8;
+      const totalMmX = 260;
+      const pxPerMm = (W - padX * 2) / totalMmX;
+      const calMm = state.speed === 50 ? 12 : 8; // width reserved for cal pulse at row start
+      const waveStartX = padX + calMm * pxPerMm;
+      const waveW = W - padX - waveStartX;
+      const visibleSec = state.speed === 50 ? 5.0 : 10.0; // 250 mm / speed
+      const pxPerSec = state.speed * pxPerMm;
+      const pxPerMv = state.gain * pxPerMm;
+
+      const rowH = H / 4;
+      const colW = waveW / 4;
+      const colSec = visibleSec / 4;
+
+      ecgLayoutCache = { padX, waveStartX, waveW, rowH, colW, pxPerMm, pxPerSec, pxPerMv, visibleSec };
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      drawECGGrid(ctx, W, H, pxPerMm, G);
+
+      // Subtle Row Separators (including Rhythm Strip divider)
+      ctx.strokeStyle = G.div;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, Math.round(rowH * 3) + 0.5);
+      ctx.lineTo(W, Math.round(rowH * 3) + 0.5);
+      ctx.stroke();
+
+      // Highlight selected lead & revealed quiz diagnostic leads
+      const showQuizHighlights = state.appMode === 'quiz' && state.quiz.answered;
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 4; c++) {
+          const lead = LEAD_GRID[r][c];
+          const lx = waveStartX + c * colW;
+          const ly = r * rowH;
+
+          if (lead === state.selectedLead) {
+            ctx.fillStyle = G.selBg;
+            ctx.fillRect(lx, ly, colW, rowH);
+            ctx.strokeStyle = G.selBorder;
+            ctx.lineWidth = 1.4;
+            ctx.strokeRect(lx + 0.7, ly + 0.7, colW - 1.4, rowH - 1.4);
+          }
+
+          if (showQuizHighlights && state.highlightLeads.includes(lead)) {
+            ctx.strokeStyle = G.hlBorder;
+            ctx.lineWidth = 2.0;
+            ctx.strokeRect(lx + 1.5, ly + 1.5, colW - 3, rowH - 3);
+          }
+        }
+      }
+
+      // Draw Calibration Square Pulses (1 mV × 200 ms) at start of each of the 4 rows
+      const calPulseH = 1.0 * pxPerMv;
+      const calPulseW = 0.200 * pxPerSec;
+      ctx.strokeStyle = G.trace;
+      ctx.lineWidth = G.traceWidth;
+      ctx.lineJoin = 'miter';
+
+      for (let r = 0; r < 4; r++) {
+        const baseY = r * rowH + rowH * 0.56;
+        const x0 = padX + 2;
+        const x1 = x0 + Math.max(3, (calMm * pxPerMm - calPulseW) * 0.35);
+        const x2 = x1 + calPulseW;
+        const x3 = waveStartX - 3;
+
+        ctx.beginPath();
+        ctx.moveTo(x0, baseY);
+        ctx.lineTo(x1, baseY);
+        ctx.lineTo(x1, baseY - calPulseH);
+        ctx.lineTo(x2, baseY - calPulseH);
+        ctx.lineTo(x2, baseY);
+        ctx.lineTo(x3, baseY);
+        ctx.stroke();
+      }
+
+      // Trace Helper: crisp high-resolution sampling (every ~1.2 px = ~350–500 Hz)
+      function traceSegment(lead, xStart, segW, tStart, tDur, baseY, rowTop, rowBot) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(xStart, rowTop + 1, segW, rowBot - rowTop - 2);
+        ctx.clip();
+
+        ctx.strokeStyle = G.trace;
+        ctx.lineWidth = G.traceWidth;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+
+        const steps = Math.max(90, Math.round(segW * 1.1));
+        for (let i = 0; i <= steps; i++) {
+          const frac = i / steps;
+          const x = xStart + frac * segW;
+          const t = tStart + frac * tDur;
+          const v = evalLeadVoltage(lead, t, state.params, state.schedule);
+          const y = baseY - v * pxPerMv;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw 3×4 Standard Leads
+      ctx.font = '600 11px "JetBrains Mono", monospace';
+      for (let r = 0; r < 3; r++) {
+        const baseY = r * rowH + rowH * 0.56;
+        for (let c = 0; c < 4; c++) {
+          const lead = LEAD_GRID[r][c];
+          const xStart = waveStartX + c * colW;
+          const tStart = c * colSec;
+
+          // Subtle column tick separator
+          if (c > 0) {
+            ctx.strokeStyle = G.div;
+            ctx.lineWidth = 1.1;
+            ctx.beginPath();
+            ctx.moveTo(Math.round(xStart) + 0.5, baseY - 10);
+            ctx.lineTo(Math.round(xStart) + 0.5, baseY + 10);
+            ctx.stroke();
+          }
+
+          traceSegment(lead, xStart, colW, tStart, colSec, baseY, r * rowH, (r + 1) * rowH);
+
+          // Lead Label
+          ctx.fillStyle = lead === state.selectedLead ? G.selBorder : G.label;
+          ctx.textAlign = 'left';
+          ctx.fillText(lead, xStart + 6, r * rowH + 16);
+        }
+      }
+
+      // Draw Row 4: Full Continuous 10s (or 5s at 50mm/s) Rhythm Strip
+      const rBaseY = 3 * rowH + rowH * 0.58;
+      traceSegment(state.rhythmLead, waveStartX, waveW, 0, visibleSec, rBaseY, 3 * rowH, H);
+      ctx.fillStyle = G.label;
+      ctx.font = '600 11px "JetBrains Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${state.rhythmLead}  (Rhythm · ${visibleSec.toFixed(0)}s)`, waveStartX + 6, 3 * rowH + 16);
+
+      // Draw Active Interactive Calipers & Marching Lines
+      if (state.caliper) {
+        const cal = state.caliper;
+        const dxPx = cal.x1 - cal.x0;
+        const dyPx = cal.y1 - cal.y0;
+        const absDx = Math.abs(dxPx);
+        const absDy = Math.abs(dyPx);
+
+        const dtMs = (absDx / pxPerSec) * 1000;
+        const eqHR = dtMs > 40 ? Math.round(60000 / dtMs) : null;
+        const dMmX = absDx / pxPerMm;
+        const dMmY = absDy / pxPerMm;
+        const dMv = absDy / pxPerMv;
+
+        // Shaded interval band
+        ctx.fillStyle = G.caliperBg;
+        ctx.fillRect(Math.min(cal.x0, cal.x1), 0, absDx, H);
+
+        // Marching Calipers (4 projected multiples forward & backward)
+        if (state.marching && absDx > 8) {
+          ctx.save();
+          ctx.setLineDash([4, 4]);
+          ctx.strokeStyle = G.caliper;
+          ctx.globalAlpha = 0.55;
+          ctx.lineWidth = 1.1;
+          const stepX = dxPx >= 0 ? absDx : -absDx;
+          for (let k = 1; k <= 4; k++) {
+            const mxF = cal.x1 + k * stepX;
+            const mxB = cal.x0 - k * stepX;
+            if (mxF > 0 && mxF < W) {
+              ctx.beginPath(); ctx.moveTo(mxF, 0); ctx.lineTo(mxF, H); ctx.stroke();
+            }
+            if (mxB > 0 && mxB < W) {
+              ctx.beginPath(); ctx.moveTo(mxB, 0); ctx.lineTo(mxB, H); ctx.stroke();
+            }
+          }
+          ctx.restore();
+        }
+
+        // Main Caliper Verticals & Brackets
+        ctx.strokeStyle = G.caliper;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cal.x0, 0); ctx.lineTo(cal.x0, H);
+        ctx.moveTo(cal.x1, 0); ctx.lineTo(cal.x1, H);
+        ctx.moveTo(cal.x0, cal.y0); ctx.lineTo(cal.x1, cal.y0);
+        if (absDy > 4) {
+          ctx.moveTo(cal.x1, cal.y0); ctx.lineTo(cal.x1, cal.y1);
+        }
+        ctx.stroke();
+
+        // Caliper Floating Measurement Pill
+        const line1 = `Δt ${Math.round(dtMs)} ms (${dMmX.toFixed(1)} mm / ${(dMmX / 5).toFixed(1)} lg)${eqHR ? ` · ${eqHR} bpm` : ''}`;
+        const line2 = `ΔV ${dMv.toFixed(2)} mV (${dMmY.toFixed(1)} mm)${state.marching ? ' · Marching ON' : ''}`;
+        ctx.font = '600 10.5px "JetBrains Mono", monospace';
+        const pillW = Math.max(ctx.measureText(line1).width, ctx.measureText(line2).width) + 20;
+        const pillH = 38;
+        const px = clamp((cal.x0 + cal.x1) / 2 - pillW / 2, 10, W - pillW - 10);
+        const py = clamp(Math.min(cal.y0, cal.y1) - pillH - 12, 10, H - pillH - 10);
+
+        ctx.fillStyle = G.hudBg;
+        ctx.strokeStyle = G.caliper;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.roundRect(px, py, pillW, pillH, 7);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = G.caliper;
+        ctx.textAlign = 'left';
+        ctx.fillText(line1, px + 10, py + 15);
+        ctx.fillStyle = G.hudTxt;
+        ctx.font = '500 10px "JetBrains Mono", monospace';
+        ctx.fillText(line2, px + 10, py + 30);
+      }
+
+      ctx.restore();
+    }
+
+    /* =========================================================================
+       7. SINGLE-LEAD MAGNIFIER CANVAS (1.6-SECOND ZOOM + INTERVAL BRACKETS)
+       ========================================================================= */
+    function drawMagnifier() {
+      if (!magCanvas.width || !magCanvas.height || !state.schedule) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = magCanvas.width / dpr;
+      const H = magCanvas.height / dpr;
+      const ctx = magCtx;
+      const G = getGridTheme();
+      const lead = state.selectedLead;
+      const sched = state.schedule;
+      const iv = sched.iv;
+
+      // Pick a well-framed beat near t ~ 1.0s
+      const beat = sched.qrsEvents.find(q => q.tQRS >= 0.85) || sched.qrsEvents[0];
+      const tBeat = beat ? beat.tQRS : 1.0;
+      const spanSec = 1.60;
+      const tStart = tBeat - 0.56;
+      const pxPerMm = W / (spanSec * 25); // Magnified standard 25mm/s scale across 40 mm
+      const pxPerSec = W / spanSec;
+      const pxPerMv = 10 * pxPerMm * 0.72; // Generous crisp vertical zoom
+      const baseY = H * 0.58;
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      drawECGGrid(ctx, W, H, pxPerMm, G);
+
+      const xOfT = t => (t - tStart) * pxPerSec;
+
+      // Draw zoomed waveform
+      ctx.strokeStyle = G.trace;
+      ctx.lineWidth = 1.9;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      const steps = Math.max(240, Math.round(W * 1.4));
+      for (let i = 0; i <= steps; i++) {
+        const frac = i / steps;
+        const x = frac * W;
+        const t = tStart + frac * spanSec;
+        const v = evalLeadVoltage(lead, t, state.params, sched);
+        const y = baseY - v * pxPerMv;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Color-Coded Clinical Interval Brackets (PR, QRS, QT, J-point/ST)
+      const hideInQuiz = state.appMode === 'quiz' && !state.quiz.answered && !state.peekTelemetry;
+      if (state.showMagBrackets && beat && !hideInQuiz) {
+        const qrsSec = iv.effQRS / 1000;
+        const qtSec = iv.qtMs / 1000;
+        const xQStart = xOfT(beat.tQRS);
+        const xQEnd = xOfT(beat.tQRS + qrsSec);
+        const xTEnd = xOfT(beat.tQRS + qtSec);
+        const xJ60 = xOfT(beat.tQRS + qrsSec + 0.055);
+
+        const drawBracket = (xA, xB, y, col, label, above = true) => {
+          if (xB - xA < 4) return;
+          ctx.save();
+          ctx.strokeStyle = col;
+          ctx.fillStyle = col;
+          ctx.lineWidth = 1.4;
+          const tick = above ? 5 : -5;
+          ctx.beginPath();
+          ctx.moveTo(xA, y + tick); ctx.lineTo(xA, y); ctx.lineTo(xB, y); ctx.lineTo(xB, y + tick);
+          ctx.stroke();
+          ctx.font = '600 9.5px "JetBrains Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, (xA + xB) / 2, above ? y - 4 : y + 12);
+          ctx.restore();
+        };
+
+        // PR Bracket (Sky)
+        if (beat.prSec > 0.04) {
+          drawBracket(xOfT(beat.tQRS - beat.prSec), xQStart, 22, '#0284c7', `PR ${Math.round(beat.prSec * 1000)}ms`, true);
+        }
+        // QRS Bracket (Amber)
+        drawBracket(xQStart, xQEnd, H - 36, '#f59e0b', `QRS ${iv.effQRS}ms`, false);
+        // QT Bracket (Violet)
+        drawBracket(xQStart, xTEnd, H - 16, '#8b5cf6', `QT ${iv.qtMs}ms`, false);
+
+        // J+60ms ST Deviation Marker (Rose/Teal)
+        const baseV = evalLeadVoltage(lead, beat.tQRS - (beat.prSec > 0 ? beat.prSec + 0.04 : 0.05), state.params, sched);
+        const stV = evalLeadVoltage(lead, beat.tQRS + qrsSec + 0.055, state.params, sched);
+        const stMm = (stV - baseV) * 10;
+        const yBase = baseY - baseV * pxPerMv;
+        const yST = baseY - stV * pxPerMv;
+        const stCol = Math.abs(stMm) >= 1.0 ? '#f43f5e' : '#14b8a6';
+        ctx.save();
+        ctx.strokeStyle = stCol;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(xJ60, yBase); ctx.lineTo(xJ60, yST);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(xJ60, yST, 3.2, 0, Math.PI * 2);
+        ctx.fillStyle = stCol; ctx.fill();
+        ctx.font = '600 9.5px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`ST ${stMm >= 0 ? '+' : ''}${stMm.toFixed(1)}mm`, clamp(xJ60 + 6, 8, W - 76), clamp(yST - 4, 16, H - 46));
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    /* =========================================================================
+       8. INTERACTIVE HEXAXIAL FRONTAL AXIS WHEEL CANVAS
+       ========================================================================= */
+    function classifyAxis(deg) {
+      if (deg >= -30 && deg <= 90) return { label: 'Normal', cls: 'ok' };
+      if (deg < -30 && deg >= -90) return { label: 'LAD', cls: 'warn' };
+      if (deg > 90 && deg <= 180) return { label: 'RAD', cls: 'warn' };
+      return { label: 'Extreme / NW', cls: 'crit' };
+    }
+
+    function drawAxisWheel() {
+      if (!axisCanvas.width || !axisCanvas.height) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = axisCanvas.width / dpr;
+      const H = axisCanvas.height / dpr;
+      const ctx = axisCtx;
+      const isDark = document.documentElement.classList.contains('dark');
+
+      const bg = isDark ? '#0b0b0e' : '#ffffff';
+      const ringCol = isDark ? 'rgba(63, 63, 70, 0.55)' : '#e4e4e7';
+      const txtCol = isDark ? '#d4d4d8' : '#27272a';
+      const mutedCol = isDark ? '#71717a' : '#71717a';
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      const cx = W / 2;
+      const cy = H / 2;
+      const R = Math.min(W, H) * 0.37;
+
+      // Shaded Clinical Axis Quadrants
+      const drawWedge = (a1, a2, color) => {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, R, a1 * DEG, a2 * DEG);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+      };
+      drawWedge(-30, 90, isDark ? 'rgba(45, 212, 191, 0.13)' : 'rgba(15, 118, 110, 0.11)');  // Normal
+      drawWedge(-90, -30, isDark ? 'rgba(251, 191, 36, 0.11)' : 'rgba(217, 119, 6, 0.09)');  // LAD
+      drawWedge(90, 180, isDark ? 'rgba(56, 189, 248, 0.11)' : 'rgba(2, 132, 199, 0.09)');    // RAD
+      drawWedge(-180, -90, isDark ? 'rgba(244, 63, 94, 0.13)' : 'rgba(225, 29, 72, 0.10)');   // Extreme NW
+
+      // Outer & inner concentric rings
+      ctx.strokeStyle = ringCol;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, R * 0.55, 0, Math.PI * 2); ctx.stroke();
+
+      // 6 Hexaxial Limb Lead Reference Lines & Labels
+      const leads = [
+        { name: 'I', deg: 0 }, { name: 'II', deg: 60 }, { name: 'aVF', deg: 90 },
+        { name: 'III', deg: 120 }, { name: 'aVR', deg: -150 }, { name: 'aVL', deg: -30 }
+      ];
+      ctx.font = '600 9.5px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      for (const l of leads) {
+        const rad = l.deg * DEG;
+        ctx.strokeStyle = isDark ? 'rgba(113,113,122,0.35)' : 'rgba(161,161,170,0.45)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx - Math.cos(rad) * R, cy - Math.sin(rad) * R);
+        ctx.lineTo(cx + Math.cos(rad) * R, cy + Math.sin(rad) * R);
+        ctx.stroke();
+
+        const lx = cx + Math.cos(rad) * (R + 15);
+        const ly = cy + Math.sin(rad) * (R + 14);
+        ctx.fillStyle = txtCol;
+        ctx.fillText(l.name, lx, ly);
+      }
+
+      // Subtle quadrant labels
+      ctx.font = '500 8px "JetBrains Mono", monospace';
+      ctx.fillStyle = mutedCol;
+      ctx.fillText('NL', cx + R * 0.42, cy + R * 0.30);
+      ctx.fillText('LAD', cx + R * 0.25, cy - R * 0.52);
+      ctx.fillText('RAD', cx - R * 0.38, cy + R * 0.40);
+      ctx.fillText('NW', cx - R * 0.38, cy - R * 0.38);
+
+      // Draggable Glowing Mean QRS Vector Arrow
+      const hideAxis = state.appMode === 'quiz' && !state.quiz.answered && !state.peekTelemetry;
+      if (!hideAxis) {
+        const axRad = state.params.axis * DEG;
+        const axInfo = classifyAxis(state.params.axis);
+        const vecCol = axInfo.cls === 'crit' ? '#f43f5e' : (axInfo.cls === 'warn' ? '#f59e0b' : (isDark ? '#2dd4bf' : '#0f766e'));
+        const vx = cx + Math.cos(axRad) * (R * 0.88);
+        const vy = cy + Math.sin(axRad) * (R * 0.88);
+
+        // Glow
+        const grad = ctx.createRadialGradient(vx, vy, 0, vx, vy, 13);
+        grad.addColorStop(0, vecCol + '99');
+        grad.addColorStop(1, vecCol + '00');
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(vx, vy, 13, 0, Math.PI * 2); ctx.fill();
+
+        // Shaft
+        ctx.strokeStyle = vecCol;
+        ctx.lineWidth = 2.6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(vx, vy);
+        ctx.stroke();
+
+        // Arrowhead + Draggable Handle
+        const headAng = axRad;
+        ctx.fillStyle = vecCol;
+        ctx.beginPath();
+        ctx.moveTo(vx + Math.cos(headAng) * 5, vy + Math.sin(headAng) * 5);
+        ctx.lineTo(vx - Math.cos(headAng - 0.5) * 8, vy - Math.sin(headAng - 0.5) * 8);
+        ctx.lineTo(vx - Math.cos(headAng + 0.5) * 8, vy - Math.sin(headAng + 0.5) * 8);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath(); ctx.arc(cx, cy, 3.2, 0, Math.PI * 2); ctx.fillStyle = txtCol; ctx.fill();
+      } else {
+        ctx.font = '500 9.5px "JetBrains Mono", monospace';
+        ctx.fillStyle = mutedCol;
+        ctx.fillText('Blinded — Inspect I, II, aVF', cx, cy);
+      }
+
+      ctx.restore();
+    }
+
+    /* =========================================================================
+       9. UI RENDERERS (KPI TELEMETRY, 7-STEP INTERPRETATION, SIDEBAR TABS, QUIZ)
+       ========================================================================= */
+    function renderKPIStrip() {
+      const p = state.params;
+      const iv = state.schedule.iv;
+      const preset = PRESET_MAP[state.presetId];
+      const axInfo = classifyAxis(p.axis);
+      const blinded = state.appMode === 'quiz' && !state.quiz.answered && !state.peekTelemetry;
+
+      const statusEl = document.getElementById('telemetry-status-pill');
+      const peekBtn = document.getElementById('btn-peek-telemetry');
+      peekBtn.classList.toggle('hidden', !(state.appMode === 'quiz' && !state.quiz.answered));
+      peekBtn.textContent = state.peekTelemetry ? 'Peek Telemetry: ON' : 'Peek Telemetry: OFF';
+
+      if (state.appMode === 'quiz' && !state.quiz.answered) {
+        statusEl.textContent = 'Blinded Tracing — Measure with Calipers';
+        statusEl.className = 'px-1.5 py-0.2 rounded border border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300 truncate';
+      } else {
+        const sev = preset ? preset.severity : 'warn';
+        const cls = sev === 'crit'
+          ? 'border-rose-500/35 bg-rose-500/10 text-rose-600 dark:text-rose-400'
+          : (sev === 'warn' ? 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400');
+        statusEl.textContent = preset ? preset.name : 'Custom Sandbox';
+        statusEl.className = `px-1.5 py-0.2 rounded border truncate ${cls}`;
+      }
+
+      document.getElementById('telemetry-cal-spec').textContent = `${state.speed} mm/s · ${state.gain} mm/mV · K⁺ ${p.k.toFixed(1)}`;
+
+      const rhythmLabel = {
+        sinus: 'Sinus Rhythm', afib: 'AFib (Irreg)', aflutter: `Flutter ${p.flutterRatio || 2}:1`,
+        avnrt: 'Regular SVT', avb1: 'Sinus + 1° AVB', mobitz1: 'Mobitz I (Wenk)',
+        mobitz2: 'Mobitz II', avb3: '3° AV Dissoc', vt: 'Monomorphic VT'
+      }[p.rhythm] || 'Custom';
+
+      const tiles = blinded
+        ? [
+            { label: 'Rate', val: '— Caliper —', sub: 'Measure R-R on strip', cls: 'text-zinc-400' },
+            { label: 'Rhythm', val: 'Blinded', sub: 'Toggle Peek or measure', cls: 'text-amber-600 dark:text-amber-400' },
+            { label: 'PR Interval', val: '— Caliper —', sub: '1 sm box = 40 ms', cls: 'text-zinc-400' },
+            { label: 'QRS Width', val: '— Caliper —', sub: 'Normal < 120 ms', cls: 'text-zinc-400' },
+            { label: 'QT / QTcB / QTcF', val: '— Caliper —', sub: 'Normal QTc < 460 ms', cls: 'text-zinc-400' },
+            { label: 'Frontal Axis', val: '— I / II / aVF —', sub: 'Estimate quadrant', cls: 'text-zinc-400' },
+          ]
+        : [
+            {
+              label: 'Ventricular Rate',
+              val: `${Math.round(p.hr)} bpm`,
+              sub: `RR ${Math.round(iv.rrSec * 1000)} ms`,
+              cls: (p.hr > 100 || p.hr < 55) ? 'text-rose-600 dark:text-rose-400' : 'text-tealLight dark:text-tealDark'
+            },
+            {
+              label: 'Rhythm',
+              val: rhythmLabel,
+              sub: p.rhythm === 'avb3' ? 'Atrial 80 / Vent 38' : (p.rhythm === 'aflutter' ? 'Atrial 300/min' : 'Lead ' + state.rhythmLead + ' strip'),
+              cls: (p.rhythm === 'vt' || p.rhythm === 'avb3' || p.rhythm === 'mobitz2') ? 'text-rose-600 dark:text-rose-400' : 'text-[#09090b] dark:text-[#f4f4f5]'
+            },
+            {
+              label: 'PR Interval',
+              val: iv.effPR ? `${iv.effPR} ms` : 'N/A',
+              sub: iv.effPR ? (iv.effPR < 120 ? 'Short (<120)' : (iv.effPR > 200 ? 'Prolonged (>200)' : 'Ref 120–200 ms')) : 'No 1:1 Sinus PR',
+              cls: iv.effPR && (iv.effPR < 120 || iv.effPR > 200) ? 'text-amber-600 dark:text-amber-400' : 'text-[#09090b] dark:text-[#f4f4f5]'
+            },
+            {
+              label: 'QRS Duration',
+              val: `${iv.effQRS} ms`,
+              sub: iv.effQRS >= 120 ? 'Wide (≥120 ms)' : 'Narrow (<120 ms)',
+              cls: iv.effQRS >= 120 ? 'text-rose-600 dark:text-rose-400' : 'text-[#09090b] dark:text-[#f4f4f5]'
+            },
+            {
+              label: 'QT / QTcB / QTcF',
+              val: `${iv.qtMs} / ${iv.qtcB} / ${iv.qtcF}`,
+              sub: iv.qtcF > 480 ? 'Prolonged QTc (TdP risk)' : 'ms (Bazett / Fridericia)',
+              cls: iv.qtcF > 480 ? 'text-rose-600 dark:text-rose-400' : 'text-[#09090b] dark:text-[#f4f4f5]'
+            },
+            {
+              label: 'Frontal Axis',
+              val: `${p.axis >= 0 ? '+' : ''}${Math.round(p.axis)}°`,
+              sub: axInfo.label,
+              cls: axInfo.cls === 'crit' ? 'text-rose-600 dark:text-rose-400' : (axInfo.cls === 'warn' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400')
+            }
+          ];
+
+      document.getElementById('kpi-strip').innerHTML = tiles.map(t => `
+        <div class="px-3.5 py-2 flex flex-col justify-between min-w-0">
+          <div class="text-[9.5px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400 truncate">${t.label}</div>
+          <div class="font-mono text-[14px] font-semibold tabular-nums mt-0.5 truncate ${t.cls}">${t.val}</div>
+          <div class="font-mono text-[9.5px] text-zinc-400 dark:text-zinc-500 truncate mt-0.5 tabular-nums">${t.sub}</div>
+        </div>
+      `).join('');
+
+      // Axis Wheel Header & Limb Sign Readout
+      const axBadge = document.getElementById('axis-zone-badge');
+      const axSigns = document.getElementById('axis-limb-signs');
+      if (blinded) {
+        axBadge.textContent = 'Blinded';
+        axBadge.className = 'font-mono text-[10px] px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 text-zinc-400';
+        axSigns.textContent = 'Check I, II, aVF';
+      } else {
+        const sI = projFrontal(1, p.axis, 'I') >= 0 ? '+' : '−';
+        const sII = projFrontal(1, p.axis, 'II') >= 0 ? '+' : '−';
+        const sF = projFrontal(1, p.axis, 'aVF') >= 0 ? '+' : '−';
+        axBadge.textContent = `${p.axis >= 0 ? '+' : ''}${Math.round(p.axis)}° ${axInfo.label}`;
+        axBadge.className = `font-mono text-[10px] px-1.5 py-0.5 rounded border shrink-0 ${
+          axInfo.cls === 'crit' ? 'border-rose-500/35 bg-rose-500/10 text-rose-600 dark:text-rose-400' :
+          axInfo.cls === 'warn' ? 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300' :
+          'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+        }`;
+        axSigns.textContent = `I${sI} II${sII} aVF${sF}`;
+      }
+
+      // Magnifier footer measurements
+      const m = measureClinicalMarkers(p, state.schedule);
+      document.getElementById('mag-lead-badge').textContent = `Lead ${state.selectedLead}`;
+      document.getElementById('mag-lead-select').value = state.selectedLead;
+      document.getElementById('mag-st-readout').textContent = blinded
+        ? 'J+60 ST: — Caliper —'
+        : `J+60 ST (${state.selectedLead}): ${m.stMm >= 0 ? '+' : ''}${m.stMm.toFixed(1)} mm`;
+      document.getElementById('mag-sokolow-readout').textContent = blinded
+        ? 'Sokolow-Lyon: —'
+        : `Sokolow-Lyon: ${m.sokolowMm} mm${m.sokolowMm >= 35 ? ' (LVH+)' : ''}`;
+    }
+
+    function renderSevenStep() {
+      const preset = PRESET_MAP[state.presetId] || PRESET_MAP.nsr;
+      const badge = document.getElementById('interp-preset-badge');
+      badge.textContent = state.presetId === 'custom' ? 'Custom Sandbox Parameters' : preset.name;
+
+      const grid = document.getElementById('seven-step-grid');
+      if (state.presetId === 'custom') {
+        const p = state.params;
+        const iv = state.schedule.iv;
+        const ax = classifyAxis(p.axis);
+        const kNote = p.k >= 5.5
+          ? `Hyperkalemia (K⁺ ${p.k.toFixed(1)} mmol/L): tented peaked T-waves${p.k >= 6.4 ? ', flattened P & widened QRS' : ''}${p.k >= 7.6 ? ', sine-wave transition!' : ''}.`
+          : (p.k <= 3.3 ? `Hypokalemia (K⁺ ${p.k.toFixed(1)} mmol/L): ST depression, flattened T-waves, and prominent U-waves in V2–V4.` : `Normokalemic (K⁺ ${p.k.toFixed(1)} mmol/L).`);
+        const dynSteps = [
+          ['Rate & Rhythm', `Rate ${Math.round(p.hr)} bpm (RR ${Math.round(iv.rrSec * 1000)} ms).`],
+          ['Frontal Axis', `${p.axis >= 0 ? '+' : ''}${Math.round(p.axis)}° (${ax.label}). Limb leads dynamically projected via Einthoven/Goldberger.`],
+          ['P-Wave & PR', iv.effPR ? `PR interval ${iv.effPR} ms (${iv.effPR > 200 ? '1° AV delay' : iv.effPR < 120 ? 'short PR' : 'normal'}).` : 'No 1:1 sinus PR coupling.'],
+          ['QRS & Voltage', `QRS duration ${iv.effQRS} ms (${iv.effQRS >= 120 ? 'wide intraventricular conduction delay' : 'narrow'}).`],
+          ['Electrolyte Effect', kNote],
+          ['T-Wave & QTc', `QT ${iv.qtMs} ms · QTcB ${iv.qtcB} ms · QTcF ${iv.qtcF} ms (${iv.qtcF > 480 ? 'Prolonged — Torsades risk' : 'within normal range'}).`],
+          ['Sandbox Note', 'Adjust Heart Rate, Axis Wheel, PR/QRS/QTc, or continuous Serum K⁺ in Tab 2 to inspect live morphological changes.']
+        ];
+        grid.innerHTML = dynSteps.map((s, idx) => `
+          <div class="p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/50 dark:bg-zinc-900/35 ${idx === 6 ? 'sm:col-span-2' : ''}">
+            <div class="font-mono text-[10px] font-semibold uppercase tracking-wider text-tealLight dark:text-tealDark">${idx + 1}. ${s[0]}</div>
+            <p class="mt-1 text-[11.5px] leading-relaxed text-zinc-700 dark:text-zinc-300">${s[1]}</p>
+          </div>
+        `).join('');
+        return;
+      }
+
+      grid.innerHTML = preset.steps.map((s, idx) => `
+        <div class="p-2.5 rounded-lg border ${idx === 6 && preset.severity === 'crit' ? 'border-rose-500/35 bg-rose-500/[0.06] sm:col-span-2' : (idx === 6 ? 'border-tealLight/30 dark:border-tealDark/30 bg-teal-500/[0.05] sm:col-span-2' : 'border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/50 dark:bg-zinc-900/35')}">
+          <div class="font-mono text-[10px] font-semibold uppercase tracking-wider ${idx === 6 && preset.severity === 'crit' ? 'text-rose-600 dark:text-rose-400' : 'text-tealLight dark:text-tealDark'}">${idx + 1}. ${s[0]}</div>
+          <p class="mt-1 text-[11.5px] leading-relaxed text-zinc-700 dark:text-zinc-300">${s[1]}</p>
+        </div>
+      `).join('');
+    }
+
+    function buildPathologiesTab() {
+      const el = document.getElementById('sidetab-pathologies');
+      const blinded = state.appMode === 'quiz' && !state.quiz.answered;
+
+      if (blinded) {
+        el.innerHTML = `
+          <div class="p-5 rounded-xl border border-dashed border-amber-500/40 bg-amber-500/[0.06] text-center space-y-2">
+            <div class="font-mono text-[10.5px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">Blinded Quiz Active</div>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              Pathology presets are hidden while solving the active blinded ECG case. Use the <strong>Calipers</strong>, <strong>Lead Magnifier</strong>, and <strong>Criteria Sheet</strong> tab to deduce the diagnosis.
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      const groups = [...new Set(PRESETS.map(p => p.group))];
+      el.innerHTML = groups.map(grp => `
+        <div class="space-y-1">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 px-0.5">${grp}</div>
+          <div class="space-y-1">
+            ${PRESETS.filter(p => p.group === grp).map(pr => {
+              const active = pr.id === state.presetId;
+              const sevDot = pr.severity === 'crit' ? 'bg-rose-500' : (pr.severity === 'warn' ? 'bg-amber-500' : 'bg-emerald-500');
+              return `
+                <button data-preset="${pr.id}" type="button" class="w-full text-left px-2.5 py-2 rounded-lg border transition-colors flex items-center justify-between gap-2 ${
+                  active
+                    ? 'border-tealLight/60 dark:border-tealDark/50 bg-teal-500/[0.08] text-[#09090b] dark:text-white'
+                    : 'border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300'
+                }">
+                  <span class="flex items-center gap-2 min-w-0">
+                    <span class="w-1.5 h-1.5 rounded-full shrink-0 ${sevDot}"></span>
+                    <span class="text-xs font-medium truncate">${pr.name}</span>
+                  </span>
+                  <span class="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/90 text-zinc-500 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/70 shrink-0">${pr.tag}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `).join('');
+
+      el.querySelectorAll('[data-preset]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (state.appMode === 'quiz') {
+            state.appMode = 'study';
+            syncHeaderButtons();
+          }
+          loadPreset(btn.dataset.preset);
+        });
+      });
+    }
+
+    function buildSandboxTab() {
+      const el = document.getElementById('sidetab-sandbox');
+      const p = state.params;
+
+      const sRow = (id, label, valText, min, max, step, val, extraCls = '') => `
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-xs gap-2">
+            <span class="font-medium text-zinc-700 dark:text-zinc-300">${label}</span>
+            <span id="sb-val-${id}" class="font-mono tabular-nums text-[#09090b] dark:text-[#f4f4f5] font-medium">${valText}</span>
+          </div>
+          <input id="sb-${id}" type="range" class="clinical-slider ${extraCls}" min="${min}" max="${max}" step="${step}" value="${val}" />
+        </div>
+      `;
+
+      const kStage = p.k < 3.5 ? 'Hypokalemia (U-waves & STD)' : (p.k <= 5.2 ? 'Normokalemia' : (p.k < 6.4 ? 'Mild HyperK (Peaked T)' : (p.k < 7.5 ? 'Moderate HyperK (Flat P / Wide QRS)' : 'Severe HyperK (Sine-Wave Risk!)')));
+
+      el.innerHTML = `
+        <div class="p-3 rounded-lg border border-amber-500/35 bg-amber-500/[0.06] space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">Continuous Serum K⁺ Morph</span>
+            <span id="sb-k-stage" class="font-mono text-[10px] text-amber-700 dark:text-amber-300">${kStage}</span>
+          </div>
+          ${sRow('k', 'Serum Potassium [K⁺]', `${p.k.toFixed(1)} mmol/L`, 2.0, 8.5, 0.1, p.k, 'k-slider')}
+          <div class="flex justify-between font-mono text-[9px] text-zinc-500 dark:text-zinc-400">
+            <span>2.0 (U-wave)</span><span>4.2 (NL)</span><span>6.0 (Peaked T)</span><span>8.5 (Sine)</span>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-3">
+          <div class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 pb-1 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">Intervals, Rate &amp; Frontal Axis</div>
+          ${sRow('hr', 'Heart Rate', `${Math.round(p.hr)} bpm`, 35, 200, 1, p.hr)}
+          ${sRow('axis', 'Frontal QRS Axis', `${p.axis >= 0 ? '+' : ''}${Math.round(p.axis)}°`, -180, 180, 1, p.axis)}
+          ${sRow('pr', 'PR Interval', `${Math.round(p.pr)} ms`, 80, 360, 5, p.pr || 160)}
+          ${sRow('qrs', 'QRS Duration', `${Math.round(p.qrs)} ms`, 70, 200, 2, p.qrs)}
+          ${sRow('qtc', 'QTc Target', `${Math.round(p.qtc)} ms`, 340, 600, 5, p.qtc)}
+        </div>
+
+        <button id="btn-sandbox-reset" type="button" class="w-full h-8 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark hover:border-tealLight/60 dark:hover:border-tealDark/60 text-xs font-medium text-zinc-700 dark:text-zinc-200 transition-colors">
+          Reset to Normal Sinus Rhythm
+        </button>
+      `;
+
+      const bind = (id, fn) => {
+        const s = document.getElementById(`sb-${id}`);
+        if (!s) return;
+        s.addEventListener('input', () => {
+          const val = parseFloat(s.value);
+          state.presetId = 'custom';
+          fn(val);
+          recomputeAndRender(false);
+        });
+      };
+
+      bind('k', v => {
+        state.params.k = v;
+        document.getElementById('sb-val-k').textContent = `${v.toFixed(1)} mmol/L`;
+        const st = v < 3.5 ? 'Hypokalemia (U-waves & STD)' : (v <= 5.2 ? 'Normokalemia' : (v < 6.4 ? 'Mild HyperK (Peaked T)' : (v < 7.5 ? 'Moderate HyperK (Flat P / Wide QRS)' : 'Severe HyperK (Sine-Wave Risk!)')));
+        document.getElementById('sb-k-stage').textContent = st;
+      });
+      bind('hr', v => {
+        state.params.hr = v;
+        document.getElementById('sb-val-hr').textContent = `${Math.round(v)} bpm`;
+      });
+      bind('axis', v => {
+        state.params.axis = v;
+        document.getElementById('sb-val-axis').textContent = `${v >= 0 ? '+' : ''}${Math.round(v)}°`;
+      });
+      bind('pr', v => {
+        state.params.pr = v;
+        if (state.params.rhythm === 'avb1' && v <= 200) state.params.rhythm = 'sinus';
+        document.getElementById('sb-val-pr').textContent = `${Math.round(v)} ms`;
+      });
+      bind('qrs', v => {
+        state.params.qrs = v;
+        document.getElementById('sb-val-qrs').textContent = `${Math.round(v)} ms`;
+      });
+      bind('qtc', v => {
+        state.params.qtc = v;
+        document.getElementById('sb-val-qtc').textContent = `${Math.round(v)} ms`;
+      });
+
+      document.getElementById('btn-sandbox-reset').addEventListener('click', () => {
+        loadPreset('nsr');
+      });
+    }
+
+    function buildCriteriaTab() {
+      const el = document.getElementById('sidetab-criteria');
+      el.innerHTML = `
+        <div class="p-3 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-2">
+          <div class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-tealLight dark:text-tealDark">Coronary Territory Map</div>
+          <div class="grid grid-cols-1 gap-1.5 text-[11.5px]">
+            <div class="flex justify-between gap-2 border-b border-[#e4e4e7]/60 dark:border-borderDark/60 pb-1">
+              <span class="font-mono font-semibold text-rose-600 dark:text-rose-400">V1–V4</span>
+              <span class="text-zinc-600 dark:text-zinc-300 text-right">Anterior / Septal &rarr; <strong>LAD</strong> (Recip: II, III, aVF)</span>
+            </div>
+            <div class="flex justify-between gap-2 border-b border-[#e4e4e7]/60 dark:border-borderDark/60 pb-1">
+              <span class="font-mono font-semibold text-rose-600 dark:text-rose-400">II, III, aVF</span>
+              <span class="text-zinc-600 dark:text-zinc-300 text-right">Inferior &rarr; <strong>RCA</strong> (III&gt;II) / LCx (Recip: I, aVL)</span>
+            </div>
+            <div class="flex justify-between gap-2 border-b border-[#e4e4e7]/60 dark:border-borderDark/60 pb-1">
+              <span class="font-mono font-semibold text-rose-600 dark:text-rose-400">I, aVL, V5–V6</span>
+              <span class="text-zinc-600 dark:text-zinc-300 text-right">High Lateral &rarr; <strong>LCx / D1</strong> (Recip: III, aVF)</span>
+            </div>
+            <div class="flex justify-between gap-2">
+              <span class="font-mono font-semibold text-rose-600 dark:text-rose-400">V1–V3 Mirror</span>
+              <span class="text-zinc-600 dark:text-zinc-300 text-right">Posterior (STD + Tall R) &rarr; <strong>LCx / RCA</strong> (V7–V9)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-1.5 text-[11.5px]">
+          <div class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-600 dark:text-rose-400">Modified Sgarbossa Criteria (LBBB MI)</div>
+          <ul class="list-disc pl-4 space-y-1 text-zinc-700 dark:text-zinc-300">
+            <li><strong>Concordant STE &ge;1 mm</strong> in any lead with positive QRS (5 pts)</li>
+            <li><strong>Concordant STD &ge;1 mm</strong> in V1–V3 (3 pts)</li>
+            <li><strong>Excessive Discordance</strong>: ST/S ratio <strong>&le; &minus;0.25</strong> (Smith modification)</li>
+          </ul>
+        </div>
+
+        <div class="p-3 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-1.5 text-[11.5px]">
+          <div class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">Brugada VT vs. SVT Algorithm</div>
+          <ol class="list-decimal pl-4 space-y-1 text-zinc-700 dark:text-zinc-300">
+            <li>Absence of any RS complex in V1–V6 (concordance)? &rarr; <strong>VT</strong></li>
+            <li>Longest R-to-S nadir interval &gt;100 ms in any precordial lead? &rarr; <strong>VT</strong></li>
+            <li>AV dissociation (capture / fusion beats)? &rarr; <strong>VT</strong></li>
+            <li>Extreme NW axis (&minus;90&deg; to &minus;180&deg; / upright aVR)? &rarr; <strong>VT</strong></li>
+          </ol>
+        </div>
+
+        <div class="p-3 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-1.5 text-[11.5px]">
+          <div class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">LVH Voltage Criteria</div>
+          <p class="text-zinc-700 dark:text-zinc-300"><strong>Sokolow-Lyon:</strong> S(V1) + max R(V5 or V6) &ge; 35 mm (or R in aVL &gt; 11 mm).</p>
+          <p class="text-zinc-700 dark:text-zinc-300"><strong>Cornell:</strong> R(aVL) + S(V3) &gt; 28 mm (M) / &gt; 20 mm (F).</p>
+        </div>
+
+        <div class="p-3 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-1.5 text-[11.5px]">
+          <div class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">Hyperkalemia ECG Stages</div>
+          <ul class="list-disc pl-4 space-y-0.5 text-zinc-700 dark:text-zinc-300 font-mono text-[10.5px]">
+            <li>5.5–6.5: Tall, narrow, tented T-waves</li>
+            <li>6.5–7.5: Flattened P-wave &amp; prolonged PR</li>
+            <li>7.0–8.0: Progressive QRS widening</li>
+            <li>&gt;8.0: Sine-wave pattern &rarr; VF / Asystole</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    /* =========================================================================
+       10. BLINDED QUIZ CONTROLLER
+       ========================================================================= */
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function startQuizCase(advance = false) {
+      if (state.quiz.order.length === 0) {
+        state.quiz.order = shuffle(QUIZ_POOL.map(p => p.id));
+      }
+      if (advance) {
+        state.quiz.order.shift();
+        if (state.quiz.order.length === 0) {
+          state.quiz.order = shuffle(QUIZ_POOL.map(p => p.id));
+        }
+        state.quiz.caseNum++;
+      }
+
+      const targetId = state.quiz.order[0];
+      const target = PRESET_MAP[targetId];
+      // Build 3 plausible distractors (preferring same group + high-yield differentials)
+      const sameGrp = QUIZ_POOL.filter(p => p.id !== targetId && p.group === target.group);
+      const otherGrp = QUIZ_POOL.filter(p => p.id !== targetId && p.group !== target.group);
+      const picks = [...shuffle(sameGrp).slice(0, 2), ...shuffle(otherGrp)].slice(0, 3).map(p => p.id);
+
+      state.quiz.answered = false;
+      state.quiz.chosenId = null;
+      state.quiz.hintShown = false;
+      state.quiz.options = shuffle([targetId, ...picks]);
+      state.peekTelemetry = false;
+      state.caliper = null;
+
+      // Load tracing silently
+      state.presetId = targetId;
+      state.params = { ...target.params };
+      state.selectedLead = target.focusLead || 'II';
+      state.highlightLeads = target.highlightLeads || [];
+      if (target.params.rhythm === 'aflutter') state.params.flutterRatio = 2;
+
+      renderQuizUI();
+      buildPathologiesTab();
+      recomputeAndRender(true);
+    }
+
+    function renderQuizUI() {
+      const q = state.quiz;
+      const target = PRESET_MAP[state.presetId];
+      const v = target.vignette || { demo: '55y M', text: 'Analyze the 12-lead tracing.', vitals: 'BP 120/76', hint: 'Check rhythm strip and ST segments.' };
+
+      document.getElementById('quiz-case-title').textContent = `Case #${q.caseNum} · ${v.demo}`;
+      document.getElementById('quiz-vitals').textContent = v.vitals;
+      document.getElementById('quiz-vignette').textContent = v.text;
+      document.getElementById('quiz-score').textContent = `${q.score}/${q.total}`;
+      document.getElementById('quiz-streak').textContent = String(q.streak);
+
+      const hdrStreak = document.getElementById('hdr-streak');
+      hdrStreak.textContent = `🔥 ${q.streak}`;
+      hdrStreak.classList.toggle('hidden', q.streak === 0);
+
+      const hintBox = document.getElementById('quiz-hint-box');
+      hintBox.textContent = v.hint;
+      hintBox.classList.toggle('hidden', !q.hintShown);
+
+      const optsEl = document.getElementById('quiz-options');
+      optsEl.innerHTML = q.options.map((pid, idx) => {
+        const pObj = PRESET_MAP[pid];
+        let cls = 'border-[#e4e4e7] dark:border-borderDark bg-zinc-50/50 dark:bg-obsidian/60 hover:border-tealLight/60 dark:hover:border-tealDark/60 text-[#09090b] dark:text-[#f4f4f5]';
+        if (q.answered) {
+          if (pid === state.presetId) cls = 'border-emerald-500/70 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 font-semibold';
+          else if (pid === q.chosenId) cls = 'border-rose-500/70 bg-rose-500/15 text-rose-800 dark:text-rose-200';
+          else cls = 'border-[#e4e4e7]/60 dark:border-borderDark/60 opacity-50 text-zinc-500';
+        }
+        return `
+          <button data-qopt="${pid}" type="button" ${q.answered ? 'disabled' : ''} class="text-left px-3 py-2.5 rounded-lg border text-xs transition-colors flex items-center gap-2 ${cls}">
+            <span class="font-mono text-[10px] w-5 h-5 rounded border border-current/30 flex items-center justify-center shrink-0">${String.fromCharCode(65 + idx)}</span>
+            <span class="leading-snug">${pObj.name}</span>
+          </button>
+        `;
+      }).join('');
+
+      optsEl.querySelectorAll('[data-qopt]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (q.answered) return;
+          q.answered = true;
+          q.chosenId = btn.dataset.qopt;
+          q.total++;
+          if (q.chosenId === state.presetId) { q.score++; q.streak++; }
+          else { q.streak = 0; }
+          renderQuizUI();
+          buildPathologiesTab();
+          renderSevenStep();
+          document.getElementById('study-interp-card').classList.remove('hidden');
+          recomputeAndRender(false);
+        });
+      });
+
+      const fb = document.getElementById('quiz-feedback');
+      const revBtn = document.getElementById('btn-quiz-reveal');
+      if (q.answered) {
+        const correct = q.chosenId === state.presetId;
+        fb.className = `rounded-lg border p-3.5 space-y-1 text-xs leading-relaxed ${
+          correct ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100'
+                  : 'border-rose-500/40 bg-rose-500/10 text-rose-900 dark:text-rose-100'
+        }`;
+        fb.innerHTML = `
+          <div class="font-mono text-[10.5px] font-semibold uppercase tracking-wider">
+            ${correct ? '✓ Correct Diagnosis' : `Diagnosis: ${target.name}`}
+          </div>
+          <p class="text-[11.5px] opacity-95">${target.steps[6][1]} Diagnostic leads highlighted in rose on the 12-lead ECG above; full 7-step breakdown unlocked below.</p>
+        `;
+        fb.classList.remove('hidden');
+        revBtn.classList.add('hidden');
+      } else {
+        fb.classList.add('hidden');
+        revBtn.classList.remove('hidden');
+        document.getElementById('study-interp-card').classList.add('hidden');
+      }
+    }
+
+    /* =========================================================================
+       11. MASTER RECOMPUTE, PRESET LOADING & TOOLBAR SYNC
+       ========================================================================= */
+    function loadPreset(presetId) {
+      const pr = PRESET_MAP[presetId];
+      if (!pr) return;
+      state.presetId = pr.id;
+      state.params = { ...pr.params };
+      state.selectedLead = pr.focusLead || 'II';
+      state.highlightLeads = pr.highlightLeads || [];
+      state.caliper = null;
+
+      buildPathologiesTab();
+      buildSandboxTab();
+      syncToolbarButtons();
+      recomputeAndRender(true);
+    }
+
+    function recomputeAndRender(refreshSevenStep = true) {
+      state.schedule = generateBeatSchedule(state.params);
+      renderKPIStrip();
+      if (refreshSevenStep || state.appMode === 'study') renderSevenStep();
+      draw12LeadECG();
+      drawMagnifier();
+      drawAxisWheel();
+    }
+
+    function syncHeaderButtons() {
+      document.querySelectorAll('.mode-btn').forEach(b => {
+        const on = b.dataset.mode === state.appMode;
+        b.className = `mode-btn px-2.5 h-full rounded-md transition-colors flex items-center gap-1.5 ${
+          on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-zinc-200'
+        }`;
+      });
+      document.querySelectorAll('.speed-btn').forEach(b => {
+        const on = parseInt(b.dataset.speed, 10) === state.speed;
+        b.className = `speed-btn px-2 h-full rounded-md transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+      document.querySelectorAll('.gain-btn').forEach(b => {
+        const on = parseInt(b.dataset.gain, 10) === state.gain;
+        b.className = `gain-btn px-2 h-full rounded-md transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+      document.querySelectorAll('.grid-btn').forEach(b => {
+        const on = b.dataset.grid === state.gridStyle;
+        b.className = `grid-btn px-2 h-full rounded-md transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+
+      const isQuiz = state.appMode === 'quiz';
+      document.getElementById('quiz-console-card').classList.toggle('hidden', !isQuiz);
+      document.getElementById('study-interp-card').classList.toggle('hidden', isQuiz && !state.quiz.answered);
+    }
+
+    function syncToolbarButtons() {
+      document.querySelectorAll('.rlead-btn').forEach(b => {
+        const on = b.dataset.rlead === state.rhythmLead;
+        b.className = `rlead-btn px-2 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+
+      const isFlutter = state.params.rhythm === 'aflutter';
+      document.getElementById('flutter-ratio-wrap').classList.toggle('hidden', !isFlutter);
+      document.querySelectorAll('.fratio-btn').forEach(b => {
+        const on = parseInt(b.dataset.fratio, 10) === (state.params.flutterRatio || 2);
+        b.className = `fratio-btn px-1.5 py-0.5 rounded transition-colors ${on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`;
+      });
+
+      const pill = (on, activeCls) => `px-2 py-1 rounded-md border transition-colors ${
+        on ? activeCls : 'border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400'
+      }`;
+      const calBtn = document.getElementById('btn-caliper-mode');
+      calBtn.textContent = state.caliperEnabled ? 'Calipers: ON' : 'Calipers: OFF';
+      calBtn.className = pill(state.caliperEnabled, 'border-amber-500/50 bg-amber-500/15 text-amber-700 dark:text-amber-300 font-semibold');
+
+      const marchBtn = document.getElementById('btn-marching');
+      marchBtn.className = pill(state.marching, 'border-amber-500/50 bg-amber-500/15 text-amber-700 dark:text-amber-300 font-semibold');
+
+      const noiseBtn = document.getElementById('btn-noise');
+      noiseBtn.textContent = state.realisticNoise ? 'Realistic' : 'Clean';
+      noiseBtn.className = pill(state.realisticNoise, 'border-tealLight/50 dark:border-tealDark/50 bg-teal-500/10 text-tealLight dark:text-tealDark font-semibold');
+
+      const brBtn = document.getElementById('btn-mag-brackets');
+      brBtn.className = `px-2 py-0.5 rounded border font-mono text-[10px] transition-colors ${
+        state.showMagBrackets ? 'border-tealLight/50 dark:border-tealDark/50 bg-teal-500/10 text-tealLight dark:text-tealDark font-semibold' : 'border-[#e4e4e7] dark:border-borderDark text-zinc-400'
+      }`;
+    }
+
+    function switchSideTab(tab) {
+      state.activeSideTab = tab;
+      document.querySelectorAll('.side-tab').forEach(b => {
+        const on = b.dataset.sidetab === tab;
+        b.className = `side-tab py-1.5 rounded-md text-xs font-medium transition-colors ${
+          on ? 'bg-white dark:bg-zinc-800 text-[#09090b] dark:text-[#f4f4f5] shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-zinc-200'
+        }`;
+      });
+      ['pathologies', 'sandbox', 'criteria'].forEach(id => {
+        document.getElementById(`sidetab-${id}`).classList.toggle('hidden', id !== tab);
+      });
+    }
+
+    /* =========================================================================
+       12. POINTER INTERACTIONS (CALIPERS, LEAD CLICK, AXIS WHEEL) & EVENTS
+       ========================================================================= */
+    function wireEvents() {
+      // Theme Toggle
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        const mode = isDark ? 'dark' : 'light';
+        try { localStorage.setItem('medlab-theme', mode); localStorage.setItem('theme', mode); } catch (_) {}
+        if (!isDark && state.gridStyle === 'dark') state.gridStyle = 'pink';
+        if (isDark && state.gridStyle === 'white') state.gridStyle = 'dark';
+        syncHeaderButtons();
+        draw12LeadECG();
+        drawMagnifier();
+        drawAxisWheel();
+      });
+
+      // Mode Toggle (Study Lab vs Blinded Quiz)
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const m = btn.dataset.mode;
+          if (m === state.appMode) return;
+          state.appMode = m;
+          syncHeaderButtons();
+          if (m === 'quiz') {
+            startQuizCase(false);
+          } else {
+            state.peekTelemetry = false;
+            buildPathologiesTab();
+            recomputeAndRender(true);
+          }
+        });
+      });
+
+      // Paper Speed, Voltage Gain, Grid Style
+      document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.speed = parseInt(btn.dataset.speed, 10);
+          state.caliper = null;
+          syncHeaderButtons();
+          renderKPIStrip();
+          draw12LeadECG();
+        });
+      });
+      document.querySelectorAll('.gain-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.gain = parseInt(btn.dataset.gain, 10);
+          syncHeaderButtons();
+          renderKPIStrip();
+          draw12LeadECG();
+        });
+      });
+      document.querySelectorAll('.grid-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.gridStyle = btn.dataset.grid;
+          syncHeaderButtons();
+          draw12LeadECG();
+          drawMagnifier();
+        });
+      });
+
+      // Rhythm Lead, Flutter Ratio, Calipers, Marching, Noise
+      document.querySelectorAll('.rlead-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.rhythmLead = btn.dataset.rlead;
+          syncToolbarButtons();
+          renderKPIStrip();
+          draw12LeadECG();
+        });
+      });
+      document.querySelectorAll('.fratio-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const r = parseInt(btn.dataset.fratio, 10);
+          state.params.flutterRatio = r;
+          state.params.hr = Math.round(300 / r);
+          syncToolbarButtons();
+          buildSandboxTab();
+          recomputeAndRender(true);
+        });
+      });
+      document.getElementById('btn-caliper-mode').addEventListener('click', () => {
+        state.caliperEnabled = !state.caliperEnabled;
+        if (!state.caliperEnabled) state.caliper = null;
+        syncToolbarButtons();
+        draw12LeadECG();
+      });
+      document.getElementById('btn-marching').addEventListener('click', () => {
+        state.marching = !state.marching;
+        syncToolbarButtons();
+        draw12LeadECG();
+      });
+      document.getElementById('btn-clear-calipers').addEventListener('click', () => {
+        state.caliper = null;
+        draw12LeadECG();
+      });
+      document.getElementById('btn-noise').addEventListener('click', () => {
+        state.realisticNoise = !state.realisticNoise;
+        syncToolbarButtons();
+        draw12LeadECG();
+        drawMagnifier();
+      });
+
+      // Magnifier Lead Selector & Brackets
+      document.getElementById('mag-lead-select').addEventListener('change', e => {
+        state.selectedLead = e.target.value;
+        renderKPIStrip();
+        draw12LeadECG();
+        drawMagnifier();
+      });
+      document.getElementById('btn-mag-brackets').addEventListener('click', () => {
+        state.showMagBrackets = !state.showMagBrackets;
+        syncToolbarButtons();
+        drawMagnifier();
+      });
+
+      // Peek Telemetry (Blinded Quiz)
+      document.getElementById('btn-peek-telemetry').addEventListener('click', () => {
+        state.peekTelemetry = !state.peekTelemetry;
+        renderKPIStrip();
+        drawMagnifier();
+        drawAxisWheel();
+      });
+
+      // 1-Click Copy Anki Cloze
+      document.getElementById('btn-copy-anki').addEventListener('click', () => {
+        const btn = document.getElementById('btn-copy-anki');
+        const pr = PRESET_MAP[state.presetId];
+        const text = pr ? pr.anki : `ECG Sandbox: HR ${Math.round(state.params.hr)} bpm, Axis ${Math.round(state.params.axis)}°, QRS ${state.schedule.iv.effQRS} ms, QTcF ${state.schedule.iv.qtcF} ms, K⁺ ${state.params.k.toFixed(1)} mmol/L.`;
+        const done = () => {
+          btn.textContent = 'Copied ✓';
+          setTimeout(() => { btn.textContent = 'Copy Anki Cloze'; }, 1400);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done).catch(done);
+        } else {
+          done();
+        }
+      });
+
+      // Right Console Tabs
+      document.querySelectorAll('.side-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchSideTab(btn.dataset.sidetab));
+      });
+
+      // Quiz Buttons
+      document.getElementById('btn-quiz-hint').addEventListener('click', () => {
+        state.quiz.hintShown = !state.quiz.hintShown;
+        renderQuizUI();
+      });
+      document.getElementById('btn-quiz-reveal').addEventListener('click', () => {
+        if (state.quiz.answered) return;
+        state.quiz.answered = true;
+        state.quiz.total++;
+        state.quiz.streak = 0;
+        renderQuizUI();
+        buildPathologiesTab();
+        renderSevenStep();
+        document.getElementById('study-interp-card').classList.remove('hidden');
+        recomputeAndRender(false);
+      });
+      document.getElementById('btn-quiz-next').addEventListener('click', () => {
+        startQuizCase(true);
+      });
+
+      // ---- 12-LEAD CANVAS POINTER EVENTS (CALIPER DRAG + SHORT CLICK LEAD SELECT) ----
+      let draggingCal = false;
+      let startPt = null;
+
+      ecgWrap.addEventListener('pointerdown', e => {
+        const rect = ecgWrap.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        startPt = { x, y };
+        draggingCal = true;
+        ecgWrap.setPointerCapture(e.pointerId);
+      });
+
+      ecgWrap.addEventListener('pointermove', e => {
+        if (!draggingCal || !startPt) return;
+        const rect = ecgWrap.getBoundingClientRect();
+        const x = clamp(e.clientX - rect.left, 0, rect.width);
+        const y = clamp(e.clientY - rect.top, 0, rect.height);
+        if (state.caliperEnabled && Math.hypot(x - startPt.x, y - startPt.y) >= 5) {
+          state.caliper = { x0: startPt.x, y0: startPt.y, x1: x, y1: y };
+          draw12LeadECG();
+        }
+      });
+
+      const endCalDrag = e => {
+        if (!draggingCal || !startPt) return;
+        const rect = ecgWrap.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const dist = Math.hypot(x - startPt.x, y - startPt.y);
+
+        // Short click (<5px): select clicked lead for Single-Lead Magnifier!
+        if (dist < 5 && ecgLayoutCache) {
+          const L = ecgLayoutCache;
+          const r = Math.floor(y / L.rowH);
+          const c = Math.floor((x - L.waveStartX) / L.colW);
+          if (r >= 0 && r < 3 && c >= 0 && c < 4) {
+            state.selectedLead = LEAD_GRID[r][c];
+            renderKPIStrip();
+            draw12LeadECG();
+            drawMagnifier();
+          } else if (r === 3 && x >= L.waveStartX) {
+            state.selectedLead = state.rhythmLead;
+            renderKPIStrip();
+            draw12LeadECG();
+            drawMagnifier();
+          }
+        }
+        draggingCal = false;
+        startPt = null;
+      };
+      ecgWrap.addEventListener('pointerup', endCalDrag);
+      ecgWrap.addEventListener('pointercancel', () => { draggingCal = false; startPt = null; });
+
+      // ---- HEXAXIAL WHEEL DRAG INTERACTION (ROTATES FRONTAL AXIS LIVE!) ----
+      let draggingAxis = false;
+      const updateAxisFromPointer = e => {
+        const rect = axisWrap.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        if (Math.hypot(x, y) < 6) return;
+        const deg = Math.round(Math.atan2(y, x) / DEG);
+        state.params.axis = clamp(deg, -180, 180);
+        if (state.appMode === 'study') state.presetId = 'custom';
+        const sl = document.getElementById('sb-axis');
+        const vl = document.getElementById('sb-val-axis');
+        if (sl) sl.value = state.params.axis;
+        if (vl) vl.textContent = `${state.params.axis >= 0 ? '+' : ''}${Math.round(state.params.axis)}°`;
+        recomputeAndRender(false);
+      };
+
+      axisWrap.addEventListener('pointerdown', e => {
+        if (state.appMode === 'quiz' && !state.quiz.answered && !state.peekTelemetry) return;
+        draggingAxis = true;
+        axisWrap.setPointerCapture(e.pointerId);
+        updateAxisFromPointer(e);
+      });
+      axisWrap.addEventListener('pointermove', e => {
+        if (!draggingAxis) return;
+        updateAxisFromPointer(e);
+      });
+      axisWrap.addEventListener('pointerup', () => { draggingAxis = false; });
+      axisWrap.addEventListener('pointercancel', () => { draggingAxis = false; });
+
+      // ---- STRICT ANTI-STRETCH RESIZE OBSERVER (WRAPPERS ONLY!) ----
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(entries => {
+          for (const entry of entries) {
+            if (entry.target === ecgWrap && syncCanvas(ecgWrap, ecgCanvas)) draw12LeadECG();
+            if (entry.target === magWrap && syncCanvas(magWrap, magCanvas)) drawMagnifier();
+            if (entry.target === axisWrap && syncCanvas(axisWrap, axisCanvas)) drawAxisWheel();
+          }
+        });
+        ro.observe(ecgWrap);
+        ro.observe(magWrap);
+        ro.observe(axisWrap);
+      }
+
+      window.addEventListener('resize', () => {
+        if (syncCanvas(ecgWrap, ecgCanvas)) draw12LeadECG();
+        if (syncCanvas(magWrap, magCanvas)) drawMagnifier();
+        if (syncCanvas(axisWrap, axisCanvas)) drawAxisWheel();
+      });
+    }
+
+    // Bootstrap cleanly on window load
+    window.addEventListener('load', () => {
+      buildPathologiesTab();
+      buildSandboxTab();
+      buildCriteriaTab();
+      wireEvents();
+
+      syncHeaderButtons();
+      syncToolbarButtons();
+      switchSideTab('pathologies');
+
+      syncCanvas(ecgWrap, ecgCanvas);
+      syncCanvas(magWrap, magCanvas);
+      syncCanvas(axisWrap, axisCanvas);
+
+      loadPreset('nsr');
+    });
+  })();
+  </script>
+</body>
+</html>
