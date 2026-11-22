@@ -1,0 +1,2191 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OSCE &amp; Clinical Skills — MedLab (BIHAM / KAIM)</title>
+
+  <!-- Prevent theme flash prior to first paint (syncs medlab-theme & theme; defaults to obsidian dark) -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Typography: Inter (UI) & JetBrains Mono (Timer, Telemetry, Badges, Codes) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#111113',
+            elevatedDark: '#18181b',
+            borderDark: '#27272a',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Minimal thin scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(113, 113, 122, 0.28); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(113, 113, 122, 0.48); }
+
+    /* Custom crisp clinical checkboxes */
+    input[type="checkbox"].osce-check {
+      accent-color: #0f766e;
+      cursor: pointer;
+    }
+    .dark input[type="checkbox"].osce-check {
+      accent-color: #2dd4bf;
+    }
+
+    @keyframes subtlePulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+    .timer-urgent {
+      animation: subtlePulse 1.1s ease-in-out infinite;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-canvasLight text-[#09090b] dark:bg-obsidian dark:text-[#f4f4f5] transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
+
+  <!-- ==================== 1. STICKY HAIRLINE HEADER (h-14) WITH LIVE OSCE TIMER ==================== -->
+  <header class="sticky top-0 z-40 min-h-[3.5rem] w-full border-b border-[#e4e4e7] dark:border-borderDark bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2.5">
+
+      <!-- Left: Back Link + Title + BIHAM / KAIM Badge -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors shrink-0">
+          &larr; MedLab
+        </a>
+        <span class="h-4 w-px bg-[#e4e4e7] dark:bg-borderDark shrink-0"></span>
+        <div class="flex items-center gap-2 min-w-0">
+          <h1 class="text-[14.5px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] truncate">OSCE &amp; Clinical Skills</h1>
+          <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md border border-tealLight/30 dark:border-tealDark/30 bg-teal-500/10 font-mono text-[10px] font-medium text-tealLight dark:text-tealDark shrink-0">BIHAM / KAIM</span>
+        </div>
+      </div>
+
+      <!-- Right: Live OSCE Station Countdown Timer + Theme Toggle -->
+      <div class="flex flex-wrap items-center gap-2 shrink-0">
+        <!-- Compact Header OSCE Timer Widget -->
+        <div id="timer-widget" class="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark">
+          <!-- Presets -->
+          <div class="hidden md:inline-flex items-center gap-0.5 pr-1.5 mr-0.5 border-r border-[#e4e4e7] dark:border-borderDark font-mono text-[10px]">
+            <button data-tpreset="480" type="button" class="tpreset-btn px-1.5 py-0.5 rounded transition-colors">8:00</button>
+            <button data-tpreset="600" type="button" class="tpreset-btn px-1.5 py-0.5 rounded transition-colors">10:00</button>
+            <button data-tpreset="720" type="button" class="tpreset-btn px-1.5 py-0.5 rounded transition-colors">12:00</button>
+            <button data-tpreset="900" type="button" class="tpreset-btn px-1.5 py-0.5 rounded transition-colors">15:00</button>
+          </div>
+
+          <!-- Mobile Preset Select -->
+          <select id="timer-preset-mobile" aria-label="Timer duration" class="md:hidden bg-transparent font-mono text-[10px] text-zinc-500 dark:text-zinc-400 focus:outline-none cursor-pointer">
+            <option value="480">8m</option>
+            <option value="600" selected>10m</option>
+            <option value="720">12m</option>
+            <option value="900">15m</option>
+          </select>
+
+          <!-- Live Digital Clock -->
+          <span id="timer-display" class="font-mono text-[13px] font-semibold tabular-nums px-1.5 text-tealLight dark:text-tealDark">10:00</span>
+
+          <!-- Play / Pause -->
+          <button id="timer-play" type="button" title="Timer starten / pausieren" aria-label="Start or pause OSCE timer" class="h-6 px-2 rounded-md bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian text-[10.5px] font-medium hover:opacity-90 transition-opacity">
+            Start
+          </button>
+
+          <!-- Reset -->
+          <button id="timer-reset" type="button" title="Timer zurücksetzen" aria-label="Reset OSCE timer" class="w-6 h-6 rounded-md flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" />
+            </svg>
+          </button>
+
+          <!-- Chime Mute Toggle -->
+          <button id="timer-mute" type="button" title="Signalton bei 2:00 &amp; 0:00 umschalten" aria-label="Toggle timer chime" class="w-6 h-6 rounded-md flex items-center justify-center text-tealLight dark:text-tealDark hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+            <svg id="icon-sound-on" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 5 6 9H2v6h4l5 4V5Z" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            </svg>
+            <svg id="icon-sound-off" class="w-3.5 h-3.5 hidden text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 5 6 9H2v6h4l5 4V5Z" /><path d="m22 9-6 6" /><path d="m16 9 6 6" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Dark / Light Mode Toggle -->
+        <button id="theme-toggle" type="button" aria-label="Toggle dark and light theme" title="Dark / Light Modus wechseln" class="w-8 h-8 rounded-lg flex items-center justify-center border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-white transition-colors shrink-0">
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. 5-TAB SEGMENTED NAVIGATION BAR ==================== -->
+  <div class="w-full border-b border-[#e4e4e7]/80 dark:border-borderDark/80 bg-white/60 dark:bg-surfaceDark/60 shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2 overflow-x-auto">
+      <nav aria-label="OSCE Module" class="inline-flex items-center rounded-lg bg-zinc-100/90 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5 gap-0.5 min-w-max">
+        <button data-tab="anamnese" type="button" class="main-tab px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors">1. Anamnese (BIHAM/KAIM)</button>
+        <button data-tab="status" type="button" class="main-tab px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors">2. Körperlicher Status</button>
+        <button data-tab="leitsymptome" type="button" class="main-tab px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors">3. Leitsymptome &amp; Red Flags</button>
+        <button data-tab="kommunikation" type="button" class="main-tab px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors">4. Kommunikation &amp; Übergabe</button>
+        <button data-tab="simulator" type="button" class="main-tab px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors">5. OSCE Station Simulator</button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ==================== 3. MAIN WORKSPACE ==================== -->
+  <main class="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-4 min-h-0">
+
+    <!-- ==================== TAB 1: ANAMNESE (BIHAM / KAIM) ==================== -->
+    <section id="panel-anamnese" class="tab-panel space-y-4">
+      <!-- Top Control & Live Progress Bar -->
+      <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark px-4 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div class="space-y-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-sm font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5]">Systematik Anamnese Innere Medizin</h2>
+            <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-elevatedDark border border-[#e4e4e7] dark:border-borderDark text-zinc-500 dark:text-zinc-400">BIHAM &middot; KAIM Bern</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-44 sm:w-56 h-2 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+              <div id="anam-progress-bar" class="h-full rounded-full bg-tealLight dark:bg-tealDark transition-all duration-200" style="width:0%"></div>
+            </div>
+            <span id="anam-progress-text" class="font-mono text-[11px] font-medium text-tealLight dark:text-tealDark tabular-nums">0 / 49 abgehakt</span>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-1.5 text-xs">
+          <button id="toggle-phrasing" type="button" class="h-7 px-2.5 rounded-md border font-medium transition-colors">Formulierungshilfen: AN</button>
+          <button id="toggle-geriatrie" type="button" class="h-7 px-2.5 rounded-md border font-medium transition-colors">Geriatrische Anamnese</button>
+          <button id="toggle-psychosozial" type="button" class="h-7 px-2.5 rounded-md border font-medium transition-colors">Psychosoziale Anamnese</button>
+          <button id="btn-reset-anam" type="button" class="h-7 px-2.5 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-obsidian text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white transition-colors">Checks zurücksetzen</button>
+        </div>
+      </div>
+
+      <!-- 12-Col Split: Left 8 Cols Checklist | Right 4 Cols Sticky Scratchpad & Export -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        <div id="anam-checklist-container" class="lg:col-span-8 space-y-3 min-w-0"></div>
+
+        <!-- Sticky Right Scratchpad -->
+        <aside class="lg:col-span-4 lg:sticky lg:top-16 rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden">
+          <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2">
+            <div>
+              <h3 class="text-xs font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5]">Anamnese-Notizen &amp; Export</h3>
+              <p class="text-[10.5px] text-zinc-500 dark:text-zinc-400">Kurznotizen pro Abschnitt für Übergabe &amp; Doku</p>
+            </div>
+            <button id="btn-clear-notes" type="button" class="font-mono text-[10px] text-zinc-400 hover:text-rose-500 transition-colors">Leeren</button>
+          </div>
+
+          <div id="anam-notes-fields" class="p-3.5 space-y-2.5 max-h-[58vh] overflow-y-auto"></div>
+
+          <div class="p-3 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/70 dark:bg-zinc-950/50 flex flex-wrap gap-2">
+            <button id="btn-copy-anam-md" type="button" class="flex-1 h-8 px-3 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark hover:border-tealLight/60 dark:hover:border-tealDark/60 text-xs font-medium text-zinc-700 dark:text-zinc-200 transition-colors whitespace-nowrap">
+              Copy Markdown Summary
+            </button>
+            <button id="btn-send-sbar" type="button" class="flex-1 h-8 px-3 rounded-lg bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian hover:opacity-90 text-xs font-medium transition-opacity whitespace-nowrap">
+              Send to SBAR Builder &rarr;
+            </button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: KÖRPERLICHER STATUS (IPPAF) ==================== -->
+    <section id="panel-status" class="tab-panel hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        <!-- Left Station Selector -->
+        <aside class="lg:col-span-4 xl:col-span-3 space-y-2 lg:sticky lg:top-16">
+          <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark p-3 space-y-1.5">
+            <div class="flex items-center justify-between px-1 pb-1.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80">
+              <span class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Status-Stationen (IPPAF)</span>
+              <span class="font-mono text-[10px] text-zinc-400">6 Module</span>
+            </div>
+            <div id="status-station-list" class="space-y-1"></div>
+          </div>
+
+          <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark p-3 space-y-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+            <div class="font-mono text-[10px] font-semibold uppercase tracking-wider text-tealLight dark:text-tealDark">OSCE Grundregeln Status</div>
+            <ul class="list-disc pl-4 space-y-1 leading-snug">
+              <li>Händedesinfektion vor &amp; nach Patient*innenkontakt.</li>
+              <li>Jeden Schritt kurz ankündigen; Schmerzfrage vor Palpation.</li>
+              <li>Immer im Seitenvergleich untersuchen; Intimsphäre wahren.</li>
+              <li><strong>Abdomen:</strong> Strikte Reihenfolge <strong>I &rarr; A &rarr; P &rarr; P</strong>!</li>
+            </ul>
+          </div>
+        </aside>
+
+        <!-- Right Interactive Exam Sheet -->
+        <div id="status-detail-container" class="lg:col-span-8 xl:col-span-9 space-y-4 min-w-0"></div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: LEITSYMPTOME & RED FLAGS ==================== -->
+    <section id="panel-leitsymptome" class="tab-panel hidden space-y-4">
+      <!-- Search & Quick Filter Bar -->
+      <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 flex-1 min-w-[220px] max-w-md">
+          <input id="ls-search" type="search" placeholder="Suche Leitsymptom, Red Flag, Big 5, Test (z.B. HINTS, SNOOP4)..." class="w-full h-8 px-3 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian text-xs text-[#09090b] dark:text-[#f4f4f5] placeholder-zinc-400 focus:outline-none focus:border-tealLight dark:focus:border-tealDark" />
+        </div>
+        <div class="flex flex-wrap items-center gap-1.5">
+          <span id="ls-count-badge" class="font-mono text-[10.5px] text-zinc-500 dark:text-zinc-400">10 / 10 Leitsymptome</span>
+        </div>
+      </div>
+
+      <div id="ls-grid" class="grid grid-cols-1 xl:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- ==================== TAB 4: KOMMUNIKATION & ÜBERGABE (SBAR) ==================== -->
+    <section id="panel-kommunikation" class="tab-panel hidden space-y-5">
+      <!-- Top 4 Swiss/German OSCE Communication Rubrics -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="comm-rubrics-grid"></div>
+
+      <!-- Interactive SBAR / 60-Sekunden-Fallvorstellung Builder -->
+      <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+        <div class="px-4 py-3 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 bg-zinc-50/60 dark:bg-zinc-950/40">
+          <div>
+            <h2 class="text-sm font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5]">SBAR / 60-Sekunden-Fallvorstellung Builder</h2>
+            <p class="text-[11px] text-zinc-500 dark:text-zinc-400">Präzise Übergabe nach Schweizer Klinikstandard (Ziel: 45–60 Sekunden / ~100–130 Wörter)</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btn-pull-anam" type="button" class="h-8 px-3 rounded-lg border border-tealLight/50 dark:border-tealDark/50 bg-teal-500/10 hover:bg-teal-500/20 text-xs font-medium text-tealLight dark:text-tealDark transition-colors">
+              Aus Anamnese-Notizen übernehmen
+            </button>
+            <button id="btn-sbar-example" type="button" class="h-8 px-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white transition-colors">
+              Beispiel laden
+            </button>
+            <button id="btn-sbar-clear" type="button" class="h-8 px-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-xs font-medium text-zinc-500 hover:text-rose-500 transition-colors">
+              Leeren
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[#e4e4e7]/80 dark:divide-borderDark/80">
+          <!-- 4 Structured Inputs -->
+          <div class="lg:col-span-7 p-4 space-y-3">
+            <div class="space-y-1">
+              <label for="sbar-s" class="flex items-center justify-between text-xs font-semibold text-[#09090b] dark:text-[#f4f4f5]">
+                <span><span class="font-mono text-tealLight dark:text-tealDark mr-1.5">S</span>Situation</span>
+                <span class="font-normal text-[10.5px] text-zinc-400">Name/Alter, Leitsymptom, Setting, Vitalzeichen</span>
+              </label>
+              <textarea id="sbar-s" rows="2" placeholder="z.B. Herr M., 58j., Notfallstation wegen seit 90 Min. bestehendem retrosternalem Druckschmerz (NRS 8/10), BD 145/90, HF 96, SpO2 97%..." class="w-full p-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian text-xs text-[#09090b] dark:text-[#f4f4f5] placeholder-zinc-400 focus:outline-none focus:border-tealLight dark:focus:border-tealDark"></textarea>
+            </div>
+
+            <div class="space-y-1">
+              <label for="sbar-b" class="flex items-center justify-between text-xs font-semibold text-[#09090b] dark:text-[#f4f4f5]">
+                <span><span class="font-mono text-tealLight dark:text-tealDark mr-1.5">B</span>Background</span>
+                <span class="font-normal text-[10.5px] text-zinc-400">Persönliche Anamnese, Risikofaktoren, relevante Medikation, Allergien</span>
+              </label>
+              <textarea id="sbar-b" rows="2" placeholder="z.B. Bekannte arterielle Hypertonie, Hyperlipidämie, 30 Pack-Years Nikotin; Medikation: Lisinopril 10 mg, keine bekannten Allergien..." class="w-full p-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian text-xs text-[#09090b] dark:text-[#f4f4f5] placeholder-zinc-400 focus:outline-none focus:border-tealLight dark:focus:border-tealDark"></textarea>
+            </div>
+
+            <div class="space-y-1">
+              <label for="sbar-a" class="flex items-center justify-between text-xs font-semibold text-[#09090b] dark:text-[#f4f4f5]">
+                <span><span class="font-mono text-tealLight dark:text-tealDark mr-1.5">A</span>Assessment</span>
+                <span class="font-normal text-[10.5px] text-zinc-400">Klinischer Eindruck, Verdachtsdiagnose, wichtigste DDx &amp; Red Flags</span>
+              </label>
+              <textarea id="sbar-a" rows="2" placeholder="z.B. Hochgradiger Verdacht auf akutes Koronarsyndrom (NSTEMI/STEMI); wichtige DDx: Lungenarterienembolie, Aortendissektion..." class="w-full p-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian text-xs text-[#09090b] dark:text-[#f4f4f5] placeholder-zinc-400 focus:outline-none focus:border-tealLight dark:focus:border-tealDark"></textarea>
+            </div>
+
+            <div class="space-y-1">
+              <label for="sbar-r" class="flex items-center justify-between text-xs font-semibold text-[#09090b] dark:text-[#f4f4f5]">
+                <span><span class="font-mono text-tealLight dark:text-tealDark mr-1.5">R</span>Recommendation</span>
+                <span class="font-normal text-[10.5px] text-zinc-400">Sofortdiagnostik, Monitoring, Akuttherapie &amp; Rückfrage</span>
+              </label>
+              <textarea id="sbar-r" rows="2" placeholder="z.B. Sofortiges 12-Kanal-EKG (<10 Min.), Monitorüberwachung, i.v.-Zugang, hs-Troponin 0h/1h, D-Dimere, Aspirin 250 mg i.v., oberärztliche Beurteilung..." class="w-full p-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian text-xs text-[#09090b] dark:text-[#f4f4f5] placeholder-zinc-400 focus:outline-none focus:border-tealLight dark:focus:border-tealDark"></textarea>
+            </div>
+          </div>
+
+          <!-- Live Formatted Preview + Speaking Time Counter -->
+          <div class="lg:col-span-5 p-4 flex flex-col justify-between gap-3 bg-zinc-50/40 dark:bg-zinc-950/30">
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Live Übergabe-Vorschau</span>
+                <span id="sbar-metrics" class="font-mono text-[10.5px] px-2 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 tabular-nums">0 Wörter &middot; ~0 Sek.</span>
+              </div>
+
+              <div id="sbar-preview" class="p-3.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-obsidian text-xs leading-relaxed text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap min-h-[210px] font-sans"></div>
+            </div>
+
+            <div class="flex items-center justify-between gap-2 pt-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80">
+              <span class="font-mono text-[10px] text-zinc-400">Basis: ~130 Wörter/Min. Sprechtempo</span>
+              <button id="btn-copy-sbar" type="button" class="h-8 px-3.5 rounded-lg bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian hover:opacity-90 text-xs font-medium transition-opacity">
+                Copy SBAR
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ==================== TAB 5: OSCE STATION SIMULATOR (12 SWISS STATIONS) ==================== -->
+    <section id="panel-simulator" class="tab-panel hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        <!-- Left Station Picker -->
+        <aside class="lg:col-span-4 space-y-2.5 lg:sticky lg:top-16">
+          <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark p-3 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-semibold text-[#09090b] dark:text-[#f4f4f5]">OSCE Stationen (12)</span>
+              <button id="btn-random-station" type="button" class="h-7 px-2.5 rounded-md bg-teal-500/10 border border-tealLight/40 dark:border-tealDark/40 text-[11px] font-medium text-tealLight dark:text-tealDark hover:bg-teal-500/20 transition-colors">
+                Zufällige Station
+              </button>
+            </div>
+
+            <!-- Specialty Filters -->
+            <div id="sim-spec-filters" class="flex flex-wrap gap-1"></div>
+
+            <!-- Station List -->
+            <div id="sim-station-list" class="space-y-1 max-h-[58vh] overflow-y-auto pr-0.5"></div>
+          </div>
+        </aside>
+
+        <!-- Right Station Runner -->
+        <div id="sim-runner-container" class="lg:col-span-8 space-y-4 min-w-0"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== 4. MINIMAL FOOTER ==================== -->
+  <footer class="w-full border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-white/70 dark:bg-obsidian/90 shrink-0">
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+      <span class="font-medium text-[#09090b] dark:text-[#f4f4f5]">MedLab &middot; OSCE &amp; Clinical Skills</span>
+      <span>Anamnese-Systematik nach BIHAM / KAIM Bern &middot; Nur zu Ausbildungs- und Trainingszwecken.</span>
+    </div>
+  </footer>
+
+  <!-- ==================== SUBTLE FLOATING TOAST ==================== -->
+  <div id="toast" role="status" aria-live="polite" class="pointer-events-none fixed bottom-5 right-5 z-50 px-3.5 py-2 rounded-lg border border-tealLight/40 dark:border-tealDark/40 bg-[#09090b] text-white dark:bg-[#f4f4f5] dark:text-[#09090b] shadow-xl font-mono text-xs font-medium opacity-0 translate-y-2 transition-all duration-200">
+    Kopiert
+  </div>
+
+  <!-- ==================== OSCE APPLICATION LOGIC & CLINICAL DATASETS ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    /* =========================================================================
+       1. UTILITIES (CLIPBOARD, TOAST, WEB AUDIO BELL)
+       ========================================================================= */
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.remove('opacity-0', 'translate-y-2');
+      el.classList.add('opacity-100', 'translate-y-0');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        el.classList.add('opacity-0', 'translate-y-2');
+        el.classList.remove('opacity-100', 'translate-y-0');
+      }, 2000);
+    }
+
+    function copyText(text, successMsg = 'In Zwischenablage kopiert') {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => showToast(successMsg)).catch(() => fallbackCopy(text, successMsg));
+        } else {
+          fallbackCopy(text, successMsg);
+        }
+      } catch (_) {
+        fallbackCopy(text, successMsg);
+      }
+    }
+
+    function fallbackCopy(text, successMsg) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(successMsg);
+      } catch (_) {
+        showToast('Kopieren fehlgeschlagen');
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Subtle Web Audio API Bell (2:00 warning = single chime, 0:00 finish = double chime)
+    let audioCtx = null;
+    function playChime(isFinal = false) {
+      if (timerState.muted) return;
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        if (!audioCtx) audioCtx = new Ctx();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const ring = (offsetSec, freq1, freq2) => {
+          const now = audioCtx.currentTime + offsetSec;
+          const gain = audioCtx.createGain();
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.exponentialRampToValueAtTime(0.14, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.95);
+          gain.connect(audioCtx.destination);
+
+          [freq1, freq2].forEach((f, idx) => {
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, now);
+            const g2 = audioCtx.createGain();
+            g2.gain.setValueAtTime(idx === 0 ? 1.0 : 0.35, now);
+            osc.connect(g2);
+            g2.connect(gain);
+            osc.start(now);
+            osc.stop(now + 1.0);
+          });
+        };
+
+        if (isFinal) {
+          ring(0, 784, 1175);
+          ring(0.32, 1046.5, 1568);
+        } else {
+          ring(0, 880, 1320);
+        }
+      } catch (_) {}
+    }
+
+    /* =========================================================================
+       2. LIVE HEADER OSCE COUNTDOWN TIMER
+       ========================================================================= */
+    const timerState = {
+      presetSec: 600,
+      remainingSec: 600,
+      running: false,
+      muted: false,
+      intervalId: null,
+      warned2Min: false,
+    };
+
+    function formatClock(sec) {
+      const s = Math.max(0, Math.floor(sec));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+    }
+
+    function updateTimerUI() {
+      const disp = document.getElementById('timer-display');
+      const playBtn = document.getElementById('timer-play');
+      const widget = document.getElementById('timer-widget');
+      if (!disp || !playBtn) return;
+
+      disp.textContent = formatClock(timerState.remainingSec);
+      playBtn.textContent = timerState.running ? 'Pause' : 'Start';
+
+      // Color escalation: <= 1:00 rose, <= 2:00 amber, normal teal
+      disp.classList.remove('text-tealLight', 'dark:text-tealDark', 'text-amber-600', 'dark:text-amber-400', 'text-rose-600', 'dark:text-rose-400', 'timer-urgent');
+      widget.classList.remove('border-amber-500/50', 'border-rose-500/60');
+
+      if (timerState.remainingSec <= 60) {
+        disp.classList.add('text-rose-600', 'dark:text-rose-400');
+        if (timerState.running || timerState.remainingSec === 0) disp.classList.add('timer-urgent');
+        widget.classList.add('border-rose-500/60');
+      } else if (timerState.remainingSec <= 120) {
+        disp.classList.add('text-amber-600', 'dark:text-amber-400');
+        widget.classList.add('border-amber-500/50');
+      } else {
+        disp.classList.add('text-tealLight', 'dark:text-tealDark');
+      }
+
+      document.querySelectorAll('.tpreset-btn').forEach(b => {
+        const active = parseInt(b.dataset.tpreset, 10) === timerState.presetSec;
+        b.className = `tpreset-btn px-1.5 py-0.5 rounded transition-colors ${
+          active
+            ? 'bg-teal-500/15 text-tealLight dark:text-tealDark font-semibold'
+            : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+        }`;
+      });
+      const mobSel = document.getElementById('timer-preset-mobile');
+      if (mobSel) mobSel.value = String(timerState.presetSec);
+
+      document.getElementById('icon-sound-on').classList.toggle('hidden', timerState.muted);
+      document.getElementById('icon-sound-off').classList.toggle('hidden', !timerState.muted);
+    }
+
+    function stopTimer() {
+      timerState.running = false;
+      if (timerState.intervalId) {
+        clearInterval(timerState.intervalId);
+        timerState.intervalId = null;
+      }
+      updateTimerUI();
+    }
+
+    function startTimer() {
+      if (timerState.remainingSec <= 0) timerState.remainingSec = timerState.presetSec;
+      timerState.running = true;
+      if (timerState.intervalId) clearInterval(timerState.intervalId);
+      timerState.intervalId = setInterval(() => {
+        if (timerState.remainingSec > 0) {
+          timerState.remainingSec--;
+          if (timerState.remainingSec === 120 && !timerState.warned2Min) {
+            timerState.warned2Min = true;
+            playChime(false);
+            showToast('Noch 2:00 Minuten verbleibend');
+          }
+          if (timerState.remainingSec === 0) {
+            playChime(true);
+            stopTimer();
+            showToast('OSCE Station beendet (0:00)');
+            return;
+          }
+          updateTimerUI();
+        }
+      }, 1000);
+      updateTimerUI();
+    }
+
+    function setTimerPreset(sec, autoStart = false) {
+      stopTimer();
+      timerState.presetSec = sec;
+      timerState.remainingSec = sec;
+      timerState.warned2Min = sec <= 120;
+      if (autoStart) startTimer();
+      else updateTimerUI();
+    }
+
+    /* =========================================================================
+       3. DATASET: TAB 1 — BIHAM / KAIM ANAMNESE (BERN TEMPLATE)
+       ========================================================================= */
+    const ANAMNESE_SECTIONS = [
+      {
+        id: 'jl',
+        num: '01',
+        title: 'Jetziges Leiden',
+        special: false,
+        noteLabel: 'Jetziges Leiden (7 Dim. & ICE)',
+        items: [
+          { id: 'jl_open', label: 'Beginn mit offener Frage', phrase: '«Was führt Sie heute zu mir? Erzählen Sie mir bitte in Ruhe, was Ihnen Beschwerden macht.»' },
+          { id: 'jl_map', label: 'Landkarte der Beschwerden', phrase: '«Gibt es neben diesen Beschwerden noch etwas anderes, das Ihnen heute wichtig ist oder das wir anschauen sollten?»' },
+          { id: 'jl_d1', dim: 1, label: 'Lokalisation, Ausstrahlung', phrase: '«Können Sie mir mit einem Finger zeigen, wo genau es schmerzt? Strahlt es irgendwohin aus?»' },
+          { id: 'jl_d2', dim: 2, label: 'Qualität', phrase: '«Wie fühlt es sich an — eher stechend, drückend, brennend, krampfartig oder dumpf?»' },
+          { id: 'jl_d3', dim: 3, label: 'Zeitliches Auftreten (Beginn, Verlauf, Dauer, Häufigkeit)', phrase: '«Wann hat es genau begonnen? Kam es plötzlich oder schleichend? Ist es durchgehend da oder wellenförmig?»' },
+          { id: 'jl_d4', dim: 4, label: 'Schweregrad (NRS 0–10)', phrase: '«Auf einer Skala von 0 (kein Schmerz) bis 10 (stärkster vorstellbarer Schmerz) — wie stark ist es aktuell und im Maximum?»' },
+          { id: 'jl_d5', dim: 5, label: 'Verstärkung / Abschwächung', phrase: '«Wodurch wird es schlimmer (Belastung, Atmen, Essen, Lage)? Was lindert die Beschwerden?»' },
+          { id: 'jl_d6', dim: 6, label: 'Begleitsymptome', phrase: '«Haben Sie dabei noch anderes bemerkt, z.B. Übelkeit, Schwitzen, Atemnot, Schwindel oder Fieber?»' },
+          { id: 'jl_d7', dim: 7, label: 'Grad der Behinderung (Alltagsbeeinträchtigung)', phrase: '«Wie stark schränken die Beschwerden Sie im Alltag, bei der Arbeit oder im Schlaf ein?»' },
+          { id: 'jl_ice', label: 'ICE: Ideas, Concerns, Expectations', phrase: '«Haben Sie selbst schon eine Vermutung, woher das kommen könnte? Was bereitet Ihnen am meisten Sorgen? Was erhoffen Sie sich heute von mir?»' }
+        ]
+      },
+      {
+        id: 'pa',
+        num: '02',
+        title: 'Persönliche Anamnese',
+        special: false,
+        noteLabel: 'Persönliche Anamnese & Risiken',
+        items: [
+          { id: 'pa_chron', label: 'Chronische Erkrankungen (inkl. Allergien)', phrase: '«Bestehen bei Ihnen bekannte Vorerkrankungen wie Bluthochdruck, Diabetes, Herz- oder Lungenerkrankungen oder Allergien?»' },
+          { id: 'pa_prev', label: 'Frühere Erkrankungen / Unfälle', phrase: '«Hatten Sie früher einmal grössere Erkrankungen, Thrombosen oder schwerere Unfälle?»' },
+          { id: 'pa_hosp', label: 'Hospitalisationen / Operationen (Bluttransfusionen)', phrase: '«Mussten Sie jemals im Spital liegen, wurden Sie operiert oder haben Sie einmal Bluttransfusionen erhalten?»' },
+          { id: 'pa_sucht', label: 'Suchtverhalten (Alkohol, Nikotin — Pack-Years, Drogen etc.)', phrase: '«Rauchen Sie oder haben Sie früher geraucht (wie viel über wie viele Jahre)? Wie sieht es mit Alkohol oder anderen Substanzen aus?»' },
+          { id: 'pa_impf', label: 'Impfungen', phrase: '«Sind Ihre Impfungen (z.B. Tetanus, FSME, Grippe, Pneumokokken) auf dem aktuellen Stand?»' }
+        ]
+      },
+      {
+        id: 'medi',
+        num: '03',
+        title: 'Medikamentenanamnese',
+        special: false,
+        noteLabel: 'Medikation & Allergien',
+        items: [
+          { id: 'med_rx', sub: 'Aktuelle Medikamente', label: 'Verordnete Medikamente (Namen, Dosierung)', phrase: '«Welche ärztlich verordneten Medikamente nehmen Sie regelmässig ein — idealerweise mit Dosis und Einnahmezeit?»' },
+          { id: 'med_adh', sub: 'Aktuelle Medikamente', label: 'Tatsächlich eingenommene Medikamente (Adhärenz)', phrase: '«Manchmal ist es im Alltag schwierig, an alle Tabletten zu denken — nehmen Sie alle verordneten Medikamente wie geplant ein?»' },
+          { id: 'med_otc', sub: 'Aktuelle Medikamente', label: 'Andere (Schmerzmittel, Abführmittel, Stärkungsmittel etc.)', phrase: '«Nehmen Sie daneben noch rezeptfreie Mittel wie Schmerztabletten (z.B. Ibuprofen), Abführmittel oder Nasensprays?»' },
+          { id: 'med_phyto', sub: 'Aktuelle Medikamente', label: 'Pflanzliche Präparate (Phytotherapeutika)', phrase: '«Verwenden Sie pflanzliche Präparate oder Nahrungsergänzungsmittel (z.B. Johanniskraut, Ginkgo)?»' },
+          { id: 'med_nw', label: 'Medikamenten-Nebenwirkungen', phrase: '«Vertragen Sie Ihre Medikamente gut oder haben Sie störende Nebenwirkungen bemerkt?»' },
+          { id: 'med_all', label: 'Medikamenten-Allergien', phrase: '«Haben Sie auf ein Medikament (z.B. Penicillin, Kontrastmittel) schon einmal allergisch reagiert — und wie hat sich das geäussert?»' }
+        ]
+      },
+      {
+        id: 'sa',
+        num: '04',
+        title: 'Systemanamnese',
+        special: false,
+        noteLabel: 'Systemanamnese (Auffälligkeiten)',
+        items: [
+          { id: 'sa_allg', label: 'Allgemeinsymptome: Fieber, Nachtschweiss, Appetit, Gewichtsverlust', phrase: '«Hatten Sie Fieber, starken Nachtschweiss mit Wäschewechsel, Appetitverlust oder ungewollten Gewichtsverlust?»' },
+          { id: 'sa_kopf', label: 'Kopf, Sinnesorgane', phrase: '«Kopfschmerzen, Sehstörungen (Doppelbilder), Hörverlust, Tinnitus oder Schwindel?»' },
+          { id: 'sa_hals', label: 'Hals', phrase: '«Halsschmerzen, Schluckbeschwerden, Heiserkeit oder Schwellungen im Halsbereich?»' },
+          { id: 'sa_lk', label: 'Lymphknotenstationen', phrase: '«Sind Ihnen tastbare, geschwollene Knoten am Hals, in den Achseln oder in den Leisten aufgefallen?»' },
+          { id: 'sa_thorax', label: 'Thorax; Herz, Lunge (kardiopulmonal)', phrase: '«Brustschmerzen, Atemnot bei Belastung/im Liegen (Orthopnoe), Husten, Auswurf, Herzrasen oder geschwollene Beine?»' },
+          { id: 'sa_abd', label: 'Abdomen, Gastrointestinaltrakt', phrase: '«Bauchschmerzen, Sodbrennen, Übelkeit/Erbrechen, Stuhlgangveränderungen, Blut oder schwarzer Stuhl?»' },
+          { id: 'sa_uro', label: 'Urogenitaltrakt', phrase: '«Brennen beim Wasserlösen, häufiger/nächtlicher Harndrang, Blut im Urin, Flankenschmerz (bzw. Zyklus/Menopause)?»' },
+          { id: 'sa_neuro', label: 'Nervensystem', phrase: '«Lähmungen, Kribbeln, Taubheitsgefühle, Sprachstörungen, Gangunsicherheit oder Bewusstseinsverluste?»' },
+          { id: 'sa_bew', label: 'Bewegungsapparat', phrase: '«Gelenkschmerzen, Gelenkschwellungen, Morgensteifigkeit, Rückenschmerzen oder Muskelschwäche?»' },
+          { id: 'sa_haut', label: 'Haut', phrase: '«Neue Hautausschläge, Juckreiz, gelbe Haut/Augen, schlechte Wundheilung oder veränderte Muttermale?»' }
+        ]
+      },
+      {
+        id: 'bsa',
+        num: '05',
+        title: 'Berufs- und Sozialanamnese',
+        special: false,
+        noteLabel: 'Berufs- & Sozialanamnese',
+        items: [
+          { id: 'bsa_kult', label: 'Kultureller Hintergrund', phrase: '«Gibt es kulturelle, religiöse oder sprachliche Aspekte, die wir für Ihre Behandlung berücksichtigen sollten?»' },
+          { id: 'bsa_reise', label: 'Auslandaufenthalte, Reisetätigkeit', phrase: '«Waren Sie in den letzten Monaten im Ausland oder in den Tropen unterwegs (inkl. Langstreckenflüge)?»' },
+          { id: 'bsa_beruf', label: 'Kindheit, Ausbildung, Beruf', phrase: '«Was arbeiten Sie aktuell oder haben Sie früher gearbeitet? Gibt es körperliche Belastungen oder Schadstoffexposition?»' },
+          { id: 'bsa_soz', label: 'Soziale Situation: Familie, Beziehungen, Wohnen, finanzielle Situation', phrase: '«Wie leben Sie aktuell — allein oder mit Angehörigen? Haben Sie Unterstützung zu Hause und wie ist die aktuelle Belastungssituation?»' }
+        ]
+      },
+      {
+        id: 'fa',
+        num: '06',
+        title: 'Familienanamnese',
+        special: false,
+        noteLabel: 'Familienanamnese',
+        items: [
+          { id: 'fa_elt', label: 'Erkrankungen der Eltern', phrase: '«Sind bei Ihren Eltern Herzinfarkte, Schlaganfälle (vor 55/65 J.), Krebserkrankungen, Diabetes oder Bluthochdruck bekannt?»' },
+          { id: 'fa_geschw', label: 'Erkrankungen der Geschwister', phrase: '«Haben Sie Geschwister und liegen dort chronische, kardiovaskuläre, onkologische oder psychische Erkrankungen vor?»' },
+          { id: 'fa_gross', label: 'Erkrankungen der Grosseltern', phrase: '«Gibt es gehäufte Erbkrankheiten, Thrombosen oder plötzliche Todesfälle bei den Grosseltern?»' },
+          { id: 'fa_kind', label: 'Erkrankungen der Kinder', phrase: '«Haben Sie Kinder und sind diese gesund?»' }
+        ]
+      },
+      {
+        id: 'geri',
+        num: '07',
+        title: 'Geriatrische Anamnese (Speziell)',
+        special: true,
+        noteLabel: 'Geriatrie (BADL/IADL/Kognition)',
+        items: [
+          { id: 'ge_badl', label: 'Basale Aktivitäten des täglichen Lebens (BADL)', phrase: '«Klappt das selbstständige Waschen, Ankleiden, Essen, Toilettengang und Transfer aus dem Bett ohne Hilfe?»' },
+          { id: 'ge_iadl', label: 'Instrumentelle Aktivitäten des täglichen Lebens (IADL)', phrase: '«Wer erledigt Einkaufen, Kochen, Medikamenten-Richten, Finanzen und Haushalt (z.B. Spitex, Angehörige)?»' },
+          { id: 'ge_kog', label: 'Kognition', phrase: '«Haben Sie oder Ihre Angehörigen eine Verschlechterung des Gedächtnisses, der Orientierung oder akute Verwirrtheit bemerkt?»' },
+          { id: 'ge_mob', label: 'Mobilität (Stürze, Hilfsmittel)', phrase: '«Sind Sie im letzten Jahr gestürzt? Benötigen Sie Stock, Rollator oder Hilfe beim Treppensteigen?»' },
+          { id: 'ge_ink', label: 'Urinkontinenz', phrase: '«Kommt es manchmal zu ungewolltem Urinverlust beim Husten oder auf dem Weg zur Toilette?»' },
+          { id: 'ge_ern', label: 'Ernährung', phrase: '«Wie ist Ihr Appetit, trinken Sie genügend, und haben Sie in letzter Zeit ungewollt abgenommen?»' },
+          { id: 'ge_vis', label: 'Visus', phrase: '«Sehen Sie mit Ihrer Brille noch gut genug zum Lesen und zum sicheren Gehen?»' },
+          { id: 'ge_geh', label: 'Gehör', phrase: '«Verstehen Sie Gespräche gut oder tragen Sie ein Hörgerät?»' }
+        ]
+      },
+      {
+        id: 'psy',
+        num: '08',
+        title: 'Psychosoziale Anamnese (Speziell)',
+        special: true,
+        noteLabel: 'Psychosoziale Aspekte',
+        items: [
+          { id: 'ps_zuh', label: 'Zuerst patientenzentriertes, aktives Zuhören', phrase: 'Raum geben, nicht unterbrechen, Emotionen spiegeln (WWSZ / NURSE), bevor man auf geschlossene Fragen engführt.' },
+          { id: 'ps_bps', label: 'Erhebung von biologischen, psychologischen und sozialen Daten im gleichen Arbeitsgang', phrase: '«Wie gehen Sie emotional mit den Beschwerden um? Gibt es aktuell belastende Lebensereignisse, Stress oder Schlafprobleme?»' }
+        ]
+      }
+    ];
+
+    /* =========================================================================
+       4. DATASET: TAB 2 — KÖRPERLICHER STATUS (6 IPPAF STATIONS)
+       ========================================================================= */
+    const STATUS_STATIONS = [
+      {
+        id: 'cardio',
+        name: 'Kardiovaskulärer Status',
+        tag: 'Herz & Gefässe',
+        orderNote: 'Inspektion → Palpation → Auskultation → Peripherie',
+        steps: [
+          { id: 'c1', phase: 'Inspektion', text: 'Allgemeinzustand, Zyanose (zentral/peripher), Ruhedyspnoe, Narben (Sternotomie), Uhrglasnägel / Trommelschlegelfinger, Xanthelasmen.' },
+          { id: 'c2', phase: 'Halsvenen', text: 'Jugularvenendruck (JVP) bei 30–45° Oberkörperhochlagerung + hepatojugulärer Reflux prüfen.', patho: 'JVP > 4 cm über Angulus Ludovici / pos. Reflux → Rechtsherzinsuffizienz, Tamponade, LAE.' },
+          { id: 'c3', phase: 'Pulse & BD', text: 'A. radialis beidseits (Frequenz, Rhythmus, Qualität, Seitendifferenz), Pulsdefizit (Herz vs. Radialis), Blutdruck an beiden Armen.', patho: 'BD-Differenz > 20 mmHg → Aortendissektion / Subclaviastenose; Pulsus parvus et tardus → Aortenstenose.' },
+          { id: 'c4', phase: 'Palpation', text: 'Herzspitzenstoss (5. ICR MCL links), Schwirren (Thrill) und rechtsventrikuläres Heben parasternal.', patho: 'Verlagerter, verbreiterter Spitzenstoss → LV-Dilatation / Hypertrophie.' },
+          { id: 'c5', phase: 'Auskultation', text: 'Alle 4 Klappenpunkte (Aorta 2. ICR re, Pulmonalis 2. ICR li, Trikuspidalis 4. ICR li, Mitralis 5. ICR MCL) + Erb-Punkt (3. ICR li) + Karotiden (Fortleitung) + Axilla. S1/S2, Spaltung, S3/S4, Systolikum/Diastolikum (Punctum maximum, Lautstärke x/6, Ausstrahlung).', patho: 'Spindelförmiges Systolikum 2. ICR re mit Karotisfortleitung → Aortenstenose; Bandförmiges Systolikum Apex → Axilla → Mitralinsuffizienz.' },
+          { id: 'c6', phase: 'Peripherie', text: 'Prätibiale / präsakrale Ödeme (eindrückbar?), Rekapillarisierungszeit (< 2 s), Temperatur & Hautkolorit der Extremitäten.' }
+        ],
+        normalText: 'Kardiovaskulärer Status: Herzaktion regelmässig, normokard, S1 und S2 rein, keine pathologischen Herzgeräusche oder Extratöne (kein S3/S4). Herzspitzenstoss im 5. ICR links MCL nicht verbreitert. Halsvenen bei 45° nicht gestaut, hepatojugulärer Reflux negativ. Periphere Pulse (A. radialis, A. dorsalis pedis, A. tibialis posterior) allseits kräftig, symmetrisch und seitengleich palpabel. Keine prätibialen Ödeme, Rekapillarisierungszeit < 2 s.'
+      },
+      {
+        id: 'pulm',
+        name: 'Pulmonaler Status',
+        tag: 'Thorax & Lunge',
+        orderNote: 'Inspektion → Palpation → Perkussion → Auskultation',
+        steps: [
+          { id: 'p1', phase: 'Inspektion', text: 'Atemfrequenz (normal 12–18/Min), Atemmechanik (Einsatz Atemhilfsmuskulatur, Lippenbremse, Einziehungen), Thoraxform (Fassthorax, Kyphoskoliose), Zyanose.' },
+          { id: 'p2', phase: 'Palpation', text: 'Symmetrische Thoraxexkursion (Daumen auf BWS/Rippenbogen), Stimmfremitus ("99" mit Ulnarkante im Seitenvergleich), Druckschmerz / Hautemphysem.', patho: 'Stimmfremitus verstärkt → Infiltrat/Pneumonie; abgeschwächt/aufgehoben → Pleuraerguss, Pneumothorax.' },
+          { id: 'p3', phase: 'Perkussion', text: 'Vergleichende Perkussion von apikal nach basal dorsal & ventral (sonor vs. hyposonor/gedämpft vs. hypersonor) + Atemverschieblichkeit der Lungengrenzen (normal 4–6 cm).', patho: 'Dämpfung → Erguss / Konsolidierung; Hypersonor → Pneumothorax / Lungenemphysem.' },
+          { id: 'p4', phase: 'Auskultation', text: 'Tiefes Ein- und Ausatmen durch geöffneten Mund im Seitenvergleich (dorsal 4–5 Etagen, lateral, ventral). Atemgeräusch (vesikulär, bronchial, abgeschwächt).', patho: 'Bronchialatmen über Peripherie → Konsolidierung; stummes Hemithorax → Spannungspneumothorax / grosser Erguss.' },
+          { id: 'p5', phase: 'Nebengeräusche', text: 'Differenzierung: feinblasige (Alveolen: Lungenödem, Fibrose, Pneumonie) vs. grobblasige RGs (Bronchien), Giemen/Brummen (exspiratorisch: Asthma/COPD), inspiratorischer Stridor (obere Atemwege!), Pleurareiben.' }
+        ],
+        normalText: 'Pulmonaler Status: Eupnoe (AF 14/Min), Thorax symmetrisch, seitengleiche Atemexkursion, kein Einsatz der Atemhilfsmuskulatur. Stimmfremitus beidseits seitengleich mittellaut. Über beiden Lungenfeldern sonorer Klopfschall, Lungengrenzen basal gut atemverschieblich (ca. 5 cm). Vesikuläres Atemgeräusch beidseits bis basal, keine pathologischen Nebengeräusche (keine RGs, kein Giemen, Brummen, Stridor oder Pleurareiben).'
+      },
+      {
+        id: 'abdomen',
+        name: 'Abdomineller Status',
+        tag: 'Strikte I→A→P→P!',
+        orderNote: 'STRIKTE REIHENFOLGE: 1. Inspektion → 2. Auskultation → 3. Perkussion → 4. Palpation (erst nach Auskultation tasten!)',
+        steps: [
+          { id: 'a1', phase: '1. Inspektion', text: 'Bauchdecke im Liegen (flach, vorgewölbt, eingefallen), Narben, Hernien (Husten/Kopfheben), Striae, Caput medusae, Ikterus, sichtbare Peristaltik.' },
+          { id: 'a2', phase: '2. Auskultation', text: 'VOR Perkussion/Palpation! Darmgeräusche in allen 4 Quadranten (normal 5–30/Min) + Strömungsgeräusche über Aorta abdominalis & Nierenarterien.', patho: 'Hochgestellte klingende DG → mechanischer Ileus; Totenstille (>2 Min) → paralytischer Ileus.' },
+          { id: 'a3', phase: '3. Perkussion', text: 'Alle 4 Quadranten (tympanitisch vs. gedämpft), Lebergrösse in MCL (normal 8–12 cm), Traube-Raum (Milzvergrösserung), Aszites-Prüfung (Flankendämpfung & Undulationsphänomen).', patho: 'Wechselnde Flankendämpfung (Shifting Dullness) → freier Aszites.' },
+          { id: 'a4', phase: '4. Palpation', text: 'Vorher nach Schmerzpunkt fragen & dort ZULETZT tasten! Erst oberflächlich (Abwehrspannung/Défense), dann tief in allen 4 Quadranten, Leberrand (Inspiration), Milz (Rechtsseitenlage), Bauchaorta.' },
+          { id: 'a5', phase: 'Spezialzeichen', text: 'Murphy-Zeichen (Cholezystitis), McBurney / Lanz / Blumberg (kontralateraler Loslassschmerz) / Rovsing / Psoas-Zeichen (Appendizitis), Nierenlagerklopfschmerz beidseits (Pyelonephritis / Nephrolithiasis).', patho: 'Bretthartes Abdomen + Loslassschmerz → Peritonitis (akutes Abdomen -> Chirurgie!).' }
+        ],
+        normalText: 'Abdomineller Status: Abdomen im Thoraxniveau, keine sichtbaren Narben, Hernien oder Venenzeichen. Regelrechte, lebhafte Darmgeräusche über allen vier Quadranten, keine abdominellen Gefässgeräusche. Perkutorisch regelrechter tympanitischer Klopfschall, keine Flankendämpfung, Traube-Raum frei, Lebergrösse in der MCL ca. 10 cm. Palpatorisch weich, indolent in allen Quadranten, keine Abwehrspannung, keine Resistenzen, Leber und Milz nicht vergrössert tastbar. Murphy-, McBurney-, Lanz-, Blumberg- und Psoas-Zeichen negativ. Nierenlager beidseits klopfindolent.'
+      },
+      {
+        id: 'neuro',
+        name: 'Neurostatus & Hirnnerven I–XII',
+        tag: 'ZNS · PNS · HINTS',
+        orderNote: 'Vigilanz → Meningismus → HN I–XII → Motorik → Reflexe → Sensibilität → Koordination/Gang',
+        steps: [
+          { id: 'n1', phase: 'Vigilanz & Meningismus', text: 'Bewusstsein (GCS 3–15), Orientierung (Zeit, Ort, Person, Situation), Sprache (Aphasie/Dysarthrie), Meningismus (Nackensteifigkeit, Kernig, Brudzinski).', patho: 'Nackensteifigkeit + Fieber/Kopfschmerz → Meningitis oder SAB sofort abklären!' },
+          { id: 'n2', phase: 'HN I–VI', text: 'I Geruch (orientierend); II Visus, Fingerperimetrie (Quadranten), direkte/konsensuelle Lichtreaktion + Swinging-Flashlight (RAPD!); III/IV/VI Augenmotilität (H-Figur, Doppelbilder, Nystagmus, Ptosis); V Sensibilität V1–V3, Masseter, Kornealreflex.' },
+          { id: 'n3', phase: 'HN VII–XII', text: 'VII Mimik (Stirnrunzeln! Zentral spart Stirn, peripher betrifft Stirn); VIII Fingerreiben, Rinne & Weber; IX/X Gaumensegelhebung ("Ah"), Würgereflex; XI M. trapezius & SCM; XII Zungenherausstrecken (Abweichung zur Läsionsseite).' },
+          { id: 'n4', phase: 'Motorik', text: 'Trophik, Tonus (Spastik vs. Rigor/Zahnrad), Arm- und Beinhalteversuch (Pronation/Absinken = latente Parese), Kraftprüfung nach MRC 0–5 im Seitenvergleich.' },
+          { id: 'n5', phase: 'Reflexe', text: 'Muskeleigenreflexe seitengleich (BSR C5/6, RSR C5/6, TSR C7, PSR L3/4, ASR S1) + Pyramidenbahnzeichen (Babinski!).', patho: 'Positiver Babinski + Hyperreflexie/Spastik → Läsion 1. Motoneuron (ZNS).' },
+          { id: 'n6', phase: 'Sensibilität & Koord.', text: 'Oberflächensensibilität (Berührung/Schmerz), Vibration (Stimmgabel) & Lagesinn; Finger-Nase-Versuch (FNV), Knie-Hacke-Versuch (KHV), Diadochokinese, Romberg, Unterberger-Tretversuch, Seiltänzergang.' },
+          { id: 'n7', phase: 'HINTS (akuter Schwindel)', text: 'Bei akutem vestibulärem Syndrom (AVS): Head-Impulse-Test, Nystagmus (Blickrichtungswechsel?), Test-of-Skew (vertikale Einstellbewegung).', patho: 'INFARCT-Regel (zentral/Schlaganfall!): Impulse Normal, Fast-phase Alternating, Refixation on Cover Test.' }
+        ],
+        normalText: 'Neurologischer Status: Patient wach, allseits orientiert (GCS 15), Sprache flüssig, kein Meningismus. Hirnnerven I–XII orientierend intakt: Pupillen isokor, rund, prompte direkte und konsensuelle Lichtreaktion, kein RAPD, Okulomotorik allseits frei ohne Doppelbilder oder Nystagmus, Mimik seitengleich, Gehör orientierend symmetrisch, Gaumensegel hebt symmetrisch, Zunge gerade. Arm- und Beinhalteversuch ohne Absinken oder Pronation, Kraft allseits MRC 5/5, Tonus regelrecht. MER (BSR, RSR, TSR, PSR, ASR) mittellebhaft und seitengleich, Babinski beidseits negativ. Sensibilität intakt. FNV, KHV und Diadochokinese regelrecht; Romberg negativ, Gangbild und Seiltänzergang sicher.'
+      },
+      {
+        id: 'msk',
+        name: 'Bewegungsapparat',
+        tag: 'Schulter · Knie · WS',
+        orderNote: 'Inspektion → Palpation → Beweglichkeit (Neutral-Null) → Funktionstests → pDMS',
+        steps: [
+          { id: 'm1', phase: 'Schulter', text: 'Inspektion (Atrophie, Scapula alata), Neutral-Null-Methode (aktiv/passiv), Painful Arc (60–120°), Impingement (Neer, Hawkins-Kennedy), Rotatorenmanschette (Jobe/Supraspinatus, Aussenrotation/Infraspinatus, Lift-off/Belly-Press/Subscapularis), Apprehension-Test (Instabilität).' },
+          { id: 'm2', phase: 'Kniegelenk', text: 'Inspektion (Erguss, Achse Valgus/Varus, Rötung/Überwärmung), Tanzende Patella (Erguss), Zohlen-Zeichen, Stabilität: Lachman & vordere/hintere Schublade (VKB/HKB), Valgus-/Varusstress in 0° & 30° (Seitenbänder), Meniskus (McMurray, Steinmann I/II, Payr).' },
+          { id: 'm3', phase: 'Wirbelsäule', text: 'Inspektion (Lot, Skoliose, Adams-Vorbeugetest), Klopf- & Stauchungsschmerz über Dornfortsätzen, Ott (BWS: 30→32 cm) & Schober (LWS: 10→15 cm), Finger-Boden-Abstand (FBA).' },
+          { id: 'm4', phase: 'Radikulopathie L4–S1', text: 'Lasègue & Bragard (Wurzelreizung L5/S1), gekreuzter Lasègue, pDMS + Kennmuskeln/Dermatome: L4 (M. quadriceps, PSR, Innenknöchel), L5 (Grosszehenheber/Fersengang, Fussrücken/Grosszehe), S1 (Zehenspitzengang, ASR, Fussrand lateral).', patho: 'Reithosenanästhesie + Blasen-/Mastdarmstörung + progrediente Parese → CAUDA-EQUINA-NOTFALL (sofort MRT + Neurochirurgie!).' }
+        ],
+        normalText: 'Bewegungsapparat: Symmetrische Achsen und Muskelreliefs, keine Rötung, Schwellung oder Überwärmung der untersuchten Gelenke. Schulter beidseits frei beweglich nach Neutral-Null, Painful Arc, Neer, Hawkins, Jobe und Lift-off negativ. Knie beidseits ohne Erguss (tanzende Patella negativ), bandstabil (Lachman, Schubladen, Valgus-/Varusstress negativ), Meniskuszeichen (McMurray/Steinmann) negativ. Wirbelsäule im Lot, kein Dornfortsatzklopfschmerz, Schober 10/15 cm, Lasègue beidseits negativ, Kennmuskeln L4–S1 MRC 5/5, periphere Durchblutung, Motorik und Sensibilität (pDMS) allseits intakt.'
+      },
+      {
+        id: 'lk_vasc',
+        name: 'Lymphknoten, Schilddrüse & Gefässe',
+        tag: 'LK · SD · PAVK/ABI',
+        orderNote: 'Systematische Stationen von kranial nach kaudal + periphere Gefässdiagnostik',
+        steps: [
+          { id: 'l1', phase: 'Lymphknoten', text: 'Systematisch im Seitenvergleich: submental, submandibulär, prä-/retroaurikulär, zervikal (entlang M. SCM), nuchal, supraklavikulär (Virchow-Drüse links!), axillär (Arm entspannt abgestützt), inguinal.', patho: 'Derb, schmerzlos, verbacken, > 1 cm (bes. supraklavikulär) → Malignom/Lymphom; weich & druckdolent → reaktiv/infektiös.' },
+          { id: 'l2', phase: 'Schilddrüse', text: 'Inspektion ventral (Struma, Narbe, Schluckakt); Palpation von DORSAL bei leicht flektiertem Hals mit Schluckakt (Grösse, Konsistenz, Knoten, Verschieblichkeit, Druckdolenz); Auskultation bei Struma (Schwirren/Strömungsgeräusch bei M. Basedow!).' },
+          { id: 'l3', phase: 'Arterienstatus', text: 'Pulsstatus komplett: A. carotis (nie bds. gleichzeitig!), A. brachialis, A. radialis/ulnaris, A. femoralis, A. poplitea, A. tibialis posterior, A. dorsalis pedis + Auskultation Karotiden/Femoralis.' },
+          { id: 'l4', phase: 'Gefäss-Funktionstests', text: 'Allen-Test (Hohlhandbogen vor arterieller Punktion!), Ratschow-Lagerungsprobe (Beinhebung + Fusskreisen -> Abblassen -> reaktive Hyperämie > 15 s pathologisch), Knöchel-Arm-Index (ABI: normal 0.9–1.3; < 0.9 PAVK; > 1.3 Mediasklerose!).' }
+        ],
+        normalText: 'Lymphknoten, Schilddrüse & Gefässe: Zervikale, supraklavikuläre, axilläre und inguinale Lymphknotenstationen beidseits unauffällig, keine pathologisch vergrösserten oder indurierten Lymphknoten palpabel. Schilddrüse von dorsal normal gross, weich, schluckverschieblich, indolent, ohne tastbare Knoten. Arterielle Pulse (A. carotis, A. radialis, A. femoralis, A. poplitea, A. tibialis posterior, A. dorsalis pedis) beidseits kräftig und seitengleich, keine Strömungsgeräusche. Allen-Test beidseits unauffällig, Ratschow-Lagerungsprobe regelrecht, keine trophischen Hautläsionen.'
+      }
+    ];
+
+    /* =========================================================================
+       5. DATASET: TAB 3 — TOP 10 OSCE LEITSYMPTOME & RED FLAGS
+       ========================================================================= */
+    const LEITSYMPTOME = [
+      {
+        id: 'thorax',
+        name: '1. Thoraxschmerz',
+        tag: 'Big 5 Notfall',
+        big5: ['Akutes Koronarsyndrom (STEMI / NSTEMI)', 'Lungenarterienembolie (LAE)', 'Akute Aortendissektion', 'Spannungspneumothorax', 'Ösophagusruptur (Boerhaave-Syndrom)'],
+        redFlags: 'Vernichtungs-/Reissschmerz mit Ausstrahlung in Rücken/Arm/Kiefer, Kaltschweissigkeit, Hypotonie/Schock, BD-Differenz >20 mmHg, einseitig aufgehobenes Atemgeräusch, Hypoxie.',
+        anamnese: '7 Dimensionen exakt! Belastungsabhängig vs. pleuritisch vs. bewegungs-/druckabhängig? Plötzlich maximal (Dissektion/Pneu) vs. crescendo (ACS)? Kardiovaskuläre Risikofaktoren, Wells-Kriterien (OP, Immobilisation, Tumor), heftiges Erbrechen (Boerhaave)?',
+        status: 'Vitalzeichen + BD an BEIDEN Armen, Auskultation Herz (neue Insuffizienz?) & Lunge (Seitenvergleich!), Halsvenen, Beinschwellung (TVT), Thoraxwand-Druckschmerz.',
+        diagnostik: '12-Kanal-EKG (<10 Min.!), hs-Troponin T (0h/1h), D-Dimere (nach Wells), BGA, Thorax-Röntgen / CT-Angiographie (LAE/Dissektion), Bedside-Echo.',
+        anki: 'Thoraxschmerz „Big 5“ Must-Not-Miss: {{c1::ACS}}, {{c2::Lungenarterienembolie}}, {{c3::Aortendissektion}}, {{c4::Spannungspneumothorax}} und {{c5::Boerhaave-Syndrom}}.',
+        links: [{ label: '12-Lead ECG Lab', href: 'ecglab.html' }, { label: 'CardioSim', href: 'cardiosim.html' }, { label: 'BloodLab', href: 'bloodlab.html' }, { label: 'Wells Score', href: 'calculators.html#wells' }]
+      },
+      {
+        id: 'dyspnoe',
+        name: '2. Akute & chronische Dyspnoe',
+        tag: 'Kardiopulmonal',
+        big5: ['Lungenarterienembolie (LAE)', 'Akute Herzinsuffizienz / Lungenödem', 'Spannungspneumothorax', 'Schwere COPD-/Asthmaexazerbation / Anaphylaxie', 'Pneumonie / Sepsis'],
+        redFlags: 'SpO₂ < 90%, AF > 25–30/Min, Zyanose, inspiratorischer Stridor, stumme Lunge, Bewusstseinstrübung (Hyperkapnie), Schock.',
+        anamnese: 'Zeitlicher Verlauf (Sekunden: Pneu/LAE/Aspiration; Stunden–Tage: Infekt/HI; Monate: COPD/Anämie/Fibrose), Orthopnoe/PND, Beinödeme, Fieber/Auswurf, Allergene, Rauchen.',
+        status: 'AF, SpO₂, Atemmechanik, Lungenauskultation (feinblasige RGs vs. Giemen vs. stumm), Perkussion, JVP, periphere Ödeme, Wadenumfang.',
+        diagnostik: 'BGA (Hypoxämie, pCO₂, Laktat), 12-Kanal-EKG, Röntgen-Thorax / Lungen-US (B-Linien), NT-proBNP, D-Dimere, BB/CRP/PCT, Troponin.',
+        anki: 'Akute Dyspnoe Triage: Sofort {{c1::SpO₂ & BGA}}, Unterscheidung {{c2::Orthopnoe + feinblasige RGs + ↑NT-proBNP}} (Herzinsuffizienz) vs. {{c3::Giemen}} (Obstruktion) vs. {{c4::klarer Auskultation + Tachykardie}} (LAE).',
+        links: [{ label: 'CardioSim', href: 'cardiosim.html' }, { label: 'FluidSim', href: 'fluidsim.html' }, { label: 'A-a Gradient', href: 'calculators.html#aa-gradient' }]
+      },
+      {
+        id: 'abdomen',
+        name: '3. Akutes Abdomen / Bauchschmerz',
+        tag: 'Nach Quadranten',
+        big5: ['Hohlorganperforation / Peritonitis', 'Rupturiertes Bauchaortenaneurysma (BAA)', 'Mesenterialischämie (Schmerz >> Befund!)', 'Extrauteringravidität (EUG)', 'Appendizitis / Cholezystitis / Ileus / Pankreatitis'],
+        redFlags: 'Brettharte Abwehrspannung, Schock/Synkope, pulsierende Resistenz (BAA), "fauler Frieden" / vernichtender Schmerz bei weichem Bauch (Mesenterialischämie bei VHF!), positiver β-hCG.',
+        anamnese: 'Lokalisation & Schmerzwanderung (epigastrisch → re UB = Appendizitis; Gürtelschmerz = Pankreatitis), Stuhl/Windverhalt, Erbrechen (gallig/kotig/Blut), Fieber, letzte Menstruation (immer bei Frauen im gebärfähigen Alter!).',
+        status: 'Strikte I→A→P→P Reihenfolge! Darmgeräusche (hochgestellt vs. Stille), Abwehrspannung, Murphy, McBurney/Lanz/Blumberg, Hernienpforten, Nierenlager, Leistenpulse.',
+        diagnostik: 'Schwangerschaftstest (β-hCG!), BGA (Laktat!), BB/CRP/Lipase/Leberwerte/Krea, Urinstatus, Abdomen-Sonographie (FAST/Aorta/Galle) / CT-Abdomen.',
+        anki: 'Akutes Abdomen Red Flag: Vernichtender Bauchschmerz bei anfangs {{c1::weichem Abdomen}} + {{c2::Vorhofflimmern}} + {{c3::↑Laktat}} = Verdacht auf {{c4::akute Mesenterialischämie}}.',
+        links: [{ label: 'BloodLab', href: 'bloodlab.html' }, { label: 'FluidSim', href: 'fluidsim.html' }, { label: 'Epidemiology', href: 'epidemiology.html' }]
+      },
+      {
+        id: 'kopfschmerz',
+        name: '4. Kopfschmerz (SNOOP4)',
+        tag: 'SNOOP4 Red Flags',
+        big5: ['Subarachnoidalblutung (SAB)', 'Akute bakterielle Meningitis / Enzephalitis', 'Arteriitis temporalis (Riesenzellarteriitis)', 'Sinusvenenthrombose (SVT)', 'Raumforderung / Hirndruck / Glaukomanfall'],
+        redFlags: 'SNOOP4: Systemisch (Fieber/B-Symptome), Neurologische Ausfälle, Onset (Donnerschlag <1 Min = SAB!), Older (>50 J. neu = Arteriitis temporalis/Tumor), Pattern-Wechsel / Positionsabhängig / Papillenödem / Schwangerschaft.',
+        anamnese: 'Sekundenartiger Beginn ("schlimmster Kopfschmerz meines Lebens"), Nackensteifigkeit, Lichtscheu, Sehverlust/Kauschmerz (Arteriitis temporalis), Antikoagulation, Trauma, bekannte Migräne.',
+        status: 'Temperatur, BD, Meningismus (Kernig/Brudzinski), kompletter Neurostatus inkl. Pupillen/Gesichtsfeld, Palpation A. temporalis (verhärtet/druckdolent?), Bulbuspalpation (steinhart = Glaukomanfall).',
+        diagnostik: 'Sofortiges Nativ-CT Schädel (SAB <6h ~98% sensitiv, sonst LP auf Xanthochromie!), Blutkulturen + LP bei Meningitis (Antibiose nicht verzögern!), BSG/CRP (>50 J. → sofort Steroide bei V.a. Arteriitis temporalis!).',
+        anki: 'Kopfschmerz Red Flags ({{c1::SNOOP4}}): Donnerschlagkopfschmerz = {{c2::SAB}} (sofort cCT); Neu >50 J. + Kauschmerz + Sehverlust = {{c3::Arteriitis temporalis}} (sofort {{c4::Steroide}}).',
+        links: [{ label: 'Neuro-Ophtho Lab', href: 'neuroophtho.html' }, { label: 'BloodLab', href: 'bloodlab.html' }]
+      },
+      {
+        id: 'synkope',
+        name: '5. Synkope',
+        tag: 'Kardial vs. Reflex',
+        big5: ['Arrhythmogene Synkope (AV-Block III°, VT, Long QT, Brugada)', 'Strukturell-kardiale Synkope (Aortenstenose, HCM)', 'Lungenarterienembolie (LAE)', 'Akute Blutung / Aortendissektion / EUG', 'DDx: Epileptischer Anfall (kein echter Kreislaufstillstand)'],
+        redFlags: 'Synkope unter BELASTUNG oder im LIEGEN, fehlende Prodromi ("aus heiterem Himmel"), Palpitationen direkt davor, bekannte Herzerkrankung, plötzlicher Herztod in der Familie (<40 J.), pathologisches EKG.',
+        anamnese: 'Exakter Ablauf VOR (Trigger: Stehen, Schmerz, Belastung; Prodromi: Schwarzwerden, Schwitzen?), WÄHREND (Fremdanamnese! Dauer, Blässe, Zungenbiss lateral, Zuckungen), NACHHER (sofort reorientiert vs. postiktale Verwirrtheit!).',
+        status: 'Schellong-Test (Orthostase: BD-Abfall ≥20 sys oder ≥10 dia nach 3 Min. Stehen), Herzauskultation (Aortenstenose!), BD bds., Neurostatus, Hinweis auf GI-Blutung.',
+        diagnostik: '12-Kanal-EKG (obligat! QTc, Brugada, WPW, AV-Block, LVH, S1Q3T3), Blutzucker, Hb/Elektrolyte, bei kardialem Verdacht Telemetrie & TTE.',
+        anki: 'Hochrisiko-Merkmale für {{c1::kardiale Synkope}}: Auftreten unter {{c2::körperlicher Belastung}} oder im {{c3::Liegen}}, fehlende Prodromi, bekannte strukturelle Herzerkrankung oder {{c4::plötzlicher Herztod in der FA}}.',
+        links: [{ label: '12-Lead ECG Lab', href: 'ecglab.html' }, { label: 'CardioSim', href: 'cardiosim.html' }]
+      },
+      {
+        id: 'schwindel',
+        name: '6. Schwindel (HINTS & TiTrATE)',
+        tag: 'Peripher vs. Zentral',
+        big5: ['Kleinhirn- / Hirnstamminfarkt (zentrales AVS)', 'Neuritis vestibularis (peripheres AVS)', 'Benigner paroxysmaler Lagerungsschwindel (BPLS)', 'Morbus Menière / Vestibuläre Migräne', 'Kardiale / orthostatische Präsynkope'],
+        redFlags: '5 D\'s (Diplopie, Dysarthrie, Dysphagie, Dysmetrie/Ataxie, Drop Attacks), Unfähigkeit frei zu stehen/gehen, zentrales HINTS (INFARCT!), akuter einseitiger Hörverlust (AICA-Infarkt).',
+        anamnese: 'TiTrATE-Systematik: Timing (Sekunden episodisch = BPLS; Stunden = Menière; akut anhaltend >24h = AVS) & Trigger (Kopfbewegung/Umdrehen im Bett vs. spontan). Begleitsymptome (Ohr, Neurologie, Kopfschmerz)?',
+        status: 'Bei akutem anhaltendem Schwindel (AVS): HINTS-Protokoll! Bei episodischem Lagerungsschwindel: Dix-Hallpike-Manöver! Immer Stand/Gang, Koordination (FNV/KHV) und komplette Hirnnerven prüfen.',
+        diagnostik: 'HINTS übertrifft frühes MRT (<48h) in der Sensitivität für Kleinhirninfarkt! Bei zentralem Verdacht sofort Stroke-Protokoll (CT-Angio / MRT DWI).',
+        anki: 'HINTS-Regel ({{c1::INFARCT}}) für zentralen Schwindel/Infarkt: {{c2::Impulse Normal}} (HIT negativ), {{c3::Fast-phase Alternating}} (Blickrichtungsnystagmus), {{c4::Refixation on Cover Test}} (Skew Deviation).',
+        links: [{ label: 'Neuro-Ophtho Lab', href: 'neuroophtho.html' }]
+      },
+      {
+        id: 'fieber',
+        name: '7. Fieber & Sepsis',
+        tag: 'qSOFA · Fokus-Suche',
+        big5: ['Bakterielle Sepsis / Septischer Schock', 'Akute bakterielle Meningitis', 'Infektiöse Endokarditis', 'Urosepsis / Pyelonephritis / Cholangitis', 'Malaria (nach Tropenaufenthalt!)'],
+        redFlags: 'qSOFA ≥ 2 (AF ≥ 22/Min, Vigilanzminderung GCS <15, BD sys ≤ 100 mmHg), Laktat > 2 mmol/L, Petechien/Purpura, Meningismus, Neutropenie (Chemotherapie!), Tropenrückkehr.',
+        anamnese: 'Fokussuche Kopf-bis-Fuss (Husten, Dysurie, Bauchschmerz, Wunden, Gelenke, Katheter/Implantate), Reiseanamnese (Malaria!), Immunsuppression/Chemotherapie, Tier-/Zeckenkontakte.',
+        status: 'Komplette Vitalzeichen, Rekapillarisierungszeit/Marmorierung, Meningismus, Lunge, Herz (neues Geräusch?), Abdomen/Nierenlager, Haut/Wunden/Katheter-Einstichstellen.',
+        diagnostik: '1-Hour Sepsis Bundle: 2×2 Blutkulturen VOR Antibiotika, BGA/Laktat, BB/CRP/PCT/Krea/Bili/Gerinnung, Urinstatus/Urinkultur, Röntgen-Thorax; bei Tropenrückkehr sofort Malaria-Schnelltest + Dicker Tropfen!',
+        anki: 'qSOFA-Kriterien (≥2 = hohes Sepsisrisiko): {{c1::AF ≥ 22/Min}}, {{c2::veränderter Mentalstatus (GCS <15)}} und {{c3::systolischer BD ≤ 100 mmHg}}.',
+        links: [{ label: 'BloodLab', href: 'bloodlab.html' }, { label: 'SOFA Score', href: 'calculators.html#sofa' }, { label: 'BAG Surveillance', href: 'epidemiology.html' }]
+      },
+      {
+        id: 'ruecken',
+        name: '8. Rückenschmerz',
+        tag: 'Cauda Equina',
+        big5: ['Cauda-Equina-Syndrom (Notfall!)', 'Spondylodiszitis / Epiduralabszess', 'Wirbelkörperfraktur (Trauma / Osteoporose)', 'Wirbelsäulenmetastasen / Myelom', 'Extravertebral: BAA / Aortendissektion / Pyelonephritis'],
+        redFlags: 'Reithosenanästhesie, Blasen-/Mastdarmstörung (Harnverhalt/Inkontinenz), progrediente/bilaterale Beinparese, Fieber/i.v.-Drogenkonsum (Abszess!), bekannte Malignität/B-Symptome, Nachtschmerz, Alter >50 + Trauma/Steroide.',
+        anamnese: 'Ausstrahlung entlang Dermatom (L4/L5/S1)? Verschlimmerung beim Husten/Niesen? Miktion/Stuhlverhalten aktiv abfragen! Fieber, Gewichtsverlust, Tumor-PA, Osteoporose/Steroide.',
+        status: 'Inspektion, Dornfortsatzklopfschmerz, Lasègue/Bragard, Kennmuskeln L4–S1 (Fersen-/Zehengang), PSR/ASR, Sensibilität inkl. perianal (bei V.a. Cauda!), Nierenlager, Bauchaorta.',
+        diagnostik: 'Bei fehlenden Red Flags (unspezifischer Kreuzschmerz): KEINE sofortige Bildgebung! Bei Cauda Equina / motorischem Ausfall / Infekt / Tumor: sofortiges MRT LWS + Labor (BB, CRP, BSG).',
+        anki: 'Cauda-Equina-Syndrom Trias: {{c1::Reithosenanästhesie}}, {{c2::Blasen-/Mastdarmstörung}} und {{c3::Beinparesen / ausgefallene Reflexe}} → Notfall-MRT & sofortige Dekompression.',
+        links: [{ label: 'Epidemiology', href: 'epidemiology.html' }]
+      },
+      {
+        id: 'husten',
+        name: '9. Husten & Hämoptoe',
+        tag: 'Infekt · Tumor · LAE',
+        big5: ['Bronchuskarzinom (bei Rauchern >40 J. / >8 Wo)', 'Lungenarterienembolie (Infarktpneumonie)', 'Tuberkulose (Kavernen / Migration)', 'Ambulant erworbene Pneumonie (CAP)', 'Linksherzinsuffizienz / ACE-Hemmer-Husten / Asthma'],
+        redFlags: 'Massive Hämoptoe (>100–200 mL/24h = Erstickungsgefahr!), B-Symptomatik (Gewichtsverlust, Nachtschweiss), >30 Pack-Years, Heiserkeit (Rekurrensparese), Hypoxie, Dyspnoe.',
+        anamnese: 'Dauer (akut <3 Wo vs. chronisch >8 Wo), Auswurf (purulent, blutig, schaumig-rosa?), B-Symptome, Raucheranamnese (Pack-Years), ACE-Hemmer (Lisinopril/Enalapril!), Reflux/Post-nasal Drip, TB-Exposition.',
+        status: 'Vitalzeichen/SpO₂, Lungenauskultation & Perkussion, zervikale/supraklavikuläre Lymphknoten (Virchow!), Uhrglasnägel, Beinödeme.',
+        diagnostik: 'Röntgen-Thorax (bei >3–4 Wo, Red Flags, Hämoptoe, Pneumonieverdacht), BB/CRP/PCT, CURB-65, Sputum (TB: 3× Morgensputum + Isolation!), Spirometrie bei chronischem Husten, CT-Thorax bei Hämoptoe/Tumorverdacht.',
+        anki: 'Chronischer Husten (>8 Wochen) bei normalem Röntgen-Thorax & Nichtraucher — Top 3 Ursachen: {{c1::Upper Airway Cough Syndrome (Post-nasal Drip)}}, {{c2::Asthma}} und {{c3::GERD}} (plus immer {{c4::ACE-Hemmer}} prüfen!).',
+        links: [{ label: 'CURB-65', href: 'calculators.html#curb-65' }, { label: 'NKRS Oncology', href: 'epidemiology.html' }, { label: 'BloodLab', href: 'bloodlab.html' }]
+      },
+      {
+        id: 'bein',
+        name: '10. Einseitige Beinschwellung / Monarthritis',
+        tag: 'TVT · Sept. Arthritis',
+        big5: ['Tiefe Beinvenenthrombose (TVT)', 'Septische Arthritis (Gelenk-Notfall!)', 'Erysipel / Phlegmone / Nekrotisierende Fasziitis', 'Kristallarthritis (Gicht / Pseudogicht)', 'Rupturierte Baker-Zyste / Kompartmentsyndrom'],
+        redFlags: 'Begleitende Dyspnoe/Thoraxschmerz (LAE!), hohes Fieber + extrem schmerzhafte aktive & passive Gelenkbewegung (septische Arthritis!), rasch progrediente Rötung + Schmerz >> Befund (nekrotisierende Fasziitis), Kälte/Blässe/Pulslosigkeit (akute Ischämie).',
+        anamnese: 'Wells-Risikofaktoren für TVT (OP, Immobilisation, Flug, Tumor, Östrogene/Pille, frühere TVT), Fieber/Schüttelfrost, Eintrittspforte (Fussmykose!), frühere Gichtanfälle/Harnsäure, Trauma.',
+        status: 'Umfangsdifferenz beider Unterschenkel (≥3 cm!), Überwärmung, Druckschmerz entlang tiefem Venensystem, Gelenkerguss & Beweglichkeit, Hautgrenzen (scharf = Erysipel), Fusspulse!',
+        diagnostik: 'TVT: Wells-Score → D-Dimere (bei niedriger Wahrscheinlichkeit) oder direkt Kompressionssonographie! Akute Monarthritis: SOFORT Gelenkpunktion (Zellzahl >50\'000/µL, Gram/Kultur, Polarisationsmikroskopie auf Kristalle)!',
+        anki: 'Akute schmerzhafte Monarthritis: Goldstandard-Sofortdiagnostik ist die {{c1::Gelenkpunktion}} (Zellzahl, Gram/Kultur, Kristalle) zum Ausschluss einer {{c2::septischen Arthritis}} (>50\'000 Leukozyten/µL).',
+        links: [{ label: 'Wells DVT/PE', href: 'calculators.html#wells' }, { label: 'CoagSim', href: 'coagsim.html' }, { label: 'BloodLab', href: 'bloodlab.html' }]
+      }
+    ];
+
+    /* =========================================================================
+       6. DATASET: TAB 4 — OSCE KOMMUNIKATIONSRUBRIKEN
+       ========================================================================= */
+    const COMM_RUBRICS = [
+      {
+        code: 'WWSZ',
+        title: 'Aktives Zuhören (WWSZ)',
+        sub: 'Basis-Technik in jeder Anamnese-Station',
+        items: [
+          { key: 'W', name: 'Warten', desc: 'Patient*in 1–2 Minuten ausreden lassen, Pausen aushalten (nonverbales Nicken, Blickkontakt).' },
+          { key: 'W', name: 'Wiederholen', desc: 'Zentrale Schlüsselwörter des Patienten aufgreifen («Sie sagten, der Druck kam ganz plötzlich…»).' },
+          { key: 'S', name: 'Spiegeln', desc: 'Emotionen benennen und validieren («Ich merke, dass Ihnen das richtig Angst macht.»).' },
+          { key: 'Z', name: 'Zusammenfassen', desc: 'Zwischenzusammenfassung zur Kontrolle («Wenn ich Sie richtig verstanden habe… stimmt das so?»).' }
+        ]
+      },
+      {
+        code: 'NURSE',
+        title: 'Empathie-Modell (NURSE)',
+        sub: 'Umgang mit starken Emotionen, Angst & Wut',
+        items: [
+          { key: 'N', name: 'Naming', desc: 'Emotion klar benennen: «Es wirkt auf mich, als mache Ihnen dieser Befund grosse Sorgen.»' },
+          { key: 'U', name: 'Understanding', desc: 'Verständnis zeigen: «Ich kann gut nachvollziehen, dass diese Ungewissheit sehr belastend ist.»' },
+          { key: 'R', name: 'Respecting', desc: 'Wertschätzung aussprechen: «Ich bewundere, wie konsequent Sie bisher damit umgegangen sind.»' },
+          { key: 'S', name: 'Supporting', desc: 'Unterstützung zusichern: «Wir gehen die nächsten Schritte jetzt gemeinsam an — Sie sind damit nicht allein.»' },
+          { key: 'E', name: 'Exploring', desc: 'Vertiefen: «Was genau geht Ihnen gerade durch den Kopf? Was bereitet Ihnen am meisten Angst?»' }
+        ]
+      },
+      {
+        code: 'SPIKES',
+        title: 'Breaking Bad News (SPIKES)',
+        sub: 'Übermittlung schlechter Nachrichten (z.B. Tumor-Verdacht)',
+        items: [
+          { key: 'S', name: 'Setting', desc: 'Ruhiger Raum, Sitzposition auf Augenhöhe, Telefon stumm, Angehörige erwünscht?, Taschentücher bereit.' },
+          { key: 'P', name: 'Perception', desc: 'Vorwissen abholen: «Was wurde Ihnen bisher zu den Untersuchungen gesagt? Was vermuten Sie selbst?»' },
+          { key: 'I', name: 'Invitation', desc: 'Informationsbedürfnis klären: «Möchten Sie die Ergebnisse heute im Detail besprechen?»' },
+          { key: 'K', name: 'Knowledge', desc: 'Vorwarnung («Ich habe leider keine guten Nachrichten»), klare einfache Sprache ohne Jargon, kleine Portionen, Pausen!' },
+          { key: 'E', name: 'Emotions', desc: 'Reaktion abwarten, Schweigen aushalten, Emotionen mit NURSE auffangen.' },
+          { key: 'S', name: 'Strategy & Summary', desc: 'Konkreter nächster Schritt (Biopsie, Tumorboard, Folgetermin), Rückfragen klären, Ansprechperson nennen.' }
+        ]
+      },
+      {
+        code: 'STRUKTUR',
+        title: 'Strukturierung & Signposting',
+        sub: 'Gibt Prüfer*innen und Patient*innen klare Orientierung',
+        items: [
+          { key: '1', name: 'Gesprächseinstieg', desc: 'Vorstellung (Name, Funktion), Identität prüfen, Setting/Zeitrahmen klären, offene Eingangsfrage.' },
+          { key: '2', name: 'Signposting (Übergänge)', desc: 'Themenwechsel ankündigen: «Ich habe nun ein gutes Bild Ihrer Beschwerden. Als Nächstes würde ich gerne kurz Ihre Medikamente und Vorerkrankungen durchgehen.»' },
+          { key: '3', name: 'Zwischen-Zusammenfassung', desc: 'Nach dem Jetzigen Leiden kurz zusammenfassen — gibt Strukturpunkte und korrigiert Missverständnisse.' },
+          { key: '4', name: 'Abschluss & Teach-Back', desc: '«Könnten Sie kurz in eigenen Worten wiederholen, was wir jetzt vereinbart haben und wann Sie sofort wiederkommen sollten?»' }
+        ]
+      }
+    ];
+
+    /* =========================================================================
+       7. DATASET: TAB 5 — 12 REALISTIC TIMED SWISS OSCE STATIONS
+       ========================================================================= */
+    const OSCE_STATIONS = [
+      {
+        id: 'st1', num: '01', specialty: 'Notfall', duration: 600,
+        title: '58j. Mann — Retrosternaler Druckschmerz',
+        setting: 'Notfallstation · Koje 3',
+        patient: 'Herr Beat Keller, 58 Jahre',
+        vitals: { BD: '148/92 mmHg', HF: '96/min', AF: '18/min', SpO2: '97% RL', Temp: '36.8°C' },
+        task: 'Führen Sie eine fokussierte Anamnese (BIHAM/KAIM) durch, nennen Sie relevante Befunde für den fokussierten Status und formulieren Sie Verdachtsdiagnose, wichtigste Differentialdiagnosen sowie die Sofortmassnahmen.',
+        ddx: 'Verdachtsdiagnose: Akutes Koronarsyndrom (NSTEMI / STEMI). Big-5 DDx: Lungenarterienembolie, Aortendissektion, Spannungspneumothorax, Boerhaave / Perikarditis. Sofort: 12-Kanal-EKG (<10 Min.), Monitor, i.v.-Zugang, hs-TnT 0h/1h, ASA 250 mg i.v., Antikoagulation, Analgesie/Nitrate (nach RV-Ausschluss).',
+        anki: 'OSCE Thoraxschmerz: Sofortiges {{c1::12-Kanal-EKG (<10 Min.)}}, BD an {{c2::beiden Armen}} (Ausschluss Aortendissektion), hs-Troponin {{c3::0h/1h}} und Big-5 DDx benennen.',
+        checklist: {
+          Anamnese: [
+            'Offene Eingangsfrage + 7 Dimensionen komplett (Lokalisation/Ausstrahlung, Qualität, Beginn, NRS, Verstärkung/Linderung, Begleitsymptome, Einschränkung)',
+            'ICE aktiv erfragt (z.B. Angst vor Herzinfarkt)',
+            'Kardiovaskuläre Risikofaktoren (Hypertonie, Diabetes, Lipide, Nikotin/Pack-Years, pos. FA)',
+            'Aktive Abfrage von Big-5-Red-Flags (Reissschmerz/Rücken, Beinschwellung/Immobilisation, Fieber/Atemabhängigkeit)',
+            'Medikamentenanamnese inkl. Antikoagulation, PDE-5-Hemmer (vor Nitraten!) & Allergien'
+          ],
+          Status: [
+            'BD-Messung an beiden Armen (Seitendifferenz >20 mmHg?)',
+            'Herzauskultation (neues Geräusch?) & Lungenauskultation (Stauungs-RGs, Seitengleichheit)',
+            'Inspektion Halsvenen & Unterschenkel (Ödeme / TVT-Zeichen)'
+          ],
+          Kommunikation: [
+            'Ruhige, empathische Führung trotz Schmerz/Angst (NURSE / Signposting)',
+            'Kurze Zusammenfassung und Erklärung der unmittelbaren nächsten Schritte'
+          ],
+          'DDx & Management': [
+            'Verdachtsdiagnose ACS + mind. 3 weitere Big-5-DDx benannt (LAE, Dissektion, Pneu)',
+            '12-Kanal-EKG innerhalb von 10 Min. + Monitorüberwachung angeordnet',
+            'Labor: hs-Troponin T (0h/1h), BB, Elektrolyte, Krea, Gerinnung, ggf. D-Dimere',
+            'Akuttherapie: ASA, Analgesie (Morphin/Nitrate nur wenn BD stabil & kein RV-Infarkt), Kardiologie-Konsil / PCI'
+          ]
+        }
+      },
+      {
+        id: 'st2', num: '02', specialty: 'Innere Medizin', duration: 600,
+        title: '68j. Frau — Progrediente Dyspnoe & Knöchelödeme',
+        setting: 'Hausarztpraxis / Ambulatorium',
+        patient: 'Frau Margrit Brunner, 68 Jahre',
+        vitals: { BD: '154/88 mmHg', HF: '104/min', AF: '22/min', SpO2: '93% RL', Temp: '36.6°C' },
+        task: 'Erheben Sie die kardiopulmonale Anamnese, führen Sie einen zielgerichteten kardiopulmonalen Status durch und erläutern Sie das diagnostische und therapeutische Vorgehen.',
+        ddx: 'Verdachtsdiagnose: Akut dekompensierte Herzinsuffizienz (ADHF). DDx: COPD-Exazerbation, Pneumonie, LAE, Anämie, Niereninsuffizienz. Trigger suchen (Medikamenten-Adhärenz, VHF, Ischämie, Infekt, NSAIDs!). Therapie: Schleifendiuretikum (Furosemid/Torasemid), O₂ falls <90%, TTE, NT-proBNP, 4-Pillar-HFrEF-Optimierung.',
+        anki: 'OSCE Dekompensierte Herzinsuffizienz: Frage gezielt nach {{c1::Orthopnoe (Anzahl Kissen)}}, {{c2::PND}}, {{c3::rascher Gewichtszunahme}}, Nykturie und {{c4::NSAID-Einnahme / Adhärenz}}.',
+        checklist: {
+          Anamnese: [
+            'Dyspnoe-Quantifizierung (NYHA I–IV), Orthopnoe (Kissenanzahl), paroxysmale nächtliche Dyspnoe (PND)',
+            'Gewichtszunahme, Beinödeme, Nykturie erfragt',
+            'Auslöser abgeklärt: Medikamenten-Adhärenz, salzreiche Kost, NSAIDs (Ibuprofen!), Infekt, Angina pectoris, Palpitationen',
+            'Persönliche Anamnese (KHK, Hypertonie, VHF, Diabetes, Nierenfunktion) & ICE'
+          ],
+          Status: [
+            'Halsvenen (JVP bei 45° + hepatojugulärer Reflux)',
+            'Lungenauskultation (basale feinblasige Stauungs-RGs, Pleuraerguss-Dämpfung)',
+            'Herzauskultation (Rhythmus/VHF, S3, Vitium) + Prüfung prätibialer Ödeme'
+          ],
+          Kommunikation: [
+            'Wertschätzendes Nachfragen zur Medikamenteneinnahme (nicht vorwurfsvoll)',
+            'Verständliche Erklärung der Wasseransammlung & Trinkmengen-/Gewichtskontrolle'
+          ],
+          'DDx & Management': [
+            'ADHF als Hauptdiagnose + relevante DDx (LAE, Pneumonie, COPD)',
+            'Diagnostik: 12-Kanal-EKG, NT-proBNP, BB/Krea/E-lyte/Troponin, Röntgen-Thorax/Lungen-US, TTE',
+            'Akuttherapie: Schleifendiuretikum (Furosemid/Torasemid), engmaschige Gewichts-/K⁺-/Krea-Kontrolle'
+          ]
+        }
+      },
+      {
+        id: 'st3', num: '03', specialty: 'Notfall', duration: 600,
+        title: '31j. Frau — Plötzlicher Vernichtungskopfschmerz',
+        setting: 'Notfallstation · Schockraum / Triage 1',
+        patient: 'Frau Laura Meier, 31 Jahre',
+        vitals: { BD: '162/96 mmHg', HF: '102/min', AF: '18/min', SpO2: '99% RL', Temp: '37.4°C' },
+        task: 'Triage-Anamnese bei akutem Kopfschmerz (SNOOP4), fokussierte neurologische Untersuchung und unmittelbarer Diagnostik- und Behandlungsplan.',
+        ddx: 'Verdachtsdiagnose: Subarachnoidalblutung (SAB, meist rupturiertes Aneurysma). DDx: Akute Meningitis, Sinusvenenthrombose (Pille!), Zervikalarteriendissektion, RCVS. Sofort: Nativ-cCT (<6h hochsensitiv; bei negativem CT >6h LP auf Xanthochromie!), CT-Angio, BD-Kontrolle, Nimodipin, Neurochirurgie.',
+        anki: 'Bei V.a. {{c1::SAB}} (Donnerschlagkopfschmerz): Sofortiges {{c2::Nativ-cCT}}; falls negativ (>6h nach Beginn) → {{c3::Lumbalpunktion}} (Xanthochromie / 3-Gläser-Probe).',
+        checklist: {
+          Anamnese: [
+            'Exakter Beginn erfragt: sekundenschnelles Maximum (Donnerschlagkopfschmerz!)',
+            'SNOOP4 Red Flags komplett: Fieber, Nackensteifigkeit, Lichtscheu, Übelkeit/Erbrechen, Bewusstseinsverlust/Fokalneurologie',
+            'Risikofaktoren: Nikotin, Hypertonie, orale Kontrazeption (SVT!), Schwangerschaft, Trauma, Aneurysma/PKD in FA',
+            'Bekannte Kopfschmerzerkrankung (Migräne) vs. völlig neue Qualität abgegrenzt'
+          ],
+          Status: [
+            'Vigilanz/GCS & Orientierung geprüft',
+            'Meningismus-Prüfung (Nackensteifigkeit, Kernig, Brudzinski)',
+            'Pupillen/Lichtreaktion, Augenmotilität (CN III-Parese bei PCom-Aneurysma!), Gesichtsfeld & grobe Motorik/Sprache'
+          ],
+          Kommunikation: [
+            'Dringlichkeit ruhig und klar vermittelt, Licht dimmen / Analgesie früh anbieten',
+            'Strukturierte Information über sofortige CT-Bildgebung'
+          ],
+          'DDx & Management': [
+            'SAB als oberste Notfall-VD + DDx (Meningitis, SVT, Dissektion)',
+            'Sofortiges Nativ-cCT + CT-Angiographie angeordnet; LP-Indikation bei negativem CT >6h benannt',
+            'Monitoring, i.v.-Zugang, Analgesie, kontrollierte BD-Senkung, Neurochirurgie-Beizug'
+          ]
+        }
+      },
+      {
+        id: 'st4', num: '04', specialty: 'Notfall', duration: 600,
+        title: '23j. Mann — Wandernder Unterbauchschmerz rechts',
+        setting: 'Notfallstation · Chirurgie/Innere',
+        patient: 'Herr Luca Schmid, 23 Jahre',
+        vitals: { BD: '124/76 mmHg', HF: '94/min', AF: '16/min', SpO2: '99% RL', Temp: '38.1°C' },
+        task: 'Fokussierte Bauchschmerzanamnese, systematische abdominelle Untersuchung (IPPA) und Festlegung des weiteren Prozedere.',
+        ddx: 'Verdachtsdiagnose: Akute Appendizitis. DDx: Gastroenteritis, Mesenteriallymphadenitis, Morbus Crohn (Ileitis terminalis), Meckel-Divertikel, Urolithiasis, Hodentorsion (immer mitdenken!). Diagnostik: BB/CRP, Urinstatus, Abdomen-Sonographie, Chirurgie-Konsil (Alvarado Score).',
+        anki: 'Abdomineller Status bei V.a. Appendizitis: Strikte Reihenfolge {{c1::I → A → P → P}}, Schmerzpunkt {{c2::zuletzt}} tasten, Zeichen: {{c3::McBurney, Lanz, Blumberg (kontralateral), Rovsing & Psoas}}.',
+        checklist: {
+          Anamnese: [
+            'Schmerzwanderung erfasst (initial periumbilikal/epigastrisch → rechter Unterbauch)',
+            '7 Dimensionen inkl. Erschütterungsschmerz (Gehen/Husten) & Appetitverlust/Übelkeit',
+            'Stuhlgang (Diarrhoe/Blut), Miktion (Dysurie/Hämaturie), Fieber erfragt',
+            'Voroperationen (z.B. bereits appendektomiert?), Allergien, letzte Nahrungsaufnahme (Nüchternheit für OP!)'
+          ],
+          Status: [
+            'STRIKTE Reihenfolge eingehalten: Inspektion → Auskultation → Perkussion → Palpation',
+            'Schmerzpunkt im rechten Unterbauch ZULETZT palpiert; auf Abwehrspannung geachtet',
+            'Mind. 3 Appendizitiszeichen geprüft (McBurney, Lanz, Blumberg/Loslassschmerz, Psoas, Rovsing)',
+            'Nierenlagerklopfschmerz & Hernienpforten (ggf. Hoden) bedacht'
+          ],
+          Kommunikation: [
+            'Ankündigung der Untersuchung, Schmerzrücksichtnahme (Blick ins Gesicht beim Tasten!)',
+            'Klare Information über Nüchternbleiben, Ultraschall und chirurgische Beurteilung'
+          ],
+          'DDx & Management': [
+            'Akute Appendizitis + DDx (Gastroenteritis, M. Crohn, Nephrolithiasis, Hodentorsion)',
+            'Labor (BB, CRP, Gerinnung), Urinstatus, Abdomen-Sonographie',
+            'Nüchtern belassen, i.v.-Zugang, adäquate Analgesie (maskiert Befund NICHT!), Chirurgie-Konsil'
+          ]
+        }
+      },
+      {
+        id: 'st5', num: '05', specialty: 'Innere Medizin', duration: 600,
+        title: '76j. Mann — Belastungssynkope',
+        setting: 'Medizinische Poliklinik / Notfall',
+        patient: 'Herr Hanspeter Frei, 76 Jahre',
+        vitals: { BD: '116/78 mmHg', HF: '74/min', AF: '15/min', SpO2: '97% RL', Temp: '36.5°C' },
+        task: 'Erheben Sie eine präzise Synkopenanamnese, untersuchen Sie das Herz-Kreislauf-System fokussiert und leiten Sie die Abklärung ein.',
+        ddx: 'Verdachtsdiagnose: Kardiale Belastungssynkope bei hochgradiger Aortenklappenstenose (Trias: Dyspnoe, Angina, Synkope!). DDx: Hochgradiger AV-Block / VT, orthostatische Hypotonie, LAE. Diagnostik: 12-Kanal-EKG, TTE (Öffnungsfläche <1.0 cm², max. Gradient), Monitor/Hospitalisation (TAVI/OP-Evaluation).',
+        anki: 'Symptomatische hochgradige Aortenstenose — klassische Trias: {{c1::Belastungsdyspnoe}}, {{c2::Angina pectoris}} und {{c3::Belastungssynkope}} + spindelförmiges Systolikum im {{c4::2. ICR re mit Karotisfortleitung}}.',
+        checklist: {
+          Anamnese: [
+            'Exakter Ablauf VOR / WÄHREND / NACH Synkope (Auftreten beim Treppensteigen = Hochrisiko!)',
+            'Fremdanamnese / Verletzungsfolgen / rasche Reorientierung vs. postiktale Phase',
+            'Aortenstenose-Trias aktiv abgefragt: Belastungsdyspnoe, Angina pectoris, Schwindel/Synkope',
+            'Medikation (Antihypertensiva, Betablocker, Diuretika, Antikoagulation) & Familienanamnese'
+          ],
+          Status: [
+            'Herzauskultation aller 4 Punkte + Karotiden (rauhes spindelförmiges Systolikum 2. ICR re → Karotiden, leiser A2)',
+            'Pulsqualität (Pulsus parvus et tardus) & Blutdruck (kleine Blutdruckamplitude)',
+            'Lungenauskultation (Stauung?) & orientierender Neurostatus / Verletzungscheck'
+          ],
+          Kommunikation: [
+            'Klare Warnung bezüglich Fahrtauglichkeit / schwerer körperlicher Belastung bis zur Abklärung',
+            'Empathische Aufklärung über notwendige stationäre Überwachung'
+          ],
+          'DDx & Management': [
+            'Kardiale Synkope bei V.a. hochgradige Aortenstenose + DDx (Arrhythmie/AV-Block, Orthostase)',
+            '12-Kanal-EKG (LVH/Strain, AV-Block) + zeitnahe Echokardiographie (TTE)',
+            'Telemetrie/Überwachung, keine aggressiven Vasodilatatoren, Evaluation für TAVI / Klappenersatz'
+          ]
+        }
+      },
+      {
+        id: 'st6', num: '06', specialty: 'Neurologie', duration: 600,
+        title: '63j. Mann — Akuter Drehschwindel & Übelkeit',
+        setting: 'Notfallstation · Neuro-Triage',
+        patient: 'Herr Peter Moser, 63 Jahre',
+        vitals: { BD: '174/96 mmHg', HF: '88/min', AF: '16/min', SpO2: '98% RL', Temp: '36.7°C' },
+        task: 'Differenzieren Sie peripheren vs. zentralen Schwindel mittels fokussierter Anamnese und gezieltem Neurostatus (HINTS-Protokoll).',
+        ddx: 'Verdachtsdiagnose: Zentrales akutes vestibuläres Syndrom — V.a. Kleinhirn- oder Hirnstamminfarkt (PICA/AICA). DDx: Neuritis vestibularis (peripher). Bei kardiovaskulären Risikofaktoren + zentralem HINTS (normaler HIT, blickrichtungswechselnder Nystagmus oder Skew Deviation) oder schwerer Rumpfataxie → Stroke-Protokoll!',
+        anki: 'Bei akutem anhaltendem Schwindel (AVS): Ein {{c1::normaler (negativer) Kopfimpulstest}} ist im HINTS-Protokoll ein {{c2::Red Flag für einen zentralen Schlaganfall}} (PICA/Kleinhirn)!',
+        checklist: {
+          Anamnese: [
+            'TiTrATE: Plötzlicher Beginn, anhaltend (>h) vs. sekundenlange Lagerungsattacken abgegrenzt',
+            'Zentrale Red Flags (5 D\'s): Doppelbilder, Dysarthrie, Dysphagie, Dysmetrie/Ataxie, Sensibilitätsstörung, Kopfschmerz',
+            'Hörverlust / Tinnitus (AICA-Infarkt vs. Menière) abgefragt',
+            'Vaskuläre Risikofaktoren (Hypertonie, VHF, Diabetes, Nikotin) & Antikoagulation'
+          ],
+          Status: [
+            'HINTS komplett erklärt & durchgeführt: Kopfimpulstest (HIT), Nystagmus (Blickrichtungswechsel?), Test-of-Skew',
+            'Hirnnerven (Horner-Syndrom bei Wallenberg!), Gesichtsfeld, Sprache',
+            'Koordination (FNV, KHV, Diadochokinese) & zwingend Stand-/Gehversuch (schwere Rumpfataxie!)'
+          ],
+          Kommunikation: [
+            'Antiemetische/beruhigende Kommunikation bei starker Übelkeit',
+            'Verständliche Erklärung der notwendigen Schlaganfall-Bildgebung'
+          ],
+          'DDx & Management': [
+            'Kleinhirn-/Hirnstamminfarkt vs. Neuritis vestibularis klar gegenübergestellt',
+            'Stroke-Protokoll: Sofort CT + CT-Angio (Ausschluss Blutung/Basilarisverschluss), MRT DWI (Beachtung: frühes MRT kann falsch negativ sein!)',
+            'Neurologie-Konsil, Lyse-/Thrombektomie-Zeitfenster prüfen, Monitoring'
+          ]
+        }
+      },
+      {
+        id: 'st7', num: '07', specialty: 'Geriatrie', duration: 600,
+        title: '82j. Frau — Akute Verwirrtheit nach Sturz',
+        setting: 'Bettenstation / Geriatrie-Notfall',
+        patient: 'Frau Klara Hofer, 82 Jahre (Tochter als Begleitung anwesend)',
+        vitals: { BD: '108/64 mmHg', HF: '104/min', AF: '20/min', SpO2: '96% RL', Temp: '38.2°C' },
+        task: 'Erheben Sie die akute & GERIATRISCHE Anamnese (inkl. Fremdanamnese), identifizieren Sie Delir-Auslöser und planen Sie Diagnostik & Delir-Management.',
+        ddx: 'Verdachtsdiagnose: Akutes Delir (CAM positiv) getriggert durch Harnwegsinfekt/Dehydratation + Sturz (immer Subduralhämatom unter Antikoagulation ausschliessen!). Wichtig: Geriatrische Domänen (BADL/IADL, Kognition Baseline, Mobilität, Polypharmazie/anticholinerge Last!).',
+        anki: 'Geriatrische Anamnese (BIHAM/KAIM): {{c1::BADL, IADL, Kognition, Mobilität}}, {{c2::Urinkontinenz, Ernährung, Visus & Gehör}}. Bei Delir immer {{c3::Infekt, Exsikkose, Polypharmazie & SDH}} ausschliessen.',
+        checklist: {
+          Anamnese: [
+            'Akuter Beginn & fluktuierender Verlauf vs. vorbestehende Demenz (Baseline-Kognition via Tochter!)',
+            'Sturzhergang (Synkope? Kopf angeschlagen? Antikoagulation?)',
+            'Geriatrische BIHAM-Domänen abgefragt: BADL, IADL, Mobilität/Hilfsmittel, Inkontinenz, Ernährung/Trinkmenge, Visus/Gehör',
+            'Polypharmazie & delirogene Medikamente (Benzodiazepine, Anticholinergika, Opioide, Diuretika)'
+          ],
+          Status: [
+            'Aufmerksamkeit & Orientierung (CAM-Kriterien), Verletzungscheck (Kopf, Hüfte/Beinverkürzung)',
+            'Fokussierter Neurostatus (Pupillen, Herdsymptomatik -> SDH?), Volumenstatus & Infektfokus (Lunge, Abdomen, Nierenlager)'
+          ],
+          Kommunikation: [
+            'Ruhige, reorientierende Ansprache direkt an Patientin (Brille/Hörgerät aufsetzen!), Tochter respektvoll einbeziehen'
+          ],
+          'DDx & Management': [
+            'Akutes Delir + Auslösersuche (HWI, Dehydratation, SDH nach Sturz, Elektrolytstörung/Na⁺, Medikamente)',
+            'Diagnostik: Urinstatus/Kultur, BB/CRP/Na⁺/K⁺/Ca²⁺/Krea/TSH/BZ, EKG, cCT bei Sturz/Antikoagulation',
+            'Nicht-pharmakologische Delir-Therapie an 1. Stelle (Reorientierung, Mobilisation, Brille/Hörgerät, Schlaf-Wach-Rhythmus); Auslöser behandeln'
+          ]
+        }
+      },
+      {
+        id: 'st8', num: '08', specialty: 'Innere Medizin', duration: 600,
+        title: '41j. Frau — Palpitationen, Schwitzen & Gewichtsverlust',
+        setting: 'Hausarztpraxis',
+        patient: 'Frau Sandra Wyss, 41 Jahre',
+        vitals: { BD: '142/68 mmHg', HF: '112/min', AF: '16/min', SpO2: '99% RL', Temp: '37.2°C' },
+        task: 'Erheben Sie eine strukturierte endokrinologische Anamnese (BIHAM/KAIM), untersuchen Sie Schilddrüse & periphere Zeichen und erklären Sie die Abklärung.',
+        ddx: 'Verdachtsdiagnose: Hyperthyreose bei Morbus Basedow (Graves\' Disease). DDx: Schilddrüsenautonomie, Thyreoiditis (de Quervain/Hashitoxikose), Phäochromozytom, Angststörung, exogene LT4-Einnahme. Diagnostik: TSH (supprimiert), fT4/fT3, TRAK (TSI), SD-Sonographie/Doppler, 12-Kanal-EKG (VHF!).',
+        anki: 'Merseburger Trias bei Morbus Basedow: {{c1::Struma}}, {{c2::Tachykardie}} und {{c3::Exophthalmus}}. Labor: {{c4::TSH ↓↓, fT4/fT3 ↑↑, TRAK positiv}}.',
+        checklist: {
+          Anamnese: [
+            'Leitsymptome & 7 Dimensionen (Palpitationen, Hitzeintoleranz, Schwitzen, Gewichtsverlust trotz gesteigertem Appetit, innere Unruhe, Diarrhoe)',
+            'Endokrine Orbitopathie (Augenbrennen, Doppelbilder, Hervortreten der Augen) & Zyklusstörungen erfragt',
+            'Medikamenten-/Jodanamnese (Amiodaron, Kontrastmittel, L-Thyroxin) & Nikotin (verschlechtert Orbitopathie!)',
+            'Familienanamnese (Autoimmun-/Schilddrüsenerkrankungen) & ICE'
+          ],
+          Status: [
+            'Schilddrüsenpalpation von DORSAL mit Schluckakt (+ Auskultation auf Schwirren)',
+            'Augenzeichen (Exophthalmus, Lidretraktion, Graefe-Zeichen)',
+            'Feinschlägiger Finger-Tremor (Blatt Papier!), feucht-warme Haut, Herzauskultation (Tachykardie/VHF!), prätibiales Myxödem'
+          ],
+          Kommunikation: [
+            'Signposting & empathische Beruhigung bezüglich der inneren Unruhe/Herzrasen',
+            'Klarer Plan für Blutentnahme, EKG und zeitnahe Befundbesprechung'
+          ],
+          'DDx & Management': [
+            'Hyperthyreose / M. Basedow + DDx (Autonomie, Thyreoiditis, Angststörung, VHF)',
+            'Labor: TSH, fT4, fT3, TRAK (TSI), BB/Leberwerte (Baseline vor Thyreostatika!), EKG, SD-Ultraschall',
+            'Therapie: Betablocker (Propranolol) symptomatisch + Thyreostatikum (Carbimazol/Methimazol) + Rauchstopp!'
+          ]
+        }
+      },
+      {
+        id: 'st9', num: '09', specialty: 'Neurologie', duration: 600,
+        title: '54j. Mann — Kreuzschmerz, Beinschwäche & Miktionsstörung',
+        setting: 'Notfallstation · Dringlichkeit 2',
+        patient: 'Herr Thomas Gerber, 54 Jahre',
+        vitals: { BD: '146/86 mmHg', HF: '90/min', AF: '16/min', SpO2: '99% RL', Temp: '36.8°C' },
+        task: 'Erkennen Sie die neurochirurgische Notfallkonstellation mittels gezielter Anamnese & fokussiertem LWS-/Neurostatus und leiten Sie das Akutmanagement ein.',
+        ddx: 'Verdachtsdiagnose: Akutes Cauda-Equina-Syndrom (meist grosser medialer Bandscheibenvorfall L4/5 oder L5/S1; DDx: Metastase, Epiduralabszess, Hämatom). NOTFALL: Sofortiges MRT LWS + neurochirurgische Dekompression (<24–48h für Erhalt der Blasenfunktion!).',
+        anki: 'Bei V.a. {{c1::Cauda-Equina-Syndrom}}: Sofort {{c2::Restharn-Sonographie}}, Prüfung von {{c3::Reithosensensibilität & Sphinktertonus}}, Notfall-{{c4::MRT LWS}} und sofortiges Neurochirurgie-Konsil.',
+        checklist: {
+          Anamnese: [
+            'Kreuzschmerz mit bilateraler/radikulärer Ausstrahlung + rasche Progredienz erfasst',
+            'Aktive Abfrage von Blasenstörung (Harnverhalt/Überlaufinkontinenz), Stuhlinkontinenz und Taubheit im Genital-/Gesässbereich (Reithose!)',
+            'Infekt- & Tumor-Red Flags abgeklärt (Fieber, B-Symptome, Tumor-PA, Antikoagulation)'
+          ],
+          Status: [
+            'Kennmuskeln L4 (Quadriceps), L5 (Grosszehenheber/Fersengang) & S1 (Zehengang) beidseits nach MRC geprüft',
+            'PSR & ASR seitengleich + Babinski + Lasègue',
+            'Sensibilität inkl. gezielter Prüfung / Benennung von Reithosenareal & Sphinktertonus (DRU) + Blasen-Restharn'
+          ],
+          Kommunikation: [
+            'Sensible, professionelle Ankündigung intimer Fragen/Untersuchungen (Miktion, Reithosenareal)',
+            'Klare Erklärung der Notfallsituation und der raschen MRT-Abklärung'
+          ],
+          'DDx & Management': [
+            'Cauda-Equina-Syndrom sofort erkannt + DDx (Epiduralabszess, Metastase, Konussyndrom)',
+            'Notfall-MRT LWS + Restharnsonographie + sofortiges Neurochirurgie-/Wirbelsäulenkonsil',
+            'Nüchtern belassen (OP-Vorbereitung), adäquate Analgesie, Katheterisierung bei Harnverhalt'
+          ]
+        }
+      },
+      {
+        id: 'st10', num: '10', specialty: 'Notfall', duration: 600,
+        title: '48j. Frau — Geschwollene Wade nach Langstreckenflug',
+        setting: 'Hausarztpraxis / Notfall-Ambulatorium',
+        patient: 'Frau Nicole Baumann, 48 Jahre',
+        vitals: { BD: '126/78 mmHg', HF: '86/min', AF: '15/min', SpO2: '98% RL', Temp: '36.9°C' },
+        task: 'Erheben Sie die Thrombose-Anamnese (Wells-Kriterien), führen Sie den gezielten Gefäss-/Beinstatus durch und legen Sie den diagnostischen Algorithmus & die Therapie fest.',
+        ddx: 'Verdachtsdiagnose: Tiefe Beinvenenthrombose (TVT) rechts. DDx: Rupturierte Baker-Zyste, Erysipel, Muskelfaserriss, oberflächliche Thrombophlebitis. Algorithmus: Wells-Score (≥2 = wahrscheinlich → direkt Kompressionssonographie ohne auf D-Dimere zu warten!). Therapie: DOAC (Apixaban/Rivaroxaban) sofort bei hoher Wahrscheinlichkeit/Bestätigung.',
+        anki: 'TVT-Diagnostik nach {{c1::Wells-Score}}: Bei hoher Wahrscheinlichkeit (≥2 Punkte) direkt {{c2::Kompressionssonographie}}; D-Dimere dienen nur dem {{c3::Ausschluss}} bei niedriger Wahrscheinlichkeit!',
+        checklist: {
+          Anamnese: [
+            '7 Dimensionen der Beinschwellung & Wadenschmerzen',
+            'Systematische Abfrage der Wells-/Virchow-Risikofaktoren: Flug/Immobilisation, OP/Trauma, orale Kontrazeption/Östrogene, Tumor/B-Symptome, frühere TVT/LAE, FA',
+            'LAE-Red Flags aktiv ausgeschlossen: Dyspnoe, pleuritischer Thoraxschmerz, Hämoptoe, Synkope!',
+            'Blutungsrisiko vor Antikoagulation erfragt (Ulzera, kürzliche OP, Medikamente)'
+          ],
+          Status: [
+            'Umfangsmessung beider Unterschenkel im Seitenvergleich (Differenz ≥3 cm = 1 Wells-Punkt!)',
+            'Palpation auf Überwärmung, Spannung, Druckschmerz entlang tiefem Venensystem, Hautrötung (Erysipel-Abgrenzung)',
+            'Fusspulse (arterielle Durchblutung intakt!) & kurze Lungenauskultation'
+          ],
+          Kommunikation: [
+            'Warnzeichen für eine Lungenembolie (Sofort-Notruf bei Atemnot/Brustschmerz!) klar erklärt',
+            'Verständliche Aufklärung zu Ultraschall & Blutverdünnung'
+          ],
+          'DDx & Management': [
+            'TVT als VD + DDx (Baker-Zyste, Erysipel, Muskelfaserriss)',
+            'Wells-Score korrekt angewendet: bei ≥2 Pkt. direkt Kompressionssonographie (nicht allein auf D-Dimere verlassen)',
+            'Antikoagulation (DOAC, z.B. Rivaroxaban/Apixaban, mind. 3 Monate) + Kompressionstherapie + Krea/BB/Leberwerte vor Start'
+          ]
+        }
+      },
+      {
+        id: 'st11', num: '11', specialty: 'Innere Medizin', duration: 600,
+        title: '72j. Mann — Fieber, produktiver Husten & Tachypnoe',
+        setting: 'Notfallstation · Innere Medizin',
+        patient: 'Herr Walter Steiner, 72 Jahre',
+        vitals: { BD: '104/62 mmHg', HF: '108/min', AF: '24/min', SpO2: '91% RL', Temp: '39.1°C' },
+        task: 'Erheben Sie die Infekt- & Pneumonie-Anamnese, führen Sie einen pulmonalen Status durch und bestimmen Sie Risikostratifizierung (CURB-65) sowie die empirische Therapie (SSI).',
+        ddx: 'Verdachtsdiagnose: Ambulant erworbene Pneumonie (CAP) mit Sepsis-Zeichen (qSOFA 1–2, CURB-65 ≥ 2 → stationäre Aufnahme!). Erreger #1: S. pneumoniae (daneben H. influenzae, Legionella, Viren). SSI-Empirie stationär: Ceftriaxon + Makrolid (oder Amoxicillin/Clavulanat + Makrolid) + O₂-Gabe + Flüssigkeit.',
+        anki: 'CURB-65 Pneumonie-Score: {{c1::Confusion}}, {{c2::Urea >7 mmol/L}}, {{c3::Respiratory rate ≥30}}, {{c4::BP <90/60}}, Alter ≥65. Stationäre SSI-Empirie: {{c5::Ceftriaxon + Clarithromycin/Azithromycin}}.',
+        checklist: {
+          Anamnese: [
+            'Husten, Auswurf (Farbe/Blut), Fieber/Schüttelfrost, pleuritischer Schmerz, Dyspnoe',
+            'Risikofaktoren für atypische/resistente Erreger: kürzlicher Spitalaufenthalt, Antibiotika-Vorbehandlung, Reisen/Klimaanlagen (Legionellen!), Pflegeheim, Aspiration',
+            'Komorbiditäten (COPD, Herzinsuffizienz, Diabetes, Immunsuppression), Impfstatus (Pneumokokken/Influenza/COVID)'
+          ],
+          Status: [
+            'Atemfrequenz, SpO₂, Orientierung/Vigilanz (Confusion für CURB-65 / qSOFA!)',
+            'Kompletter pulmonaler Status im Seitenvergleich (Stimmfremitus ↑, Klopfschalldämpfung, feinblasige RGs / Bronchialatmen)',
+            'Volumenstatus & Rekapillarisierungszeit (Sepsis-Beurteilung)'
+          ],
+          Kommunikation: [
+            'Patient bei Tachypnoe/Fieber nicht überfordern (kurze Sätze, O₂ frühzeitig ansprechen)',
+            'Klare Erklärung der stationären Aufnahme & intravenösen Antibiotikatherapie'
+          ],
+          'DDx & Management': [
+            'CAP + Sepsis-Screening (CURB-65 / qSOFA korrekt angewendet → stationäre Indikation)',
+            'Diagnostik: Röntgen-Thorax, BGA/Laktat, 2×2 Blutkulturen VOR Antibiotika, BB/CRP/PCT/Urea/Krea/E-lyte, Legionellen-Ag im Urin',
+            'Therapie: O₂-Gabe (Ziel SpO₂ 92–96%), bilanzierte Flüssigkeit, zeitnahe i.v.-Antibiose nach SSI (Ceftriaxon oder Amox/Clav + Makrolid)'
+          ]
+        }
+      },
+      {
+        id: 'st12', num: '12', specialty: 'Kommunikation', duration: 600,
+        title: '61j. Patientin — Suspekter Bronchuskarzinom-Befund (SPIKES)',
+        setting: 'Hausarztpraxis · Besprechungszimmer',
+        patient: 'Frau Elisabeth Tanner, 61 Jahre',
+        vitals: { BD: '132/80 mmHg', HF: '82/min', AF: '14/min', SpO2: '98% RL', Temp: '36.6°C' },
+        task: 'Übermitteln Sie der Patientin den CT-Thorax-Befund (3.8 cm spikulierter Rundherd im rechten Oberlappen mit hilärer Lymphadenopathie — hochgradiger Verdacht auf Bronchuskarzinom, histologisch noch nicht gesichert) nach dem SPIKES-Protokoll.',
+        ddx: 'Kommunikationsstation (Breaking Bad News): Entscheidend ist NICHT medizinisches Detailwissen, sondern Setting, Perception, Invitation, klare ehrliche Sprache mit Vorwarnung (ohne definitive Diagnose vor Biopsie!), Aushalten von Schweigen/Emotionen (NURSE) und ein konkreter, tragfähiger Fahrplan (Bronchoskopie/Biopsie, Angehörigen-Einbezug, Folgetermin).',
+        anki: 'SPIKES-Protokoll für Breaking Bad News: {{c1::Setting}}, {{c2::Perception}} (Vorwissen), {{c3::Invitation}}, {{c4::Knowledge}} (Vorwarnung + klar ohne Jargon), {{c5::Emotions (NURSE)}}, {{c6::Strategy & Summary}}.',
+        checklist: {
+          Anamnese: [
+            'S — Setting: Ruhige Atmosphäre geschaffen, Sitzposition auf Augenhöhe, Störungen ausgeschlossen, Begleitperson angesprochen',
+            'P — Perception: Vorwissen und eigene Befürchtungen der Patientin VOR Befundmitteilung erfragt'
+          ],
+          Status: [
+            'I — Invitation: Informationsbedürfnis geklärt («Möchten Sie den Befund heute im Detail besprechen?»)',
+            'K — Knowledge: Vorwarnung («Ich habe leider keine guten Nachrichten»), verständliche Sprache ohne Fachjargon, klar benannt: hochgradiger Tumorverdacht, endgültige Diagnose erst nach Gewebeprobe!'
+          ],
+          Kommunikation: [
+            'E — Emotions: Bewusste Pause nach der Nachricht zugelassen, Emotionen nicht weggeredet',
+            'NURSE angewendet: Emotion benannt (Naming), Verständnis gezeigt (Understanding), Begleitung zugesichert (Supporting)',
+            'Kein falscher Trost («Das wird schon gut») und keine voreiligen Überlebensstatistiken ohne Nachfrage'
+          ],
+          'DDx & Management': [
+            'S — Strategy: Konkrete nächste Schritte erklärt (Pneumologie/Bronchoskopie + Biopsie, Staging, interdisziplinäres Tumorboard)',
+            'Soziales Netz / Heimweg heute angesprochen (wer ist zu Hause?)',
+            'Konkreter zeitnaher Folgetermin & Erreichbarkeit vereinbart + kurze Zusammenfassung / Rückfragen (Teach-Back)'
+          ]
+        }
+      }
+    ];
+
+    /* =========================================================================
+       8. APPLICATION STATE
+       ========================================================================= */
+    const state = {
+      activeTab: 'anamnese',
+      // Tab 1: Anamnese
+      anamChecks: {},
+      showPhrasing: true,
+      showGeriatrie: true,
+      showPsychosozial: true,
+      anamNotes: { jl: '', pa: '', medi: '', sa: '', bsa: '', fa: '', geri: '', psy: '' },
+      // Tab 2: Status
+      activeStatusId: 'cardio',
+      statusChecks: {},
+      // Tab 3: Leitsymptome
+      lsSearch: '',
+      // Tab 4: SBAR
+      sbar: { s: '', b: '', a: '', r: '' },
+      // Tab 5: OSCE Simulator
+      simFilter: 'Alle',
+      activeStationId: 'st1',
+      simRevealed: {},   // { stationId: bool }
+      simChecks: {},     // { stationId: { itemKey: bool } }
+    };
+
+    /* =========================================================================
+       9. TAB 1 RENDERER: ANAMNESE (BIHAM / KAIM)
+       ========================================================================= */
+    function getVisibleAnamSections() {
+      return ANAMNESE_SECTIONS.filter(sec => {
+        if (sec.id === 'geri' && !state.showGeriatrie) return false;
+        if (sec.id === 'psy' && !state.showPsychosozial) return false;
+        return true;
+      });
+    }
+
+    function updateAnamProgress() {
+      const secs = getVisibleAnamSections();
+      let total = 0, checked = 0;
+      secs.forEach(s => s.items.forEach(it => {
+        total++;
+        if (state.anamChecks[it.id]) checked++;
+      }));
+      const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+      document.getElementById('anam-progress-bar').style.width = `${pct}%`;
+      document.getElementById('anam-progress-text').textContent = `${checked} / ${total} abgehakt (${pct}%)`;
+    }
+
+    function syncAnamToolbar() {
+      const pillCls = on => `h-7 px-2.5 rounded-md border font-medium transition-colors ${
+        on
+          ? 'border-tealLight/50 dark:border-tealDark/50 bg-teal-500/12 text-tealLight dark:text-tealDark'
+          : 'border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian text-zinc-500 dark:text-zinc-400'
+      }`;
+      const phBtn = document.getElementById('toggle-phrasing');
+      phBtn.textContent = state.showPhrasing ? 'Formulierungshilfen: AN' : 'Formulierungshilfen: AUS';
+      phBtn.className = pillCls(state.showPhrasing);
+
+      document.getElementById('toggle-geriatrie').className = pillCls(state.showGeriatrie);
+      document.getElementById('toggle-psychosozial').className = pillCls(state.showPsychosozial);
+    }
+
+    function renderAnamnese() {
+      syncAnamToolbar();
+      const secs = getVisibleAnamSections();
+      const container = document.getElementById('anam-checklist-container');
+
+      container.innerHTML = secs.map(sec => {
+        const doneCount = sec.items.filter(it => state.anamChecks[it.id]).length;
+        const allDone = doneCount === sec.items.length;
+
+        // Render items with explicit grouping for "7 Dimensionen eines Symptoms" & "Aktuelle Medikamente"
+        let itemsHTML = '';
+        let inDimGroup = false;
+        let inMedGroup = false;
+
+        sec.items.forEach((it, idx) => {
+          const isChecked = Boolean(state.anamChecks[it.id]);
+
+          if (it.dim === 1 && !inDimGroup) {
+            inDimGroup = true;
+            itemsHTML += `
+              <div class="mt-1.5 mb-1.5 p-2.5 rounded-lg border border-tealLight/25 dark:border-tealDark/25 bg-teal-500/[0.03] dark:bg-teal-400/[0.04] space-y-1.5">
+                <div class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-tealLight dark:text-tealDark pb-1 border-b border-tealLight/15 dark:border-tealDark/15">
+                  7 Dimensionen eines Symptoms
+                </div>
+            `;
+          }
+          if (inDimGroup && !it.dim) {
+            inDimGroup = false;
+            itemsHTML += `</div>`;
+          }
+
+          if (it.sub === 'Aktuelle Medikamente' && !inMedGroup) {
+            inMedGroup = true;
+            itemsHTML += `
+              <div class="mt-1 mb-1.5 p-2.5 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/60 dark:bg-obsidian/50 space-y-1.5">
+                <div class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 pb-1 border-b border-[#e4e4e7]/70 dark:border-borderDark/70">
+                  Aktuelle Medikamente
+                </div>
+            `;
+          }
+          if (inMedGroup && it.sub !== 'Aktuelle Medikamente') {
+            inMedGroup = false;
+            itemsHTML += `</div>`;
+          }
+
+          itemsHTML += `
+            <label class="flex items-start gap-2.5 p-1.5 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-900/60 cursor-pointer transition-colors">
+              <input type="checkbox" data-anam-id="${it.id}" class="osce-check mt-0.5 w-3.5 h-3.5 shrink-0 rounded" ${isChecked ? 'checked' : ''} />
+              <div class="min-w-0 flex-1">
+                <div class="text-[12.5px] leading-snug ${isChecked ? 'line-through text-zinc-400 dark:text-zinc-500' : 'font-medium text-[#09090b] dark:text-[#f4f4f5]'}">
+                  ${it.dim ? `<span class="font-mono text-[10px] text-tealLight dark:text-tealDark mr-1">${it.dim}.</span>` : ''}${escapeHtml(it.label)}
+                </div>
+                ${state.showPhrasing && it.phrase ? `<div class="mt-0.5 text-[11px] leading-snug text-zinc-500 dark:text-zinc-400 italic">${escapeHtml(it.phrase)}</div>` : ''}
+              </div>
+            </label>
+          `;
+
+          if (idx === sec.items.length - 1) {
+            if (inDimGroup) itemsHTML += `</div>`;
+            if (inMedGroup) itemsHTML += `</div>`;
+          }
+        });
+
+        return `
+          <article class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 bg-zinc-50/50 dark:bg-zinc-950/35">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="font-mono text-[10.5px] text-zinc-400 dark:text-zinc-500">${sec.num}</span>
+                <h3 class="text-[13.5px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] truncate">${escapeHtml(sec.title)}</h3>
+                ${sec.special ? '<span class="font-mono text-[9.5px] px-1.5 py-0.2 rounded border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 shrink-0">Speziell</span>' : ''}
+              </div>
+              <span class="font-mono text-[10.5px] tabular-nums shrink-0 ${allDone ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-zinc-400 dark:text-zinc-500'}">${doneCount}/${sec.items.length}</span>
+            </div>
+            <div class="p-3 space-y-1">${itemsHTML}</div>
+          </article>
+        `;
+      }).join('');
+
+      container.querySelectorAll('input[data-anam-id]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          state.anamChecks[cb.dataset.anamId] = cb.checked;
+          renderAnamnese();
+        });
+      });
+
+      renderAnamNotesFields();
+      updateAnamProgress();
+    }
+
+    function renderAnamNotesFields() {
+      const wrap = document.getElementById('anam-notes-fields');
+      const secs = getVisibleAnamSections();
+      // Only rebuild if visible section count changed, otherwise preserve focus
+      const currentKeys = Array.from(wrap.querySelectorAll('textarea')).map(t => t.dataset.noteSec).join(',');
+      const targetKeys = secs.map(s => s.id).join(',');
+      if (currentKeys === targetKeys) return;
+
+      wrap.innerHTML = secs.map(sec => `
+        <div class="space-y-1">
+          <label for="note-${sec.id}" class="font-mono text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">${escapeHtml(sec.noteLabel)}</label>
+          <textarea id="note-${sec.id}" data-note-sec="${sec.id}" rows="2" placeholder="Stichworte zu ${escapeHtml(sec.title)}..." class="w-full p-2 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian text-xs text-[#09090b] dark:text-[#f4f4f5] placeholder-zinc-400 focus:outline-none focus:border-tealLight dark:focus:border-tealDark">${escapeHtml(state.anamNotes[sec.id] || '')}</textarea>
+        </div>
+      `).join('');
+
+      wrap.querySelectorAll('textarea[data-note-sec]').forEach(ta => {
+        ta.addEventListener('input', () => {
+          state.anamNotes[ta.dataset.noteSec] = ta.value;
+        });
+      });
+    }
+
+    function buildAnamMarkdown() {
+      const secs = getVisibleAnamSections();
+      const lines = ['# Anamnese (Systematik BIHAM / KAIM)', ''];
+      secs.forEach(sec => {
+        const note = (state.anamNotes[sec.id] || '').trim();
+        const checkedItems = sec.items.filter(i => state.anamChecks[i.id]).map(i => i.label);
+        lines.push(`## ${sec.title}`);
+        if (note) lines.push(note);
+        if (checkedItems.length) lines.push(`- Erhoben: ${checkedItems.join('; ')}`);
+        if (!note && !checkedItems.length) lines.push('- (keine Angaben erfasst)');
+        lines.push('');
+      });
+      return lines.join('\n').trim();
+    }
+
+    function sendAnamToSbar() {
+      const n = state.anamNotes;
+      const sitParts = [n.jl].filter(Boolean);
+      const bgParts = [
+        n.pa ? `PA: ${n.pa}` : '',
+        n.medi ? `Medikation: ${n.medi}` : '',
+        n.bsa ? `Sozial/Beruf: ${n.bsa}` : '',
+        n.fa ? `FA: ${n.fa}` : '',
+        n.geri ? `Geriatrie: ${n.geri}` : ''
+      ].filter(Boolean);
+      const assParts = [n.sa ? `Systemanamnese: ${n.sa}` : '', n.psy ? `Psychosozial: ${n.psy}` : ''].filter(Boolean);
+
+      if (sitParts.length) state.sbar.s = sitParts.join('\n');
+      if (bgParts.length) state.sbar.b = bgParts.join(' | ');
+      if (assParts.length && !state.sbar.a) state.sbar.a = assParts.join(' | ');
+
+      syncSbarInputs();
+      switchMainTab('kommunikation');
+      showToast('Notizen in SBAR Builder übernommen');
+    }
+
+    /* =========================================================================
+       10. TAB 2 RENDERER: KÖRPERLICHER STATUS (IPPAF)
+       ========================================================================= */
+    function renderStatusTab() {
+      const listEl = document.getElementById('status-station-list');
+      listEl.innerHTML = STATUS_STATIONS.map(st => {
+        const active = st.id === state.activeStatusId;
+        const done = st.steps.filter(s => state.statusChecks[s.id]).length;
+        return `
+          <button data-status-id="${st.id}" type="button" class="w-full text-left px-2.5 py-2 rounded-lg border transition-colors flex items-center justify-between gap-2 ${
+            active
+              ? 'border-tealLight/60 dark:border-tealDark/50 bg-teal-500/[0.08] text-[#09090b] dark:text-white'
+              : 'border-transparent hover:border-[#e4e4e7] dark:hover:border-borderDark hover:bg-zinc-50 dark:hover:bg-zinc-900/50 text-zinc-700 dark:text-zinc-300'
+          }">
+            <div class="min-w-0">
+              <div class="text-xs font-medium truncate">${escapeHtml(st.name)}</div>
+              <div class="font-mono text-[9.5px] text-zinc-400 dark:text-zinc-500">${escapeHtml(st.tag)}</div>
+            </div>
+            <span class="font-mono text-[10px] tabular-nums shrink-0 ${done === st.steps.length ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-zinc-400'}">${done}/${st.steps.length}</span>
+          </button>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('[data-status-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.activeStatusId = btn.dataset.statusId;
+          renderStatusTab();
+        });
+      });
+
+      const st = STATUS_STATIONS.find(x => x.id === state.activeStatusId) || STATUS_STATIONS[0];
+      const doneCount = st.steps.filter(s => state.statusChecks[s.id]).length;
+      const pct = Math.round((doneCount / st.steps.length) * 100);
+
+      const detailEl = document.getElementById('status-detail-container');
+      detailEl.innerHTML = `
+        <article class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+          <div class="px-4 py-3 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-3 bg-zinc-50/50 dark:bg-zinc-950/35">
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-sm font-semibold text-[#09090b] dark:text-[#f4f4f5]">${escapeHtml(st.name)}</h2>
+                <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-teal-500/10 text-tealLight dark:text-tealDark border border-tealLight/25 dark:border-tealDark/25">${doneCount} / ${st.steps.length} (${pct}%)</span>
+              </div>
+              <p class="mt-0.5 font-mono text-[10.5px] ${st.id === 'abdomen' ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-zinc-500 dark:text-zinc-400'}">${escapeHtml(st.orderNote)}</p>
+            </div>
+            <button id="btn-reset-status-checks" type="button" class="h-7 px-2.5 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-obsidian text-[11px] font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white transition-colors">
+              Station zurücksetzen
+            </button>
+          </div>
+
+          <div class="p-4 space-y-2.5">
+            ${st.steps.map(step => {
+              const checked = Boolean(state.statusChecks[step.id]);
+              return `
+                <label class="flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                  checked
+                    ? 'border-emerald-500/30 bg-emerald-500/[0.04]'
+                    : 'border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 hover:border-tealLight/40 dark:hover:border-tealDark/40'
+                }">
+                  <input type="checkbox" data-stcheck="${step.id}" class="osce-check mt-0.5 w-4 h-4 shrink-0" ${checked ? 'checked' : ''} />
+                  <div class="min-w-0 flex-1 space-y-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="font-mono text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.2 rounded bg-zinc-200/70 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200">${escapeHtml(step.phase)}</span>
+                    </div>
+                    <p class="text-[12.5px] leading-relaxed ${checked ? 'line-through text-zinc-400 dark:text-zinc-500' : 'text-[#09090b] dark:text-[#f4f4f5]'}">${escapeHtml(step.text)}</p>
+                    ${step.patho ? `
+                      <div class="mt-1 px-2.5 py-1.5 rounded-md border border-rose-500/25 bg-rose-500/[0.06] text-[11px] text-rose-700 dark:text-rose-300 leading-snug">
+                        <strong class="font-mono text-[9.5px] uppercase tracking-wider mr-1">Pathologie:</strong>${escapeHtml(step.patho)}
+                      </div>
+                    ` : ''}
+                  </div>
+                </label>
+              `;
+            }).join('')}
+          </div>
+        </article>
+
+        <!-- Copyable German Normalbefund-Textbaustein -->
+        <article class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+          <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 bg-zinc-50/50 dark:bg-zinc-950/35">
+            <span class="font-mono text-[10.5px] font-semibold uppercase tracking-wider text-tealLight dark:text-tealDark">Normalbefund-Textbaustein (Dokumentation)</span>
+            <button id="btn-copy-normalbefund" type="button" class="h-7 px-2.5 rounded-md border border-tealLight/50 dark:border-tealDark/50 bg-teal-500/10 hover:bg-teal-500/20 font-mono text-[10.5px] font-medium text-tealLight dark:text-tealDark transition-colors">
+              Textbaustein kopieren
+            </button>
+          </div>
+          <p class="p-4 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300 font-sans select-all">${escapeHtml(st.normalText)}</p>
+        </article>
+      `;
+
+      detailEl.querySelectorAll('input[data-stcheck]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          state.statusChecks[cb.dataset.stcheck] = cb.checked;
+          renderStatusTab();
+        });
+      });
+
+      document.getElementById('btn-reset-status-checks').addEventListener('click', () => {
+        st.steps.forEach(s => { delete state.statusChecks[s.id]; });
+        renderStatusTab();
+      });
+
+      document.getElementById('btn-copy-normalbefund').addEventListener('click', () => {
+        copyText(st.normalText, 'Normalbefund kopiert');
+      });
+    }
+
+    /* =========================================================================
+       11. TAB 3 RENDERER: LEITSYMPTOME & RED FLAGS (TOP 10)
+       ========================================================================= */
+    function renderLeitsymptome() {
+      const q = state.lsSearch.trim().toLowerCase();
+      const filtered = LEITSYMPTOME.filter(item => {
+        if (!q) return true;
+        const blob = `${item.name} ${item.tag} ${item.big5.join(' ')} ${item.redFlags} ${item.anamnese} ${item.status} ${item.diagnostik}`.toLowerCase();
+        return blob.includes(q);
+      });
+
+      document.getElementById('ls-count-badge').textContent = `${filtered.length} / ${LEITSYMPTOME.length} Leitsymptome`;
+      const grid = document.getElementById('ls-grid');
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '<div class="xl:col-span-2 p-8 rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-center text-xs text-zinc-500">Kein passendes Leitsymptom gefunden.</div>';
+        return;
+      }
+
+      grid.innerHTML = filtered.map(item => `
+        <article class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col justify-between overflow-hidden">
+          <div>
+            <!-- Header -->
+            <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 bg-zinc-50/50 dark:bg-zinc-950/35">
+              <div class="flex items-center gap-2 min-w-0">
+                <h3 class="text-[13.5px] font-semibold text-[#09090b] dark:text-[#f4f4f5] truncate">${escapeHtml(item.name)}</h3>
+                <span class="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-elevatedDark border border-[#e4e4e7] dark:border-borderDark text-zinc-500 dark:text-zinc-400 shrink-0">${escapeHtml(item.tag)}</span>
+              </div>
+              <button data-anki-ls="${item.id}" type="button" class="px-2 py-0.5 rounded border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-obsidian hover:border-tealLight/60 dark:hover:border-tealDark/60 font-mono text-[10px] text-zinc-600 dark:text-zinc-300 shrink-0 transition-colors">
+                Copy Anki Cloze
+              </button>
+            </div>
+
+            <div class="p-4 space-y-3 text-xs">
+              <!-- Rose Red Flags & Big 5 -->
+              <div class="p-3 rounded-lg border border-rose-500/30 bg-rose-500/[0.06] space-y-1.5">
+                <div class="font-mono text-[10px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Red Flags &amp; Must-Not-Miss („Big 5“)</div>
+                <div class="flex flex-wrap gap-1">
+                  ${item.big5.map(b => `<span class="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-800 dark:text-rose-200 font-medium text-[10.5px]">${escapeHtml(b)}</span>`).join('')}
+                </div>
+                <p class="text-[11.5px] leading-snug text-rose-900 dark:text-rose-200/90 pt-0.5">${escapeHtml(item.redFlags)}</p>
+              </div>
+
+              <!-- Structured Clinical Triad -->
+              <div class="space-y-2">
+                <div>
+                  <span class="font-mono text-[10px] font-semibold uppercase tracking-wider text-tealLight dark:text-tealDark">Fokussierte Anamnese: </span>
+                  <span class="text-zinc-700 dark:text-zinc-300 leading-relaxed">${escapeHtml(item.anamnese)}</span>
+                </div>
+                <div>
+                  <span class="font-mono text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Fokussierter Status: </span>
+                  <span class="text-zinc-700 dark:text-zinc-300 leading-relaxed">${escapeHtml(item.status)}</span>
+                </div>
+                <div>
+                  <span class="font-mono text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">Sofort-Diagnostik: </span>
+                  <span class="text-zinc-700 dark:text-zinc-300 leading-relaxed">${escapeHtml(item.diagnostik)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MedLab Deep Links Footer -->
+          <div class="px-4 py-2 border-t border-[#e4e4e7]/70 dark:border-borderDark/70 bg-zinc-50/60 dark:bg-zinc-950/40 flex flex-wrap items-center gap-1.5">
+            <span class="font-mono text-[9.5px] uppercase tracking-wider text-zinc-400 mr-1">MedLab:</span>
+            ${item.links.map(l => `
+              <a href="${l.href}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-tealLight/30 dark:border-tealDark/30 bg-teal-500/10 hover:bg-teal-500/20 font-mono text-[10px] font-medium text-tealLight dark:text-tealDark transition-colors">
+                ${escapeHtml(l.label)} &rarr;
+              </a>
+            `).join('')}
+          </div>
+        </article>
+      `).join('');
+
+      grid.querySelectorAll('[data-anki-ls]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const obj = LEITSYMPTOME.find(x => x.id === btn.dataset.ankiLs);
+          if (obj) copyText(obj.anki, 'Anki Cloze kopiert');
+        });
+      });
+    }
+
+    /* =========================================================================
+       12. TAB 4 RENDERER: KOMMUNIKATION & SBAR BUILDER
+       ========================================================================= */
+    function renderCommRubrics() {
+      document.getElementById('comm-rubrics-grid').innerHTML = COMM_RUBRICS.map(rub => `
+        <article class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+          <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 bg-zinc-50/50 dark:bg-zinc-950/35">
+            <div>
+              <h3 class="text-[13px] font-semibold text-[#09090b] dark:text-[#f4f4f5]">${escapeHtml(rub.title)}</h3>
+              <p class="text-[10.5px] text-zinc-500 dark:text-zinc-400">${escapeHtml(rub.sub)}</p>
+            </div>
+            <span class="font-mono text-[10px] font-semibold px-2 py-0.5 rounded bg-teal-500/10 text-tealLight dark:text-tealDark border border-tealLight/25 dark:border-tealDark/25 shrink-0">${escapeHtml(rub.code)}</span>
+          </div>
+          <div class="p-3.5 space-y-2 text-xs">
+            ${rub.items.map(it => `
+              <div class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-md bg-zinc-100 dark:bg-elevatedDark border border-[#e4e4e7] dark:border-borderDark font-mono text-[10.5px] font-semibold text-tealLight dark:text-tealDark flex items-center justify-center shrink-0 mt-0.5">${escapeHtml(it.key)}</span>
+                <div class="min-w-0">
+                  <strong class="text-[#09090b] dark:text-[#f4f4f5]">${escapeHtml(it.name)}:</strong>
+                  <span class="text-zinc-600 dark:text-zinc-300 leading-snug"> ${escapeHtml(it.desc)}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </article>
+      `).join('');
+    }
+
+    function syncSbarInputs() {
+      document.getElementById('sbar-s').value = state.sbar.s;
+      document.getElementById('sbar-b').value = state.sbar.b;
+      document.getElementById('sbar-a').value = state.sbar.a;
+      document.getElementById('sbar-r').value = state.sbar.r;
+      updateSbarPreview();
+    }
+
+    function updateSbarPreview() {
+      const { s, b, a, r } = state.sbar;
+      const lines = [
+        `S (Situation): ${s.trim() || '—'}`,
+        `B (Background): ${b.trim() || '—'}`,
+        `A (Assessment): ${a.trim() || '—'}`,
+        `R (Recommendation): ${r.trim() || '—'}`
+      ];
+      const text = lines.join('\n\n');
+      document.getElementById('sbar-preview').textContent = text;
+
+      const rawCombined = `${s} ${b} ${a} ${r}`.trim();
+      const words = rawCombined ? rawCombined.split(/\s+/).length : 0;
+      const sec = Math.round((words / 130) * 60);
+      const badge = document.getElementById('sbar-metrics');
+      badge.textContent = `${words} Wörter · ~${sec} Sek.`;
+
+      if (sec > 75) {
+        badge.className = 'font-mono text-[10.5px] px-2 py-0.5 rounded border border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300 tabular-nums';
+      } else if (words > 0) {
+        badge.className = 'font-mono text-[10.5px] px-2 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 tabular-nums';
+      } else {
+        badge.className = 'font-mono text-[10.5px] px-2 py-0.5 rounded border border-[#e4e4e7] dark:border-borderDark text-zinc-500 tabular-nums';
+      }
+    }
+
+    /* =========================================================================
+       13. TAB 5 RENDERER: OSCE STATION SIMULATOR (12 TIMED SWISS STATIONS)
+       ========================================================================= */
+    function getStationScore(station) {
+      const map = state.simChecks[station.id] || {};
+      let total = 0, done = 0;
+      Object.entries(station.checklist).forEach(([grp, arr]) => {
+        arr.forEach((_, idx) => {
+          total++;
+          if (map[`${grp}_${idx}`]) done++;
+        });
+      });
+      return { done, total, pct: total > 0 ? Math.round((done / total) * 100) : 0 };
+    }
+
+    function renderSimulatorTab() {
+      const specs = ['Alle', 'Innere Medizin', 'Notfall', 'Neurologie', 'Geriatrie', 'Kommunikation'];
+      const filtWrap = document.getElementById('sim-spec-filters');
+      filtWrap.innerHTML = specs.map(sp => {
+        const on = sp === state.simFilter;
+        return `
+          <button data-simspec="${sp}" type="button" class="px-2 py-0.5 rounded-md border text-[10.5px] font-medium transition-colors ${
+            on
+              ? 'border-tealLight/50 dark:border-tealDark/50 bg-teal-500/12 text-tealLight dark:text-tealDark'
+              : 'border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-zinc-200'
+          }">${sp}</button>
+        `;
+      }).join('');
+
+      filtWrap.querySelectorAll('[data-simspec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.simFilter = btn.dataset.simspec;
+          const visible = OSCE_STATIONS.filter(s => state.simFilter === 'Alle' || s.specialty === state.simFilter);
+          if (visible.length && !visible.some(s => s.id === state.activeStationId)) {
+            state.activeStationId = visible[0].id;
+          }
+          renderSimulatorTab();
+        });
+      });
+
+      const visibleStations = OSCE_STATIONS.filter(s => state.simFilter === 'Alle' || s.specialty === state.simFilter);
+      const listEl = document.getElementById('sim-station-list');
+      listEl.innerHTML = visibleStations.map(st => {
+        const active = st.id === state.activeStationId;
+        const sc = getStationScore(st);
+        const passed = sc.done > 0 && sc.pct >= 70;
+        return `
+          <button data-simst="${st.id}" type="button" class="w-full text-left px-2.5 py-2 rounded-lg border transition-colors flex items-center justify-between gap-2 ${
+            active
+              ? 'border-tealLight/60 dark:border-tealDark/50 bg-teal-500/[0.08] text-[#09090b] dark:text-white'
+              : 'border-transparent hover:border-[#e4e4e7] dark:hover:border-borderDark hover:bg-zinc-50 dark:hover:bg-zinc-900/50 text-zinc-700 dark:text-zinc-300'
+          }">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="font-mono text-[10px] text-zinc-400">${st.num}</span>
+                <span class="text-xs font-medium truncate">${escapeHtml(st.title)}</span>
+              </div>
+              <div class="font-mono text-[9.5px] text-zinc-400 dark:text-zinc-500 mt-0.5">${escapeHtml(st.specialty)}</div>
+            </div>
+            ${sc.done > 0 ? `<span class="font-mono text-[10px] px-1.5 py-0.5 rounded shrink-0 ${passed ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-semibold' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'}">${sc.pct}%</span>` : ''}
+          </button>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('[data-simst]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.activeStationId = btn.dataset.simst;
+          renderSimulatorTab();
+        });
+      });
+
+      const st = OSCE_STATIONS.find(x => x.id === state.activeStationId) || OSCE_STATIONS[0];
+      const revealed = Boolean(state.simRevealed[st.id]);
+      const sc = getStationScore(st);
+      const passed = sc.pct >= 70;
+      const checkMap = state.simChecks[st.id] || {};
+      const mins = Math.round(st.duration / 60);
+
+      const runnerEl = document.getElementById('sim-runner-container');
+      runnerEl.innerHTML = `
+        <!-- Realistic Door Prompt ("Türschild") -->
+        <article class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+          <div class="px-4 py-3 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 bg-zinc-50/70 dark:bg-zinc-950/50">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] px-2 py-0.5 rounded bg-teal-500/15 text-tealLight dark:text-tealDark border border-tealLight/30 dark:border-tealDark/30">Türschild · Station ${st.num}</span>
+              <span class="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">${escapeHtml(st.setting)}</span>
+            </div>
+            <span class="font-mono text-[10.5px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-elevatedDark border border-[#e4e4e7] dark:border-borderDark text-zinc-600 dark:text-zinc-300">${escapeHtml(st.specialty)}</span>
+          </div>
+
+          <div class="p-4 space-y-3.5">
+            <div>
+              <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400">Patient*in</div>
+              <h2 class="text-base font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] mt-0.5">${escapeHtml(st.patient)} &mdash; ${escapeHtml(st.title.split('—')[1] || st.title)}</h2>
+            </div>
+
+            <!-- Vitals Telemetry Bar -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 p-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50/80 dark:bg-obsidian/80 font-mono tabular-nums">
+              ${Object.entries(st.vitals).map(([k, v]) => `
+                <div class="px-2 py-1">
+                  <div class="text-[9.5px] uppercase text-zinc-400">${escapeHtml(k)}</div>
+                  <div class="text-xs font-semibold text-[#09090b] dark:text-[#f4f4f5] mt-0.5">${escapeHtml(v)}</div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Aufgabenstellung -->
+            <div class="p-3 rounded-lg border border-tealLight/25 dark:border-tealDark/25 bg-teal-500/[0.04] space-y-1">
+              <div class="font-mono text-[10px] font-semibold uppercase tracking-wider text-tealLight dark:text-tealDark">Aufgabenstellung (${mins}:00 Min.)</div>
+              <p class="text-[13px] leading-relaxed text-[#09090b] dark:text-[#f4f4f5]">${escapeHtml(st.task)}</p>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <button id="btn-start-station-timer" type="button" class="h-9 px-4 rounded-lg bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian hover:opacity-90 text-xs font-semibold transition-opacity flex items-center gap-2">
+                <span>&#9654; Start ${mins}:00 Station</span>
+              </button>
+
+              <button id="btn-toggle-rubric" type="button" class="h-9 px-3.5 rounded-lg border border-tealLight/50 dark:border-tealDark/50 bg-teal-500/10 hover:bg-teal-500/20 text-xs font-medium text-tealLight dark:text-tealDark transition-colors">
+                ${revealed ? 'Checkliste verbergen' : 'Checkliste einblenden / Auswerten'}
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- Blinded / Revealed Prüfer-Checkliste (Erwartungshorizont) -->
+        ${revealed ? `
+          <article class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
+            <div class="px-4 py-3 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 bg-zinc-50/60 dark:bg-zinc-950/40">
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <h3 class="text-[13px] font-semibold text-[#09090b] dark:text-[#f4f4f5]">Erwartungshorizont (Prüfer-Checkliste)</h3>
+                <span class="font-mono text-[11px] font-semibold px-2 py-0.5 rounded border tabular-nums ${
+                  passed
+                    ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                    : 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                }">${sc.done}/${sc.total} &middot; ${sc.pct}% ${passed ? '· Bestanden (≥70%)' : '· Unter 70%'}</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button id="btn-sim-anki" type="button" class="h-7 px-2.5 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-obsidian hover:border-tealLight/60 font-mono text-[10px] text-zinc-700 dark:text-zinc-200 transition-colors">Copy Anki Cloze</button>
+                <button id="btn-sim-reset-grade" type="button" class="h-7 px-2 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-obsidian font-mono text-[10px] text-zinc-500 hover:text-rose-500 transition-colors">Reset</button>
+              </div>
+            </div>
+
+            <div class="p-4 space-y-4">
+              <!-- Model DDx & Key Management Summary -->
+              <div class="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] space-y-1">
+                <div class="font-mono text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Musterlösung &amp; DDx</div>
+                <p class="text-xs leading-relaxed text-zinc-800 dark:text-zinc-200">${escapeHtml(st.ddx)}</p>
+              </div>
+
+              <!-- Interactive Grading Groups -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                ${Object.entries(st.checklist).map(([grp, items]) => `
+                  <div class="p-3 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/40 dark:bg-zinc-900/25 space-y-1.5">
+                    <div class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-tealLight dark:text-tealDark pb-1 border-b border-[#e4e4e7]/70 dark:border-borderDark/70">${escapeHtml(grp)}</div>
+                    ${items.map((txt, idx) => {
+                      const key = `${grp}_${idx}`;
+                      const checked = Boolean(checkMap[key]);
+                      return `
+                        <label class="flex items-start gap-2 py-1 cursor-pointer">
+                          <input type="checkbox" data-simcheck="${key}" class="osce-check mt-0.5 w-3.5 h-3.5 shrink-0" ${checked ? 'checked' : ''} />
+                          <span class="text-[11.5px] leading-snug ${checked ? 'text-emerald-700 dark:text-emerald-300 font-medium' : 'text-zinc-700 dark:text-zinc-300'}">${escapeHtml(txt)}</span>
+                        </label>
+                      `;
+                    }).join('')}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </article>
+        ` : `
+          <div class="rounded-xl border border-dashed border-[#e4e4e7] dark:border-borderDark bg-white/50 dark:bg-surfaceDark/40 p-6 text-center space-y-1.5">
+            <div class="font-mono text-[10.5px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Erwartungshorizont verdeckt (Prüfungsmodus)</div>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 max-w-md mx-auto leading-relaxed">
+              Starte oben den Station-Timer und führe die Station laut oder mit Lernpartner*in durch. Klicke danach auf <strong>«Checkliste einblenden / Auswerten»</strong> für die Selbstbewertung.
+            </p>
+          </div>
+        `}
+      `;
+
+      document.getElementById('btn-start-station-timer').addEventListener('click', () => {
+        setTimerPreset(st.duration, true);
+        showToast(`Station ${st.num} gestartet (${mins}:00 Min.)`);
+      });
+
+      document.getElementById('btn-toggle-rubric').addEventListener('click', () => {
+        state.simRevealed[st.id] = !state.simRevealed[st.id];
+        renderSimulatorTab();
+      });
+
+      if (revealed) {
+        runnerEl.querySelectorAll('input[data-simcheck]').forEach(cb => {
+          cb.addEventListener('change', () => {
+            if (!state.simChecks[st.id]) state.simChecks[st.id] = {};
+            state.simChecks[st.id][cb.dataset.simcheck] = cb.checked;
+            renderSimulatorTab();
+          });
+        });
+        document.getElementById('btn-sim-anki').addEventListener('click', () => {
+          copyText(st.anki, 'Anki Cloze kopiert');
+        });
+        document.getElementById('btn-sim-reset-grade').addEventListener('click', () => {
+          state.simChecks[st.id] = {};
+          renderSimulatorTab();
+        });
+      }
+    }
+
+    /* =========================================================================
+       14. TAB ROUTING & GLOBAL EVENT WIRING
+       ========================================================================= */
+    function switchMainTab(tabId) {
+      state.activeTab = tabId;
+      document.querySelectorAll('.main-tab').forEach(btn => {
+        const active = btn.dataset.tab === tabId;
+        btn.className = `main-tab px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+          active
+            ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm'
+            : 'text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-zinc-200'
+        }`;
+      });
+      document.querySelectorAll('.tab-panel').forEach(p => {
+        p.classList.toggle('hidden', p.id !== `panel-${tabId}`);
+      });
+    }
+
+    function wireEvents() {
+      // Theme Toggle (persists BOTH medlab-theme & theme)
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        const val = isDark ? 'dark' : 'light';
+        try {
+          localStorage.setItem('medlab-theme', val);
+          localStorage.setItem('theme', val);
+        } catch (_) {}
+      });
+
+      // Header OSCE Timer Controls
+      document.querySelectorAll('.tpreset-btn').forEach(btn => {
+        btn.addEventListener('click', () => setTimerPreset(parseInt(btn.dataset.tpreset, 10), false));
+      });
+      document.getElementById('timer-preset-mobile').addEventListener('change', e => {
+        setTimerPreset(parseInt(e.target.value, 10), false);
+      });
+      document.getElementById('timer-play').addEventListener('click', () => {
+        if (timerState.running) stopTimer();
+        else startTimer();
+      });
+      document.getElementById('timer-reset').addEventListener('click', () => {
+        setTimerPreset(timerState.presetSec, false);
+      });
+      document.getElementById('timer-mute').addEventListener('click', () => {
+        timerState.muted = !timerState.muted;
+        updateTimerUI();
+      });
+
+      // Main 5-Tab Bar
+      document.querySelectorAll('.main-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchMainTab(btn.dataset.tab));
+      });
+
+      // Tab 1 Controls
+      document.getElementById('toggle-phrasing').addEventListener('click', () => {
+        state.showPhrasing = !state.showPhrasing;
+        renderAnamnese();
+      });
+      document.getElementById('toggle-geriatrie').addEventListener('click', () => {
+        state.showGeriatrie = !state.showGeriatrie;
+        renderAnamnese();
+      });
+      document.getElementById('toggle-psychosozial').addEventListener('click', () => {
+        state.showPsychosozial = !state.showPsychosozial;
+        renderAnamnese();
+      });
+      document.getElementById('btn-reset-anam').addEventListener('click', () => {
+        state.anamChecks = {};
+        renderAnamnese();
+        showToast('Anamnese-Checks zurückgesetzt');
+      });
+      document.getElementById('btn-clear-notes').addEventListener('click', () => {
+        Object.keys(state.anamNotes).forEach(k => { state.anamNotes[k] = ''; });
+        document.querySelectorAll('textarea[data-note-sec]').forEach(t => { t.value = ''; });
+        showToast('Notizen geleert');
+      });
+      document.getElementById('btn-copy-anam-md').addEventListener('click', () => {
+        copyText(buildAnamMarkdown(), 'Anamnese als Markdown kopiert');
+      });
+      document.getElementById('btn-send-sbar').addEventListener('click', sendAnamToSbar);
+
+      // Tab 3 Search
+      document.getElementById('ls-search').addEventListener('input', e => {
+        state.lsSearch = e.target.value;
+        renderLeitsymptome();
+      });
+
+      // Tab 4 SBAR Inputs & Buttons
+      ['s', 'b', 'a', 'r'].forEach(k => {
+        document.getElementById(`sbar-${k}`).addEventListener('input', e => {
+          state.sbar[k] = e.target.value;
+          updateSbarPreview();
+        });
+      });
+      document.getElementById('btn-pull-anam').addEventListener('click', sendAnamToSbar);
+      document.getElementById('btn-sbar-example').addEventListener('click', () => {
+        state.sbar = {
+          s: 'Herr Beat Keller, 58j., auf der Notfallstation wegen seit 90 Min. bestehendem retrosternalem Druckschmerz (NRS 8/10) mit Ausstrahlung in den linken Arm und Kaltschweissigkeit. Vitalzeichen: BD 148/92 mmHg (seitengleich), HF 96/min regelmässig, AF 18/min, SpO2 97% RL.',
+          b: 'Bekannte arterielle Hypertonie und Hyperlipidämie, 30 Pack-Years Nikotin, Vater Herzinfarkt mit 54 Jahren. Medikation: Lisinopril 10 mg 1-0-0 (adhärent), keine bekannten Medikamentenallergien.',
+          a: 'Hochgradiger Verdacht auf akutes Koronarsyndrom (NSTEMI/STEMI); wichtige Differentialdiagnosen: Lungenarterienembolie, Aortendissektion.',
+          r: 'Sofortiges 12-Kanal-EKG (<10 Min.), Monitorüberwachung, i.v.-Zugang, hs-Troponin T (0h/1h), BB/E-lyte/Krea/Gerinnung, Aspirin 250 mg i.v., Analgesie nach Bedarf und zeitnahe oberärztliche Beurteilung bzw. Kardiologie-Konsil.'
+        };
+        syncSbarInputs();
+        showToast('SBAR-Beispiel geladen');
+      });
+      document.getElementById('btn-sbar-clear').addEventListener('click', () => {
+        state.sbar = { s: '', b: '', a: '', r: '' };
+        syncSbarInputs();
+      });
+      document.getElementById('btn-copy-sbar').addEventListener('click', () => {
+        copyText(document.getElementById('sbar-preview').textContent, 'SBAR kopiert');
+      });
+
+      // Tab 5 Random Station
+      document.getElementById('btn-random-station').addEventListener('click', () => {
+        const pool = OSCE_STATIONS.filter(s => state.simFilter === 'Alle' || s.specialty === state.simFilter);
+        if (!pool.length) return;
+        const others = pool.length > 1 ? pool.filter(s => s.id !== state.activeStationId) : pool;
+        const pick = others[Math.floor(Math.random() * others.length)];
+        state.activeStationId = pick.id;
+        state.simRevealed[pick.id] = false;
+        renderSimulatorTab();
+        showToast(`Zufällige Station ${pick.num} geladen`);
+      });
+    }
+
+    // Bootstrap cleanly on load
+    window.addEventListener('load', () => {
+      wireEvents();
+      updateTimerUI();
+      switchMainTab('anamnese');
+      renderAnamnese();
+      renderStatusTab();
+      renderLeitsymptome();
+      renderCommRubrics();
+      updateSbarPreview();
+      renderSimulatorTab();
+    });
+  })();
+  </script>
+</body>
+</html>
