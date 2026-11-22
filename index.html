@@ -59,21 +59,6 @@
       font-variant-numeric: tabular-nums;
     }
 
-    /* Subtle pulse for live module indicators */
-    @keyframes livePulse {
-      0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 0.38;
-        transform: scale(0.84);
-      }
-    }
-    .dot-pulse {
-      animation: livePulse 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-
     /* ==================== ARCHITECTURAL BENTO DOMAIN CARD ANIMATIONS ==================== */
     .domain-card {
       position: relative;
@@ -83,7 +68,7 @@
       --my: 50%;
     }
 
-    /* Mouse-tracking radial spotlight surface & subtle border luminosity */
+    /* Mouse-tracking radial spotlight surface on all 6 domain cards */
     .domain-spotlight {
       pointer-events: none;
       position: absolute;
@@ -109,7 +94,7 @@
       opacity: 1;
     }
 
-    /* Top teal glowing accent sweep when expanded */
+    /* Top teal glowing accent sweep when an expandable card opens */
     .domain-accent-bar {
       pointer-events: none;
       position: absolute;
@@ -191,7 +176,7 @@
       transition-delay: calc(var(--stagger-i, 0) * 32ms + 65ms);
     }
 
-    /* Rotating + to × toggle glyph */
+    /* Rotating + to × toggle glyph on expandable cards */
     .domain-plus {
       transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms ease;
     }
@@ -222,9 +207,6 @@
       }
       .domain-card[data-expanded="true"] .stagger-item {
         transition-delay: 0ms !important;
-      }
-      .dot-pulse {
-        animation: none !important;
       }
     }
 
@@ -274,7 +256,7 @@
           id="cmd-trigger"
           type="button"
           aria-label="Open command palette"
-          title="Quick jump across domains, modules, calculators & quicklinks (⌘K or /)"
+          title="Quick jump across modules, calculators & quicklinks (⌘K or /)"
           class="h-8 px-2.5 rounded-lg flex items-center gap-2 border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors"
         >
           <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -382,21 +364,24 @@
 
     <!-- ==================== 4. EXPANDABLE ARCHITECTURAL DOMAIN BENTO HUB (#domains) ==================== -->
     <section id="domains" class="max-w-6xl mx-auto px-4 sm:px-6 py-11 sm:py-14 pb-20 scroll-mt-14">
-      <!-- Clean Header Row with Subtle Expand/Collapse All Control -->
+      <!-- Clean Header Row with Calm Summary Badge + Expand/Collapse All Control -->
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-7">
         <div>
-          <div class="flex items-baseline gap-3">
+          <div class="flex flex-wrap items-center gap-3">
             <h2 class="text-xl sm:text-2xl font-semibold tracking-[-0.02em] text-zinc-950 dark:text-white">
               Clinical Domains
             </h2>
-            <span id="domains-summary-badge" class="font-mono text-[11px] tracking-wider text-zinc-400 dark:text-zinc-500 tabular-nums">06 DOMAINS &middot; 9 LIVE</span>
+            <span id="domains-summary-badge" class="inline-flex items-center gap-1.5 font-mono text-[11px] tracking-wider px-2 py-0.5 rounded-full border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-950/70 text-zinc-500 dark:text-zinc-400 tabular-nums">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden="true"></span>
+              <span>06 DOMAINS &middot; 15 TOOLS</span>
+            </span>
           </div>
           <p class="mt-1 text-[13px] text-zinc-500 dark:text-zinc-400">
-            Select a domain to expand its simulators, laboratory workbenches, and clinical tools.
+            Expand a multi-module domain or launch single-workbench tools directly.
           </p>
         </div>
 
-        <!-- Subtle Expand All / Collapse Toggle -->
+        <!-- Subtle Expand All / Collapse All Toggle (Controls the 4 Expandable Domains) -->
         <div class="flex items-center gap-2 shrink-0">
           <button
             id="toggle-all-domains"
@@ -408,7 +393,7 @@
         </div>
       </div>
 
-      <!-- 3-Column Expandable Bento Grid (Populated dynamically from DOMAINS[]) -->
+      <!-- Symmetrical 3x2 Desktop Bento Grid (Populated dynamically from DOMAINS[]) -->
       <div id="domains-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
         <!-- Populated from DOMAINS[] -->
       </div>
@@ -444,7 +429,7 @@
           type="text"
           autocomplete="off"
           spellcheck="false"
-          placeholder="Search simulators, labs, pharmacology, OSCE, calculators, or quicklinks..."
+          placeholder="Search simulators, ECG, BloodLab, PharmaLab, OSCE, calculators, or quicklinks..."
           class="flex-1 bg-transparent text-[13.5px] text-zinc-950 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
         />
         <kbd class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 shrink-0">ESC</kbd>
@@ -473,9 +458,8 @@
     'use strict';
 
     /* =========================================================================
-       1. EASY-EDIT PORTAL CONFIGURATION ARRAYS
-          Update links, add new modules, or flip 'planned' -> 'live' right here.
-          All internal paths are relative (GitHub Pages /MedLab/ safe).
+       1. SINGLE-SOURCE PORTAL CONFIGURATION
+          Only the 15 real, existing pages are linked (all GitHub Pages relative).
        ========================================================================= */
 
     // External clinical bookmarks shown in the Quicklinks strip below the Hero
@@ -493,218 +477,151 @@
     const DOMAIN_ICONS = {
       simulators: '<path d="M2.5 13h4l2.1-6.2 3.5 11.2 2.3-5h7.1" />',
       diagnostics: '<path d="M9 3h6M10 3v5.4l-4.8 8.3A2 2 0 0 0 6.9 20h10.2a2 2 0 0 0 1.7-3.3L14 8.4V3" /><path d="M8.5 14h7" />',
-      epidemiology: '<circle cx="12" cy="12" r="9" /><path d="M3.6 9h16.8M3.6 15h16.8M12 3a13 13 0 0 0 0 18M12 3a13 13 0 0 1 0 18" />',
       pharmacology: '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" /><path d="m8.5 8.5 7 7" />',
       osce: '<path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" /><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4" /><circle cx="20" cy="10" r="2" />',
+      epidemiology: '<circle cx="12" cy="12" r="9" /><path d="M3.6 9h16.8M3.6 15h16.8M12 3a13 13 0 0 0 0 18M12 3a13 13 0 0 1 0 18" />',
       calculators: '<rect x="4" y="3" width="16" height="18" rx="2.5" /><path d="M8 7.5h8M8 12h2M14 12h2M8 16h2M14 16h2" />',
     };
 
-    // Single source of truth for all 6 Expandable Clinical Domains
+    // 6-Card Symmetrical 3x2 Architectural Bento Hub (4 Expandable + 2 Direct Launch)
     const DOMAINS = [
       {
         code: '01',
         id: 'simulators',
         name: 'Physiology Simulators',
         type: 'grid',
+        badge: '8 ENGINES',
+        footerText: '8 organ-system engines',
+        gridCols: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
         subtitle: 'Coupled ODE & compartmental organ-system engines',
-        preview: ['CardioSim', 'NephroSim', 'FluidSim'],
+        preview: ['CardioSim', 'VentSim', 'NephroSim', 'EndoSim'],
         items: [
           {
             name: 'CardioSim',
             href: 'cardiosim.html',
-            status: 'live',
-            desc: 'Closed-loop LV PV loops, Wiggers diagram, valvular pathologies & vasoactive titration.'
-          },
-          {
-            name: 'NephroSim',
-            href: 'nephrosim.html',
-            status: 'live',
-            desc: 'Segmental tubular transport, diuretic pharmacology & Davenport acid-base diagram.'
-          },
-          {
-            name: 'FluidSim',
-            href: 'fluidsim.html',
-            status: 'live',
-            desc: 'Darrow-Yannet fluid compartments, revised Starling filtration & resuscitation kinetics.'
-          },
-          {
-            name: 'CoagSim',
-            href: 'coagsim.html',
-            status: 'live',
-            desc: 'Cell-based hemostasis, thrombin generation, TEG/ROTEM waveforms & anticoagulation reversal.'
-          },
-          {
-            name: 'Neuro-Ophtho Lab',
-            href: 'neuroophtho.html',
-            status: 'live',
-            desc: 'Cranial nerve pathways, binocular motility, pupillary reflexes & ocular ray-tracing.'
-          },
-          {
-            name: 'EndoSim',
-            href: 'endosim.html',
-            status: 'live',
-            desc: 'Coupled HPA/HPT/HPG endocrine feedback axes, ovarian cycle & dynamic clinical testing.'
+            desc: 'LV PV loops, Wiggers diagram, valvular pathologies & vasoactives.'
           },
           {
             name: 'VentSim',
             href: 'ventsim.html',
-            status: 'planned',
-            desc: 'VCV/PCV respiratory mechanics, compliance/resistance loops, PEEP & ABG gas exchange.'
+            desc: 'VCV/PCV mechanics, compliance/resistance loops, PEEP & ABGs.'
           },
           {
             name: 'ElectroSim',
             href: 'electrosim.html',
-            status: 'planned',
-            desc: 'Cardiac action potentials, ion channel kinetics, antiarrhythmics & conduction re-entry.'
+            desc: 'Cardiac action potentials, ion channels, antiarrhythmics & re-entry.'
+          },
+          {
+            name: 'NephroSim',
+            href: 'nephrosim.html',
+            desc: 'Segmental tubular transport, diuretics & Davenport acid-base.'
+          },
+          {
+            name: 'FluidSim',
+            href: 'fluidsim.html',
+            desc: 'Darrow-Yannet compartments, Starling filtration & resuscitation.'
+          },
+          {
+            name: 'CoagSim',
+            href: 'coagsim.html',
+            desc: 'Cell-based hemostasis, thrombin generation, TEG/ROTEM & reversal.'
+          },
+          {
+            name: 'Neuro-Ophtho Lab',
+            href: 'neuroophtho.html',
+            desc: 'Cranial nerves, binocular motility, pupils & ray-tracing.'
+          },
+          {
+            name: 'EndoSim',
+            href: 'endosim.html',
+            desc: 'Coupled HPA/HPT/HPG endocrine axes, ovarian cycle & dynamic tests.'
           }
         ]
       },
       {
         code: '02',
         id: 'diagnostics',
-        name: 'Diagnostics & BloodLab',
+        name: 'Diagnostics & ECG',
         type: 'grid',
-        subtitle: 'Laboratory interpretation, morphology & bedside workups',
-        preview: ['BloodLab', '12-Lead ECG Lab', 'Urinalysis'],
+        badge: '2 LABS',
+        footerText: '2 clinical workbenches',
+        gridCols: 'grid-cols-1 md:grid-cols-2',
+        subtitle: 'Blood chemistry, peripheral smears & procedural 12-lead ECGs',
+        preview: ['BloodLab', '12-Lead ECG Lab'],
         items: [
           {
             name: 'BloodLab',
             href: 'bloodlab.html',
-            status: 'live',
-            tags: ['54 Analytes', 'Smear', 'Quiz'],
-            desc: 'Complete blood chemistry & CBC, pathology stacking, pre-analytical traps, procedural peripheral smear & Ward Rounds quiz.'
+            tags: ['54 Analytes', 'Blood Smear', 'Ward Quiz'],
+            desc: 'Blood chemistry & CBC, pathology stacking, pre-analytical traps, peripheral smear & quiz.'
           },
           {
             name: '12-Lead ECG Lab',
             href: 'ecglab.html',
-            status: 'planned',
-            tags: ['Calipers', 'STEMI', 'Arrhythmia'],
-            desc: 'Procedural 12-lead ECGs with interactive PR/QRS/QTc calipers, axis wheel & rapid-fire drill.'
-          },
-          {
-            name: 'Urinalysis & Body Fluids',
-            href: 'urinelab.html',
-            status: 'planned',
-            tags: ['Sediment', 'CSF', 'SAAG'],
-            desc: "Urine dipstick, procedural microscopy casts/crystals, Light's criteria, SAAG & CSF analyzer."
+            tags: ['25 Patterns', 'Calipers', 'Axis Wheel'],
+            desc: 'Procedural 12-lead ECGs, interactive calipers, K+ morphing & rapid-fire drill.'
           }
         ]
       },
       {
         code: '03',
-        id: 'epidemiology',
-        name: 'Epidemiology & Atlas',
+        id: 'pharmacology',
+        name: 'Pharmacology',
         type: 'grid',
-        subtitle: 'Swiss health data, disease burden & clinical reference',
-        preview: ['Swiss Epidemiology', 'Immunology', 'Microbiology'],
+        badge: '2 MODULES',
+        footerText: '2 pharmacology modules',
+        gridCols: 'grid-cols-1 md:grid-cols-2',
+        subtitle: 'SJ3 HS2026 drug mastery & compartmental PK/PD simulation',
+        preview: ['PharmaLab (SJ3)', 'PK/PD & Anesthesia Lab'],
         items: [
           {
-            name: 'Swiss Epidemiology & Atlas',
-            href: 'epidemiology.html',
-            status: 'live',
-            tags: ['BFS · BAG · NKRS', 'Bayesian', 'Quiz'],
-            desc: 'Age-stratified mortality, BAG infectious seasonality & VMüK reporting, NKRS oncology matrix, disease atlas & PPV playground.'
+            name: 'PharmaLab (SJ3)',
+            href: 'pharma.html',
+            tags: ['Wirkstoffliste', 'Matrizen', 'MC-Quiz'],
+            desc: 'Complete HS2026 drug reference, comparison matrices, antidotes, CYP traps & active recall.'
           },
           {
-            name: 'Immunology & Autoantibodies',
-            href: 'immunolab.html',
-            status: 'planned',
-            tags: ['Cytokines', 'Biologics', 'ANA/ANCA'],
-            desc: 'Cytokine networks, Gell-Coombs reactions, autoantibody panels & targeted monoclonal antibody map.'
-          },
-          {
-            name: 'Microbiology & Pathogens',
-            href: 'microlab.html',
-            status: 'planned',
-            tags: ['Gram Map', 'Virulence', 'Diag'],
-            desc: 'Structured bacterial, viral, fungal & parasitic reference linked to diagnostics and syndromes.'
+            name: 'PK/PD & Anesthesia Lab',
+            href: 'pkpd.html',
+            tags: ['3-Comp ODE', 'CSHT', 'TCI'],
+            desc: 'Multi-compartment pharmacokinetics, effect-site equilibration & context-sensitive half-time.'
           }
         ]
       },
       {
         code: '04',
-        id: 'pharmacology',
-        name: 'Pharmacology',
-        type: 'grid',
-        subtitle: 'PK/PD modeling, antimicrobial spectra & clinical dosing',
-        preview: ['PK/PD Lab', 'Antibiotic Matrix', 'ICU Infusions'],
-        items: [
-          {
-            name: 'PK/PD & Anesthesia Lab',
-            href: 'pkpd.html',
-            status: 'live',
-            tags: ['3-Comp ODE', 'CSHT', 'TCI'],
-            desc: 'Multi-compartment pharmacokinetics, effect-site equilibration, context-sensitive half-time & Hill pharmacodynamics.'
-          },
-          {
-            name: 'Antibiotic Spectrum Matrix',
-            href: 'abxlab.html',
-            status: 'planned',
-            tags: ['SSI Guidelines', 'PK/PD', 'Coverage'],
-            desc: 'Pathogen × antibiotic coverage heatmap, CNS/urine penetration, resistance & Swiss empiric therapy.'
-          },
-          {
-            name: 'ICU Infusions & Vasoactives',
-            href: 'icudrugs.html',
-            status: 'planned',
-            tags: ['Receptors', 'Titration', 'Drip Rates'],
-            desc: 'Catecholamines, inotropes, sedatives & antiarrhythmics with receptor profiles and weight-based dosing.'
-          },
-          {
-            name: 'Autonomics & CYP450 Atlas',
-            href: 'receptors.html',
-            status: 'planned',
-            tags: ['GPCRs', 'Interactions', 'Toxicology'],
-            desc: 'Receptor signaling cascades, drug-drug CYP450 inducers/inhibitors & clinical toxidromes.'
-          }
-        ]
+        id: 'osce',
+        name: 'OSCE & Clinical Skills',
+        type: 'direct',
+        href: 'osce.html',
+        badge: 'DIRECT',
+        footerText: 'BIHAM/KAIM · 12 stations',
+        subtitle: 'Structured anamnesis, physical exams, red flags & timed stations',
+        preview: ['BIHAM/KAIM', 'IPPAF', 'SBAR', 'Timer'],
+        searchTags: ['anamnesis', 'anamnesis', 'physical exam', 'ippaf', 'sbar', 'spikes', 'red flags', 'biham', 'kaim', 'timer']
       },
       {
         code: '05',
-        id: 'osce',
-        name: 'OSCE & Clinical Skills',
-        type: 'grid',
-        subtitle: 'Structured history-taking, physical exams & station drills',
-        preview: ['Anamnesis', 'Physical Exam', 'Neuro Status'],
-        items: [
-          {
-            name: 'Anamnesis & History Trainer',
-            href: 'osce-anamnesis.html',
-            status: 'planned',
-            tags: ['OPQRST', 'Red Flags', 'Timer'],
-            desc: 'Structured chief-complaint history frameworks, review of systems & timed 10-minute station prompts.'
-          },
-          {
-            name: 'Bedside Physical Examination',
-            href: 'osce-exam.html',
-            status: 'planned',
-            tags: ['Cardio/Pulm', 'Abdomen', 'Checklist'],
-            desc: 'Step-by-step inspection, palpation, percussion & auscultation sequences with high-yield exam maneuvers.'
-          },
-          {
-            name: 'Neuro & Cranial Nerve Status',
-            href: 'osce-neuro.html',
-            status: 'planned',
-            tags: ['CN I–XII', 'Motor/Reflex', 'NIHSS'],
-            desc: 'Systematic neurological status workflow, dermatome/myotome localization & acute stroke exam.'
-          },
-          {
-            name: 'Clinical Red Flags & Triage',
-            href: 'osce-redflags.html',
-            status: 'planned',
-            tags: ['Emergency', 'Differentials', 'DDx'],
-            desc: 'Must-not-miss diagnoses across chest pain, dyspnea, headache, syncope & acute abdomen.'
-          }
-        ]
+        id: 'epidemiology',
+        name: 'Epidemiology & Atlas',
+        type: 'direct',
+        href: 'epidemiology.html',
+        badge: 'DIRECT',
+        footerText: 'BFS · BAG · NKRS',
+        subtitle: 'Swiss mortality, infectious seasonality, oncology matrix & disease atlas',
+        preview: ['BFS', 'BAG', 'NKRS', 'Bayesian'],
+        searchTags: ['swiss', 'bfs', 'bag', 'nkrs', 'mortality', 'infectious', 'oncology', 'bayesian', 'ppv', 'disease atlas']
       },
       {
         code: '06',
         id: 'calculators',
         name: 'Clinical Calculators',
         type: 'calculators',
-        subtitle: '20 precision bedside equations & validated risk scores',
+        badge: '20 TOOLS',
+        footerText: '4 categories · 20 tools',
         primaryHref: 'calculators.html',
         primaryLabel: 'Open All Calculators',
+        subtitle: '20 precision bedside equations & validated risk scores',
         preview: ['Anion Gap', 'eGFR', 'QTc', 'Wells'],
         groups: [
           {
@@ -751,6 +668,7 @@
       }
     ];
 
+    const EXPANDABLE_DOMAINS = DOMAINS.filter(d => d.type !== 'direct');
     const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     /* =========================================================================
@@ -781,84 +699,33 @@
     renderQuicklinks();
 
     /* =========================================================================
-       3. EXPANDABLE ARCHITECTURAL DOMAIN BENTO HUB + TRANSLATE-ONLY FLIP ENGINE
+       3. 6-CARD ARCHITECTURAL BENTO HUB + TRANSLATE-ONLY FLIP ENGINE
        ========================================================================= */
     const domainsGrid = document.getElementById('domains-grid');
     const toggleAllBtn = document.getElementById('toggle-all-domains');
-    const summaryBadge = document.getElementById('domains-summary-badge');
 
-    // Track currently expanded domain IDs (supports single-open focus AND Expand All)
     const expandedIds = new Set();
     const flipCleanupTimers = new WeakMap();
 
-    function getDomainStats(domain) {
-      if (domain.type === 'calculators') {
-        const totalTools = domain.groups.reduce((acc, g) => acc + g.items.length, 0);
-        return {
-          total: totalTools,
-          live: 0,
-          badgeType: 'tools',
-          badgeText: `${totalTools} TOOLS`,
-          footerText: `${domain.groups.length} categories · ${totalTools} tools`
-        };
-      }
-      const total = domain.items.length;
-      const live = domain.items.filter(i => i.status === 'live').length;
-      if (live > 1) {
-        return {
-          total,
-          live,
-          badgeType: 'live',
-          badgeText: `${live} / ${total} LIVE`,
-          footerText: `${total} modules`
-        };
-      }
-      if (live === 1) {
-        return {
-          total,
-          live,
-          badgeType: 'live',
-          badgeText: '1 LIVE',
-          footerText: `${total} modules`
-        };
-      }
-      return {
-        total,
-        live: 0,
-        badgeType: 'planned',
-        badgeText: `${total} PLANNED`,
-        footerText: `${total} modules`
-      };
-    }
-
-    function buildPreviewLine(domain, stats) {
+    function buildPreviewLine(domain) {
       const names = domain.preview || [];
-      const rem = Math.max(0, stats.total - names.length);
-      const joined = names.join(' · ');
-      return rem > 0 ? `${joined} · +${rem}` : joined;
-    }
-
-    function buildStatusBadgeHTML(stats) {
-      if (stats.badgeType === 'live') {
-        return `
-          <span class="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 tabular-nums">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 dot-pulse"></span>
-            ${stats.badgeText}
-          </span>
-        `;
+      if (domain.type === 'grid') {
+        const rem = Math.max(0, domain.items.length - names.length);
+        return rem > 0 ? `${names.join(' · ')} · +${rem}` : names.join(' · ');
       }
-      return `
-        <span class="inline-flex items-center font-mono text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 tabular-nums">
-          ${stats.badgeText}
-        </span>
-      `;
+      if (domain.type === 'calculators') {
+        const total = domain.groups.reduce((s, g) => s + g.items.length, 0);
+        const rem = Math.max(0, total - names.length);
+        return rem > 0 ? `${names.join(' · ')} · +${rem}` : names.join(' · ');
+      }
+      return names.join(' · ');
     }
 
     function buildExpandedContentHTML(domain) {
       if (domain.type === 'calculators') {
         return `
           <div class="pt-5 mt-5 border-t border-zinc-200/80 dark:border-zinc-800/80">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               ${domain.groups.map((group, gi) => `
                 <div class="stagger-item rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/60 dark:bg-zinc-900/35 p-3" style="--stagger-i:${gi}">
                   <h4 class="px-1.5 pb-2 mb-1.5 border-b border-zinc-200/70 dark:border-zinc-800/70 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
@@ -895,23 +762,12 @@
         `;
       }
 
-      // Standard sub-module grid (3 columns on desktop for 3+ items, 2 columns on tablet)
-      const colsClass = domain.items.length === 4
-        ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2'
-        : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
+      const colsClass = domain.gridCols || 'grid-cols-1 md:grid-cols-2';
 
       return `
         <div class="pt-5 mt-5 border-t border-zinc-200/80 dark:border-zinc-800/80">
           <div class="grid ${colsClass} gap-3">
             ${domain.items.map((mod, idx) => {
-              const isLive = mod.status === 'live';
-              const statusHTML = isLive
-                ? `<span class="inline-flex items-center gap-1.5 font-mono text-[9.5px] font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400 shrink-0">
-                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 dot-pulse"></span>
-                     Live
-                   </span>`
-                : `<span class="font-mono text-[9.5px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500 border border-zinc-200/80 dark:border-zinc-800 shrink-0">Planned</span>`;
-
               const tagsHTML = mod.tags && mod.tags.length
                 ? `<div class="mt-3 pt-2.5 border-t border-zinc-200/60 dark:border-zinc-800/60 flex flex-wrap gap-1.5">
                      ${mod.tags.map(t => `<span class="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-white dark:bg-zinc-950/80 text-zinc-500 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-800/80">${t}</span>`).join('')}
@@ -922,15 +778,12 @@
                 <a
                   href="${mod.href}"
                   style="--stagger-i:${idx}"
-                  class="stagger-item group/mod flex flex-col justify-between p-4 rounded-xl border border-zinc-200/85 dark:border-zinc-800/80 bg-zinc-50/65 dark:bg-zinc-900/40 hover:bg-white dark:hover:bg-zinc-900/90 hover:border-tealLight/55 dark:hover:border-tealDark/45 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${isLive ? '' : 'opacity-75 hover:opacity-100'}"
+                  class="stagger-item group/mod flex flex-col justify-between p-4 rounded-xl border border-zinc-200/85 dark:border-zinc-800/80 bg-zinc-50/65 dark:bg-zinc-900/40 hover:bg-white dark:hover:bg-zinc-900/90 hover:border-tealLight/55 dark:hover:border-tealDark/45 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/40"
                 >
                   <div>
                     <div class="flex items-start justify-between gap-2">
                       <h4 class="text-[14px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white group-hover/mod:text-tealLight dark:group-hover/mod:text-tealDark transition-colors">${mod.name}</h4>
-                      <div class="flex items-center gap-2 shrink-0">
-                        ${statusHTML}
-                        <span class="text-zinc-400 dark:text-zinc-600 group-hover/mod:text-tealLight dark:group-hover/mod:text-tealDark transition-transform duration-150 group-hover/mod:translate-x-0.5 text-xs" aria-hidden="true">&rarr;</span>
-                      </div>
+                      <span class="text-zinc-400 dark:text-zinc-600 group-hover/mod:text-tealLight dark:group-hover/mod:text-tealDark transition-transform duration-150 group-hover/mod:translate-x-0.5 text-xs shrink-0 mt-0.5" aria-hidden="true">&rarr;</span>
                     </div>
                     <p class="mt-1.5 text-[12.5px] leading-snug text-zinc-500 dark:text-zinc-400">
                       ${mod.desc}
@@ -948,17 +801,71 @@
     function renderDomainHub() {
       if (!domainsGrid) return;
 
-      // Update global summary count badge in section header
-      const totalLiveModules = DOMAINS.reduce((sum, d) => sum + getDomainStats(d).live, 0);
-      if (summaryBadge) {
-        summaryBadge.textContent = `${String(DOMAINS.length).padStart(2, '0')} DOMAINS · ${totalLiveModules} LIVE`;
-      }
-
       domainsGrid.innerHTML = DOMAINS.map(domain => {
-        const stats = getDomainStats(domain);
-        const previewStr = buildPreviewLine(domain, stats);
+        const previewStr = buildPreviewLine(domain);
         const iconPath = DOMAIN_ICONS[domain.id] || DOMAIN_ICONS.simulators;
 
+        // Direct 1-click launch card (identical architectural shell, no redundant drawer)
+        if (domain.type === 'direct') {
+          return `
+            <a
+              id="domain-${domain.id}"
+              href="${domain.href}"
+              data-domain-id="${domain.id}"
+              data-direct="true"
+              class="domain-card group block col-span-1 rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/70 hover:border-tealLight/50 dark:hover:border-tealDark/45 overflow-hidden transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40"
+            >
+              <!-- Subtle Mouse-Tracking Radial Spotlight -->
+              <div class="domain-spotlight" aria-hidden="true"></div>
+
+              <div class="relative z-[1] p-5">
+                <!-- Top Row: Index + 32x32 Hairline Icon Frame + Subtle DIRECT Badge -->
+                <div class="flex items-center justify-between gap-2 mb-4">
+                  <div class="flex items-center gap-2.5">
+                    <span class="font-mono text-[11px] font-medium text-zinc-400 dark:text-zinc-500 tabular-nums">${domain.code}</span>
+                    <span class="w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-200/90 dark:border-zinc-800/90 bg-zinc-50/80 dark:bg-zinc-900/70 text-tealLight dark:text-tealDark group-hover:border-tealLight/45 dark:group-hover:border-tealDark/45 transition-colors">
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        ${iconPath}
+                      </svg>
+                    </span>
+                  </div>
+
+                  <span class="inline-flex items-center font-mono text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/25 text-tealLight dark:text-tealDark tabular-nums">
+                    ${domain.badge}
+                  </span>
+                </div>
+
+                <!-- Body: Crisp Domain Title + Concise Subtitle -->
+                <div class="space-y-1">
+                  <h3 class="text-[17.5px] font-semibold tracking-[-0.02em] text-zinc-950 dark:text-white group-hover:text-tealLight dark:group-hover:text-tealDark transition-colors">
+                    ${domain.name}
+                  </h3>
+                  <p class="text-[13px] leading-snug text-zinc-500 dark:text-zinc-400">
+                    ${domain.subtitle}
+                  </p>
+                </div>
+
+                <!-- Preview Line -->
+                <div class="mt-3">
+                  <div class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500 truncate">
+                    ${previewStr}
+                  </div>
+                </div>
+
+                <!-- Footer Micro-Bar: Metadata + Direct Open Arrow -->
+                <div class="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/70 flex items-center justify-between gap-2">
+                  <span class="font-mono text-[10.5px] text-zinc-400 dark:text-zinc-500 tabular-nums">${domain.footerText}</span>
+                  <span class="inline-flex items-center gap-1.5 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 group-hover:text-tealLight dark:group-hover:text-tealDark transition-colors">
+                    <span>Open</span>
+                    <span class="inline-block transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true">&rarr;</span>
+                  </span>
+                </div>
+              </div>
+            </a>
+          `;
+        }
+
+        // Expandable Multi-Module Domain Card
         return `
           <article
             id="domain-${domain.id}"
@@ -968,11 +875,11 @@
           >
             <!-- Subtle Mouse-Tracking Radial Spotlight -->
             <div class="domain-spotlight" aria-hidden="true"></div>
-            <!-- Subtle Teal Top-Border Accent Sweep (Expanded) -->
+            <!-- Top Teal Accent Sweep (Expanded) -->
             <div class="domain-accent-bar" aria-hidden="true"></div>
 
             <div class="relative z-[1] p-5">
-              <!-- Clickable Architectural Card Header (Expands / Collapses Domain) -->
+              <!-- Clickable Architectural Card Header -->
               <div
                 role="button"
                 tabindex="0"
@@ -981,7 +888,7 @@
                 data-domain-toggle="${domain.id}"
                 class="group/hdr cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 rounded-lg"
               >
-                <!-- Top Row: Index + 32x32 Hairline Icon Frame + Status Badge -->
+                <!-- Top Row: Index + 32x32 Hairline Icon Frame + Calm Mono Count Badge -->
                 <div class="flex items-center justify-between gap-2 mb-4">
                   <div class="flex items-center gap-2.5">
                     <span class="font-mono text-[11px] font-medium text-zinc-400 dark:text-zinc-500 tabular-nums">${domain.code}</span>
@@ -993,7 +900,9 @@
                   </div>
 
                   <div class="flex items-center gap-2">
-                    ${buildStatusBadgeHTML(stats)}
+                    <span class="inline-flex items-center font-mono text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 tabular-nums">
+                      ${domain.badge}
+                    </span>
                     <span class="domain-close-pill hidden items-center gap-1 font-mono text-[10px] font-medium px-2 py-0.5 rounded-md border border-zinc-200/90 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white transition-colors">
                       Close
                     </span>
@@ -1010,7 +919,7 @@
                   </p>
                 </div>
 
-                <!-- Collapsed Preview Line (Fades & Collapses Cleanly on Expansion) -->
+                <!-- Collapsed Preview Line (Collapses smoothly on expansion) -->
                 <div class="domain-preview-wrap mt-3">
                   <div class="domain-preview-inner">
                     <div class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500 truncate">
@@ -1019,9 +928,9 @@
                   </div>
                 </div>
 
-                <!-- Footer Micro-Bar: Module Count + Animated + / × Indicator -->
+                <!-- Footer Micro-Bar: Module Count + Rotating + / × Indicator -->
                 <div class="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/70 flex items-center justify-between gap-2">
-                  <span class="font-mono text-[10.5px] text-zinc-400 dark:text-zinc-500 tabular-nums">${stats.footerText}</span>
+                  <span class="font-mono text-[10.5px] text-zinc-400 dark:text-zinc-500 tabular-nums">${domain.footerText}</span>
                   <span class="inline-flex items-center gap-1.5 text-[11px] font-mono text-zinc-400 dark:text-zinc-500 group-hover/hdr:text-tealLight dark:group-hover/hdr:text-tealDark transition-colors">
                     <span class="domain-action-label">Explore</span>
                     <svg class="domain-plus w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
@@ -1046,18 +955,18 @@
     }
 
     /**
-     * Applies translate-only FLIP animation across all domain cards when layout changes.
-     * Uses pure translate3d(dx, dy, 0) without scale() so typography remains razor-sharp.
+     * Applies translate-only FLIP animation across ALL 6 domain cards (including
+     * direct launch cards) so every sibling slides smoothly into place without
+     * scaling or blurring text.
      */
     function applyDomainsLayoutWithFLIP(mutateExpandedSet, scrollTargetId = null) {
       if (!domainsGrid) return;
       const cards = Array.from(domainsGrid.querySelectorAll('.domain-card'));
 
-      // 1. FIRST: Capture current visual positions (even if mid-flight)
+      // 1. FIRST: Capture current visual positions
       const firstRects = new Map();
       cards.forEach(card => {
         firstRects.set(card, card.getBoundingClientRect());
-        // Clear any pending cleanup timers before starting a fresh transition
         const prevTimer = flipCleanupTimers.get(card);
         if (prevTimer) {
           clearTimeout(prevTimer);
@@ -1067,10 +976,11 @@
         card.style.transform = '';
       });
 
-      // 2. MUTATE: Update expanded state set and DOM span/data attributes
+      // 2. MUTATE: Update expanded state set and DOM attributes on expandable cards
       mutateExpandedSet();
 
       cards.forEach(card => {
+        if (card.dataset.direct === 'true') return;
         const id = card.dataset.domainId;
         const isOpen = expandedIds.has(id);
         card.dataset.expanded = isOpen ? 'true' : 'false';
@@ -1115,8 +1025,7 @@
         });
 
         if (movingCards.length > 0) {
-          // Force synchronous reflow so the inverted transform commits cleanly
-          void domainsGrid.offsetHeight;
+          void domainsGrid.offsetHeight; // Force synchronous reflow
 
           movingCards.forEach(card => {
             card.style.transition = 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1)';
@@ -1163,7 +1072,6 @@
         if (wasOpen) {
           expandedIds.delete(domainId);
         } else {
-          // Single-focus expansion: smoothly close previously open domain and open this one
           expandedIds.clear();
           expandedIds.add(domainId);
         }
@@ -1171,7 +1079,7 @@
     }
 
     function openDomainById(domainId) {
-      if (!DOMAINS.some(d => d.id === domainId)) return;
+      if (!EXPANDABLE_DOMAINS.some(d => d.id === domainId)) return;
       applyDomainsLayoutWithFLIP(() => {
         expandedIds.clear();
         expandedIds.add(domainId);
@@ -1187,21 +1095,13 @@
 
     function syncExpandAllButton() {
       if (!toggleAllBtn) return;
-      const allOpen = expandedIds.size === DOMAINS.length;
-      const anyOpen = expandedIds.size > 0;
-      if (allOpen) {
-        toggleAllBtn.textContent = 'Collapse All';
-      } else if (anyOpen) {
-        toggleAllBtn.textContent = 'Expand All';
-      } else {
-        toggleAllBtn.textContent = 'Expand All';
-      }
+      const allOpen = expandedIds.size === EXPANDABLE_DOMAINS.length;
+      toggleAllBtn.textContent = allOpen ? 'Collapse All' : 'Expand All';
     }
 
     function attachDomainCardListeners() {
       if (!domainsGrid) return;
 
-      // Toggle expand/collapse on header click or Enter/Space keyboard activation
       domainsGrid.querySelectorAll('[data-domain-toggle]').forEach(toggleEl => {
         const domainId = toggleEl.dataset.domainToggle;
         toggleEl.addEventListener('click', () => toggleDomain(domainId));
@@ -1213,7 +1113,7 @@
         });
       });
 
-      // Mouse-tracking radial spotlight on each Domain Card
+      // Mouse-tracking radial spotlight on ALL 6 cards (expandable + direct)
       if (!reducedMotion) {
         domainsGrid.querySelectorAll('.domain-card').forEach(card => {
           card.addEventListener('pointermove', e => {
@@ -1227,11 +1127,11 @@
 
     if (toggleAllBtn) {
       toggleAllBtn.addEventListener('click', () => {
-        const allCurrentlyOpen = expandedIds.size === DOMAINS.length;
+        const allCurrentlyOpen = expandedIds.size === EXPANDABLE_DOMAINS.length;
         applyDomainsLayoutWithFLIP(() => {
           expandedIds.clear();
           if (!allCurrentlyOpen) {
-            DOMAINS.forEach(d => expandedIds.add(d.id));
+            EXPANDABLE_DOMAINS.forEach(d => expandedIds.add(d.id));
           }
         }, null);
       });
@@ -1239,11 +1139,11 @@
 
     renderDomainHub();
 
-    // URL Hash Deep-Opening (e.g., #simulators, #pharmacology, #calculators)
+    // URL Hash Deep-Opening (#simulators, #diagnostics, #pharmacology, #calculators)
     function handleHashDeepOpen() {
       const hash = (window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
       if (!hash) return;
-      const matched = DOMAINS.find(d => d.id === hash);
+      const matched = EXPANDABLE_DOMAINS.find(d => d.id === hash);
       if (matched) {
         openDomainById(matched.id);
       }
@@ -1253,7 +1153,7 @@
 
     /* =========================================================================
        4. KEYBOARD COMMAND PALETTE (⌘K / Ctrl+K / /)
-          Automatically indexes all 6 Domains' sub-modules, 20 Calculators & Quicklinks
+          Indexes all 15 real pages, all 20 calculator anchors & 7 quicklinks.
        ========================================================================= */
     const cmdModal = document.getElementById('cmd-modal');
     const cmdInput = document.getElementById('cmd-input');
@@ -1269,19 +1169,34 @@
       }
     } catch (_) {}
 
-    // Build flat searchable index from DOMAINS[] + QUICKLINKS[]
     const SEARCH_INDEX = [];
     DOMAINS.forEach(domain => {
-      if (domain.type === 'calculators') {
+      if (domain.type === 'direct') {
+        SEARCH_INDEX.push({
+          title: domain.name,
+          category: 'Workbench',
+          sub: domain.subtitle,
+          href: domain.href,
+          external: false,
+          searchBlob: `${domain.name} ${domain.id} ${domain.href} ${(domain.preview || []).join(' ')} ${(domain.searchTags || []).join(' ')} ${domain.subtitle}`.toLowerCase()
+        });
+      } else if (domain.type === 'calculators') {
+        SEARCH_INDEX.push({
+          title: 'All Clinical Calculators',
+          category: domain.name,
+          sub: domain.subtitle,
+          href: domain.primaryHref,
+          external: false,
+          searchBlob: `${domain.name} calculators.html all bedside equations scores ${domain.subtitle}`.toLowerCase()
+        });
         domain.groups.forEach(group => {
           group.items.forEach(calc => {
             SEARCH_INDEX.push({
               title: calc.name,
-              category: domain.name,
+              category: 'Calculator',
               sub: group.title,
               href: `calculators.html#${calc.slug}`,
               external: false,
-              status: 'tool',
               searchBlob: `${calc.name} ${calc.slug} calculator ${group.title} ${domain.name}`.toLowerCase()
             });
           });
@@ -1294,8 +1209,7 @@
             sub: mod.desc,
             href: mod.href,
             external: false,
-            status: mod.status,
-            searchBlob: `${mod.name} ${domain.name} ${domain.id} ${(mod.tags || []).join(' ')} ${mod.desc}`.toLowerCase()
+            searchBlob: `${mod.name} ${mod.href} ${domain.name} ${domain.id} ${(mod.tags || []).join(' ')} ${mod.desc}`.toLowerCase()
           });
         });
       }
@@ -1308,7 +1222,6 @@
         sub: `${q.tag} · ${q.href.replace(/^https?:\/\//, '')}`,
         href: q.href,
         external: true,
-        status: 'external',
         searchBlob: `${q.name} ${q.tag} quicklink bookmark ${q.href}`.toLowerCase()
       });
     });
@@ -1363,7 +1276,7 @@
       if (cmdFiltered.length === 0) {
         cmdResults.innerHTML = `
           <div class="px-4 py-8 text-center text-xs text-zinc-500 dark:text-zinc-400">
-            No matching simulators, labs, pharmacology, OSCE modules, calculators, or quicklinks.
+            No matching modules, calculators, or quicklinks.
           </div>
         `;
         return;
@@ -1371,13 +1284,9 @@
 
       cmdResults.innerHTML = cmdFiltered.map((item, idx) => {
         const active = idx === cmdActiveIdx;
-        const badgeHTML = item.status === 'live'
-          ? '<span class="inline-flex items-center gap-1 font-mono text-[9.5px] uppercase text-emerald-700 dark:text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>Live</span>'
-          : item.status === 'planned'
-            ? '<span class="font-mono text-[9.5px] uppercase text-zinc-400 dark:text-zinc-500">Planned</span>'
-            : item.external
-              ? '<span class="font-mono text-[11px] text-tealLight dark:text-tealDark">&#8599;</span>'
-              : '<span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">&rarr;</span>';
+        const arrowHTML = item.external
+          ? '<span class="font-mono text-[11px] text-tealLight dark:text-tealDark" aria-hidden="true">&#8599;</span>'
+          : '<span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500" aria-hidden="true">&rarr;</span>';
 
         return `
           <button
@@ -1396,7 +1305,7 @@
               </div>
               <div class="text-[11.5px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">${item.sub}</div>
             </div>
-            <div class="shrink-0 pl-2">${badgeHTML}</div>
+            <div class="shrink-0 pl-2">${arrowHTML}</div>
           </button>
         `;
       }).join('');
@@ -1443,7 +1352,6 @@
       const tag = document.activeElement ? document.activeElement.tagName : '';
       const inEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (document.activeElement && document.activeElement.isContentEditable);
 
-      // Open/Toggle Command Palette with Cmd+K / Ctrl+K
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         if (cmdOpen) closeCommandPalette();
@@ -1451,14 +1359,12 @@
         return;
       }
 
-      // Open Command Palette with '/' when not typing in an input
       if (!cmdOpen && !inEditable && e.key === '/') {
         e.preventDefault();
         openCommandPalette();
         return;
       }
 
-      // Escape: close Command Palette if open; otherwise collapse expanded Domain Card(s)
       if (e.key === 'Escape') {
         if (cmdOpen) {
           e.preventDefault();
@@ -1493,7 +1399,7 @@
     });
 
     /* =========================================================================
-       5. DARK / LIGHT THEME TOGGLE (Persisted to localStorage)
+       5. DARK / LIGHT THEME TOGGLE (Persisted to medlab-theme & theme)
        ========================================================================= */
     let redrawMonitor = null;
     const themeToggle = document.getElementById('theme-toggle');
@@ -1787,7 +1693,7 @@
       const livePhi = phaseFromTime(liveTime);
       const liveState = evalCardiacState(livePhi);
 
-      // LEFT PANEL: LV PRESSURE-VOLUME LOOP
+      // LEFT PANEL: LV PRESSURE-VOLUME LOOP (42%)
       {
         const padL = 28, padR = 14, padT = 26, padB = 34;
         const plotX = pvBox.x + padL;
@@ -2021,11 +1927,15 @@
       if (!reducedMotion) requestAnimationFrame(animate);
     }
 
-    window.addEventListener('load', () => {
+    function bootMonitor() {
       syncMonitorCanvas();
+      lastTimestamp = performance.now();
       if (reducedMotion) drawFrame();
       else requestAnimationFrame(animate);
-    });
+    }
+
+    if (document.readyState === 'complete') bootMonitor();
+    else window.addEventListener('load', bootMonitor);
   })();
   </script>
 </body>
