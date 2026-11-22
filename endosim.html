@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EndoSim — MedLab Neuroendocrine Axis Simulator</title>
 
-  <!-- Prevent theme flash prior to first paint (syncs medlab-theme & theme keys; defaults to obsidian dark) -->
   <script>
     (function () {
       try {
@@ -19,10 +18,7 @@
     })();
   </script>
 
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Typography: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -57,28 +53,13 @@
       -moz-osx-font-smoothing: grayscale;
       overflow-x: hidden;
     }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
 
-    .tabular-nums {
-      font-variant-numeric: tabular-nums;
-    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(113, 113, 122, 0.25); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(113, 113, 122, 0.45); }
 
-    /* Minimal scrollbars */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(113, 113, 122, 0.25);
-      border-radius: 9999px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(113, 113, 122, 0.45);
-    }
-
-    /* Swiss-Precision Range Sliders */
     input[type="range"].clinical-slider {
       -webkit-appearance: none;
       appearance: none;
@@ -89,9 +70,7 @@
       outline: none;
       cursor: pointer;
     }
-    .dark input[type="range"].clinical-slider {
-      background: #27272a;
-    }
+    .dark input[type="range"].clinical-slider { background: #27272a; }
     input[type="range"].clinical-slider::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
@@ -103,19 +82,10 @@
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
       transition: transform 0.1s ease;
     }
-    .dark input[type="range"].clinical-slider::-webkit-slider-thumb {
-      background: #2dd4bf;
-      border: 2px solid #09090b;
-    }
-    input[type="range"].clinical-slider::-webkit-slider-thumb:hover {
-      transform: scale(1.15);
-    }
-    input[type="range"].clinical-slider.drug-slider::-webkit-slider-thumb {
-      background: #7c3aed;
-    }
-    .dark input[type="range"].clinical-slider.drug-slider::-webkit-slider-thumb {
-      background: #a78bfa;
-    }
+    .dark input[type="range"].clinical-slider::-webkit-slider-thumb { background: #2dd4bf; border: 2px solid #09090b; }
+    input[type="range"].clinical-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+    input[type="range"].clinical-slider.drug-slider::-webkit-slider-thumb { background: #7c3aed; }
+    .dark input[type="range"].clinical-slider.drug-slider::-webkit-slider-thumb { background: #a78bfa; }
     input[type="range"].clinical-slider::-moz-range-thumb {
       width: 13px;
       height: 13px;
@@ -124,51 +94,26 @@
       border: 2px solid #ffffff;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
     }
-    .dark input[type="range"].clinical-slider::-moz-range-thumb {
-      background: #2dd4bf;
-      border: 2px solid #09090b;
-    }
-    input[type="range"].clinical-slider.drug-slider::-moz-range-thumb {
-      background: #7c3aed;
-    }
-    .dark input[type="range"].clinical-slider.drug-slider::-moz-range-thumb {
-      background: #a78bfa;
-    }
+    .dark input[type="range"].clinical-slider::-moz-range-thumb { background: #2dd4bf; border: 2px solid #09090b; }
+    input[type="range"].clinical-slider.drug-slider::-moz-range-thumb { background: #7c3aed; }
+    .dark input[type="range"].clinical-slider.drug-slider::-moz-range-thumb { background: #a78bfa; }
 
-    /* Animated SVG secretion flow dashes */
-    @keyframes flowDown {
-      from { stroke-dashoffset: 24; }
-      to { stroke-dashoffset: 0; }
-    }
-    @keyframes flowFeedback {
-      from { stroke-dashoffset: 20; }
-      to { stroke-dashoffset: 0; }
-    }
-    .svg-flow-down {
-      stroke-dasharray: 5 5;
-      animation: flowDown var(--flow-dur, 1.4s) linear infinite;
-    }
-    .svg-flow-fb {
-      stroke-dasharray: 4 4;
-      animation: flowFeedback var(--fb-dur, 1.8s) linear infinite;
-    }
+    @keyframes flowDown { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+    @keyframes flowFeedback { from { stroke-dashoffset: 20; } to { stroke-dashoffset: 0; } }
+    .svg-flow-down { stroke-dasharray: 5 5; animation: flowDown var(--flow-dur, 1.4s) linear infinite; }
+    .svg-flow-fb { stroke-dasharray: 4 4; animation: flowFeedback var(--fb-dur, 1.8s) linear infinite; }
 
-    /* Highlight pulse when clicking an SVG organ node */
     @keyframes organHighlight {
       0% { box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.75); }
       100% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0); }
     }
-    .organ-flash {
-      animation: organHighlight 1.1s ease-out;
-    }
+    .organ-flash { animation: organHighlight 1.1s ease-out; }
 
     @keyframes livePulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.35; transform: scale(0.84); }
     }
-    .dot-pulse {
-      animation: livePulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
+    .dot-pulse { animation: livePulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
   </style>
 </head>
 
@@ -177,8 +122,6 @@
   <!-- ==================== 1. STICKY HEADER & AXIS NAVIGATION ==================== -->
   <header class="sticky top-0 z-40 w-full border-b border-[#e4e4e7] dark:border-borderDark bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md shrink-0">
     <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
-
-      <!-- Left: Relative Back Link + Title -->
       <div class="flex items-center gap-2.5 min-w-0">
         <a href="index.html" class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors shrink-0">
           &larr; MedLab
@@ -189,7 +132,6 @@
         </div>
       </div>
 
-      <!-- Center: 4 Endocrine Axis Tabs -->
       <nav aria-label="Endocrine Axes" class="inline-flex items-center rounded-lg bg-zinc-100/90 dark:bg-surfaceDark border border-[#e4e4e7] dark:border-borderDark p-0.5 gap-0.5 overflow-x-auto max-w-full">
         <button data-axis="hpa" type="button" class="axis-tab px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors">HPA &middot; Adrenal</button>
         <button data-axis="hpt" type="button" class="axis-tab px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors">HPT &middot; Thyroid</button>
@@ -197,37 +139,30 @@
         <button data-axis="hpg_ovarian" type="button" class="axis-tab px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors">HPG &middot; Ovarian</button>
       </nav>
 
-      <!-- Right: Playback, +14d Jump, Pin Baseline, Reset, Theme -->
       <div class="flex flex-wrap items-center gap-1.5">
-        <!-- Play / Pause -->
         <button id="btn-play-pause" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5 transition-colors" title="Play / Pause Simulation">
           <span id="live-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 dot-pulse"></span>
           <span id="play-pause-text">Pause</span>
         </button>
 
-        <!-- Speed Toggle (1x, 5x, 20x) -->
         <div class="inline-flex items-center h-8 rounded-lg bg-zinc-100/90 dark:bg-surfaceDark border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[11px] font-mono">
           <button data-speed="1" type="button" class="speed-btn px-2 h-full rounded-md transition-colors">1&times;</button>
           <button data-speed="5" type="button" class="speed-btn px-2 h-full rounded-md transition-colors">5&times;</button>
           <button data-speed="20" type="button" class="speed-btn px-2 h-full rounded-md transition-colors">20&times;</button>
         </div>
 
-        <!-- +14d Fast-Forward -->
-        <button id="btn-ff-14d" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark hover:border-tealLight/60 dark:hover:border-tealDark/60 text-xs font-mono font-medium text-tealLight dark:text-tealDark transition-colors" title="Integrate 14 simulated days instantly to observe trophic gland adaptation or T4 equilibration">
+        <button id="btn-ff-14d" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark hover:border-tealLight/60 dark:hover:border-tealDark/60 text-xs font-mono font-medium text-tealLight dark:text-tealDark transition-colors" title="Integrate 14 simulated days instantly">
           +14d
         </button>
 
-        <!-- Pin Baseline Toggle -->
         <button id="btn-pin-baseline" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-zinc-700 dark:text-zinc-200 transition-colors" title="Save snapshot and show live deltas on telemetry cards">
           Pin Baseline
         </button>
 
-        <!-- Reset Axis -->
         <button id="btn-reset-axis" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white transition-colors">
           Reset
         </button>
 
-        <!-- Dark / Light Theme Toggle -->
         <button id="theme-toggle" type="button" aria-label="Toggle dark and light theme" title="Switch Dark / Light mode" class="w-8 h-8 rounded-lg flex items-center justify-center border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-white transition-colors">
           <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="4" />
@@ -244,50 +179,37 @@
   <!-- ==================== 2. LIVE SI-UNIT TELEMETRY STRIP ==================== -->
   <section class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 pt-3.5 shrink-0">
     <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden">
-      <div id="telemetry-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-y sm:divide-y-0 divide-x divide-[#e4e4e7]/80 dark:divide-borderDark/80">
-        <!-- Populated dynamically per active axis -->
-      </div>
+      <div id="telemetry-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-y sm:divide-y-0 divide-x divide-[#e4e4e7]/80 dark:divide-borderDark/80"></div>
     </div>
   </section>
 
   <!-- ==================== 3. 12-COLUMN INTERACTIVE WORKSPACE ==================== -->
   <main class="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
 
-    <!-- LEFT / MAIN VISUAL COLUMN (8 cols on lg+) -->
+    <!-- LEFT / MAIN VISUAL COLUMN -->
     <div class="lg:col-span-8 flex flex-col gap-4 min-h-0">
-
-      <!-- TOP ROW: Interactive SVG Neuroendocrine Schematic + Quantitative Phase Plane -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
-
-        <!-- Interactive Neuroendocrine Axis Schematic (SVG) -->
         <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0">
           <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 shrink-0">
-            <div class="flex items-center gap-2 min-w-0">
-              <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa] truncate">Axis Feedback Schematic</h2>
-            </div>
+            <h2 class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa] truncate">Axis Feedback Schematic</h2>
             <span class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 shrink-0">Click organ &rarr; sliders</span>
           </div>
-          <!-- Fixed-height SVG Container -->
           <div id="schematic-wrap" class="relative w-full h-64 overflow-hidden select-none">
             <svg id="axis-svg" viewBox="0 0 420 264" class="w-full h-full block" role="img" aria-label="Interactive neuroendocrine feedback axis diagram"></svg>
           </div>
         </section>
 
-        <!-- Quantitative Feedback Phase Plane Canvas -->
         <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0">
           <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 shrink-0">
             <h2 id="phase-title" class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#fafafa] truncate">Diagnostic Phase Plane</h2>
             <span id="phase-subtitle" class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 shrink-0">Semi-Log</span>
           </div>
-          <!-- STRICT LOCKED CANVAS WRAPPER -->
           <div id="phase-canvas-wrap" class="relative w-full h-64 overflow-hidden">
             <canvas id="phase-canvas" class="absolute inset-0 w-full h-full block"></canvas>
           </div>
         </section>
-
       </div>
 
-      <!-- MIDDLE ROW: Multi-Channel Hormone Time-Series Canvas -->
       <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-0">
         <div class="px-4 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
           <div class="flex items-center gap-2.5 flex-wrap">
@@ -300,31 +222,27 @@
           </div>
         </div>
 
-        <!-- STRICT LOCKED CANVAS WRAPPER + HOVER TOOLTIP -->
         <div id="ts-canvas-wrap" class="relative w-full h-72 sm:h-80 overflow-hidden cursor-crosshair">
           <canvas id="ts-canvas" class="absolute inset-0 w-full h-full block"></canvas>
           <div id="ts-hover-tip" class="pointer-events-none hidden absolute top-3 left-3 z-20 min-w-[180px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-950/95 px-3 py-2 shadow-lg backdrop-blur-sm text-[11px] font-mono"></div>
         </div>
       </section>
 
-      <!-- BOTTOM ROW: Live Clinical Interpretation & Pathophysiology Bar -->
       <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark px-4 py-3 shrink-0">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
           <div class="flex items-center gap-2">
             <span class="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-tealLight dark:text-tealDark">Clinical Pattern &amp; Feedback Analysis</span>
-            <span id="interp-badge" class="font-mono text-[10px] font-medium px-2 py-0.5 rounded-md border">Euthyroid / Normal</span>
+            <span id="interp-badge" class="font-mono text-[10px] font-medium px-2 py-0.5 rounded-md border">Normal</span>
           </div>
           <span id="interp-preset-tag" class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400">Normal Physiology</span>
         </div>
         <p id="interp-summary" class="text-[12.5px] leading-relaxed text-zinc-700 dark:text-zinc-300"></p>
         <p id="interp-tests" class="mt-1 text-[11.5px] leading-relaxed text-zinc-500 dark:text-zinc-400 font-mono"></p>
       </section>
-
     </div>
 
-    <!-- RIGHT SIDEBAR (4 cols on lg+): Pathologies | Parameters | Drugs & Tests -->
+    <!-- RIGHT SIDEBAR -->
     <aside class="lg:col-span-4 rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col min-h-[460px] lg:max-h-[calc(100vh-190px)] overflow-hidden">
-      <!-- Segmented 3-Tab Switcher -->
       <div class="p-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 shrink-0">
         <div class="grid grid-cols-3 rounded-lg bg-zinc-100/90 dark:bg-obsidian p-0.5 gap-0.5 border border-[#e4e4e7]/80 dark:border-borderDark/80">
           <button data-tab="pathologies" type="button" class="side-tab py-1.5 rounded-md text-xs font-medium transition-colors">Pathologies</button>
@@ -336,7 +254,6 @@
         </div>
       </div>
 
-      <!-- Scrollable Tab Body -->
       <div id="sidebar-scroll" class="flex-1 overflow-y-auto p-3 min-h-0">
         <div id="tab-pathologies" class="space-y-1.5"></div>
         <div id="tab-parameters" class="hidden space-y-4"></div>
@@ -354,40 +271,29 @@
     </div>
   </footer>
 
-  <!-- ==================== SIMULATION ENGINE & UI CONTROLLER ==================== -->
+  <!-- ==================== SIMULATION ENGINE (PART 1: AXES & ODE KERNELS) ==================== -->
   <script>
   (() => {
     'use strict';
 
-    /* =========================================================================
-       1. NUMERIC HELPERS & SHARED CONSTANTS
-       ========================================================================= */
     const clamp = (v, lo, hi) => (Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo);
     const safeExp = x => Math.exp(clamp(x, -12, 6));
 
-    // Distinct Swiss-clinical channel colors (light & dark tuned)
     const CHANNEL_PALETTES = {
       dark: ['#2dd4bf', '#38bdf8', '#fbbf24', '#fb7185'],
       light: ['#0f766e', '#0284c7', '#d97706', '#e11d48'],
     };
 
-    /* =========================================================================
-       2. AXIS SPECIFICATIONS (PARAMETERS, PRESETS, LABS, CHANNELS, TESTS)
-       ========================================================================= */
     const AXES = {
-
-      /* -----------------------------------------------------------------------
-         AXIS 1: HPA · ADRENAL (Time unit: hours, circadian 24h pacemaker)
-         ----------------------------------------------------------------------- */
       hpa: {
         id: 'hpa',
         name: 'HPA · Adrenal',
         timeUnit: 'h',
-        windowSpan: 72,          // 72 hours (3 full diurnal cycles) visible on chart
-        simRateAt1x: 4.5,        // 4.5 sim-hours per real second at 1x
-        dtSub: 0.05,             // RK4 step = 0.05 h (3 min)
-        warmupSpan: 120,         // 5 days warmup for clean diurnal steady state
-        sampleInterval: 0.25,    // Record history every 15 min
+        windowSpan: 72,
+        simRateAt1x: 4.5,
+        dtSub: 0.05,
+        warmupSpan: 120,
+        sampleInterval: 0.25,
         phaseTitle: 'ACTH vs Total Cortisol',
         phaseSubtitle: 'Semi-Log Diagnostic Map',
         organs: {
@@ -397,23 +303,16 @@
           target: { title: 'GR Feedback', sub: 'Free Cortisol + Exo GC' },
         },
         defaultParams: {
-          crhDrive: 1.0,
-          stressDrive: 0.0,
-          pitCap: 1.0,
-          pitAdenoma: 0.0,
-          pitResistance: 1.0,
-          ectopicACTH: 0.0,
-          adrenalCap: 1.0,
-          autoAdrenal: 0.0,
-          cbg: 1.0,
-          exoSteroid: 0.0,
+          crhDrive: 1.0, stressDrive: 0.0, pitCap: 1.0, pitAdenoma: 0.0,
+          pitResistance: 1.0, ectopicACTH: 0.0, adrenalCap: 1.0, autoAdrenal: 0.0,
+          cbg: 1.0, exoSteroid: 0.0,
         },
         paramDefs: [
           { key: 'crhDrive', organ: 'hypo', label: 'Hypothalamic CRH Drive', unit: '×', min: 0.05, max: 2.5, step: 0.05, dec: 2 },
           { key: 'stressDrive', organ: 'hypo', label: 'Chronic Stress / IL-6 Drive', unit: '×', min: 0, max: 2.5, step: 0.05, dec: 2 },
           { key: 'pitCap', organ: 'pit', label: 'Pituitary Corticotroph Mass', unit: '×', min: 0.05, max: 2.0, step: 0.05, dec: 2 },
           { key: 'pitAdenoma', organ: 'pit', label: 'Pituitary Adenoma ACTH', unit: '×', min: 0, max: 2.2, step: 0.05, dec: 2 },
-          { key: 'pitResistance', organ: 'pit', label: 'Pituitary GR Resistance (Ki)', unit: '×', min: 1.0, max: 8.0, step: 0.1, dec: 1 },
+          { key: 'pitResistance', organ: 'pit', label: 'Pituitary GR Resistance (Ki)', unit: '×', min: 1.0, max: 10.0, step: 0.1, dec: 1 },
           { key: 'ectopicACTH', organ: 'pit', label: 'Ectopic Autonomous ACTH', unit: 'pmol/L', min: 0, max: 60, step: 1, dec: 0 },
           { key: 'adrenalCap', organ: 'gland', label: 'Adrenal Synthetic Capacity', unit: '×', min: 0.04, max: 2.0, step: 0.02, dec: 2 },
           { key: 'autoAdrenal', organ: 'gland', label: 'Autonomous Adrenal Secretion', unit: '×', min: 0, max: 2.2, step: 0.05, dec: 2 },
@@ -423,11 +322,11 @@
           { key: 'exoSteroid', label: 'Chronic Exogenous Glucocorticoid', unit: '× Pred', min: 0, max: 4.0, step: 0.1, dec: 1, desc: 'Exerts potent GR negative feedback without cross-reacting in the serum cortisol assay.' },
         ],
         presets: [
-          { id: 'normal', name: 'Normal Physiology', tag: 'Diurnal 24h', desc: 'Intact circadian rhythm (AM peak ~07:30, midnight nadir <140 nmol/L).', params: {} },
-          { id: 'cushing_dis', name: 'Cushing Disease', tag: 'Pit. Adenoma', desc: 'ACTH microadenoma with shifted GR Ki: resists 1mg DST, suppresses >50% with 8mg HDDST.', params: { pitAdenoma: 1.15, pitResistance: 5.5, crhDrive: 0.9 } },
-          { id: 'ectopic_acth', name: 'Ectopic ACTH Syndrome', tag: 'Autonomous', desc: 'Very high non-suppressible ACTH (e.g. SCLC), severe hypercortisolism, adrenal hyperplasia.', params: { ectopicACTH: 38 } },
+          { id: 'normal', name: 'Normal Physiology', tag: 'Diurnal 24h', desc: 'Intact circadian rhythm (AM peak ~450 nmol/L, midnight nadir ~110 nmol/L).', params: {} },
+          { id: 'cushing_dis', name: 'Cushing Disease', tag: 'Pit. Adenoma', desc: 'ACTH microadenoma with shifted GR Ki: resists 1mg DST, suppresses >50% with 8mg HDDST.', params: { pitAdenoma: 1.15, pitResistance: 7.5, crhDrive: 0.9 } },
+          { id: 'ectopic_acth', name: 'Ectopic ACTH Syndrome', tag: 'Autonomous', desc: 'High non-suppressible ACTH (e.g. SCLC), severe hypercortisolism, adrenal hyperplasia.', params: { ectopicACTH: 38 } },
           { id: 'adrenal_adenoma', name: 'Adrenal Adenoma', tag: 'ACTH-Indep.', desc: 'Autonomous cortisol secretion crushing CRH & ACTH; fails both 1mg and 8mg DST.', params: { autoAdrenal: 1.35 } },
-          { id: 'addisons', name: "Addison's Disease", tag: 'Primary AI', desc: 'Destroyed adrenal cortex: low cortisol, markedly elevated ACTH & CRH, flat Synacthen.', params: { adrenalCap: 0.08 } },
+          { id: 'addisons', name: "Addison's Disease", tag: 'Primary AI', desc: 'Autoimmune adrenal destruction: low cortisol, markedly elevated ACTH & CRH, flat Synacthen.', params: { adrenalCap: 0.08 } },
           { id: 'secondary_ai', name: 'Secondary Adrenal Insuff.', tag: 'Hypopit.', desc: 'Pituitary failure: low ACTH, low cortisol, progressive zona fasciculata atrophy (+14d).', params: { pitCap: 0.12 } },
           { id: 'exo_steroids', name: 'Chronic Exogenous Steroids', tag: 'Iatrogenic', desc: 'High exogenous GR agonist suppresses endogenous CRH/ACTH/Cortisol with adrenal atrophy.', params: { exoSteroid: 2.6 } },
           { id: 'severe_stress', name: 'Severe Physiological Stress', tag: '↑↑ CRH / IL-6', desc: 'Critical illness / sepsis cytokine drive overriding circadian nadir with high ACTH & cortisol.', params: { stressDrive: 1.75 } },
@@ -435,38 +334,35 @@
         tests: [
           { id: 'dst_1mg', label: '1 mg Overnight DST', tag: 'Low-Dose Dex', desc: 'Screens for hypercortisolism. Normal suppresses AM cortisol <50 nmol/L; Cushing Disease resists.' },
           { id: 'dst_8mg', label: '8 mg High-Dose DST', tag: 'HDDST', desc: 'Differentiates Cushing Disease (>50% suppression) from Ectopic ACTH or Adrenal Adenoma.' },
-          { id: 'synacthen', label: 'Synacthen 250 µg', tag: 'ACTH Stim', desc: 'Probes adrenal reserve directly. Normal surges >500 nmol/L; flat in Addison’s / atrophic Secondary AI.' },
+          { id: 'synacthen', label: 'Synacthen 250 µg', tag: 'ACTH Stim', desc: 'Probes adrenal reserve directly. Normal surges >550 nmol/L; flat in Addison’s / atrophic Secondary AI.' },
           { id: 'crh_stim', label: 'CRH Stimulation Bolus', tag: 'Pituitary Probe', desc: 'Exaggerated ACTH/Cortisol rise in Cushing Disease; flat in Ectopic ACTH & Adrenal Cushing.' },
           { id: 'acute_stress', label: 'Acute Stress Surge', tag: 'CRH Pulse', desc: 'Triggers transient hypothalamic CRH & IL-6 surge.' },
         ],
         channels: [
-          { key: 'cortTotal', label: 'Total Cortisol', unit: 'nmol/L', max: 1100, refLo: 170, refHi: 550, dec: 0 },
+          { key: 'cortTotal', label: 'Total Cortisol', unit: 'nmol/L', max: 1100, refLo: 95, refHi: 550, dec: 0 },
           { key: 'acth', label: 'ACTH', unit: 'pmol/L', max: 55, refLo: 2.0, refHi: 11.0, dec: 1 },
           { key: 'crh', label: 'CRH', unit: 'rel', max: 3.5, refLo: 0.4, refHi: 1.8, dec: 2 },
           { key: 'adrenalMass', label: 'Adrenal Mass', unit: '×', max: 2.4, refLo: 0.85, refHi: 1.15, dec: 2 },
         ],
         labs: [
-          { key: 'cortTotal', label: 'Total Cortisol', unit: 'nmol/L', ref: '170–550 AM', lo: 140, hi: 560, dec: 0 },
-          { key: 'cortF', label: 'Free Cortisol', unit: 'nmol/L', ref: '8–26', lo: 6.5, hi: 27, dec: 1 },
-          { key: 'acth', label: 'ACTH', unit: 'pmol/L', ref: '2.0–11.0', lo: 1.8, hi: 11.5, dec: 1 },
-          { key: 'crh', label: 'Hypothal. CRH', unit: 'rel', ref: '0.4–1.8', lo: 0.35, hi: 1.9, dec: 2 },
-          { key: 'gcEff', label: 'Net GR Signal', unit: 'eq', ref: '8–26', lo: 6.5, hi: 28, dec: 1 },
+          { key: 'cortTotal', label: 'Total Cortisol', unit: 'nmol/L', ref: '95–550 (24h)', lo: 90, hi: 560, dec: 0 },
+          { key: 'cortF', label: 'Free Cortisol', unit: 'nmol/L', ref: '4.5–27', lo: 4.5, hi: 27.5, dec: 1 },
+          { key: 'acth', label: 'ACTH', unit: 'pmol/L', ref: '1.8–11.5', lo: 1.6, hi: 11.8, dec: 1 },
+          { key: 'crh', label: 'Hypothal. CRH', unit: 'rel', ref: '0.35–1.9', lo: 0.30, hi: 1.95, dec: 2 },
+          { key: 'gcEff', label: 'Net GR Signal', unit: 'eq', ref: '4.5–28', lo: 4.5, hi: 28, dec: 1 },
           { key: 'adrenalMass', label: 'Adrenal Mass', unit: '×', ref: '0.85–1.15', lo: 0.80, hi: 1.20, dec: 2 },
         ],
       },
 
-      /* -----------------------------------------------------------------------
-         AXIS 2: HPT · THYROID (Time unit: days, realistic ~7-day T4 half-life)
-         ----------------------------------------------------------------------- */
       hpt: {
         id: 'hpt',
         name: 'HPT · Thyroid',
         timeUnit: 'd',
-        windowSpan: 42,          // 42 days (6 weeks) visible on chart
-        simRateAt1x: 1.5,        // 1.5 sim-days per real second at 1x
-        dtSub: 0.02,             // RK4 step = 0.02 day (~29 min)
-        warmupSpan: 48,          // 48 days warmup for T4 & mass equilibration
-        sampleInterval: 0.2,     // Record history every 0.2 day
+        windowSpan: 42,
+        simRateAt1x: 1.5,
+        dtSub: 0.02,
+        warmupSpan: 56,
+        sampleInterval: 0.2,
         phaseTitle: 'Log TSH vs Free T4',
         phaseSubtitle: 'Log-Linear Feedback Curve',
         organs: {
@@ -476,15 +372,8 @@
           target: { title: 'D1/D2 Tissues', sub: 'fT4 → fT3 Feedback' },
         },
         defaultParams: {
-          trhDrive: 1.0,
-          pitCap: 1.0,
-          tshoma: 0.0,
-          thyroidCap: 1.0,
-          tsi: 0.0,
-          deiodinase: 1.0,
-          tbg: 1.0,
-          lt4Dose: 0,
-          methimazole: 0,
+          trhDrive: 1.0, pitCap: 1.0, tshoma: 0.0, thyroidCap: 1.0,
+          tsi: 0.0, deiodinase: 1.0, tbg: 1.0, lt4Dose: 0, methimazole: 0,
         },
         paramDefs: [
           { key: 'trhDrive', organ: 'hypo', label: 'Hypothalamic TRH Drive', unit: '×', min: 0.1, max: 2.2, step: 0.05, dec: 2 },
@@ -496,14 +385,14 @@
           { key: 'tbg', organ: 'binding', label: 'TBG (Binding Globulin)', unit: '×', min: 0.4, max: 2.4, step: 0.05, dec: 2 },
         ],
         drugDefs: [
-          { key: 'lt4Dose', label: 'Levothyroxine (LT4)', unit: 'µg/d', min: 0, max: 350, step: 12.5, dec: 0, desc: 'Exogenous T4 replacement (~7d half-life). Use +14d to view full steady-state shift.' },
+          { key: 'lt4Dose', label: 'Levothyroxine (LT4)', unit: 'µg/d', min: 0, max: 350, step: 12.5, dec: 0, desc: 'Exogenous T4 replacement (~7d half-life). Use +14d to view steady-state equilibration.' },
           { key: 'methimazole', label: 'Methimazole (TPO Inhibitor)', unit: 'mg/d', min: 0, max: 40, step: 2.5, dec: 1, desc: 'Blocks thyroid peroxidase iodination & coupling; reduces endogenous T4/T3 synthesis.' },
         ],
         presets: [
           { id: 'normal', name: 'Euthyroid (Normal)', tag: 'Balanced', desc: 'Normal log-linear TSH–fT4 set point with intact D1/D2 peripheral conversion.', params: {} },
-          { id: 'graves', name: "Graves' Disease", tag: '↑↑ TSI', desc: 'TSH-receptor stimulating antibodies drive high fT4/fT3, suppressed TSH <0.02, and diffuse goiter.', params: { tsi: 2.4 } },
-          { id: 'hashimoto', name: "Hashimoto's Thyroiditis", tag: 'Primary Hypo', desc: 'Autoimmune gland destruction: low fT4/fT3, exponentially elevated TSH (>25 mIU/L).', params: { thyroidCap: 0.16 } },
-          { id: 'subclinical_hypo', name: 'Subclinical Hypothyroidism', tag: '↑TSH · Nl fT4', desc: 'Mildly reduced thyroid reserve compensated by elevated TSH (~8–12) maintaining low-normal fT4.', params: { thyroidCap: 0.56 } },
+          { id: 'graves', name: "Graves' Disease", tag: '↑↑ TSI', desc: 'TSH-receptor stimulating antibodies drive high fT4/fT3, suppressed TSH <0.02, diffuse goiter.', params: { tsi: 2.4 } },
+          { id: 'hashimoto', name: "Hashimoto's Thyroiditis", tag: 'Primary Hypo', desc: 'Autoimmune gland destruction: overt low fT4 (~6–7) & fT3, exponentially high TSH (>35 mIU/L).', params: { thyroidCap: 0.12 } },
+          { id: 'subclinical_hypo', name: 'Subclinical Hypothyroidism', tag: '↑TSH · Nl fT4', desc: 'Mildly reduced reserve compensated by elevated TSH (~8–12) maintaining low-normal fT4.', params: { thyroidCap: 0.42 } },
           { id: 'central_hypo', name: 'Central Hypothyroidism', tag: 'Pituitary', desc: 'Thyrotroph failure: low/inappropriately normal TSH with low fT4 & fT3 and thyroid atrophy.', params: { pitCap: 0.12 } },
           { id: 'tshoma', name: 'TSHoma (Pit. Adenoma)', tag: '↑TSH · ↑fT4', desc: 'Autonomous pituitary TSH secretion producing hyperthyroidism with non-suppressed TSH.', params: { tshoma: 0.95 } },
           { id: 'euthyroid_sick', name: 'Euthyroid Sick Syndrome', tag: '↓↓ D1 / fT3', desc: 'Non-thyroidal illness: impaired peripheral D1 deiodinase causing isolated low fT3.', params: { deiodinase: 0.35, trhDrive: 0.72 } },
@@ -512,7 +401,7 @@
         ],
         tests: [
           { id: 'trh_stim', label: 'TRH Stimulation Test', tag: 'Pituitary Probe', desc: 'Exaggerated TSH surge in primary hypothyroidism; blunted/flat in hyperthyroidism & central disease.' },
-          { id: 'start_lt4', label: 'Start LT4 100 µg/d', tag: 'Replacement', desc: 'Initiates full physiological Levothyroxine replacement. Click +14d to observe slow T4/TSH equilibration.' },
+          { id: 'start_lt4', label: 'Start LT4 100 µg/d', tag: 'Replacement', desc: 'Initiates physiological Levothyroxine replacement. Click +14d to observe slow T4/TSH equilibration.' },
           { id: 'start_mmi', label: 'Start Methimazole 20 mg/d', tag: 'Antithyroid', desc: 'Inhibits TPO synthesis in Graves’ disease; fT4 falls over 2–4 weeks.' },
           { id: 'thyroidectomy', label: 'Simulate Thyroidectomy', tag: 'Total Ablation', desc: 'Drops endogenous thyroid capacity to 0%; watch T4 decay with ~7-day half-life.' },
         ],
@@ -532,9 +421,6 @@
         ],
       },
 
-      /* -----------------------------------------------------------------------
-         AXIS 3: HPG · MALE (Time unit: days, GnRH pulsatile vs continuous!)
-         ----------------------------------------------------------------------- */
       hpg_male: {
         id: 'hpg_male',
         name: 'HPG · Male',
@@ -553,21 +439,15 @@
           target: { title: 'Androgen Target', sub: 'Free T & Inhibin B' },
         },
         defaultParams: {
-          gnrhDrive: 1.0,
-          gnrhContinuous: 0,       // 0 = Pulsatile, 1 = Continuous Agonist (Leuprolide)
-          prolactin: 10,
-          pitCap: 1.0,
-          testisCap: 1.0,
-          shbg: 1.0,
-          exoT: 0.0,
-          clomiphene: 0.0,
+          gnrhDrive: 1.0, gnrhContinuous: 0, prolactin: 10, pitCap: 1.0,
+          testisCap: 1.0, shbg: 1.0, exoT: 0.0, clomiphene: 0.0,
         },
         paramDefs: [
           { key: 'gnrhDrive', organ: 'hypo', label: 'Hypothalamic GnRH Drive', unit: '×', min: 0.05, max: 2.2, step: 0.05, dec: 2 },
           { key: 'prolactin', organ: 'hypo', label: 'Serum Prolactin (PRL)', unit: 'µg/L', min: 5, max: 250, step: 5, dec: 0 },
           { key: 'pitCap', organ: 'pit', label: 'Pituitary Gonadotroph Mass', unit: '×', min: 0.05, max: 2.0, step: 0.05, dec: 2 },
           { key: 'testisCap', organ: 'gland', label: 'Leydig / Sertoli Function', unit: '×', min: 0.05, max: 1.8, step: 0.05, dec: 2 },
-          { key: 'shbg', organ: 'binding', label: 'SHBG (Binding Globulin)', unit: '×', min: 0.35, max: 3.0, step: 0.05, dec: 2 },
+          { key: 'shbg', organ: 'binding', label: 'SHBG (Binding Globulin)', unit: '×', min: 0.35, max: 3.6, step: 0.05, dec: 2 },
         ],
         drugDefs: [
           { key: 'gnrhContinuous', type: 'toggle', label: 'GnRH Mode: Continuous Agonist (Leuprolide)', desc: 'Pulsatile maintains GnRH-R; continuous causes brief ~2d flare then receptor downregulation & castration.' },
@@ -581,7 +461,7 @@
           { id: 'exo_t_supp', name: 'Exogenous T / AAS Suppression', tag: '↑T · ↓↓LH/FSH', desc: 'Supraphysiologic exogenous testosterone crushes LH/FSH and induces testicular atrophy.', params: { exoT: 1.15 } },
           { id: 'hyperprolactin', name: 'Hyperprolactinemia', tag: 'Prolactinoma', desc: 'High Prolactin inhibits kisspeptin/GnRH neurons -> secondary hypogonadism.', params: { prolactin: 185 } },
           { id: 'gnrh_agonist', name: 'Continuous GnRH Agonist', tag: 'Leuprolide', desc: 'Continuous GnRH downregulates pituitary GnRH-R -> medical castration (low LH/FSH/T).', params: { gnrhContinuous: 1 } },
-          { id: 'high_shbg', name: 'High SHBG State', tag: '↓ Free T', desc: 'Hyperthyroidism/cirrhosis/aging: Total T appears normal while bioavailable Free T is low.', params: { shbg: 2.6 } },
+          { id: 'high_shbg', name: 'High SHBG State', tag: '↓ Free T', desc: 'Hyperthyroidism/cirrhosis/aging: Total T stays normal while bioavailable Free T drops <220.', params: { shbg: 3.3 } },
         ],
         tests: [
           { id: 'gnrh_bolus', label: 'GnRH Bolus Test', tag: 'Pituitary Probe', desc: 'Stimulates LH/FSH surge if pituitary gonadotrophs & GnRH-R are intact.' },
@@ -605,19 +485,16 @@
         ],
       },
 
-      /* -----------------------------------------------------------------------
-         AXIS 4: HPG · OVARIAN CYCLE (Genuine coupled 28-day dynamical model!)
-         ----------------------------------------------------------------------- */
       hpg_ovarian: {
         id: 'hpg_ovarian',
         name: 'HPG · Ovarian',
         timeUnit: 'd',
-        windowSpan: 42,          // 1.5 cycles visible simultaneously
-        simRateAt1x: 1.6,        // 1.6 cycle-days per real second at 1x
-        dtSub: 0.02,             // RK4 step = 0.02 day
-        warmupSpan: 56,          // 2 full cycles warmup for steady limit cycle
+        windowSpan: 56,
+        simRateAt1x: 2.2,
+        dtSub: 0.02,
+        warmupSpan: 84,
         sampleInterval: 0.16,
-        phaseTitle: 'Biphasic E2–LH Feedback Loop',
+        phaseTitle: 'Biphasic E2–LH Limit Cycle',
         phaseSubtitle: 'Follicular → Surge → Luteal',
         organs: {
           hypo: { title: 'Hypothalamus', sub: 'GnRH Pulse Freq' },
@@ -626,12 +503,8 @@
           target: { title: 'Endometrium / FB', sub: 'E2 (−/+) & P4 (−)' },
         },
         defaultParams: {
-          gnrhDrive: 1.0,
-          gnrhFreq: 1.0,
-          ovarianReserve: 1.0,
-          prolactin: 10,
-          ocpDose: 0.0,
-          exoProgestin: 0.0,
+          gnrhDrive: 1.0, gnrhFreq: 1.0, ovarianReserve: 1.0,
+          prolactin: 10, ocpDose: 0.0, exoProgestin: 0.0,
         },
         paramDefs: [
           { key: 'gnrhDrive', organ: 'hypo', label: 'Hypothalamic GnRH Drive', unit: '×', min: 0.08, max: 1.8, step: 0.04, dec: 2 },
@@ -644,11 +517,11 @@
           { key: 'exoProgestin', label: 'Exogenous Progestin', unit: '×', min: 0, max: 1.5, step: 0.05, dec: 2, desc: 'Suppresses GnRH pulse frequency and LH surge (e.g. luteal phase mimic / POP).' },
         ],
         presets: [
-          { id: 'normal', name: 'Normal 28-Day Cycle', tag: 'Ovulatory', desc: 'Follicular E2 rise flips to +feedback -> Day 13–14 LH surge -> Ovulation -> Luteal P4.', params: {} },
+          { id: 'normal', name: 'Normal 28-Day Cycle', tag: 'Ovulatory', desc: 'Self-sustaining 28d cycle: Follicular E2 → +FB Day 14 LH surge → Ovulation → Luteal P4 → Luteolysis.', params: {} },
           { id: 'pcos', name: 'PCOS (Anovulatory)', tag: 'LH:FSH > 2', desc: 'Rapid GnRH frequency drives high LH:FSH, tonic moderate E2, arrested follicles & flat low P4.', params: { gnrhFreq: 1.9, ovarianReserve: 0.85 } },
           { id: 'ocp', name: 'Combined Oral Contraceptive', tag: 'No Surge', desc: 'Exogenous E2 + progestin suppresses LH/FSH, prevents ovulation, flattens endogenous E2/P4.', params: { ocpDose: 1.0 } },
           { id: 'menopause', name: 'Menopause / POI', tag: '↑↑ FSH > 40', desc: 'Depleted ovarian follicles -> very low E2 & P4, loss of feedback -> high FSH & LH.', params: { ovarianReserve: 0.04 } },
-          { id: 'fha', name: 'Functional Hypothalamic Amen.', tag: '↓↓ GnRH', desc: 'Stress/energy deficit suppresses GnRH -> hypogonadotropic hypogonadism (low LH/FSH/E2/P4).', params: { gnrhDrive: 0.16 } },
+          { id: 'fha', name: 'Functional Hypothalamic Amen.', tag: '↓↓ GnRH', desc: 'Stress/energy deficit suppresses GnRH -> hypogonadotropic hypogonadism (low LH/FSH/E2/P4).', params: { gnrhDrive: 0.15 } },
           { id: 'hyperprolactin_f', name: 'Hyperprolactinemia', tag: 'Prolactinoma', desc: 'Elevated PRL suppresses GnRH pulses -> anovulation with low E2 & P4.', params: { prolactin: 170 } },
         ],
         tests: [
@@ -675,175 +548,109 @@
     };
 
     /* =========================================================================
-       3. COUPLED NONLINEAR RK4 ODE KERNELS FOR ALL 4 AXES
+       COUPLED NONLINEAR RK4 ODE KERNELS (FIXED & CALIBRATED)
        ========================================================================= */
-
     function createInitialState(axisId) {
       if (axisId === 'hpa') {
         return {
-          t: 7.0,
-          crh: 1.1,
-          acth: 6.5,
-          cortF: 18.0,
-          adrenalMass: 1.0,
-          exoGC: 0.0,
-          dexBolus: 0.0,
-          stressPulse: 0.0,
-          synacthenPulse: 0.0,
-          crhPulse: 0.0,
+          t: 7.0, crh: 1.1, acth: 6.5, cortF: 18.0, adrenalMass: 1.0,
+          exoGC: 0.0, dexBolus: 0.0, stressPulse: 0.0, synacthenPulse: 0.0, crhPulse: 0.0,
         };
       }
       if (axisId === 'hpt') {
-        return {
-          t: 0.0,
-          trh: 0.9,
-          tsh: 1.6,
-          ft4: 16.5,
-          ft3: 5.0,
-          thyroidMass: 1.0,
-          trhPulse: 0.0,
-        };
+        return { t: 0.0, trh: 0.9, tsh: 1.6, ft4: 16.5, ft3: 5.0, thyroidMass: 1.0, trhPulse: 0.0 };
       }
       if (axisId === 'hpg_male') {
         return {
-          t: 0.0,
-          gnrh: 1.0,
-          gnrhR: 1.0,
-          lh: 4.8,
-          fsh: 4.6,
-          totalT: 19.5,
-          inhibinB: 190.0,
-          testisMass: 1.0,
-          gnrhBolus: 0.0,
-          hcgBolus: 0.0,
+          t: 0.0, gnrh: 1.0, gnrhR: 1.0, lh: 4.8, fsh: 4.6, totalT: 19.5,
+          inhibinB: 190.0, testisMass: 1.0, gnrhBolus: 0.0, hcgBolus: 0.0,
         };
       }
-      // HPG Ovarian (Early Follicular Day 1)
       return {
-        t: 0.0,
-        F: 0.10,
-        CL: 0.02,
-        clAge: 0.0,
-        e2Mem: 140.0,
-        lh: 5.2,
-        fsh: 7.4,
-        e2: 145.0,
-        p4: 1.6,
-        progestinPulse: 0.0,
-        cycleDay: 1.0,
-        wasLuteal: 0.0,
+        t: 0.0, F: 0.06, CL: 0.0, clAge: 0.0, e2Mem: 110.0,
+        lh: 6.2, fsh: 9.2, e2: 110.0, p4: 1.2, progestinPulse: 0.0,
+        cycleDay: 1.0, wasLuteal: 0.0,
       };
     }
 
     function derivatives(axisId, s, p) {
       if (axisId === 'hpa') {
-        // Circadian pacemaker peaking around 06:00 -> ACTH ~06:45 -> Cortisol ~07:30
         const hour = ((s.t % 24) + 24) % 24;
         const cosTerm = 0.5 * (1 + Math.cos((2 * Math.PI * (hour - 6.0)) / 24));
-        const circ = 0.25 + 0.75 * Math.pow(cosTerm, 1.75);
-
+        const circ = 0.22 + 0.78 * Math.pow(cosTerm, 1.85);
         const gcEff = s.cortF + s.exoGC + s.dexBolus;
 
-        // Dual Hill negative feedback (Hypothalamus Ki=18, Pituitary normal Ki=18, Adenoma Ki=18*pitResistance)
-        const fbHypo = 1 / (1 + Math.pow(gcEff / 18.0, 2.2));
-        const fbPitNorm = 1 / (1 + Math.pow(gcEff / 18.0, 2.2));
-        const fbPitAdenoma = 1 / (1 + Math.pow(gcEff / (18.0 * p.pitResistance), 2.3));
+        const fbHypo = 1 / (1 + Math.pow(gcEff / 18.0, 2.3));
+        const fbPitNorm = 1 / (1 + Math.pow(gcEff / 18.0, 2.3));
+        const fbPitAdenoma = 1 / (1 + Math.pow(gcEff / (18.0 * p.pitResistance), 3.0));
 
-        const crhInput = (p.crhDrive * circ + p.stressDrive * 1.45 + s.stressPulse) * 2.15 * fbHypo;
+        const crhInput = (p.crhDrive * circ + p.stressDrive * 1.45 + s.stressPulse) * 2.25 * fbHypo;
         const d_crh = crhInput - 0.90 * s.crh;
 
-        // Pituitary ACTH: Normal corticotrophs + Pituitary Adenoma (partial CRH responsiveness, shifted Ki) + Ectopic (autonomous)
-        const normActhSec = p.pitCap * 16.5 * (s.crh + s.crhPulse) * fbPitNorm;
+        const normActhSec = p.pitCap * 16.8 * (s.crh + s.crhPulse) * fbPitNorm;
         const adenomaSec = p.pitAdenoma * 22.0 * (0.78 + 0.35 * (s.crh + s.crhPulse)) * fbPitAdenoma;
         const ectopicSec = p.ectopicACTH * 1.35;
         const d_acth = (normActhSec + adenomaSec + ectopicSec) - 1.35 * s.acth;
 
-        // Adrenal Cortex Free Cortisol (driven by endogenous ACTH + Synacthen bolus)
         const acthTotalStim = s.acth + s.synacthenPulse;
         const adrenalStim = Math.pow(acthTotalStim, 1.25) / (Math.pow(acthTotalStim, 1.25) + Math.pow(7.2, 1.25));
-        const cortSec = p.adrenalCap * s.adrenalMass * 34.0 * adrenalStim + p.autoAdrenal * 24.5;
+        const cortSec = p.adrenalCap * s.adrenalMass * 35.0 * adrenalStim + p.autoAdrenal * 25.0;
         const d_cortF = cortSec - 0.68 * s.cortF;
 
-        // Slow adrenal trophic adaptation (tau = 120 h = 5 days)
-        const massTarget = clamp(0.22 + 1.55 * (Math.pow(s.acth, 0.85) / (Math.pow(s.acth, 0.85) + Math.pow(5.5, 0.85))), 0.18, 2.45);
+        // Autoimmune destruction (adrenalCap < 0.35) cannot undergo hyperplasia
+        const intactScale = clamp(p.adrenalCap / 0.40, 0.22, 1.0);
+        const massTarget = clamp((0.22 + 1.55 * (Math.pow(s.acth, 0.85) / (Math.pow(s.acth, 0.85) + Math.pow(5.5, 0.85)))) * intactScale, 0.18, 2.45);
         const d_adrenalMass = (massTarget - s.adrenalMass) / 120.0;
 
-        // Exogenous chronic steroid plasma equilibration & dynamic test pulse decays
         const exoTarget = p.exoSteroid * 28.0;
         const d_exoGC = (exoTarget - s.exoGC) / 4.0;
-        const d_dexBolus = -0.042 * s.dexBolus;       // ~16.5 h half-life
-        const d_stressPulse = -0.32 * s.stressPulse;  // ~2.2 h half-life
-        const d_synacthenPulse = -0.85 * s.synacthenPulse;
-        const d_crhPulse = -0.80 * s.crhPulse;
 
         return {
-          t: 1,
-          crh: d_crh,
-          acth: d_acth,
-          cortF: d_cortF,
-          adrenalMass: d_adrenalMass,
-          exoGC: d_exoGC,
-          dexBolus: d_dexBolus,
-          stressPulse: d_stressPulse,
-          synacthenPulse: d_synacthenPulse,
-          crhPulse: d_crhPulse,
+          t: 1, crh: d_crh, acth: d_acth, cortF: d_cortF, adrenalMass: d_adrenalMass,
+          exoGC: d_exoGC, dexBolus: -0.042 * s.dexBolus, stressPulse: -0.32 * s.stressPulse,
+          synacthenPulse: -0.85 * s.synacthenPulse, crhPulse: -0.80 * s.crhPulse,
         };
       }
 
       if (axisId === 'hpt') {
-        // Effective intracellular thyroid feedback signal (fT4 + fT3)
         const tEff = 0.65 * s.ft4 + 0.35 * (s.ft3 * 3.25);
-
-        // Hypothalamic TRH (mildly damped by thyroid hormone)
         const trhEq = p.trhDrive * (1.28 / (1 + Math.pow(tEff / 23.0, 2.0))) + s.trhPulse;
         const d_trh = (trhEq - s.trh) / 0.15;
 
-        // Steep log-linear Pituitary TSH negative feedback
         const fbExp = safeExp(-0.40 * (tEff - 16.4));
         const tshNormalSec = p.pitCap * (0.22 + 0.78 * s.trh) * 23.5 * fbExp;
         const tshomaSec = p.tshoma * 135.0;
         const d_tsh = (tshNormalSec + tshomaSec) - 14.0 * s.tsh;
 
-        // Thyroid Follicular T4 Synthesis (stimulated by TSH + Graves' TSI, inhibited by Methimazole)
         const stimDrive = s.tsh + p.tsi * 16.0;
         const stimSat = Math.pow(stimDrive, 1.05) / (Math.pow(stimDrive, 1.05) + Math.pow(2.25, 1.05));
         const mmiBlock = 1 / (1 + Math.pow(p.methimazole / 9.5, 1.45));
-        const endoT4 = p.thyroidCap * s.thyroidMass * mmiBlock * 4.05 * stimSat;
-        const exoT4 = (p.lt4Dose / 100.0) * 1.65; // 100 ug/d = physiological replacement
+        const endoT4 = p.thyroidCap * s.thyroidMass * mmiBlock * 4.10 * stimSat;
+        const exoT4 = (p.lt4Dose / 100.0) * 1.65;
 
-        // Realistic ~7-day T4 half-life (k = 0.10 /day)
         const d_ft4 = (endoT4 + exoT4) - 0.10 * s.ft4;
-
-        // Peripheral D1/D2 conversion of fT4 -> fT3 (half-life ~0.7 days)
         const d_ft3 = (0.275 * p.deiodinase * s.ft4 + 0.28 * endoT4) - 1.0 * s.ft3;
 
-        // Slow Thyroid follicular trophic mass adaptation (goiter vs atrophy, tau = 16 days)
-        const massTarget = clamp(0.32 + 1.85 * (stimDrive / (stimDrive + 2.8)), 0.28, 2.85);
+        // Chronic destructive thyroiditis limits hypertrophic mass expansion
+        const parenchymalLimit = p.thyroidCap < 0.30 ? 0.55 + 2.5 * p.thyroidCap : 2.85;
+        const massTarget = clamp(0.32 + 1.85 * (stimDrive / (stimDrive + 2.8)), 0.28, parenchymalLimit);
         const d_thyroidMass = (massTarget - s.thyroidMass) / 16.0;
 
-        const d_trhPulse = -6.5 * s.trhPulse;
-
         return {
-          t: 1,
-          trh: d_trh,
-          tsh: d_tsh,
-          ft4: d_ft4,
-          ft3: d_ft3,
-          thyroidMass: d_thyroidMass,
-          trhPulse: d_trhPulse,
+          t: 1, trh: d_trh, tsh: d_tsh, ft4: d_ft4, ft3: d_ft3,
+          thyroidMass: d_thyroidMass, trhPulse: -6.5 * s.trhPulse,
         };
       }
 
       if (axisId === 'hpg_male') {
         const freeT = (s.totalT * 21.5) / (0.35 + 0.65 * p.shbg);
-        const prlBlock = 1 / (1 + Math.pow(p.prolactin / 38.0, 2.0));
+        const prlBlock = 1 / (1 + Math.pow(Math.max(0, p.prolactin - 12) / 36.0, 2.0));
         const sermBlock = 1 / (1 + p.clomiphene * 1.65);
         const tFB = (freeT / 420.0) * sermBlock;
 
         const isCont = p.gnrhContinuous >= 0.5;
         let gnrhTarget, gnrhRTarget, tauR;
         if (isCont) {
-          // Continuous GnRH agonist -> initial flare while gnrhR is still ~1, then downregulation to ~0.045
           gnrhTarget = 2.6;
           gnrhRTarget = 0.042;
           tauR = 2.3;
@@ -856,13 +663,11 @@
         const d_gnrh = (gnrhTarget - s.gnrh) / 0.35;
         const d_gnrhR = (gnrhRTarget - s.gnrhR) / tauR;
 
-        // Pituitary LH & FSH
         const lhSec = p.pitCap * s.gnrh * s.gnrhR * 13.8 / (1 + Math.pow(tFB / 1.15, 2.2));
         const fshSec = p.pitCap * s.gnrh * s.gnrhR * 12.2 / (1 + Math.pow(s.inhibinB / 175.0, 2.0) + 0.35 * Math.pow(tFB / 1.3, 1.8));
         const d_lh = lhSec - 1.75 * s.lh;
         const d_fsh = fshSec - 1.10 * s.fsh;
 
-        // Testicular Leydig Testosterone & Sertoli Inhibin B
         const lhEff = s.lh + s.hcgBolus * 12.0;
         const leydigStim = Math.pow(lhEff, 1.1) / (Math.pow(lhEff, 1.1) + Math.pow(3.8, 1.1));
         const endoT = p.testisCap * s.testisMass * 49.0 * leydigStim;
@@ -872,99 +677,83 @@
         const sertoliStim = s.fsh / (s.fsh + 4.4);
         const d_inhibinB = (p.testisCap * s.testisMass * 320.0 * sertoliStim) - 0.85 * s.inhibinB;
 
-        // Slow testicular trophic adaptation (atrophy on exogenous T / secondary hypogonadism)
         const trophicDrive = 0.55 * (s.lh / (s.lh + 3.5)) + 0.45 * (s.fsh / (s.fsh + 3.5));
         const massTarget = clamp(0.28 + 1.25 * trophicDrive, 0.25, 1.55);
         const d_testisMass = (massTarget - s.testisMass) / 14.0;
 
-        const d_gnrhBolus = -2.8 * s.gnrhBolus;
-        const d_hcgBolus = -0.55 * s.hcgBolus;
-
         return {
-          t: 1,
-          gnrh: d_gnrh,
-          gnrhR: d_gnrhR,
-          lh: d_lh,
-          fsh: d_fsh,
-          totalT: d_totalT,
-          inhibinB: d_inhibinB,
-          testisMass: d_testisMass,
-          gnrhBolus: d_gnrhBolus,
-          hcgBolus: d_hcgBolus,
+          t: 1, gnrh: d_gnrh, gnrhR: d_gnrhR, lh: d_lh, fsh: d_fsh, totalT: d_totalT,
+          inhibinB: d_inhibinB, testisMass: d_testisMass,
+          gnrhBolus: -2.8 * s.gnrhBolus, hcgBolus: -0.55 * s.hcgBolus,
         };
       }
 
-      // AXIS 4: HPG · OVARIAN CYCLE (Coupled 28-Day Dynamical System)
-      const prlBlock = 1 / (1 + Math.pow(p.prolactin / 38.0, 2.0));
-      const p4Eff = s.p4 + p.ocpDose * 36.0 + p.exoProgestin * 34.0 + s.progestinPulse;
+      // AXIS 4: HPG · OVARIAN (Calibrated Self-Sustaining ~28-Day Coupled Limit Cycle)
+      const prlBlock = 1 / (1 + Math.pow(Math.max(0, p.prolactin - 12) / 38.0, 2.0));
+      const p4Exog = p.ocpDose * 36.0 + p.exoProgestin * 34.0 + s.progestinPulse;
+      // Subtract basal adrenal P4 (1.2) so normal follicular phase has zero spurious P4 blockade
+      const p4Eff = Math.max(0, s.p4 - 1.2) + p4Exog;
       const e2Eff = s.e2 + p.ocpDose * 480.0;
 
-      // Biphasic E2 Feedback:
-      // 1) Negative feedback at moderate E2 & P4
-      const negFB_LH = 0.045 + 0.955 / (1 + Math.pow(e2Eff / 82.0, 1.55) + Math.pow(p4Eff / 9.5, 1.8));
-      const negFB_FSH = 0.032 + 0.968 / (1 + Math.pow(e2Eff / 36.0, 1.45) + 2.4 * s.F + Math.pow(p4Eff / 10.5, 1.8));
+      // Central negative feedback (P4 slows GnRH pulse generator multiplicatively)
+      const p4Supp = (0.30 + 0.70 / (1 + Math.pow(p4Eff / 8.5, 1.8))) / (1 + 1.25 * p.ocpDose);
+      const negFB_LH = (0.12 + 0.88 / (1 + Math.pow(e2Eff / 48.0, 1.75))) * p4Supp;
+      const negFB_FSH = (0.06 + 0.94 / (1 + Math.pow(e2Eff / 38.0, 1.55) + 1.8 * s.F)) * p4Supp;
 
-      // 2) Positive feedback surge switch when sustained e2Mem exceeds ~680 pmol/L & P4 is low
-      const e2Excess = Math.max(0, s.e2Mem - 660.0);
-      const posE2 = Math.pow(e2Excess / 210.0, 2.8) / (1 + Math.pow(e2Excess / 210.0, 2.8));
-      const p4Permit = 1 / (1 + Math.pow(p4Eff / 6.0, 3.2));
+      // Biphasic Positive Feedback: sustained E2 memory > 700 pmol/L with low P4 triggers LH/FSH surge
+      const e2Excess = Math.max(0, s.e2Mem - 700.0);
+      const posE2 = Math.pow(e2Excess / 155.0, 3.0) / (1 + Math.pow(e2Excess / 155.0, 3.0));
+      const p4Permit = 1 / (1 + Math.pow(p4Eff / 5.5, 3.0));
       const ocpPermit = 1 / (1 + Math.pow(p.ocpDose / 0.22, 2.5));
       const posFB = posE2 * p4Permit * ocpPermit;
 
-      // GnRH pulse frequency selectively tunes LH (+) vs FSH (-) — driving PCOS LH:FSH > 2!
-      const freqLH = Math.pow(p.gnrhFreq, 1.25);
-      const freqFSH = 1 / Math.pow(p.gnrhFreq, 0.78);
+      // GnRH pulse frequency differentially tunes LH (+) vs FSH (-) -> PCOS LH:FSH > 2
+      const freqLH = Math.pow(p.gnrhFreq, 1.22);
+      const freqFSH = 1 / Math.pow(p.gnrhFreq, 0.76);
 
-      const lhTarget = p.gnrhDrive * prlBlock * freqLH * (44.0 * negFB_LH + 78.0 * posFB);
-      const fshTarget = p.gnrhDrive * prlBlock * freqFSH * (98.0 * negFB_FSH + 18.0 * posFB);
+      const lhTarget = p.gnrhDrive * prlBlock * freqLH * (32.0 * negFB_LH + 72.0 * posFB);
+      const fshTarget = p.gnrhDrive * prlBlock * freqFSH * (72.0 * negFB_FSH + 19.0 * posFB);
 
-      const d_lh = 1.65 * (lhTarget - s.lh);
-      const d_fsh = 1.35 * (fshTarget - s.fsh);
+      const d_lh = 1.75 * (lhTarget - s.lh);
+      const d_fsh = 1.45 * (fshTarget - s.fsh);
 
-      // Ovulation trigger: LH surge (>22 IU/L) acting on mature follicle (F > 0.58)
-      const ovulLH = 1 / (1 + safeExp(-(s.lh - 22.0) / 3.5));
-      const ovulF = 1 / (1 + safeExp(-(s.F - 0.56) / 0.07));
+      // Ovulation: LH surge (>22 IU/L) ruptures mature dominant follicle (F > 0.50)
+      const ovulLH = 1 / (1 + safeExp(-(s.lh - 22.0) / 3.2));
+      const ovulF = 1 / (1 + safeExp(-(s.F - 0.50) / 0.06));
       const ovul = ovulLH * ovulF;
 
-      // Follicular recruitment & maturation (in PCOS high gnrhFreq arrests maturation below surge threshold)
-      const pcosCap = p.gnrhFreq > 1.35 ? Math.max(0.36, 1.12 - 0.92 * (p.gnrhFreq - 1.35)) : 1.15;
-      const fshRecruit = Math.max(0, s.fsh - 1.8) / (s.fsh + 4.2);
-      const p4InhibF = 1 / (1 + Math.pow(p4Eff / 7.5, 2.4));
-      const fGrowth = p.ovarianReserve * 0.30 * fshRecruit * (0.24 + 1.25 * s.F) * Math.max(0, 1 - s.F / pcosCap) * p4InhibF;
-      const fDecay = (0.035 + 0.48 * (p4Eff / (p4Eff + 9.0)) + 1.95 * ovul) * s.F;
+      // Dominant follicle recruitment (FSH window) + late-follicular LH-receptor autocrine maturation
+      const pcosCap = p.gnrhFreq > 1.35 ? Math.max(0.34, 1.05 - 1.15 * (p.gnrhFreq - 1.35)) : 1.18;
+      const fshDrive = Math.pow(s.fsh, 2.4) / (Math.pow(s.fsh, 2.4) + Math.pow(4.6, 2.4));
+      const lhDrive = Math.pow(s.lh, 2.0) / (Math.pow(s.lh, 2.0) + Math.pow(3.5, 2.0));
+      const p4InhibF = 1 / (1 + Math.pow(p4Eff / 5.5, 2.5));
+
+      const fGrowth = p.ovarianReserve * (0.11 * fshDrive + 0.34 * s.F * lhDrive) * Math.max(0, 1 - s.F / pcosCap) * p4InhibF;
+      const fDecay = (0.075 + 0.60 * (p4Eff / (p4Eff + 6.0)) + 2.4 * ovul) * s.F;
       const d_F = fGrowth - fDecay;
 
-      // Corpus Luteum luteinization & 12-day programmed luteolysis
-      const lutealLife = 1 / (1 + safeExp((s.clAge - 11.2) / 0.85));
+      // Corpus Luteum luteinization & ~13-day programmed luteolysis
+      const lutealLife = 1 / (1 + safeExp((s.clAge - 10.8) / 0.75));
       const luteolysis = 1 - lutealLife;
-      const clForm = 2.6 * ovul * s.F;
-      const clMaint = 0.62 * s.CL * Math.max(0, 1.05 - s.CL) * lutealLife;
-      const clRegress = (0.05 + 0.82 * luteolysis) * s.CL;
+      const clForm = 2.8 * ovul * s.F;
+      const clMaint = 0.78 * s.CL * Math.max(0, 1.0 - s.CL) * lutealLife;
+      const clRegress = (0.04 + 0.95 * luteolysis) * s.CL;
       const d_CL = clForm + clMaint - clRegress;
 
-      const d_clAge = s.CL > 0.09 ? 1.0 : -2.6 * s.clAge;
+      const d_clAge = s.CL > 0.12 ? 1.0 : -4.0 * s.clAge;
 
-      // Ovarian Estradiol (E2) & Progesterone (P4) secretion
-      const e2Prod = p.ovarianReserve * (85.0 + 1320.0 * Math.pow(s.F, 1.55) + 560.0 * s.CL) + 18.0;
-      const p4Prod = 1.2 + 54.0 * p.ovarianReserve * s.CL;
-      const d_e2 = 1.15 * (e2Prod - s.e2);
-      const d_p4 = 1.25 * (p4Prod - s.p4);
-      const d_e2Mem = (s.e2 - s.e2Mem) / 1.05;
-      const d_progestinPulse = -0.28 * s.progestinPulse;
+      // Ovarian E2 & P4 secretion
+      const e2Prod = p.ovarianReserve * (55.0 + 1400.0 * Math.pow(s.F, 1.9) + 520.0 * s.CL) + 18.0;
+      const p4Prod = 1.2 + 52.0 * p.ovarianReserve * s.CL;
 
       return {
-        t: 1,
-        F: d_F,
-        CL: d_CL,
-        clAge: d_clAge,
-        e2Mem: d_e2Mem,
-        lh: d_lh,
-        fsh: d_fsh,
-        e2: d_e2,
-        p4: d_p4,
-        progestinPulse: d_progestinPulse,
-        cycleDay: 1,
-        wasLuteal: 0,
+        t: 1, F: d_F, CL: d_CL, clAge: d_clAge,
+        e2Mem: (s.e2 - s.e2Mem) / 1.15,
+        lh: d_lh, fsh: d_fsh,
+        e2: 1.25 * (e2Prod - s.e2),
+        p4: 1.35 * (p4Prod - s.p4),
+        progestinPulse: -0.28 * s.progestinPulse,
+        cycleDay: 1, wasLuteal: 0,
       };
     }
 
@@ -992,7 +781,6 @@
         next[key] = Number.isFinite(v) ? (key === 't' ? v : Math.max(0, v)) : s[key];
       }
 
-      // Specific bounds & clean cycleDay tracking for Ovarian cycle
       if (axisId === 'hpa') {
         next.adrenalMass = clamp(next.adrenalMass, 0.15, 2.5);
         next.acth = clamp(next.acth, 0.05, 160);
@@ -1017,11 +805,8 @@
         next.e2 = clamp(next.e2, 10, 2200);
         next.p4 = clamp(next.p4, 0.3, 85);
 
-        // Track clean 1–28 cycle day: lock Day 1 to completion of luteolysis!
-        if (next.CL > 0.35) {
-          next.wasLuteal = 1.0;
-        }
-        if (next.wasLuteal > 0.5 && next.CL < 0.09 && next.clAge > 10.5) {
+        if (next.CL > 0.35) next.wasLuteal = 1.0;
+        if (next.wasLuteal > 0.5 && next.CL < 0.10 && next.clAge > 10.0) {
           next.cycleDay = 1.0;
           next.wasLuteal = 0.0;
         } else if (next.cycleDay >= 29.0) {
@@ -1036,65 +821,35 @@
         const cortTotal = s.cortF * 20.0 * p.cbg;
         const gcEff = s.cortF + s.exoGC + s.dexBolus;
         return {
-          t: s.t,
-          crh: s.crh,
-          acth: s.acth,
-          cortF: s.cortF,
-          cortTotal,
-          gcEff,
-          adrenalMass: s.adrenalMass,
-          exoActive: s.exoGC + s.dexBolus,
-          posFB: 0,
+          t: s.t, crh: s.crh, acth: s.acth, cortF: s.cortF, cortTotal, gcEff,
+          adrenalMass: s.adrenalMass, exoActive: s.exoGC + s.dexBolus, posFB: 0,
         };
       }
       if (axisId === 'hpt') {
-        const totalT4 = s.ft4 * 6.4 * p.tbg;
         return {
-          t: s.t,
-          trh: s.trh,
-          tsh: s.tsh,
-          ft4: s.ft4,
-          ft3: s.ft3,
-          totalT4,
-          thyroidMass: s.thyroidMass,
-          posFB: 0,
+          t: s.t, trh: s.trh, tsh: s.tsh, ft4: s.ft4, ft3: s.ft3,
+          totalT4: s.ft4 * 6.4 * p.tbg, thyroidMass: s.thyroidMass, posFB: 0,
         };
       }
       if (axisId === 'hpg_male') {
         const freeT = (s.totalT * 21.5) / (0.35 + 0.65 * p.shbg);
         return {
-          t: s.t,
-          gnrh: s.gnrh,
-          gnrhR: s.gnrhR,
-          lh: s.lh,
-          fsh: s.fsh,
-          totalT: s.totalT,
-          freeT,
-          inhibinB: s.inhibinB,
-          testisMass: s.testisMass,
-          posFB: 0,
+          t: s.t, gnrh: s.gnrh, gnrhR: s.gnrhR, lh: s.lh, fsh: s.fsh,
+          totalT: s.totalT, freeT, inhibinB: s.inhibinB, testisMass: s.testisMass, posFB: 0,
         };
       }
-      // Ovarian
-      const p4Eff = s.p4 + p.ocpDose * 36.0 + p.exoProgestin * 34.0 + s.progestinPulse;
-      const posActive = s.e2Mem > 680 && p4Eff < 7.5 && p.ocpDose < 0.25 && s.lh > 15 ? 1 : 0;
+      const p4Eff = Math.max(0, s.p4 - 1.2) + p.ocpDose * 36.0 + p.exoProgestin * 34.0 + s.progestinPulse;
+      const posActive = s.e2Mem > 700 && p4Eff < 7.5 && p.ocpDose < 0.25 && s.lh > 16 ? 1 : 0;
       const cyclePhaseNum = Math.min(28, Math.max(1, Math.floor(s.cycleDay)));
       return {
-        t: s.t,
-        F: s.F,
-        CL: s.CL,
-        lh: s.lh,
-        fsh: s.fsh,
-        e2: s.e2,
-        p4: s.p4,
-        lhFshRatio: s.lh / Math.max(0.2, s.fsh),
-        cyclePhaseNum,
-        posFB: posActive,
+        t: s.t, F: s.F, CL: s.CL, lh: s.lh, fsh: s.fsh, e2: s.e2, p4: s.p4,
+        lhFshRatio: s.lh / Math.max(0.2, s.fsh), cyclePhaseNum, posFB: posActive,
       };
     }
 
+    // ==================== END OF STEP 1 — PASTE STEP 2 DIRECTLY BELOW ====================
     /* =========================================================================
-       4. APPLICATION STATE & HISTORY MANAGEMENT
+       APPLICATION STATE & HISTORY MANAGEMENT
        ========================================================================= */
     const app = {
       axisId: 'hpa',
@@ -1103,7 +858,7 @@
       simState: null,
       obs: null,
       history: [],
-      events: [],             // { t, label } vertical dashed markers on timeline
+      events: [],
       pinnedObs: null,
       playing: true,
       speed: 1,
@@ -1115,20 +870,13 @@
       lastTestId: null,
     };
 
-    function getAxis() {
-      return AXES[app.axisId];
-    }
+    const getAxis = () => AXES[app.axisId];
 
     function recordPoint(obs) {
       app.history.push(obs);
-      const span = getAxis().windowSpan;
-      const cutoff = obs.t - span * 1.15;
-      while (app.history.length > 2 && app.history[0].t < cutoff) {
-        app.history.shift();
-      }
-      while (app.events.length > 0 && app.events[0].t < cutoff) {
-        app.events.shift();
-      }
+      const cutoff = obs.t - getAxis().windowSpan * 1.15;
+      while (app.history.length > 2 && app.history[0].t < cutoff) app.history.shift();
+      while (app.events.length > 0 && app.events[0].t < cutoff) app.events.shift();
       app.lastSampleT = obs.t;
     }
 
@@ -1154,6 +902,20 @@
       }
     }
 
+    function warmupCurrentAxis() {
+      const axis = getAxis();
+      app.events = [];
+      app.history = [];
+      app.lastTestId = null;
+      app.simState = createInitialState(app.axisId);
+      app.lastSampleT = -999;
+
+      const preRecord = Math.max(0, axis.warmupSpan - axis.windowSpan * 0.94);
+      if (preRecord > 0) advanceSim(preRecord, false);
+      app.lastSampleT = app.simState.t - axis.sampleInterval;
+      advanceSim(axis.windowSpan * 0.94, true);
+    }
+
     function loadAxis(axisId, presetId = 'normal') {
       app.axisId = axisId;
       const axis = getAxis();
@@ -1161,21 +923,9 @@
       app.presetId = preset.id;
       app.params = { ...axis.defaultParams, ...(preset.params || {}) };
       app.pinnedObs = null;
-      app.events = [];
-      app.history = [];
-      app.lastTestId = null;
       app.visibleChannels = [true, true, true, true];
 
-      app.simState = createInitialState(axisId);
-      app.lastSampleT = -999;
-
-      // Fast warmup so charts & phase planes are rich and equilibrated immediately
-      const preRecordWarmup = Math.max(0, axis.warmupSpan - axis.windowSpan * 0.92);
-      if (preRecordWarmup > 0) {
-        advanceSim(preRecordWarmup, false);
-      }
-      app.lastSampleT = app.simState.t - axis.sampleInterval;
-      advanceSim(axis.windowSpan * 0.92, true);
+      warmupCurrentAxis();
 
       updatePinButtonUI();
       buildAxisTabsUI();
@@ -1193,20 +943,8 @@
       if (!preset) return;
       app.presetId = preset.id;
       app.params = { ...axis.defaultParams, ...(preset.params || {}) };
-      app.events = [];
-      app.history = [];
-      app.lastTestId = null;
 
-      app.simState = createInitialState(app.axisId);
-      app.lastSampleT = -999;
-
-      const preRecordWarmup = Math.max(0, axis.warmupSpan - axis.windowSpan * 0.92);
-      if (preRecordWarmup > 0) {
-        advanceSim(preRecordWarmup, false);
-      }
-      app.lastSampleT = app.simState.t - axis.sampleInterval;
-      advanceSim(axis.windowSpan * 0.92, true);
-
+      warmupCurrentAxis();
       highlightActivePreset();
       syncAllControlInputs();
       updateAllReadouts();
@@ -1220,64 +958,25 @@
       let label = '';
 
       if (app.axisId === 'hpa') {
-        if (testId === 'dst_1mg') {
-          s.dexBolus += 42.0; // Low-dose Dex (suppresses Normal Ki=18, resists Cushing Ki=99)
-          label = '1mg DST';
-        } else if (testId === 'dst_8mg') {
-          s.dexBolus += 240.0; // High-dose Dex (suppresses Cushing Disease >50%, fails Ectopic/Adrenal)
-          label = '8mg HDDST';
-        } else if (testId === 'synacthen') {
-          s.synacthenPulse += 48.0;
-          label = 'Synacthen 250µg';
-        } else if (testId === 'crh_stim') {
-          s.crhPulse += 2.6;
-          label = 'CRH Bolus';
-        } else if (testId === 'acute_stress') {
-          s.stressPulse += 2.4;
-          label = 'Stress Surge';
-        }
+        if (testId === 'dst_1mg') { s.dexBolus += 55.0; label = '1mg DST'; }
+        else if (testId === 'dst_8mg') { s.dexBolus += 280.0; label = '8mg HDDST'; }
+        else if (testId === 'synacthen') { s.synacthenPulse += 52.0; label = 'Synacthen 250µg'; }
+        else if (testId === 'crh_stim') { s.crhPulse += 2.6; label = 'CRH Bolus'; }
+        else if (testId === 'acute_stress') { s.stressPulse += 2.4; label = 'Stress Surge'; }
       } else if (app.axisId === 'hpt') {
-        if (testId === 'trh_stim') {
-          s.trhPulse += 3.2;
-          label = 'TRH Stim';
-        } else if (testId === 'start_lt4') {
-          app.params.lt4Dose = 100;
-          app.presetId = 'custom';
-          label = 'LT4 100µg/d';
-        } else if (testId === 'start_mmi') {
-          app.params.methimazole = 20;
-          app.presetId = 'custom';
-          label = 'MMI 20mg/d';
-        } else if (testId === 'thyroidectomy') {
-          app.params.thyroidCap = 0;
-          app.presetId = 'custom';
-          label = 'Thyroidectomy';
-        }
+        if (testId === 'trh_stim') { s.trhPulse += 3.2; label = 'TRH Stim'; }
+        else if (testId === 'start_lt4') { app.params.lt4Dose = 100; app.presetId = 'custom'; label = 'LT4 100µg/d'; }
+        else if (testId === 'start_mmi') { app.params.methimazole = 20; app.presetId = 'custom'; label = 'MMI 20mg/d'; }
+        else if (testId === 'thyroidectomy') { app.params.thyroidCap = 0; app.presetId = 'custom'; label = 'Thyroidectomy'; }
       } else if (app.axisId === 'hpg_male') {
-        if (testId === 'gnrh_bolus') {
-          s.gnrhBolus += 3.0;
-          label = 'GnRH Bolus';
-        } else if (testId === 'hcg_stim') {
-          s.hcgBolus += 2.6;
-          label = 'hCG Stim';
-        } else if (testId === 'start_clomid') {
-          app.params.clomiphene = 1.2;
-          app.presetId = 'custom';
-          label = 'Clomiphene';
-        } else if (testId === 'toggle_leuprolide') {
-          app.params.gnrhContinuous = 1;
-          app.presetId = 'custom';
-          label = 'Cont. GnRH';
-        }
+        if (testId === 'gnrh_bolus') { s.gnrhBolus += 3.0; label = 'GnRH Bolus'; }
+        else if (testId === 'hcg_stim') { s.hcgBolus += 2.6; label = 'hCG Stim'; }
+        else if (testId === 'start_clomid') { app.params.clomiphene = 1.2; app.presetId = 'custom'; label = 'Clomiphene'; }
+        else if (testId === 'toggle_leuprolide') { app.params.gnrhContinuous = 1; app.presetId = 'custom'; label = 'Cont. GnRH'; }
       } else if (app.axisId === 'hpg_ovarian') {
-        if (testId === 'prog_challenge') {
-          s.progestinPulse += 28.0;
-          label = 'P4 Challenge';
-        } else if (testId === 'start_ocp') {
-          app.params.ocpDose = 1.0;
-          app.presetId = 'custom';
-          label = 'Start OCP';
-        } else if (testId === 'advance_7d') {
+        if (testId === 'prog_challenge') { s.progestinPulse += 28.0; label = 'P4 Challenge'; }
+        else if (testId === 'start_ocp') { app.params.ocpDose = 1.0; app.presetId = 'custom'; label = 'Start OCP'; }
+        else if (testId === 'advance_7d') {
           app.events.push({ t: tNow, label: '+7d Step' });
           advanceSim(7.0, true);
           updateAllReadouts();
@@ -1295,9 +994,7 @@
         }
       }
 
-      if (label) {
-        app.events.push({ t: tNow, label });
-      }
+      if (label) app.events.push({ t: tNow, label });
       highlightActivePreset();
       syncAllControlInputs();
       updateAllReadouts();
@@ -1309,11 +1006,8 @@
       const span14d = axis.timeUnit === 'h' ? 14 * 24 : 14;
       app.events.push({ t: app.simState.t, label: '+14d Jump' });
 
-      // Integrate 14 days cleanly while recording the trailing window so chart smoothly reflects the new state
       const silentPart = Math.max(0, span14d - axis.windowSpan * 0.7);
-      if (silentPart > 0) {
-        advanceSim(silentPart, false);
-      }
+      if (silentPart > 0) advanceSim(silentPart, false);
       app.lastSampleT = app.simState.t - axis.sampleInterval;
       advanceSim(span14d - silentPart, true);
       app.events.push({ t: app.simState.t, label: '+14d Done' });
@@ -1323,13 +1017,11 @@
     }
 
     /* =========================================================================
-       5. TELEMETRY, SVG SCHEMATIC & CLINICAL INTERPRETATION ENGINE
+       TELEMETRY, SVG SCHEMATIC & CLINICAL INTERPRETATION ENGINE
        ========================================================================= */
-
     function buildTelemetrySkeleton() {
       const axis = getAxis();
-      const grid = document.getElementById('telemetry-grid');
-      grid.innerHTML = axis.labs.map(lab => `
+      document.getElementById('telemetry-grid').innerHTML = axis.labs.map(lab => `
         <div class="px-3.5 py-2.5 flex flex-col justify-between min-w-0">
           <div class="flex items-center justify-between gap-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             <span class="truncate">${lab.label}</span>
@@ -1371,9 +1063,8 @@
           pillCls = 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400';
         }
 
-        // Special display for Ovarian cycle day
         if (lab.key === 'cyclePhaseNum') {
-          stateStr = o.CL > 0.25 ? 'LUTEAL' : (o.lh > 20 ? 'SURGE' : 'FOLLIC.');
+          stateStr = o.CL > 0.22 ? 'LUTEAL' : (o.lh > 20 ? 'SURGE' : 'FOLLIC.');
           pillCls = o.lh > 20
             ? 'border-amber-500/35 bg-amber-500/15 text-amber-700 dark:text-amber-300'
             : 'border-teal-500/30 bg-teal-500/10 text-tealLight dark:text-tealDark';
@@ -1399,7 +1090,6 @@
         }
       }
 
-      // Clock Badge
       const clockEl = document.getElementById('sim-clock-badge');
       if (clockEl) {
         if (axis.id === 'hpa') {
@@ -1408,7 +1098,7 @@
           const mn = Math.floor(((((o.t % 24) + 24) % 24) - hr) * 60);
           clockEl.textContent = `Day ${day} · ${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
         } else if (axis.id === 'hpg_ovarian') {
-          const phaseLbl = o.lh > 20 ? 'Ovulatory Surge' : (o.CL > 0.25 ? 'Luteal' : 'Follicular');
+          const phaseLbl = o.lh > 20 ? 'Ovulatory Surge' : (o.CL > 0.22 ? 'Luteal' : 'Follicular');
           clockEl.textContent = `Cycle Day ${o.cyclePhaseNum} · ${phaseLbl}`;
         } else {
           clockEl.textContent = `Day ${o.t.toFixed(1)}`;
@@ -1416,7 +1106,6 @@
       }
     }
 
-    /* --- Interactive SVG Neuroendocrine Axis Schematic --- */
     function renderAxisSVG() {
       const svg = document.getElementById('axis-svg');
       if (!svg || !app.obs) return;
@@ -1436,7 +1125,6 @@
       const violet = isDark ? '#a78bfa' : '#7c3aed';
       const sky = isDark ? '#38bdf8' : '#0284c7';
 
-      // Determine live hormone arrow labels, fluxes (0.2–2.2), trophic badge, and active override nodes
       let h1Label = '', h2Label = '', h3Label = '';
       let flux1 = 1, flux2 = 1, flux3 = 1, fbStrength = 1;
       let trophicText = 'Normal', trophicCol = teal;
@@ -1477,7 +1165,7 @@
         if (p.lt4Dose > 5) overrides.push({ label: `LT4 ${Math.round(p.lt4Dose)}µg`, target: 'target' });
         if (p.methimazole > 0.5) overrides.push({ label: `MMI ${p.methimazole}mg`, target: 'gland' });
       } else if (axis.id === 'hpg_male') {
-        h1Label = p.gnrhContinuous >= 0.5 ? `GnRH Cont.` : `GnRH ${o.gnrh.toFixed(2)}`;
+        h1Label = p.gnrhContinuous >= 0.5 ? 'GnRH Cont.' : `GnRH ${o.gnrh.toFixed(2)}`;
         h2Label = `LH ${o.lh.toFixed(1)} · FSH ${o.fsh.toFixed(1)}`;
         h3Label = `T ${o.totalT.toFixed(1)} nmol/L`;
         flux1 = clamp(o.gnrh / 1.0, 0.25, 2.2);
@@ -1494,7 +1182,6 @@
         if (p.exoT > 0.05) overrides.push({ label: 'Exo Testost.', target: 'target' });
         if (p.clomiphene > 0.05) overrides.push({ label: 'Clomiphene', target: 'hypo' });
       } else {
-        // Ovarian
         h1Label = `GnRH ${p.gnrhFreq.toFixed(1)}× freq`;
         h2Label = `LH ${o.lh.toFixed(1)} · FSH ${o.fsh.toFixed(1)}`;
         h3Label = `E2 ${Math.round(o.e2)} · P4 ${o.p4.toFixed(1)}`;
@@ -1504,8 +1191,8 @@
         fbStrength = clamp(o.e2 / 420 + o.p4 / 18, 0.25, 2.4);
         isPosFB = o.posFB > 0.5;
 
-        if (o.CL > 0.25) { trophicText = 'Corpus Luteum'; trophicCol = amber; }
-        else if (o.F > 0.55) { trophicText = 'Dom. Follicle'; trophicCol = teal; }
+        if (o.CL > 0.22) { trophicText = 'Corpus Luteum'; trophicCol = amber; }
+        else if (o.F > 0.50) { trophicText = 'Dom. Follicle'; trophicCol = teal; }
         else if (p.ovarianReserve < 0.15) { trophicText = 'Depleted'; trophicCol = sky; }
         else { trophicText = 'Recruiting'; }
 
@@ -1524,7 +1211,6 @@
       const fbCol = isPosFB ? amber : rose;
       const fbSign = isPosFB ? '+' : '−';
 
-      // Build override badge SVG elements on the right side
       const yMap = { hypo: 32, pit: 98, gland: 164, target: 228 };
       const overrideSVG = overrides.slice(0, 2).map((ov, idx) => {
         const ty = yMap[ov.target] || 98;
@@ -1548,40 +1234,33 @@
           </marker>
         </defs>
 
-        <!-- Negative / Positive Feedback Arcs (Left Side) -->
         <path d="M 134 230 C 46 230, 46 32, 132 32" fill="none" stroke="${fbCol}" stroke-width="${swFB}" stroke-opacity="0.78" class="svg-flow-fb" style="--fb-dur: 1.7s" marker-end="url(#arr-fb)" />
         <path d="M 134 226 C 78 226, 78 98, 132 98" fill="none" stroke="${fbCol}" stroke-width="${swFB}" stroke-opacity="0.65" class="svg-flow-fb" style="--fb-dur: 1.5s" marker-end="url(#arr-fb)" />
 
-        <!-- Feedback Sign Badges -->
         <circle cx="52" cy="130" r="9.5" fill="${isDark ? '#09090b' : '#fafafa'}" stroke="${fbCol}" stroke-width="1.2" />
         <text x="52" y="133.5" text-anchor="middle" fill="${fbCol}" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700">${fbSign}</text>
         <text x="52" y="150" text-anchor="middle" fill="${fbCol}" font-family="JetBrains Mono, monospace" font-size="8" font-weight="600">${isPosFB ? 'POS FB' : 'NEG FB'}</text>
 
-        <!-- Forward Secretion Arrows -->
         <line x1="204" y1="54" x2="204" y2="74" stroke="${teal}" stroke-width="${sw1}" class="svg-flow-down" style="--flow-dur: ${dur1}" marker-end="url(#arr-teal)" />
         <line x1="204" y1="120" x2="204" y2="140" stroke="${teal}" stroke-width="${sw2}" class="svg-flow-down" style="--flow-dur: ${dur2}" marker-end="url(#arr-teal)" />
         <line x1="204" y1="186" x2="204" y2="206" stroke="${teal}" stroke-width="${sw3}" class="svg-flow-down" style="--flow-dur: ${dur3}" marker-end="url(#arr-teal)" />
 
-        <!-- Live Hormone Flux Labels beside Arrows -->
         <text x="214" y="67" fill="${teal}" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="600">${h1Label}</text>
         <text x="214" y="133" fill="${teal}" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="600">${h2Label}</text>
         <text x="214" y="199" fill="${teal}" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="600">${h3Label}</text>
 
-        <!-- NODE 1: HYPOTHALAMUS -->
         <g data-organ-click="hypo" class="cursor-pointer group">
           <rect x="136" y="10" width="136" height="42" rx="8" fill="${bgNode}" stroke="${borderNode}" stroke-width="1.2" />
           <text x="204" y="28" text-anchor="middle" fill="${textMain}" font-family="Inter, sans-serif" font-size="11.5" font-weight="600">${axis.organs.hypo.title}</text>
           <text x="204" y="42" text-anchor="middle" fill="${textSub}" font-family="JetBrains Mono, monospace" font-size="9">${axis.organs.hypo.sub}</text>
         </g>
 
-        <!-- NODE 2: ANTERIOR PITUITARY (HYPOPHYSE) -->
         <g data-organ-click="pit" class="cursor-pointer group">
           <rect x="136" y="76" width="136" height="42" rx="8" fill="${bgNode}" stroke="${borderNode}" stroke-width="1.2" />
           <text x="204" y="94" text-anchor="middle" fill="${textMain}" font-family="Inter, sans-serif" font-size="11.5" font-weight="600">${axis.organs.pit.title}</text>
           <text x="204" y="108" text-anchor="middle" fill="${textSub}" font-family="JetBrains Mono, monospace" font-size="9">${axis.organs.pit.sub}</text>
         </g>
 
-        <!-- NODE 3: PERIPHERAL GLAND + TROPHIC BADGE -->
         <g data-organ-click="gland" class="cursor-pointer group">
           <rect x="136" y="142" width="136" height="42" rx="8" fill="${bgNode}" stroke="${trophicCol}" stroke-width="1.25" stroke-opacity="0.75" />
           <text x="204" y="160" text-anchor="middle" fill="${textMain}" font-family="Inter, sans-serif" font-size="11.5" font-weight="600">${axis.organs.gland.title}</text>
@@ -1590,19 +1269,16 @@
           <text x="320" y="166" text-anchor="middle" fill="${trophicCol}" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="600">${trophicText}</text>
         </g>
 
-        <!-- NODE 4: TARGET TISSUE & FEEDBACK -->
         <g data-organ-click="binding" class="cursor-pointer group">
           <rect x="136" y="208" width="136" height="42" rx="8" fill="${bgNode}" stroke="${borderNode}" stroke-width="1.2" />
           <text x="204" y="226" text-anchor="middle" fill="${textMain}" font-family="Inter, sans-serif" font-size="11.5" font-weight="600">${axis.organs.target.title}</text>
           <text x="204" y="240" text-anchor="middle" fill="${textSub}" font-family="JetBrains Mono, monospace" font-size="9">${axis.organs.target.sub}</text>
         </g>
 
-        <!-- Dynamic Exogenous / Antibody Override Nodes -->
         ${overrideSVG}
       `;
     }
 
-    /* --- Live Clinical Interpretation & Pathophysiology Engine --- */
     function updateClinicalInterpretation() {
       const axis = getAxis();
       const o = app.obs;
@@ -1617,168 +1293,137 @@
       const preset = axis.presets.find(pr => pr.id === app.presetId);
       presetEl.textContent = preset ? preset.name : 'Custom Parameters';
 
-      let title = 'Normal Homeostasis';
-      let level = 'ok';
-      let summary = '';
-      let testNote = '';
+      let title = 'Normal Homeostasis', level = 'ok', summary = '', testNote = '';
 
       if (axis.id === 'hpa') {
         if (p.exoSteroid > 0.5 || app.simState.dexBolus > 15) {
-          title = 'Exogenous GR Suppression';
-          level = 'info';
-          summary = `Exogenous glucocorticoid signal (Net GR ${o.gcEff.toFixed(1)}) occupies hypothalamic/pituitary glucocorticoid receptors, suppressing endogenous CRH & ACTH (${o.acth.toFixed(1)} pmol/L) and endogenous cortisol (${Math.round(o.cortTotal)} nmol/L). Chronic exposure drives zona fasciculata atrophy (Mass ${o.adrenalMass.toFixed(2)}×).`;
-          testNote = 'Dynamic Tests: Requires gradual steroid taper to allow CRH/ACTH & adrenal recovery; abrupt withdrawal risks adrenal crisis.';
-        } else if (o.cortTotal > 580 && o.acth < 1.8) {
-          title = 'ACTH-Independent Cushing Syndrome';
-          level = 'warn';
-          summary = `Autonomous adrenal cortisol excess (${Math.round(o.cortTotal)} nmol/L) strongly suppresses hypothalamic CRH and pituitary ACTH (${o.acth.toFixed(1)} pmol/L) via intact central negative feedback.`;
-          testNote = 'Dynamic Tests: Fails both 1mg DST and 8mg HDDST; flat response to CRH stimulation. Localize with adrenal CT.';
-        } else if (o.cortTotal > 580 && o.acth > 25 && p.ectopicACTH > 10) {
-          title = 'Ectopic ACTH Syndrome';
-          level = 'critical';
-          summary = `Massive non-pituitary autonomous ACTH secretion (${o.acth.toFixed(1)} pmol/L) drives severe hypercortisolism (${Math.round(o.cortTotal)} nmol/L) and bilateral adrenal hyperplasia (Mass ${o.adrenalMass.toFixed(2)}×).`;
+          title = 'Exogenous GR Suppression'; level = 'info';
+          summary = `Exogenous glucocorticoid signal (Net GR ${o.gcEff.toFixed(1)}) occupies central GR receptors, suppressing endogenous ACTH (${o.acth.toFixed(1)} pmol/L) and cortisol (${Math.round(o.cortTotal)} nmol/L). Chronic exposure drives zona fasciculata atrophy (Mass ${o.adrenalMass.toFixed(2)}×).`;
+          testNote = 'Dynamic Tests: Requires gradual steroid taper; abrupt withdrawal risks adrenal crisis.';
+        } else if (o.cortTotal > 560 && o.acth < 1.8) {
+          title = 'ACTH-Independent Cushing Syndrome'; level = 'warn';
+          summary = `Autonomous adrenal cortisol excess (${Math.round(o.cortTotal)} nmol/L) crushes hypothalamic CRH and pituitary ACTH (${o.acth.toFixed(1)} pmol/L).`;
+          testNote = 'Dynamic Tests: Fails both 1mg DST and 8mg HDDST; flat CRH response. Localize with adrenal CT.';
+        } else if (o.cortTotal > 560 && o.acth > 25 && p.ectopicACTH > 10) {
+          title = 'Ectopic ACTH Syndrome'; level = 'critical';
+          summary = `Massive non-pituitary autonomous ACTH (${o.acth.toFixed(1)} pmol/L) drives severe hypercortisolism (${Math.round(o.cortTotal)} nmol/L) and bilateral adrenal hyperplasia (Mass ${o.adrenalMass.toFixed(2)}×).`;
           testNote = 'Dynamic Tests: Resists both 1mg DST and 8mg HDDST; flat CRH stimulation test.';
         } else if (o.cortTotal > 560 && o.acth >= 4.5) {
-          title = 'ACTH-Dependent Cushing Disease';
-          level = 'warn';
-          summary = `Pituitary corticotroph adenoma secretes ACTH (${o.acth.toFixed(1)} pmol/L) with right-shifted glucocorticoid feedback Ki (${p.pitResistance.toFixed(1)}×), abolishing the midnight cortisol nadir.`;
-          testNote = 'Dynamic Tests: Resists 1mg overnight DST, but suppresses >50% after 8mg HDDST and surges briskly to CRH.';
-        } else if (o.cortTotal < 130 && o.acth > 15) {
-          title = 'Primary Adrenal Insufficiency (Addison’s)';
-          level = 'critical';
-          summary = `Impaired adrenal steroidogenesis yields low cortisol (${Math.round(o.cortTotal)} nmol/L). Loss of GR negative feedback drives marked compensatory CRH and ACTH elevation (${o.acth.toFixed(1)} pmol/L; hyperpigmentation via POMC/α-MSH).`;
-          testNote = 'Dynamic Tests: Flat/subnormal cortisol peak (<500 nmol/L) following Synacthen 250 µg stimulation.';
-        } else if (o.cortTotal < 140 && o.acth < 2.2) {
-          title = 'Secondary Adrenal Insufficiency';
-          level = 'warn';
-          summary = `Deficient pituitary ACTH secretion (${o.acth.toFixed(1)} pmol/L) causes hypoadrenalism (${Math.round(o.cortTotal)} nmol/L) and progressive adrenal zona fasciculata atrophy (Mass ${o.adrenalMass.toFixed(2)}×; use +14d to observe).`;
-          testNote = 'Dynamic Tests: Chronically atrophic adrenals also show blunted acute Synacthen response; aldosterone remains preserved (RAAS-driven).';
+          title = 'ACTH-Dependent Cushing Disease'; level = 'warn';
+          summary = `Pituitary corticotroph adenoma secretes ACTH (${o.acth.toFixed(1)} pmol/L) with right-shifted GR Ki (${p.pitResistance.toFixed(1)}×), abolishing the midnight cortisol nadir.`;
+          testNote = 'Dynamic Tests: Resists 1mg overnight DST, suppresses >50% after 8mg HDDST, surges to CRH.';
+        } else if (o.cortTotal < 110 && o.acth > 15) {
+          title = "Primary Adrenal Insufficiency (Addison's)"; level = 'critical';
+          summary = `Destroyed adrenal cortex yields low cortisol (${Math.round(o.cortTotal)} nmol/L) with marked compensatory ACTH elevation (${o.acth.toFixed(1)} pmol/L; POMC hyperpigmentation) and cortical atrophy (${o.adrenalMass.toFixed(2)}×).`;
+          testNote = 'Dynamic Tests: Flat/subnormal cortisol peak (<500 nmol/L) after Synacthen 250 µg.';
+        } else if (o.cortTotal < 110 && o.acth < 2.2) {
+          title = 'Secondary Adrenal Insufficiency'; level = 'warn';
+          summary = `Deficient pituitary ACTH (${o.acth.toFixed(1)} pmol/L) causes hypoadrenalism (${Math.round(o.cortTotal)} nmol/L) and progressive zona fasciculata atrophy (Mass ${o.adrenalMass.toFixed(2)}×).`;
+          testNote = 'Dynamic Tests: Aldosterone stays preserved (RAAS-driven); chronic atrophy blunts acute Synacthen.';
         } else {
-          title = 'Intact Circadian HPA Axis';
-          level = 'ok';
-          summary = `Normal diurnal pacemaker with intact GR negative feedback (ACTH ${o.acth.toFixed(1)} pmol/L, Total Cortisol ${Math.round(o.cortTotal)} nmol/L, Adrenal Mass ${o.adrenalMass.toFixed(2)}×).`;
-          testNote = 'Dynamic Tests: 1mg overnight DST suppresses AM cortisol <50 nmol/L; Synacthen 250 µg surges cortisol >550 nmol/L.';
+          title = 'Intact Circadian HPA Axis'; level = 'ok';
+          summary = `Normal 24h diurnal pacemaker with intact GR negative feedback (ACTH ${o.acth.toFixed(1)} pmol/L, Total Cortisol ${Math.round(o.cortTotal)} nmol/L, Mass ${o.adrenalMass.toFixed(2)}×).`;
+          testNote = 'Dynamic Tests: 1mg overnight DST suppresses AM cortisol <50 nmol/L; Synacthen surges >550 nmol/L.';
         }
       } else if (axis.id === 'hpt') {
         if (o.ft4 > 22.5 && o.tsh < 0.35) {
-          title = p.tsi > 0.3 ? "Primary Hyperthyroidism (Graves')" : 'Thyrotoxicosis (TSH-Suppressed)';
-          level = 'warn';
+          title = p.tsi > 0.3 ? "Primary Hyperthyroidism (Graves')" : 'Thyrotoxicosis (TSH-Suppressed)'; level = 'warn';
           summary = p.tsi > 0.3
-            ? `TSH-receptor stimulating antibodies (TSI ${p.tsi.toFixed(1)}×) autonomously drive excess fT4 (${o.ft4.toFixed(1)} pmol/L) & fT3 (${o.ft3.toFixed(1)}), crushing TSH (${o.tsh.toFixed(2)} mIU/L) and inducing diffuse goiter (Mass ${o.thyroidMass.toFixed(2)}×).`
-            : `Elevated fT4 (${o.ft4.toFixed(1)} pmol/L) from exogenous LT4 (${Math.round(p.lt4Dose)} µg/d) suppresses pituitary TSH (${o.tsh.toFixed(2)} mIU/L) via steep log-linear feedback, causing endogenous thyroid atrophy.`;
-          testNote = 'Dynamic Tests: Flat TRH stimulation response. Methimazole inhibits TPO synthesis in Graves’ (not effective in factitious LT4).';
+            ? `TSH-R stimulating antibodies (TSI ${p.tsi.toFixed(1)}×) drive high fT4 (${o.ft4.toFixed(1)}) & fT3 (${o.ft3.toFixed(1)}), crushing TSH (${o.tsh.toFixed(2)}) and causing diffuse goiter (Mass ${o.thyroidMass.toFixed(2)}×).`
+            : `Exogenous LT4 (${Math.round(p.lt4Dose)} µg/d) elevates fT4 (${o.ft4.toFixed(1)}), suppressing TSH (${o.tsh.toFixed(2)}) and causing endogenous thyroid atrophy.`;
+          testNote = 'Dynamic Tests: Flat TRH response. Methimazole blocks TPO in Graves’ (ineffective in factitious LT4).';
         } else if (o.ft4 > 22.5 && o.tsh >= 1.5) {
-          title = 'Central Hyperthyroidism (TSHoma)';
-          level = 'warn';
-          summary = `Inappropriately elevated/non-suppressed TSH (${o.tsh.toFixed(2)} mIU/L) despite elevated fT4 (${o.ft4.toFixed(1)} pmol/L) and fT3 (${o.ft3.toFixed(1)} pmol/L) confirms autonomous pituitary thyrotroph secretion.`;
-          testNote = 'Dynamic Tests: Blunted TSH rise after TRH bolus; elevated α-subunit/TSH molar ratio; pituitary MRI indicated.';
+          title = 'Central Hyperthyroidism (TSHoma)'; level = 'warn';
+          summary = `Non-suppressed TSH (${o.tsh.toFixed(2)} mIU/L) despite elevated fT4 (${o.ft4.toFixed(1)}) & fT3 (${o.ft3.toFixed(1)}) confirms autonomous pituitary secretion.`;
+          testNote = 'Dynamic Tests: Blunted TRH response; elevated α-subunit/TSH ratio; pituitary MRI indicated.';
         } else if (o.ft4 < 12.0 && o.tsh > 4.5) {
-          title = 'Primary Hypothyroidism';
-          level = 'critical';
-          summary = `Reduced thyroid hormone synthesis (fT4 ${o.ft4.toFixed(1)} pmol/L) relieves pituitary negative feedback, triggering an exponential rise in TSH (${o.tsh.toFixed(1)} mIU/L) along the log-linear curve.`;
-          testNote = 'Dynamic Tests: Exaggerated TSH surge to TRH. Starting Levothyroxine 100 µg/d normalizes fT4 & TSH over 3–6 weeks (+14d jump).';
+          title = 'Primary Hypothyroidism'; level = 'critical';
+          summary = `Impaired thyroid synthesis (fT4 ${o.ft4.toFixed(1)} pmol/L, fT3 ${o.ft3.toFixed(1)}) relieves negative feedback, driving an exponential TSH rise (${o.tsh.toFixed(1)} mIU/L).`;
+          testNote = 'Dynamic Tests: Exaggerated TRH surge. Start LT4 100 µg/d and click +14d to observe slow T4/TSH recovery.';
         } else if (o.ft4 >= 11.8 && o.ft4 <= 15.0 && o.tsh > 4.2) {
-          title = 'Subclinical Hypothyroidism';
-          level = 'info';
-          summary = `Mildly reduced thyroid reserve is compensated by elevated TSH (${o.tsh.toFixed(1)} mIU/L), keeping fT4 in the low-normal range (${o.ft4.toFixed(1)} pmol/L). Illustrates the high sensitivity of log-linear TSH feedback.`;
-          testNote = 'Clinical Note: TSH rises exponentially before fT4 falls below the laboratory lower reference limit.';
+          title = 'Subclinical Hypothyroidism'; level = 'info';
+          summary = `Reduced thyroid reserve is compensated by elevated TSH (${o.tsh.toFixed(1)} mIU/L), maintaining low-normal fT4 (${o.ft4.toFixed(1)} pmol/L).`;
+          testNote = 'Clinical Note: Log-linear feedback makes TSH rise exponentially before fT4 crosses the lower reference limit.';
         } else if (o.ft4 < 12.0 && o.tsh <= 4.2) {
-          title = 'Central Hypothyroidism';
-          level = 'warn';
-          summary = `Low fT4 (${o.ft4.toFixed(1)} pmol/L) accompanied by low or inappropriately normal TSH (${o.tsh.toFixed(2)} mIU/L) localizes the defect to pituitary thyrotrophs or hypothalamus, with secondary thyroid atrophy.`;
-          testNote = 'Clinical Note: Monitor Levothyroxine therapy using fT4 (target upper half of normal), NOT TSH.';
+          title = 'Central Hypothyroidism'; level = 'warn';
+          summary = `Low fT4 (${o.ft4.toFixed(1)} pmol/L) with low/inappropriately normal TSH (${o.tsh.toFixed(2)} mIU/L) localizes the defect to pituitary or hypothalamus.`;
+          testNote = 'Clinical Note: Titrate LT4 therapy to Free T4 (upper half of normal), NOT TSH.';
         } else if (o.ft3 < 3.0 && o.ft4 >= 11.5) {
-          title = 'Euthyroid Sick Syndrome (Low T3)';
-          level = 'info';
-          summary = `Impaired peripheral D1 deiodinase activity (${p.deiodinase.toFixed(2)}×) reduces fT4 → fT3 conversion (fT3 ${o.ft3.toFixed(1)} pmol/L) while fT4 (${o.ft4.toFixed(1)}) and TSH (${o.tsh.toFixed(2)}) remain near normal.`;
-          testNote = 'Clinical Note: Adaptive catabolic slowdown in critical illness; avoid routine LT4 replacement.';
+          title = 'Euthyroid Sick Syndrome (Low T3)'; level = 'info';
+          summary = `Impaired peripheral D1 deiodinase (${p.deiodinase.toFixed(2)}×) causes isolated low fT3 (${o.ft3.toFixed(1)} pmol/L) while fT4 (${o.ft4.toFixed(1)}) and TSH (${o.tsh.toFixed(2)}) remain near normal.`;
+          testNote = 'Clinical Note: Adaptive response in critical illness; avoid routine LT4 replacement.';
         } else if (o.totalT4 > 158 && o.ft4 <= 22.0) {
-          title = 'Euthyroid Hyperthyroxinemia (High TBG)';
-          level = 'ok';
-          summary = `Elevated TBG (${p.tbg.toFixed(2)}×, e.g. pregnancy/estrogen) increases Total T4 (${Math.round(o.totalT4)} nmol/L), while biologically active fT4 (${o.ft4.toFixed(1)}), fT3 (${o.ft3.toFixed(1)}), and TSH (${o.tsh.toFixed(2)}) remain euthyroid.`;
-          testNote = 'Clinical Note: Always assess Free T4 and TSH rather than Total T4 when binding proteins shift.';
+          title = 'Euthyroid Hyperthyroxinemia (High TBG)'; level = 'ok';
+          summary = `High TBG (${p.tbg.toFixed(2)}×) raises Total T4 (${Math.round(o.totalT4)} nmol/L) while biologically active fT4 (${o.ft4.toFixed(1)}) and TSH (${o.tsh.toFixed(2)}) remain euthyroid.`;
+          testNote = 'Clinical Note: Always rely on Free T4 and TSH rather than Total T4.';
         } else {
-          title = 'Euthyroid Homeostasis';
-          level = 'ok';
-          summary = `Balanced HPT axis sitting at the physiological log-linear set point (TSH ${o.tsh.toFixed(2)} mIU/L, fT4 ${o.ft4.toFixed(1)} pmol/L, fT3 ${o.ft3.toFixed(1)} pmol/L).`;
-          testNote = 'Dynamic Tests: TRH produces a brisk ~3–5× TSH rise; T4 equilibration after dose changes takes 4–6 half-lives (~4–6 weeks).';
+          title = 'Euthyroid Homeostasis'; level = 'ok';
+          summary = `Balanced HPT set point (TSH ${o.tsh.toFixed(2)} mIU/L, fT4 ${o.ft4.toFixed(1)} pmol/L, fT3 ${o.ft3.toFixed(1)} pmol/L).`;
+          testNote = 'Dynamic Tests: TRH produces ~3–5× TSH surge; T4 steady-state requires 4–6 weeks (~7d half-life).';
         }
       } else if (axis.id === 'hpg_male') {
         if (p.gnrhContinuous >= 0.5) {
           title = o.gnrhR > 0.35 ? 'GnRH Agonist Initial Flare' : 'GnRH-R Desensitization (Medical Castration)';
           level = o.gnrhR > 0.35 ? 'info' : 'warn';
           summary = o.gnrhR > 0.35
-            ? `Continuous GnRH agonist initially overstimulates pituitary receptors (GnRH-R ${Math.round(o.gnrhR * 100)}%), producing a transient LH/Testosterone flare before downregulation.`
-            : `Continuous GnRH occupancy has downregulated pituitary GnRH receptors (${Math.round(o.gnrhR * 100)}%), profoundly suppressing LH (${o.lh.toFixed(1)} IU/L), FSH (${o.fsh.toFixed(1)}), and Testosterone (${o.totalT.toFixed(1)} nmol/L).`;
-          testNote = 'Clinical Note: Used therapeutically in prostate cancer & precocious puberty; co-administer antiandrogen during initial flare.';
+            ? `Continuous GnRH agonist briefly overstimulates receptors (GnRH-R ${Math.round(o.gnrhR * 100)}%), producing a ~2-day LH/Testosterone flare.`
+            : `Continuous occupancy downregulated GnRH-R (${Math.round(o.gnrhR * 100)}%), crushing LH (${o.lh.toFixed(1)}), FSH (${o.fsh.toFixed(1)}), and Testosterone (${o.totalT.toFixed(1)} nmol/L).`;
+          testNote = 'Clinical Note: Co-administer an antiandrogen during the initial flare in metastatic prostate cancer.';
         } else if (p.exoT > 0.25) {
-          title = 'Exogenous Androgen Axis Suppression';
-          level = 'warn';
-          summary = `Exogenous Testosterone elevates serum T (${o.totalT.toFixed(1)} nmol/L) while exerting strong negative feedback that crushes LH (${o.lh.toFixed(1)} IU/L), FSH (${o.fsh.toFixed(1)}), Inhibin B (${Math.round(o.inhibinB)}), and testicular mass (${o.testisMass.toFixed(2)}×).`;
-          testNote = 'Clinical Note: Impairs spermatogenesis via low intratesticular T & FSH; Clomiphene/hCG preserve endogenous stimulation.';
+          title = 'Exogenous Androgen Axis Suppression'; level = 'warn';
+          summary = `Exogenous T elevates serum T (${o.totalT.toFixed(1)} nmol/L) while crushing LH (${o.lh.toFixed(1)}), FSH (${o.fsh.toFixed(1)}), Inhibin B (${Math.round(o.inhibinB)}), and testicular mass (${o.testisMass.toFixed(2)}×).`;
+          testNote = 'Clinical Note: Impairs spermatogenesis; Clomiphene/hCG preserve endogenous stimulation.';
         } else if (o.totalT < 10.0 && o.lh > 9.0) {
-          title = 'Primary Hypogonadism (Hypergonadotropic)';
-          level = 'critical';
-          summary = `Leydig & Sertoli dysfunction yields low Testosterone (${o.totalT.toFixed(1)} nmol/L) and low Inhibin B (${Math.round(o.inhibinB)} pg/mL), driving compensatory elevations in LH (${o.lh.toFixed(1)} IU/L) and FSH (${o.fsh.toFixed(1)}).`;
-          testNote = 'Dynamic Tests: Blunted/flat Testosterone rise following hCG stimulation confirms primary testicular failure.';
+          title = 'Primary Hypogonadism (Hypergonadotropic)'; level = 'critical';
+          summary = `Testicular failure lowers T (${o.totalT.toFixed(1)} nmol/L) and Inhibin B (${Math.round(o.inhibinB)}), driving high compensatory LH (${o.lh.toFixed(1)}) and FSH (${o.fsh.toFixed(1)}).`;
+          testNote = 'Dynamic Tests: Blunted/flat T rise after hCG stimulation confirms primary Leydig failure.';
         } else if (o.totalT < 10.0 && o.lh < 2.2) {
-          title = p.prolactin > 35 ? 'Hyperprolactinemic Hypogonadism' : 'Secondary Hypogonadism (Hypogonadotropic)';
-          level = 'warn';
+          title = p.prolactin > 35 ? 'Hyperprolactinemic Hypogonadism' : 'Secondary Hypogonadism (Hypogonadotropic)'; level = 'warn';
           summary = p.prolactin > 35
-            ? `Elevated Prolactin (${Math.round(p.prolactin)} µg/L) inhibits hypothalamic kisspeptin/GnRH pulsatility, causing low LH (${o.lh.toFixed(1)}), low FSH (${o.fsh.toFixed(1)}), and low Testosterone (${o.totalT.toFixed(1)} nmol/L).`
-            : `Central GnRH or pituitary gonadotroph deficiency lowers LH (${o.lh.toFixed(1)} IU/L), FSH (${o.fsh.toFixed(1)}), and Testosterone (${o.totalT.toFixed(1)} nmol/L) with progressive testicular atrophy.`;
-          testNote = 'Dynamic Tests: Testosterone rises briskly to hCG stimulation; Clomiphene boosts LH/FSH if pituitary is intact.';
+            ? `Elevated Prolactin (${Math.round(p.prolactin)} µg/L) suppresses kisspeptin/GnRH pulses -> low LH (${o.lh.toFixed(1)}), FSH (${o.fsh.toFixed(1)}), and T (${o.totalT.toFixed(1)} nmol/L).`
+            : `Central GnRH/pituitary deficiency lowers LH (${o.lh.toFixed(1)}), FSH (${o.fsh.toFixed(1)}), and T (${o.totalT.toFixed(1)} nmol/L) with progressive testicular atrophy.`;
+          testNote = 'Dynamic Tests: Brisk T rise to hCG stimulation; Clomiphene restores LH/FSH if pituitary is intact.';
         } else if (o.freeT < 220 && o.totalT >= 10.0) {
-          title = 'High-SHBG Functional Hypoandrogenism';
-          level = 'info';
-          summary = `Elevated SHBG (${p.shbg.toFixed(2)}×) binds circulating testosterone tightly, reducing bioavailable Free T (${Math.round(o.freeT)} pmol/L) despite an apparently normal Total T (${o.totalT.toFixed(1)} nmol/L).`;
-          testNote = 'Clinical Note: Always measure Free Testosterone or SHBG when Total T is borderline or SHBG-altering conditions exist.';
+          title = 'High-SHBG Functional Hypoandrogenism'; level = 'info';
+          summary = `Elevated SHBG (${p.shbg.toFixed(2)}×) reduces bioavailable Free T (${Math.round(o.freeT)} pmol/L) despite a normal Total T (${o.totalT.toFixed(1)} nmol/L).`;
+          testNote = 'Clinical Note: Always assess Free T or SHBG in aging, cirrhosis, or hyperthyroidism.';
         } else {
-          title = 'Eugonadal Pulsatile HPG Axis';
-          level = 'ok';
-          summary = `Pulsatile GnRH preserves pituitary GnRH-R sensitivity (${Math.round(o.gnrhR * 100)}%), maintaining balanced LH (${o.lh.toFixed(1)}), FSH (${o.fsh.toFixed(1)}), Total T (${o.totalT.toFixed(1)} nmol/L), and Free T (${Math.round(o.freeT)} pmol/L).`;
-          testNote = 'Dynamic Tests: Try toggling Continuous GnRH Agonist or starting Clomiphene to observe receptor kinetics & SERM feedback blockade.';
+          title = 'Eugonadal Pulsatile HPG Axis'; level = 'ok';
+          summary = `Pulsatile GnRH preserves GnRH-R (${Math.round(o.gnrhR * 100)}%), maintaining balanced LH (${o.lh.toFixed(1)}), FSH (${o.fsh.toFixed(1)}), Total T (${o.totalT.toFixed(1)}), and Free T (${Math.round(o.freeT)} pmol/L).`;
+          testNote = 'Dynamic Tests: Try toggling Continuous GnRH Agonist or starting Clomiphene.';
         }
       } else {
-        // Ovarian Cycle
         const progTestNote = app.lastTestId === 'prog_challenge'
-          ? (o.e2 > 180 ? ' · Progesterone Challenge POSITIVE (E2 > 180 pmol/L -> withdrawal bleed expected).' : ' · Progesterone Challenge NEGATIVE (E2 < 180 pmol/L -> hypoestrogenic endometrium).')
+          ? (o.e2 > 180 ? ' · Progesterone Challenge POSITIVE (E2 > 180 -> withdrawal bleed).' : ' · Progesterone Challenge NEGATIVE (E2 < 180 -> hypoestrogenic).')
           : '';
         if (p.ocpDose > 0.3) {
-          title = 'Combined OCP Ovulatory Suppression';
-          level = 'info';
-          summary = `Exogenous Estrogen + Progestin suppresses basal LH (${o.lh.toFixed(1)} IU/L) & FSH (${o.fsh.toFixed(1)}) and abolishes the positive-feedback surge, preventing dominant follicle rupture.`;
-          testNote = 'Mechanism: Continuous progestin negative feedback blocks hypothalamic GnRH surge & thickens cervical mucus.' + progTestNote;
+          title = 'Combined OCP Ovulatory Suppression'; level = 'info';
+          summary = `Exogenous Estrogen + Progestin suppresses basal LH (${o.lh.toFixed(1)}) & FSH (${o.fsh.toFixed(1)}) and abolishes the positive-feedback surge, preventing ovulation.`;
+          testNote = 'Mechanism: Continuous progestin negative feedback blocks hypothalamic GnRH surge.' + progTestNote;
         } else if (p.ovarianReserve < 0.15 && o.fsh > 35) {
-          title = 'Menopause / Premature Ovarian Insufficiency';
-          level = 'warn';
-          summary = `Depleted ovarian follicular reserve produces persistently low E2 (${Math.round(o.e2)} pmol/L) & P4 (${o.p4.toFixed(1)} nmol/L). Loss of estradiol/inhibin negative feedback drives high FSH (${o.fsh.toFixed(1)} IU/L) & LH (${o.lh.toFixed(1)}).`;
-          testNote = 'Dynamic Tests: Progesterone challenge is NEGATIVE (insufficient endometrial estrogen priming).' + progTestNote;
+          title = 'Menopause / Premature Ovarian Insufficiency'; level = 'warn';
+          summary = `Depleted ovarian reserve produces low E2 (${Math.round(o.e2)} pmol/L) & P4 (${o.p4.toFixed(1)} nmol/L) with markedly elevated FSH (${o.fsh.toFixed(1)} IU/L) & LH (${o.lh.toFixed(1)}).`;
+          testNote = 'Dynamic Tests: Progesterone challenge NEGATIVE (unprimed endometrium).' + progTestNote;
         } else if (p.gnrhFreq > 1.45 && o.lhFshRatio > 2.0) {
-          title = 'PCOS · Chronic Anovulation';
-          level = 'warn';
-          summary = `Accelerated GnRH pulse frequency (${p.gnrhFreq.toFixed(2)}×) favors LH (${o.lh.toFixed(1)} IU/L) over FSH (${o.fsh.toFixed(1)}, ratio ${o.lhFshRatio.toFixed(2)}). Follicles arrest before the E2 surge threshold -> tonic E2 (${Math.round(o.e2)}) & flat low P4 (${o.p4.toFixed(1)}).`;
-          testNote = 'Dynamic Tests: Progesterone challenge is POSITIVE (tonic unopposed estrogenization causes withdrawal bleed).' + progTestNote;
-        } else if ((p.gnrhDrive < 0.35 || p.prolactin > 45) && o.e2 < 120) {
-          title = p.prolactin > 45 ? 'Hyperprolactinemic Anovulation' : 'Functional Hypothalamic Amenorrhea';
-          level = 'warn';
+          title = 'PCOS · Chronic Anovulation'; level = 'warn';
+          summary = `Rapid GnRH pulse frequency (${p.gnrhFreq.toFixed(2)}×) drives LH:FSH ${o.lhFshRatio.toFixed(2)} (LH ${o.lh.toFixed(1)}, FSH ${o.fsh.toFixed(1)}). Arrested follicles yield tonic E2 (${Math.round(o.e2)}) & flat low P4 (${o.p4.toFixed(1)}).`;
+          testNote = 'Dynamic Tests: Progesterone challenge POSITIVE (tonic unopposed estrogenization).' + progTestNote;
+        } else if ((p.gnrhDrive < 0.35 || p.prolactin > 45) && o.e2 < 140) {
+          title = p.prolactin > 45 ? 'Hyperprolactinemic Anovulation' : 'Functional Hypothalamic Amenorrhea'; level = 'warn';
           summary = `Suppressed GnRH drive produces hypogonadotropic anovulation (LH ${o.lh.toFixed(1)}, FSH ${o.fsh.toFixed(1)}, E2 ${Math.round(o.e2)} pmol/L, P4 ${o.p4.toFixed(1)} nmol/L).`;
-          testNote = 'Dynamic Tests: Progesterone challenge is NEGATIVE due to hypoestrogenemia.' + progTestNote;
+          testNote = 'Dynamic Tests: Progesterone challenge NEGATIVE due to hypoestrogenemia.' + progTestNote;
         } else if (o.posFB > 0.5) {
-          title = 'Ovulatory Positive-Feedback LH Surge!';
-          level = 'info';
-          summary = `Sustained high Estradiol (${Math.round(o.e2)} pmol/L) with low Progesterone has flipped pituitary gonadotrophs into POSITIVE FEEDBACK, firing the sharp mid-cycle LH surge (${o.lh.toFixed(1)} IU/L) triggering ovulation!`;
-          testNote = 'Cycle Dynamics: Follicular rupture transitions immediately into Corpus Luteum formation and luteal Progesterone dominance.' + progTestNote;
-        } else if (o.CL > 0.25) {
-          title = `Ovulatory Cycle · Luteal Phase (Day ${o.cyclePhaseNum})`;
-          level = 'ok';
-          summary = `Corpus Luteum secretes dominant Progesterone (${o.p4.toFixed(1)} nmol/L) and secondary Estradiol (${Math.round(o.e2)} pmol/L), strongly suppressing LH/FSH until programmed luteolysis at ~Day 26–28.`;
-          testNote = 'Clinical Note: Mid-luteal Progesterone >15 nmol/L confirms successful ovulation.' + progTestNote;
+          title = 'Ovulatory Positive-Feedback LH Surge!'; level = 'info';
+          summary = `Sustained high E2 (${Math.round(o.e2)} pmol/L) with low P4 flipped pituitary feedback POSITIVE, firing the mid-cycle LH surge (${o.lh.toFixed(1)} IU/L) and triggering follicular rupture!`;
+          testNote = 'Cycle Dynamics: Immediate transition to Corpus Luteum luteinization and luteal P4 dominance.' + progTestNote;
+        } else if (o.CL > 0.22) {
+          title = `Ovulatory Cycle · Luteal Phase (Day ${o.cyclePhaseNum})`; level = 'ok';
+          summary = `Corpus Luteum secretes dominant Progesterone (${o.p4.toFixed(1)} nmol/L) and secondary E2 (${Math.round(o.e2)} pmol/L), suppressing LH/FSH until programmed luteolysis around Day 27–28.`;
+          testNote = 'Clinical Note: Mid-luteal P4 > 15 nmol/L confirms ovulation.' + progTestNote;
         } else {
-          title = `Ovulatory Cycle · Follicular Phase (Day ${o.cyclePhaseNum})`;
-          level = 'ok';
-          summary = `FSH (${o.fsh.toFixed(1)} IU/L) recruits the dominant follicle, driving rising Estradiol (${Math.round(o.e2)} pmol/L). Once sustained E2 crosses ~700 pmol/L, negative feedback flips to the ovulatory LH surge.`;
-          testNote = 'Dynamic Tests: Click "+7d Step" or speed 5× to watch the full 28-day Follicular -> Surge -> Luteal cycle.' + progTestNote;
+          title = `Ovulatory Cycle · Follicular Phase (Day ${o.cyclePhaseNum})`; level = 'ok';
+          summary = `FSH (${o.fsh.toFixed(1)} IU/L) recruits the dominant follicle, driving rising E2 (${Math.round(o.e2)} pmol/L). Sustained E2 > 700 pmol/L flips feedback positive to fire the Day ~14 LH surge.`;
+          testNote = 'Dynamic Tests: Use 5× speed or "+7d Step" to trace the full repeating 28-day cycle.' + progTestNote;
         }
       }
 
@@ -1796,7 +1441,7 @@
     }
 
     /* =========================================================================
-       6. STRICTLY LOCKED HI-DPI CANVAS RENDERERS (PHASE PLANE & TIME SERIES)
+       LOCKED HI-DPI CANVAS RENDERERS (PHASE PLANE & TIME SERIES)
        ========================================================================= */
     const phaseWrap = document.getElementById('phase-canvas-wrap');
     const phaseCanvas = document.getElementById('phase-canvas');
@@ -1806,12 +1451,11 @@
     const tsCanvas = document.getElementById('ts-canvas');
     const tsCtx = tsCanvas.getContext('2d');
 
-    // STRICT ANTI-STRETCH CANVAS SIZING: Observe wrapper ONLY, never mutate wrapper dimensions!
     function syncCanvasToWrapper(wrapper, canvas) {
       if (!wrapper || !canvas) return false;
       const w = wrapper.clientWidth;
       const h = wrapper.clientHeight;
-      if (w <= 0 || h <= 0) return false;
+      if (!(w > 10 && h > 10 && w < 4000 && h < 2000)) return false;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const targetW = Math.round(w * dpr);
       const targetH = Math.round(h * dpr);
@@ -1831,14 +1475,13 @@
         grid: isDark ? 'rgba(63, 63, 70, 0.34)' : '#e4e4e7',
         gridFaint: isDark ? 'rgba(63, 63, 70, 0.22)' : '#f4f4f5',
         axis: isDark ? '#3f3f46' : '#a1a1aa',
-        tick: isDark ? '#71717a' : '#71717a',
+        tick: '#71717a',
         label: isDark ? '#a1a1aa' : '#52525b',
         teal: isDark ? '#2dd4bf' : '#0f766e',
         tealRGB: isDark ? '45, 212, 191' : '15, 118, 110',
         amber: isDark ? '#fbbf24' : '#d97706',
         rose: isDark ? '#fb7185' : '#e11d48',
         sky: isDark ? '#38bdf8' : '#0284c7',
-        emerald: isDark ? '#34d399' : '#059669',
         channels: isDark ? CHANNEL_PALETTES.dark : CHANNEL_PALETTES.light,
         dotCore: isDark ? '#ffffff' : '#09090b',
       };
@@ -1850,7 +1493,6 @@
       document.getElementById('phase-subtitle').textContent = axis.phaseSubtitle;
     }
 
-    /* --- A. QUANTITATIVE FEEDBACK PHASE PLANE --- */
     function drawPhasePlane() {
       if (!phaseCanvas.width || !phaseCanvas.height || !app.obs) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -1871,61 +1513,43 @@
       ctx.fillStyle = C.bg;
       ctx.fillRect(pad.l, pad.t, pw, ph);
 
-      // Axis coordinate mappers & zone definitions per axis
       let xOf, yOf, xLabel, yLabel, xTicks, yTicks, getPt;
 
       if (axisId === 'hpa') {
-        const xMax = 1150;
-        const logMin = Math.log10(0.4);
-        const logMax = Math.log10(80);
+        const xMax = 1150, logMin = Math.log10(0.4), logMax = Math.log10(80);
         xOf = v => pad.l + (clamp(v, 0, xMax) / xMax) * pw;
         yOf = v => pad.t + ph - ((Math.log10(clamp(v, 0.4, 80)) - logMin) / (logMax - logMin)) * ph;
-        xLabel = 'Total Cortisol (nmol/L)';
-        yLabel = 'ACTH (pmol/L)';
-        xTicks = [0, 300, 600, 900];
-        yTicks = [0.5, 2, 10, 50];
+        xLabel = 'Total Cortisol (nmol/L)'; yLabel = 'ACTH (pmol/L)';
+        xTicks = [0, 300, 600, 900]; yTicks = [0.5, 2, 10, 50];
         getPt = pt => [pt.cortTotal, pt.acth];
       } else if (axisId === 'hpt') {
-        const xMin = 2, xMax = 44;
-        const logMin = Math.log10(0.01);
-        const logMax = Math.log10(100);
+        const xMin = 2, xMax = 44, logMin = Math.log10(0.01), logMax = Math.log10(100);
         xOf = v => pad.l + ((clamp(v, xMin, xMax) - xMin) / (xMax - xMin)) * pw;
         yOf = v => pad.t + ph - ((Math.log10(clamp(v, 0.01, 100)) - logMin) / (logMax - logMin)) * ph;
-        xLabel = 'Free T4 (pmol/L)';
-        yLabel = 'TSH (mIU/L)';
-        xTicks = [5, 15, 25, 35];
-        yTicks = [0.01, 0.1, 1, 10, 100];
+        xLabel = 'Free T4 (pmol/L)'; yLabel = 'TSH (mIU/L)';
+        xTicks = [5, 15, 25, 35]; yTicks = [0.01, 0.1, 1, 10, 100];
         getPt = pt => [pt.ft4, pt.tsh];
       } else if (axisId === 'hpg_male') {
-        const xMax = 45;
-        const logMin = Math.log10(0.15);
-        const logMax = Math.log10(45);
+        const xMax = 45, logMin = Math.log10(0.15), logMax = Math.log10(45);
         xOf = v => pad.l + (clamp(v, 0, xMax) / xMax) * pw;
         yOf = v => pad.t + ph - ((Math.log10(clamp(v, 0.15, 45)) - logMin) / (logMax - logMin)) * ph;
-        xLabel = 'Total Testosterone (nmol/L)';
-        yLabel = 'LH (IU/L)';
-        xTicks = [0, 10, 20, 30, 40];
-        yTicks = [0.2, 1, 5, 25];
+        xLabel = 'Total Testosterone (nmol/L)'; yLabel = 'LH (IU/L)';
+        xTicks = [0, 10, 20, 30, 40]; yTicks = [0.2, 1, 5, 25];
         getPt = pt => [pt.totalT, pt.lh];
       } else {
-        const xMax = 1450;
-        const yMax = 68;
+        const xMax = 1450, yMax = 72;
         xOf = v => pad.l + (clamp(v, 0, xMax) / xMax) * pw;
         yOf = v => pad.t + ph - (clamp(v, 0, yMax) / yMax) * ph;
-        xLabel = 'Estradiol E2 (pmol/L)';
-        yLabel = 'LH (IU/L)';
-        xTicks = [0, 350, 700, 1050, 1400];
-        yTicks = [0, 20, 40, 60];
+        xLabel = 'Estradiol E2 (pmol/L)'; yLabel = 'LH (IU/L)';
+        xTicks = [0, 350, 700, 1050, 1400]; yTicks = [0, 20, 40, 60];
         getPt = pt => [pt.e2, pt.lh];
       }
 
-      // Clip interior zones & curves
       ctx.save();
       ctx.beginPath();
       ctx.rect(pad.l, pad.t, pw, ph);
       ctx.clip();
 
-      // Helper to draw shaded diagnostic zone
       const drawZone = (x1, y1, x2, y2, fill, label, textCol) => {
         const rx = Math.min(xOf(x1), xOf(x2));
         const ry = Math.min(yOf(y1), yOf(y2));
@@ -1948,7 +1572,7 @@
       const lblMuted = C.isDark ? 'rgba(212, 212, 216, 0.58)' : 'rgba(63, 63, 70, 0.65)';
 
       if (axisId === 'hpa') {
-        drawZone(140, 1.8, 560, 11.5, zOk, 'Normal', C.teal);
+        drawZone(90, 1.6, 560, 11.8, zOk, 'Normal', C.teal);
         drawZone(560, 4.5, 1080, 22, zWarn, 'Cushing Dis.', lblMuted);
         drawZone(600, 22, 1140, 78, zCrit, 'Ectopic ACTH', lblMuted);
         drawZone(560, 0.4, 1140, 2.0, zWarn, 'Adrenal Cushing', lblMuted);
@@ -1962,7 +1586,6 @@
         drawZone(2, 0.05, 12, 4.0, zSky, 'Central Hypo', lblMuted);
         drawZone(22, 2.0, 44, 40, zWarn, 'TSHoma', lblMuted);
 
-        // Theoretical Log-Linear Feedback Guide Curve
         ctx.save();
         ctx.setLineDash([4, 3]);
         ctx.strokeStyle = C.isDark ? 'rgba(161, 161, 170, 0.42)' : 'rgba(113, 113, 122, 0.45)';
@@ -1971,8 +1594,7 @@
         for (let ft4 = 4; ft4 <= 36; ft4 += 0.5) {
           const theoTSH = clamp(1.65 * safeExp(-0.40 * (ft4 - 16.4)), 0.01, 100);
           const gx = xOf(ft4), gy = yOf(theoTSH);
-          if (ft4 === 4) ctx.moveTo(gx, gy);
-          else ctx.lineTo(gx, gy);
+          if (ft4 === 4) ctx.moveTo(gx, gy); else ctx.lineTo(gx, gy);
         }
         ctx.stroke();
         ctx.restore();
@@ -1982,13 +1604,11 @@
         drawZone(0, 0.15, 10, 1.8, zSky, 'Secondary Hypo', lblMuted);
         drawZone(28, 0.15, 45, 1.6, zWarn, 'Exo T Supp.', lblMuted);
       } else {
-        // Ovarian Biphasic E2-LH Map
-        drawZone(100, 2, 660, 14, zOk, 'Follicular / Luteal', C.teal);
-        drawZone(660, 18, 1420, 66, zWarn, 'Ovulatory +FB Surge', C.amber);
-        drawZone(0, 22, 160, 66, zCrit, 'Menopause', lblMuted);
+        drawZone(80, 1.5, 700, 14, zOk, 'Follicular / Luteal', C.teal);
+        drawZone(700, 18, 1420, 70, zWarn, 'Ovulatory +FB Surge', C.amber);
+        drawZone(0, 22, 180, 70, zCrit, 'Menopause', lblMuted);
 
-        // Vertical dashed Positive Feedback Surge Threshold (~680 pmol/L)
-        const tx = Math.round(xOf(680)) + 0.5;
+        const tx = Math.round(xOf(700)) + 0.5;
         ctx.save();
         ctx.setLineDash([4, 3]);
         ctx.strokeStyle = C.amber;
@@ -2004,7 +1624,6 @@
         ctx.restore();
       }
 
-      // Hairline Grid
       ctx.strokeStyle = C.grid;
       ctx.lineWidth = 1;
       for (const xt of xTicks) {
@@ -2016,9 +1635,8 @@
         ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l + pw, gy); ctx.stroke();
       }
 
-      // Fading Trajectory Trail
       const hist = app.history;
-      const trailLen = Math.min(hist.length, 160);
+      const trailLen = Math.min(hist.length, axisId === 'hpg_ovarian' ? 220 : 160);
       if (trailLen > 1) {
         const startIdx = hist.length - trailLen;
         ctx.lineCap = 'round';
@@ -2027,8 +1645,8 @@
           const frac = (i - startIdx) / trailLen;
           const [x0, y0] = getPt(hist[i - 1]);
           const [x1, y1] = getPt(hist[i]);
-          ctx.strokeStyle = `rgba(${C.tealRGB}, ${(0.08 + frac * frac * 0.78).toFixed(3)})`;
-          ctx.lineWidth = 1.1 + frac * 1.1;
+          ctx.strokeStyle = `rgba(${C.tealRGB}, ${(0.09 + frac * frac * 0.80).toFixed(3)})`;
+          ctx.lineWidth = 1.1 + frac * 1.15;
           ctx.beginPath();
           ctx.moveTo(xOf(x0), yOf(y0));
           ctx.lineTo(xOf(x1), yOf(y1));
@@ -2036,20 +1654,17 @@
         }
       }
 
-      // Pinned Baseline Marker (if active)
       if (app.pinnedObs) {
         const [px, py] = getPt(app.pinnedObs);
-        const cx = xOf(px), cy = yOf(py);
         ctx.save();
         ctx.beginPath();
-        ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+        ctx.arc(xOf(px), yOf(py), 4, 0, Math.PI * 2);
         ctx.strokeStyle = C.amber;
         ctx.lineWidth = 1.6;
         ctx.stroke();
         ctx.restore();
       }
 
-      // Live Animated Cursor Point
       const [cxRaw, cyRaw] = getPt(app.obs);
       const cx = xOf(cxRaw), cy = yOf(cyRaw);
       const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 11);
@@ -2066,9 +1681,8 @@
       ctx.strokeStyle = C.teal;
       ctx.stroke();
 
-      ctx.restore(); // End clip
+      ctx.restore();
 
-      // Crisp Axis Borders & Ticks
       ctx.strokeStyle = C.axis;
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -2080,15 +1694,10 @@
       ctx.fillStyle = C.tick;
       ctx.font = '9px "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
-      for (const xt of xTicks) {
-        ctx.fillText(String(xt), xOf(xt), pad.t + ph + 12);
-      }
+      for (const xt of xTicks) ctx.fillText(String(xt), xOf(xt), pad.t + ph + 12);
       ctx.textAlign = 'right';
-      for (const yt of yTicks) {
-        ctx.fillText(yt < 1 ? String(yt) : String(Math.round(yt)), pad.l - 5, yOf(yt) + 3);
-      }
+      for (const yt of yTicks) ctx.fillText(yt < 1 ? String(yt) : String(Math.round(yt)), pad.l - 5, yOf(yt) + 3);
 
-      // Axis Titles
       ctx.fillStyle = C.label;
       ctx.font = '500 9.5px Inter, sans-serif';
       ctx.textAlign = 'center';
@@ -2099,11 +1708,9 @@
       ctx.rotate(-Math.PI / 2);
       ctx.fillText(yLabel, 0, 0);
       ctx.restore();
-
       ctx.restore();
     }
 
-    /* --- B. MULTI-CHANNEL HORMONE TIME-SERIES CANVAS --- */
     function drawTimeSeries() {
       if (!tsCanvas.width || !tsCanvas.height || app.history.length < 2) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -2130,7 +1737,6 @@
       const xOfT = t => pad.l + ((t - tStart) / axis.windowSpan) * pw;
       const yOfNorm = u => pad.t + ph - clamp(u, 0, 1.04) * ph;
 
-      // Dynamic ceiling per channel so large surges (e.g., Cushing / Graves / Menopause) stay inside frame
       const dynMax = axis.channels.map(ch => {
         let peak = ch.max;
         for (let i = 0; i < hist.length; i++) {
@@ -2139,7 +1745,6 @@
         return peak;
       });
 
-      // Horizontal normalized percentage gridlines (0%, 25%, 50%, 75%, 100%)
       ctx.strokeStyle = C.grid;
       ctx.lineWidth = 1;
       ctx.font = '9px "JetBrains Mono", monospace';
@@ -2152,7 +1757,6 @@
         ctx.fillText(`${Math.round(u * 100)}%`, pad.l - 6, gy + 3);
       }
 
-      // Vertical time gridlines
       const stepT = axis.timeUnit === 'h' ? 12 : 7;
       const firstTick = Math.ceil(tStart / stepT) * stepT;
       ctx.textAlign = 'center';
@@ -2166,13 +1770,11 @@
         ctx.fillText(label, gx, pad.t + ph + 14);
       }
 
-      // Clip interior
       ctx.save();
       ctx.beginPath();
       ctx.rect(pad.l, pad.t, pw, ph);
       ctx.clip();
 
-      // Optional Shaded Normal Reference Bands (for Primary Active Channel 0)
       if (app.showRefBands) {
         const firstActiveIdx = app.visibleChannels.findIndex(v => v);
         if (firstActiveIdx >= 0) {
@@ -2189,7 +1791,6 @@
         }
       }
 
-      // Vertical Dashed Dynamic Test / Event Markers
       for (const ev of app.events) {
         if (ev.t < tStart || ev.t > tEnd) continue;
         const ex = Math.round(xOfT(ev.t)) + 0.5;
@@ -2198,22 +1799,21 @@
         ctx.strokeStyle = C.amber;
         ctx.lineWidth = 1.25;
         ctx.beginPath(); ctx.moveTo(ex, pad.t); ctx.lineTo(ex, pad.t + ph); ctx.stroke();
-        ctx.fillStyle = C.isDark ? '#18181b' : '#ffffff';
+        ctx.font = '600 8.5px "JetBrains Mono", monospace';
         const tw = ctx.measureText(ev.label).width + 10;
         const bx = clamp(ex - tw / 2, pad.l + 2, pad.l + pw - tw - 2);
+        ctx.fillStyle = C.isDark ? '#18181b' : '#ffffff';
         ctx.fillRect(bx, pad.t + 4, tw, 15);
         ctx.strokeStyle = C.amber;
         ctx.setLineDash([]);
         ctx.lineWidth = 0.8;
         ctx.strokeRect(bx, pad.t + 4, tw, 15);
         ctx.fillStyle = C.amber;
-        ctx.font = '600 8.5px "JetBrains Mono", monospace';
         ctx.textAlign = 'center';
         ctx.fillText(ev.label, bx + tw / 2, pad.t + 14);
         ctx.restore();
       }
 
-      // Plot All Active Normalized Hormone Channels
       for (let c = 0; c < axis.channels.length; c++) {
         if (!app.visibleChannels[c]) continue;
         const ch = axis.channels[c];
@@ -2237,24 +1837,18 @@
         }
         ctx.stroke();
 
-        // Live endpoint dot
         const last = hist[hist.length - 1];
-        const lx = xOfT(last.t);
-        const ly = yOfNorm(last[ch.key] / maxV);
         ctx.beginPath();
-        ctx.arc(lx, ly, 3.2, 0, Math.PI * 2);
+        ctx.arc(xOfT(last.t), yOfNorm(last[ch.key] / maxV), 3.2, 0, Math.PI * 2);
         ctx.fillStyle = col;
         ctx.fill();
         ctx.restore();
       }
 
-      // Interactive Hover Crosshair & Tooltip
       const tipEl = document.getElementById('ts-hover-tip');
       if (app.hoverX !== null && app.hoverX >= pad.l && app.hoverX <= pad.l + pw) {
         const hoverT = tStart + ((app.hoverX - pad.l) / pw) * axis.windowSpan;
-        // Binary/linear search nearest point in history
-        let best = hist[0];
-        let bestDist = Infinity;
+        let best = hist[0], bestDist = Infinity;
         for (let i = 0; i < hist.length; i++) {
           const d = Math.abs(hist[i].t - hoverT);
           if (d < bestDist) { bestDist = d; best = hist[i]; }
@@ -2271,9 +1865,8 @@
         for (let c = 0; c < axis.channels.length; c++) {
           if (!app.visibleChannels[c]) continue;
           const ch = axis.channels[c];
-          const py = yOfNorm(best[ch.key] / dynMax[c]);
           ctx.beginPath();
-          ctx.arc(hx, py, 3.8, 0, Math.PI * 2);
+          ctx.arc(hx, yOfNorm(best[ch.key] / dynMax[c]), 3.8, 0, Math.PI * 2);
           ctx.fillStyle = C.channels[c];
           ctx.fill();
           ctx.strokeStyle = C.bg;
@@ -2309,13 +1902,10 @@
         tipEl.classList.add('hidden');
       }
 
-      ctx.restore(); // End clip
-
-      // Axis Frame
+      ctx.restore();
       ctx.strokeStyle = C.axis;
       ctx.lineWidth = 1;
       ctx.strokeRect(pad.l + 0.5, pad.t + 0.5, pw - 1, ph - 1);
-
       ctx.restore();
     }
 
@@ -2331,9 +1921,8 @@
     }
 
     /* =========================================================================
-       7. SIDEBAR UI BUILDERS (PATHOLOGIES, ORGAN PARAMETERS, DRUGS & TESTS)
+       SIDEBAR UI BUILDERS & CONTROLS
        ========================================================================= */
-
     function buildAxisTabsUI() {
       document.querySelectorAll('.axis-tab').forEach(btn => {
         const active = btn.dataset.axis === app.axisId;
@@ -2373,7 +1962,6 @@
     function buildSidebarContent() {
       const axis = getAxis();
 
-      // 1. Pathologies Tab
       const pathoEl = document.getElementById('tab-pathologies');
       pathoEl.innerHTML = axis.presets.map(pr => `
         <button data-preset="${pr.id}" type="button" class="preset-card w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex flex-col gap-1">
@@ -2390,7 +1978,6 @@
       });
       highlightActivePreset();
 
-      // 2. Parameters Tab (Grouped by Organ: Hypothalamus / Pituitary / Peripheral Gland / Binding)
       const organGroups = [
         { id: 'hypo', title: axis.organs.hypo.title },
         { id: 'pit', title: axis.organs.pit.title },
@@ -2449,7 +2036,6 @@
         });
       });
 
-      // 3. Drugs & Dynamic Tests Tab
       const drugsEl = document.getElementById('tab-drugs');
       const drugsHTML = axis.drugDefs.map(d => {
         if (d.type === 'toggle') {
@@ -2467,7 +2053,7 @@
           `;
         }
         return `
-          <div id="dcard-${d.key}" class="p-3 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/50 dark:bg-zinc-900/25 space-y-1.5">
+          <div class="p-3 rounded-lg border border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/50 dark:bg-zinc-900/25 space-y-1.5">
             <div class="flex items-center justify-between gap-2 text-xs">
               <span class="font-medium text-[#09090b] dark:text-[#fafafa]">${d.label}</span>
               <span class="font-mono tabular-nums text-violet-700 dark:text-violet-300 shrink-0">
@@ -2564,8 +2150,7 @@
     }
 
     function updateActiveDrugDot() {
-      const axis = getAxis();
-      const anyActive = axis.drugDefs.some(d => (app.params[d.key] || 0) > 0.01);
+      const anyActive = getAxis().drugDefs.some(d => (app.params[d.key] || 0) > 0.01);
       document.getElementById('active-drug-dot').classList.toggle('hidden', !anyActive);
     }
 
@@ -2618,34 +2203,26 @@
     }
 
     /* =========================================================================
-       8. EVENT WIRING, STRICT RESIZE OBSERVERS & 60FPS ANIMATION LOOP
+       EVENT WIRING, WRAPPER-ONLY RESIZE OBSERVERS & 60FPS LOOP
        ========================================================================= */
-
     function wireEvents() {
-      // Theme Toggle (synced with medlab-theme & theme)
       document.getElementById('theme-toggle').addEventListener('click', () => {
         const isDarkNow = document.documentElement.classList.toggle('dark');
         const val = isDarkNow ? 'dark' : 'light';
-        try {
-          localStorage.setItem('medlab-theme', val);
-          localStorage.setItem('theme', val);
-        } catch (_) {}
+        try { localStorage.setItem('medlab-theme', val); localStorage.setItem('theme', val); } catch (_) {}
         buildChannelPills();
         renderAxisSVG();
         drawAllCanvases();
       });
 
-      // Axis Selector Tabs
       document.querySelectorAll('.axis-tab').forEach(btn => {
         btn.addEventListener('click', () => loadAxis(btn.dataset.axis, 'normal'));
       });
 
-      // Sidebar Tabs
       document.querySelectorAll('.side-tab').forEach(btn => {
         btn.addEventListener('click', () => switchSidebarTab(btn.dataset.tab));
       });
 
-      // Play / Pause
       document.getElementById('btn-play-pause').addEventListener('click', () => {
         app.playing = !app.playing;
         document.getElementById('play-pause-text').textContent = app.playing ? 'Pause' : 'Play';
@@ -2657,7 +2234,6 @@
         dot.classList.toggle('dark:bg-amber-400', !app.playing);
       });
 
-      // Speed Toggle
       document.querySelectorAll('.speed-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           app.speed = parseFloat(btn.dataset.speed);
@@ -2665,10 +2241,8 @@
         });
       });
 
-      // +14d Fast Forward
       document.getElementById('btn-ff-14d').addEventListener('click', fastForward14Days);
 
-      // Pin Baseline Toggle
       document.getElementById('btn-pin-baseline').addEventListener('click', () => {
         app.pinnedObs = app.pinnedObs ? null : { ...app.obs };
         updatePinButtonUI();
@@ -2676,12 +2250,8 @@
         drawPhasePlane();
       });
 
-      // Reset Axis
-      document.getElementById('btn-reset-axis').addEventListener('click', () => {
-        loadAxis(app.axisId, 'normal');
-      });
+      document.getElementById('btn-reset-axis').addEventListener('click', () => loadAxis(app.axisId, 'normal'));
 
-      // Reference Bands Toggle
       document.getElementById('btn-ref-bands').addEventListener('click', () => {
         app.showRefBands = !app.showRefBands;
         const btn = document.getElementById('btn-ref-bands');
@@ -2693,7 +2263,6 @@
         drawTimeSeries();
       });
 
-      // Clickable SVG Organ Nodes -> Jump & highlight that organ's parameter sliders
       document.getElementById('axis-svg').addEventListener('click', e => {
         const target = e.target.closest('[data-organ-click]');
         if (!target) return;
@@ -2708,28 +2277,18 @@
         }
       });
 
-      // Time-Series Hover Crosshair
       tsWrap.addEventListener('mousemove', e => {
-        const rect = tsWrap.getBoundingClientRect();
-        app.hoverX = e.clientX - rect.left;
+        app.hoverX = e.clientX - tsWrap.getBoundingClientRect().left;
         drawTimeSeries();
       });
-      tsWrap.addEventListener('mouseleave', () => {
-        app.hoverX = null;
-        drawTimeSeries();
-      });
+      tsWrap.addEventListener('mouseleave', () => { app.hoverX = null; drawTimeSeries(); });
       tsWrap.addEventListener('touchmove', e => {
         if (!e.touches || !e.touches[0]) return;
-        const rect = tsWrap.getBoundingClientRect();
-        app.hoverX = e.touches[0].clientX - rect.left;
+        app.hoverX = e.touches[0].clientX - tsWrap.getBoundingClientRect().left;
         drawTimeSeries();
       }, { passive: true });
-      tsWrap.addEventListener('touchend', () => {
-        app.hoverX = null;
-        drawTimeSeries();
-      });
+      tsWrap.addEventListener('touchend', () => { app.hoverX = null; drawTimeSeries(); });
 
-      // STRICT ANTI-STRETCH RESIZE OBSERVER: Observe WRAPPERS ONLY!
       if (typeof ResizeObserver !== 'undefined') {
         const ro = new ResizeObserver(entries => {
           let dirty = false;
@@ -2749,7 +2308,6 @@
       });
     }
 
-    // Main 60 FPS Animation Loop
     let lastTS = 0;
     let uiTickAccum = 0;
 
@@ -2761,10 +2319,7 @@
       try {
         if (app.playing && app.simState) {
           const axis = getAxis();
-          const dtSim = dtReal * axis.simRateAt1x * app.speed;
-          advanceSim(dtSim, true);
-
-          // Update DOM telemetry, SVG flux & clinical text cleanly at ~12 Hz to stay silky smooth
+          advanceSim(dtReal * axis.simRateAt1x * app.speed, true);
           uiTickAccum += dtReal;
           if (uiTickAccum >= 0.08) {
             uiTickAccum = 0;
@@ -2783,10 +2338,8 @@
       wireEvents();
       switchSidebarTab('pathologies');
       updateSpeedButtonsUI();
-
       syncCanvasToWrapper(phaseWrap, phaseCanvas);
       syncCanvasToWrapper(tsWrap, tsCanvas);
-
       loadAxis('hpa', 'normal');
       requestAnimationFrame(animate);
     });
