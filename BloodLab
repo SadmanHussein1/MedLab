@@ -1,0 +1,2735 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BloodLab — MedLab Clinical Chemistry &amp; Hematology</title>
+
+  <!-- Prevent theme flash prior to first paint (syncs medlab-theme & theme; defaults to obsidian dark) -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#111113',
+            elevatedDark: '#18181b',
+            borderDark: '#27272a',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Subtle Minimal Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(113, 113, 122, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(113, 113, 122, 0.45);
+    }
+
+    /* Swiss-Precision Range Slider */
+    input[type="range"].clinical-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      border-radius: 9999px;
+      background: #e4e4e7;
+      outline: none;
+      cursor: pointer;
+    }
+    .dark input[type="range"].clinical-slider {
+      background: #27272a;
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      transition: transform 0.1s ease;
+    }
+    .dark input[type="range"].clinical-slider::-webkit-slider-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+    input[type="range"].clinical-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"].clinical-slider::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    }
+    .dark input[type="range"].clinical-slider::-moz-range-thumb {
+      background: #2dd4bf;
+      border: 2px solid #09090b;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-canvasLight text-[#09090b] dark:bg-obsidian dark:text-[#f4f4f5] transition-colors duration-200 selection:bg-teal-500/20 selection:text-teal-800 dark:selection:text-teal-200">
+
+  <!-- ==================== 1. MINIMAL STICKY HEADER (h-14) ==================== -->
+  <header class="sticky top-0 z-40 min-h-[3.5rem] w-full border-b border-[#e4e4e7] dark:border-borderDark bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md shrink-0">
+    <div class="w-full max-w-[1640px] mx-auto px-4 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2.5">
+
+      <!-- Left: Back Link + Brand Title + Subtitle -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors shrink-0">
+          &larr; MedLab
+        </a>
+        <span class="h-4 w-px bg-[#e4e4e7] dark:bg-borderDark shrink-0"></span>
+        <div class="flex items-baseline gap-2 min-w-0">
+          <h1 class="text-[15px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] shrink-0">BloodLab</h1>
+          <span class="hidden sm:inline text-xs text-zinc-500 dark:text-zinc-400 truncate">Clinical Chemistry &amp; Hematology</span>
+        </div>
+      </div>
+
+      <!-- Center: Mode Switcher (Lab Explorer | Ward Rounds Quiz) -->
+      <div class="inline-flex items-center h-8 rounded-lg bg-zinc-100/90 dark:bg-surfaceDark border border-[#e4e4e7] dark:border-borderDark p-0.5 text-xs font-medium">
+        <button data-appmode="explorer" type="button" class="appmode-btn px-3 h-full rounded-md transition-colors">Lab Explorer</button>
+        <button data-appmode="quiz" type="button" class="appmode-btn px-3 h-full rounded-md transition-colors flex items-center gap-1.5">
+          <span>Ward Rounds Quiz</span>
+          <span id="nav-quiz-streak" class="hidden font-mono text-[10px] px-1.5 py-0.2 rounded bg-teal-500/15 text-tealLight dark:text-tealDark">0</span>
+        </button>
+      </div>
+
+      <!-- Right: Sex (M/F), Unit (SI/US), Reset, Theme Toggle -->
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <!-- Sex Toggle -->
+        <div id="sex-toggle-wrap" class="inline-flex items-center h-8 rounded-lg bg-zinc-100/90 dark:bg-surfaceDark border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[11px] font-mono" title="Patient biological sex (adjusts sex-specific reference ranges)">
+          <button data-sex="M" type="button" class="sex-btn px-2 h-full rounded-md transition-colors">M</button>
+          <button data-sex="F" type="button" class="sex-btn px-2 h-full rounded-md transition-colors">F</button>
+        </div>
+
+        <!-- Unit Toggle (SI / US) -->
+        <div class="inline-flex items-center h-8 rounded-lg bg-zinc-100/90 dark:bg-surfaceDark border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[11px] font-mono" title="Switch between SI (Swiss/European) and US Conventional units">
+          <button data-unit="SI" type="button" class="unit-btn px-2 h-full rounded-md transition-colors">SI</button>
+          <button data-unit="US" type="button" class="unit-btn px-2 h-full rounded-md transition-colors">US</button>
+        </div>
+
+        <!-- Reset Button -->
+        <button id="btn-reset-all" type="button" class="h-8 px-2.5 rounded-lg bg-white dark:bg-surfaceDark hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-[#e4e4e7] dark:border-borderDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-[#09090b] dark:hover:text-white transition-colors" title="Reset to Normal Baseline &amp; clear all edits/artifacts">
+          Reset
+        </button>
+
+        <!-- Dark / Light Mode Toggle -->
+        <button id="theme-toggle" type="button" aria-label="Toggle dark and light theme" title="Switch Dark / Light mode" class="w-8 h-8 rounded-lg flex items-center justify-center border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-white transition-colors">
+          <!-- Sun Icon (shown in dark mode) -->
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <!-- Moon Icon (shown in light mode) -->
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. MAIN 3-COLUMN RESPONSIVE WORKSPACE ==================== -->
+  <main class="flex-1 w-full max-w-[1640px] mx-auto px-4 sm:px-5 py-4 grid grid-cols-1 xl:grid-cols-12 gap-4 min-h-0 min-w-0">
+
+    <!-- ==================== LEFT COLUMN (xl:col-span-3): CONTROLS OR WARD ROUNDS ==================== -->
+    <aside class="xl:col-span-3 flex flex-col gap-3 min-w-0 xl:max-h-[calc(100vh-118px)]">
+
+      <!-- EXPLORER LEFT PANEL (Pathologies + Comorbidity + Artifacts) -->
+      <div id="left-explorer-panel" class="flex-1 flex flex-col gap-3 min-h-0">
+
+        <!-- Pathology Presets Card -->
+        <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col min-h-[280px] xl:flex-1 overflow-hidden">
+          <div class="px-3.5 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 shrink-0">
+            <span class="text-xs font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5]">Clinical Pathologies</span>
+            <span class="font-mono text-[10px] text-zinc-500 dark:text-zinc-400">18 profiles</span>
+          </div>
+          <div class="px-3 pt-2.5 pb-1.5 shrink-0">
+            <input id="pathology-search" type="text" placeholder="Filter pathologies..." class="w-full h-7 px-2.5 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian text-xs text-[#09090b] dark:text-[#f4f4f5] placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-tealLight dark:focus:border-tealDark" />
+          </div>
+          <div id="pathology-list" class="flex-1 overflow-y-auto px-2.5 pb-2.5 space-y-1 min-h-0">
+            <!-- Populated dynamically -->
+          </div>
+        </section>
+
+        <!-- Comorbidity Stacking + Pre-Analytical Artifacts Card -->
+        <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark p-3 space-y-3 shrink-0">
+          <!-- Comorbidity Stack Dropdown -->
+          <div class="space-y-1.5">
+            <label for="comorbidity-select" class="flex items-center justify-between text-[10px] font-mono font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+              <span>Comorbidity Overlay</span>
+              <span class="text-tealLight dark:text-tealDark normal-case tracking-normal">Stackable</span>
+            </label>
+            <select id="comorbidity-select" class="w-full h-8 px-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian text-xs text-[#09090b] dark:text-[#f4f4f5] focus:outline-none focus:border-tealLight dark:focus:border-tealDark cursor-pointer">
+              <option value="none">None (Isolated Primary Pathology)</option>
+              <option value="sepsis_inf">+ Acute Inflammation / Sepsis (↑Ferritin trap)</option>
+              <option value="cirrhosis_etoh">+ Alcohol / Cirrhosis (↑GGT, ↓Plt, ↑INR)</option>
+              <option value="ckd4">+ CKD Stage 4 (↑Crea, ↑K⁺, ↑PO₄, ↓Hb)</option>
+              <option value="dehydration">+ Dehydration / Hemoconcentration</option>
+            </select>
+          </div>
+
+          <!-- Pre-Analytical Artifact Switches -->
+          <div class="space-y-1.5 pt-2 border-t border-[#e4e4e7]/80 dark:border-borderDark/80">
+            <div class="flex items-center justify-between text-[10px] font-mono font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+              <span>Pre-Analytical Artifacts</span>
+              <span class="text-amber-600 dark:text-amber-400 normal-case tracking-normal">Lab Traps</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <button data-artifact="hemolyzed" type="button" class="artifact-btn px-2 py-1 rounded-md border text-[11px] font-medium transition-colors">Hemolyzed Sample</button>
+              <button data-artifact="edta_clump" type="button" class="artifact-btn px-2 py-1 rounded-md border text-[11px] font-medium transition-colors">EDTA Clumping</button>
+              <button data-artifact="tourniquet" type="button" class="artifact-btn px-2 py-1 rounded-md border text-[11px] font-medium transition-colors">Prolonged Tourniquet</button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- WARD ROUNDS QUIZ LEFT PANEL (Shown only in Quiz Mode) -->
+      <div id="left-quiz-panel" class="hidden flex-1 flex flex-col gap-3 min-h-0">
+        <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden flex-1">
+          <!-- Quiz Score & Streak Header -->
+          <div class="px-3.5 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 shrink-0">
+            <span class="text-xs font-semibold tracking-tight text-tealLight dark:text-tealDark">Ward Rounds Case</span>
+            <div class="flex items-center gap-2 font-mono text-[10.5px] tabular-nums">
+              <span class="text-zinc-500 dark:text-zinc-400">Score <strong id="quiz-score" class="text-[#09090b] dark:text-[#f4f4f5]">0/0</strong></span>
+              <span class="text-zinc-300 dark:text-zinc-700">&middot;</span>
+              <span class="text-zinc-500 dark:text-zinc-400">Streak <strong id="quiz-streak" class="text-tealLight dark:text-tealDark">0</strong></span>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-3.5 space-y-3.5 min-h-0">
+            <!-- Blinded Patient Vignette -->
+            <div class="p-3 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-zinc-50/70 dark:bg-obsidian/70 space-y-1.5">
+              <div class="flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                <span id="quiz-case-num">Case #1</span>
+                <span id="quiz-patient-demo" class="text-tealLight dark:text-tealDark font-semibold">42y F</span>
+              </div>
+              <p id="quiz-vignette" class="text-[12.5px] leading-relaxed text-[#09090b] dark:text-[#f4f4f5]"></p>
+              <div id="quiz-vitals" class="font-mono text-[10.5px] text-zinc-500 dark:text-zinc-400 pt-1 border-t border-[#e4e4e7]/70 dark:border-borderDark/70 tabular-nums"></div>
+            </div>
+
+            <!-- Hint Area -->
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Select Best Diagnosis</span>
+              <button id="btn-quiz-hint" type="button" class="text-[11px] font-mono text-amber-600 dark:text-amber-400 hover:underline">Show Hint</button>
+            </div>
+            <div id="quiz-hint-box" class="hidden p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-[11.5px] text-amber-800 dark:text-amber-200 leading-snug"></div>
+
+            <!-- 4 Differential Options -->
+            <div id="quiz-options" class="space-y-2"></div>
+
+            <!-- Reveal & Mechanistic Feedback -->
+            <div id="quiz-feedback" class="hidden p-3 rounded-lg border space-y-2 text-xs leading-relaxed"></div>
+          </div>
+
+          <!-- Footer Actions -->
+          <div class="p-3 border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/60 dark:bg-zinc-950/50 flex items-center gap-2 shrink-0">
+            <button id="btn-quiz-next" type="button" class="flex-1 h-8 rounded-lg bg-[#09090b] text-white dark:bg-[#f4f4f5] dark:text-[#09090b] hover:opacity-90 text-xs font-medium transition-opacity">
+              Next Case &rarr;
+            </button>
+            <button id="btn-quiz-inspect" type="button" class="hidden h-8 px-2.5 rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-xs font-medium text-tealLight dark:text-tealDark hover:border-tealLight/60 transition-colors">
+              Open in Explorer
+            </button>
+          </div>
+        </section>
+      </div>
+
+    </aside>
+
+    <!-- ==================== CENTER COLUMN (xl:col-span-6): HOSPITAL LAB SHEET ==================== -->
+    <section class="xl:col-span-6 flex flex-col gap-3 min-w-0 min-h-0 xl:max-h-[calc(100vh-118px)]">
+
+      <!-- 1. AUTO-DERIVED CLINICAL INDICES BAR (6 Live Cards) -->
+      <div class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark overflow-hidden shrink-0">
+        <div id="derived-indices-bar" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-[#e4e4e7]/80 dark:divide-borderDark/80">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- 2. ACTIVE PATHOLOGY & CONFOUNDER SIGNATURE BANNER (Hidden in Blinded Quiz until Solved) -->
+      <div id="pathology-banner" class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark px-4 py-3 shrink-0 space-y-1.5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-2 min-w-0">
+            <h2 id="banner-title" class="text-[13.5px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5]">Normal Baseline</h2>
+            <span id="banner-tag" class="font-mono text-[10px] px-2 py-0.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">Physiological</span>
+          </div>
+          <div id="banner-counts" class="font-mono text-[10.5px] text-zinc-500 dark:text-zinc-400 tabular-nums">0 abnormal / 54</div>
+        </div>
+        <p id="banner-summary" class="text-[12px] leading-relaxed text-zinc-600 dark:text-zinc-300"></p>
+        <div id="banner-warnings" class="hidden flex flex-wrap gap-1.5 pt-0.5"></div>
+      </div>
+
+      <!-- 3. DENSE INTERACTIVE HOSPITAL LAB SHEET (LABORBLATT) -->
+      <div class="flex-1 rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-[380px]">
+        <!-- Filter Toolbar (Search, All vs Abnormal Only, Category Pills) -->
+        <div class="px-3.5 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 space-y-2 shrink-0 bg-zinc-50/50 dark:bg-zinc-950/30">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <!-- Instant Search Bar ('/' shortcut) -->
+            <div class="relative flex-1 min-w-[180px] max-w-xs">
+              <input id="analyte-search" type="text" placeholder="Search analytes (press /)..." class="w-full h-7 pl-2.5 pr-7 rounded-md border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-obsidian text-xs text-[#09090b] dark:text-[#f4f4f5] placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-tealLight dark:focus:border-tealDark" />
+              <kbd class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[9.5px] text-zinc-400 dark:text-zinc-500">/</kbd>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <!-- Manual Edits Reset Pill (shown only if sandbox edits exist) -->
+              <button id="btn-clear-edits" type="button" class="hidden h-7 px-2 rounded-md border border-amber-500/40 bg-amber-500/10 text-[10.5px] font-mono text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-colors">
+                Clear Sandbox Edits
+              </button>
+
+              <!-- All vs Abnormal Only Switch -->
+              <div class="inline-flex items-center h-7 rounded-md bg-zinc-100 dark:bg-obsidian border border-[#e4e4e7] dark:border-borderDark p-0.5 text-[10.5px] font-mono">
+                <button data-abnfilter="all" type="button" class="abn-btn px-2 h-full rounded transition-colors">All</button>
+                <button data-abnfilter="abnormal" type="button" class="abn-btn px-2 h-full rounded transition-colors">Abnormal Only</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Filter Pills -->
+          <div id="category-pills" class="flex flex-wrap items-center gap-1"></div>
+        </div>
+
+        <!-- Column Header Row -->
+        <div class="hidden sm:grid grid-cols-12 gap-2 px-3.5 py-1.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/80 dark:bg-zinc-950/60 font-mono text-[9.5px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shrink-0">
+          <div class="col-span-4">Analyte</div>
+          <div class="col-span-3 text-right">Result &amp; Flag</div>
+          <div class="col-span-2 text-right">Ref Range</div>
+          <div class="col-span-3 pl-2">Visual Scale</div>
+        </div>
+
+        <!-- Scrollable Analyte Rows -->
+        <div id="lab-sheet-body" class="flex-1 overflow-y-auto divide-y divide-[#e4e4e7]/60 dark:divide-borderDark/60 min-h-0">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================== RIGHT COLUMN (xl:col-span-3): SMEAR + DEEP-DIVE INSPECTOR ==================== -->
+    <aside class="xl:col-span-3 flex flex-col gap-3 min-w-0 xl:max-h-[calc(100vh-118px)]">
+
+      <!-- 1. PROCEDURAL PERIPHERAL BLOOD SMEAR (BLUTAUSSTRICH) CARD -->
+      <section class="rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden shrink-0">
+        <div class="px-3.5 py-2 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 shrink-0">
+          <h2 class="text-xs font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5]">Peripheral Blood Smear</h2>
+          <span class="font-mono text-[9.5px] text-zinc-500 dark:text-zinc-400">Wright-Giemsa &middot; 100&times;</span>
+        </div>
+
+        <!-- STRICT ZERO-STRETCH LOCKED CANVAS WRAPPER -->
+        <div class="p-2.5 pb-1.5">
+          <div id="smear-wrap" class="relative w-full h-56 overflow-hidden rounded-lg border border-[#e4e4e7] dark:border-borderDark bg-[#16131c]">
+            <canvas id="smear-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+          </div>
+        </div>
+
+        <!-- 1-Line Microscopic Findings Caption -->
+        <div id="smear-caption" class="px-3.5 py-2 border-t border-[#e4e4e7]/70 dark:border-borderDark/70 bg-zinc-50/70 dark:bg-zinc-950/50 text-[11px] font-mono text-zinc-600 dark:text-zinc-300 leading-snug">
+          Normocytic normochromic RBCs, normal platelet distribution, segmented neutrophils.
+        </div>
+      </section>
+
+      <!-- 2. SELECTED ANALYTE DEEP-DIVE INSPECTOR + SANDBOX SLIDER -->
+      <section class="flex-1 rounded-xl border border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark flex flex-col overflow-hidden min-h-[300px]">
+        <div class="px-3.5 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 flex items-center justify-between gap-2 shrink-0">
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <h2 id="insp-name" class="text-[13px] font-semibold tracking-tight text-[#09090b] dark:text-[#f4f4f5] truncate">Hemoglobin</h2>
+              <span id="insp-code" class="font-mono text-[10px] px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-elevatedDark text-zinc-500 dark:text-zinc-400 border border-[#e4e4e7] dark:border-borderDark shrink-0">Hb</span>
+            </div>
+            <div id="insp-cat" class="text-[10.5px] text-zinc-500 dark:text-zinc-400 truncate">CBC &amp; Differential</div>
+          </div>
+          <div class="text-right shrink-0">
+            <div id="insp-val" class="font-mono text-sm font-semibold tabular-nums text-tealLight dark:text-tealDark">150 g/L</div>
+            <div id="insp-ref" class="font-mono text-[9.5px] text-zinc-400 dark:text-zinc-500 tabular-nums">Ref 135–168</div>
+          </div>
+        </div>
+
+        <!-- Interactive Sandbox Slider -->
+        <div class="px-3.5 py-2.5 border-b border-[#e4e4e7]/80 dark:border-borderDark/80 bg-zinc-50/60 dark:bg-zinc-950/40 space-y-1.5 shrink-0">
+          <div class="flex items-center justify-between text-[10.5px]">
+            <span class="font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Sandbox Perturb</span>
+            <button id="btn-reset-single" type="button" class="font-mono text-[10px] text-tealLight dark:text-tealDark hover:underline">reset value</button>
+          </div>
+          <input id="insp-slider" type="range" class="clinical-slider" min="0" max="100" step="1" value="50" />
+        </div>
+
+        <!-- Scrollable Structured Clinical Reference -->
+        <div id="insp-body" class="flex-1 overflow-y-auto p-3.5 space-y-3 text-xs min-h-0">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+    </aside>
+
+  </main>
+
+  <!-- ==================== 3. MINIMAL FOOTER ==================== -->
+  <footer class="w-full border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-white/70 dark:bg-obsidian/90 shrink-0">
+    <div class="w-full max-w-[1640px] mx-auto px-4 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+      <span class="font-medium text-[#09090b] dark:text-[#f4f4f5]">MedLab &middot; BloodLab</span>
+      <span>Reference values modeled on Swiss/European SI &amp; US conventional clinical standards for educational study only.</span>
+    </div>
+  </footer>
+
+  <!-- ==================== CLINICAL DATA, ENGINE & UI CONTROLLER ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    /* =========================================================================
+       1. NUMERIC HELPERS & CATEGORIES
+       ========================================================================= */
+    const clamp = (v, lo, hi) => (Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo);
+
+    const CATEGORIES = [
+      { id: 'all', label: 'All Panels' },
+      { id: 'cbc', label: 'CBC & Diff' },
+      { id: 'iron', label: 'Iron & Hemolysis' },
+      { id: 'renal', label: 'Electrolytes & Renal' },
+      { id: 'liver', label: 'Liver & Pancreas' },
+      { id: 'coag', label: 'Inflamm, Coag & Cardiac' },
+      { id: 'meta', label: 'Metabolic & Endocrine' }
+    ];
+
+    /* =========================================================================
+       2. COMPREHENSIVE 54-ANALYTE BLOOD CHEMISTRY & HEMATOLOGY DATASET
+          All internal math runs in SI units; display converts cleanly to US.
+       ========================================================================= */
+    const ANALYTES = [
+      // ---------------- 1. CBC & DIFFERENTIAL ----------------
+      {
+        id: 'hb', name: 'Hemoglobin', short: 'Hb', category: 'cbc',
+        siUnit: 'g/L', usUnit: 'g/dL', toUs: v => v / 10, siDec: 0, usDec: 1,
+        refM: [135, 168], refF: [121, 154], critLow: 70, critHigh: 200,
+        minDisp: 40, maxDisp: 210, step: 1, baselineM: 150, baselineF: 136,
+        physiology: 'Tetrameric iron-containing metalloprotein in erythrocytes responsible for binding and transporting O₂ from lungs to tissues.',
+        clinicalUse: 'Primary diagnostic metric for anemia and polycythemia; guides transfusion thresholds (typically <70 g/L in stable patients, <80 g/L in ACS).',
+        highCauses: ['Polycythemia vera (JAK2+)', 'Chronic hypoxemia (COPD, high altitude)', 'Dehydration / relative hemoconcentration', 'EPO-secreting tumors (RCC)'],
+        lowCauses: ['Iron, B12, or folate deficiency', 'Acute or chronic blood loss', 'Hemolytic anemia (immune, TMA)', 'Anemia of chronic disease / CKD', 'Bone marrow failure or infiltration'],
+        pearls: 'In acute hemorrhage, Hb remains initially normal for hours until transcapillary refill or IV fluids equilibrate plasma volume.'
+      },
+      {
+        id: 'rbc', name: 'Erythrocytes', short: 'RBC', category: 'cbc',
+        siUnit: 'T/L', usUnit: 'M/µL', toUs: v => v, siDec: 2, usDec: 2,
+        refM: [4.5, 5.9], refF: [3.9, 5.2], critLow: 2.0, critHigh: 7.2,
+        minDisp: 1.5, maxDisp: 7.5, step: 0.05, baselineM: 5.05, baselineF: 4.55,
+        physiology: 'Mature anucleate biconcave red blood cells produced in bone marrow under erythropoietin drive (lifespan ~120 days).',
+        clinicalUse: 'Used alongside MCV to compute the Mentzer Index (MCV/RBC): <13 favors thalassemia trait (high RBC despite microcytosis) vs >13 in iron deficiency.',
+        highCauses: ['Thalassemia minor (high RBC, low MCV)', 'Polycythemia vera', 'Secondary erythrocytosis (hypoxia)', 'Hemoconcentration'],
+        lowCauses: ['Iron/B12/folate deficiency anemia', 'Hemolysis or acute bleeding', 'Aplastic anemia / MDS / leukemia', 'CKD (reduced EPO)'],
+        pearls: 'Cold agglutinins cause RBC clumping in the analyzer, producing spuriously low RBC and falsely sky-high MCV/MCHC.'
+      },
+      {
+        id: 'hct', name: 'Hematocrit', short: 'Hct', category: 'cbc',
+        siUnit: 'L/L', usUnit: '%', toUs: v => v * 100, siDec: 2, usDec: 1,
+        refM: [0.40, 0.50], refF: [0.36, 0.44], critLow: 0.21, critHigh: 0.60,
+        minDisp: 0.15, maxDisp: 0.65, step: 0.01, baselineM: 0.44, baselineF: 0.40,
+        physiology: 'Volume fraction of whole blood occupied by packed erythrocytes (calculated as RBC × MCV on modern hematology analyzers).',
+        clinicalUse: 'Assesses oxygen-carrying concentration, blood viscosity risk (Hct >0.55–0.60 increases thrombosis risk), and plasma volume shifts.',
+        highCauses: ['Polycythemia vera', 'Severe dehydration / capillary leak (anaphylaxis, dengue)', 'Chronic hypoxia / smoking'],
+        lowCauses: ['All anemias', 'Hemodilution / massive crystalloid resuscitation', 'Pregnancy (physiological plasma expansion)'],
+        pearls: 'Rule of 3: Hct (%) ≈ 3 × Hb (g/dL) in normocytic RBCs. Prolonged venous stasis during phlebotomy falsely elevates Hct.'
+      },
+      {
+        id: 'mcv', name: 'Mean Corpuscular Volume', short: 'MCV', category: 'cbc',
+        siUnit: 'fL', usUnit: 'fL', toUs: v => v, siDec: 1, usDec: 1,
+        refM: [80, 96], refF: [80, 96], critLow: 55, critHigh: 125,
+        minDisp: 55, maxDisp: 130, step: 0.5, baselineM: 88.0, baselineF: 88.0,
+        physiology: 'Average volume of a single erythrocyte in femtoliters; reflects nuclear maturation (DNA synthesis) vs cytoplasmic hemoglobinization.',
+        clinicalUse: 'Primary morphologic branch point for anemia workup: microcytic (<80), normocytic (80–96), or macrocytic (>96 fL).',
+        highCauses: ['Vitamin B12 or Folate deficiency (megaloblastic, often >110)', 'Alcohol excess & liver disease', 'Reticulocytosis (young RBCs are larger)', 'Hypothyroidism & MDS / hydroxyurea'],
+        lowCauses: ['Iron deficiency anemia', 'Thalassemia trait', 'Late Anemia of Chronic Disease', 'Sideroblastic anemia / lead poisoning'],
+        pearls: 'Combined iron + B12 deficiency can yield a falsely normal MCV — always check RDW (which will be markedly elevated) and the blood smear!'
+      },
+      {
+        id: 'mch', name: 'Mean Corpuscular Hb', short: 'MCH', category: 'cbc',
+        siUnit: 'pg', usUnit: 'pg', toUs: v => v, siDec: 1, usDec: 1,
+        refM: [27, 33], refF: [27, 33], critLow: 17, critHigh: 42,
+        minDisp: 16, maxDisp: 44, step: 0.5, baselineM: 29.8, baselineF: 29.8,
+        physiology: 'Average mass of hemoglobin per individual red blood cell (Hb / RBC).',
+        clinicalUse: 'Classifies hypochromic (<27 pg), normochromic, and hyperchromic anemias; tracks closely with MCV.',
+        highCauses: ['Macrocytic anemias (B12/Folate deficiency)', 'Hereditary spherocytosis (high MCHC)', 'Cold agglutinins (artifact)'],
+        lowCauses: ['Iron deficiency anemia', 'Thalassemia syndromes', 'Anemia of chronic disease (late)'],
+        pearls: 'Hypochromia (expanded central pallor >1/3 of RBC diameter on smear) is a hallmark of defective heme/globin synthesis.'
+      },
+      {
+        id: 'rdw', name: 'Red Cell Dist. Width', short: 'RDW', category: 'cbc',
+        siUnit: '%', usUnit: '%', toUs: v => v, siDec: 1, usDec: 1,
+        refM: [11.5, 14.5], refF: [11.5, 14.5], critLow: null, critHigh: 25,
+        minDisp: 10, maxDisp: 26, step: 0.2, baselineM: 12.8, baselineF: 12.8,
+        physiology: 'Coefficient of variation of erythrocyte volume distribution — a quantitative measure of anisocytosis (cell size heterogeneity).',
+        clinicalUse: 'Differentiates iron deficiency (high RDW) from thalassemia trait (normal RDW) and detects mixed nutritional deficiencies early.',
+        highCauses: ['Iron deficiency anemia (earliest CBC change)', 'Vitamin B12 / Folate deficiency', 'Recent blood transfusion (dimorphic population)', 'Reticulocytosis / hemolysis / MDS'],
+        lowCauses: ['No clinical pathology associated with low RDW'],
+        pearls: 'A rising RDW often precedes a drop in MCV or Hb in developing iron deficiency.'
+      },
+      {
+        id: 'retic', name: 'Reticulocytes (abs)', short: 'Retic', category: 'cbc',
+        siUnit: 'G/L', usUnit: 'K/µL', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [25, 100], refF: [25, 100], critLow: 10, critHigh: 350,
+        minDisp: 0, maxDisp: 360, step: 2, baselineM: 58, baselineF: 55,
+        physiology: 'Immature anucleate RBCs newly released from marrow containing residual ribosomal RNA (polychromasia on Wright-Giemsa smear).',
+        clinicalUse: 'Separates regenerative / hyperproliferative anemia (hemolysis, bleeding: high retics) from hypoproliferative marrow failure or deficiency (low retics).',
+        highCauses: ['Acute hemolysis (AIHA, TTP, G6PD)', 'Acute blood loss recovery (peaks 5–7 days)', 'Response to iron/B12/EPO therapy'],
+        lowCauses: ['Iron, B12, or folate deficiency', 'Aplastic anemia / marrow infiltration / leukemia', 'CKD (low EPO) & Anemia of Chronic Disease', 'Parvovirus B19 aplastic crisis'],
+        pearls: 'In severe anemia, a "normal" reticulocyte count (e.g., 55 G/L) is actually inappropriately low — marrow should respond >120 G/L.'
+      },
+      {
+        id: 'plt', name: 'Platelets', short: 'PLT', category: 'cbc',
+        siUnit: 'G/L', usUnit: 'K/µL', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [150, 400], refF: [150, 400], critLow: 20, critHigh: 1000,
+        minDisp: 0, maxDisp: 900, step: 5, baselineM: 255, baselineF: 265,
+        physiology: 'Anucleate cytoplasmic fragments of bone marrow megakaryocytes essential for primary hemostasis (lifespan 7–10 days).',
+        clinicalUse: 'Evaluates mucocutaneous bleeding risk (<50 procedural risk; <10–20 spontaneous hemorrhage) and thrombotic/consumptive syndromes (DIC, TTP, HIT).',
+        highCauses: ['Reactive thrombocytosis (iron deficiency, inflammation, post-splenectomy)', 'Essential thrombocythemia / MPNs'],
+        lowCauses: ['Consumption (DIC, TTP/HUS, sepsis, HIT)', 'Immune destruction (ITP)', 'Decreased production (leukemia, B12 def, alcohol)', 'Splenic sequestration (cirrhosis)', 'EDTA pseudothrombocytopenia (artifact!)'],
+        pearls: 'ALWAYS rule out EDTA-induced platelet clumping on a blood smear or repeat in a Citrate tube before treating unexpected thrombocytopenia without bleeding.'
+      },
+      {
+        id: 'wbc', name: 'Leukocytes', short: 'WBC', category: 'cbc',
+        siUnit: 'G/L', usUnit: 'K/µL', toUs: v => v, siDec: 1, usDec: 1,
+        refM: [3.5, 10.5], refF: [3.5, 10.5], critLow: 1.5, critHigh: 50,
+        minDisp: 0, maxDisp: 65, step: 0.2, baselineM: 6.8, baselineF: 6.6,
+        physiology: 'Total circulating white blood cells mediating innate and adaptive immunity (neutrophils, lymphocytes, monocytes, eosinophils, basophils).',
+        clinicalUse: 'Screens for infection, inflammation, hematologic malignancy, and marrow suppression; always interpret alongside the differential.',
+        highCauses: ['Bacterial infection / sepsis (neutrophilia)', 'Acute/chronic leukemia (AML, CML, CLL)', 'Corticosteroids (demargination)', 'Severe physiological stress (DKA, MI, trauma)'],
+        lowCauses: ['Viral infections & overwhelming sepsis', 'Chemotherapy / drug-induced agranulocytosis', 'B12/Folate deficiency (pancytopenia)', 'Hypersplenism / autoimmune (SLE)'],
+        pearls: 'Both leukocytosis (>12) AND leukopenia (<4) are SIRS/sepsis criteria; severe sepsis can paradoxically drop WBC via margination and exhaustion.'
+      },
+      {
+        id: 'neut', name: 'Neutrophils (abs)', short: 'ANC', category: 'cbc',
+        siUnit: 'G/L', usUnit: 'K/µL', toUs: v => v, siDec: 1, usDec: 1,
+        refM: [1.6, 7.4], refF: [1.6, 7.4], critLow: 0.5, critHigh: 30,
+        minDisp: 0, maxDisp: 32, step: 0.2, baselineM: 4.1, baselineF: 4.0,
+        physiology: 'Polymorphonuclear phagocytes providing first-line rapid defense against bacterial and fungal pathogens.',
+        clinicalUse: 'Defines febrile neutropenia risk (ANC <0.5 G/L = severe) and bacterial left shift (immature bands + toxic granulation).',
+        highCauses: ['Acute bacterial infections / sepsis', 'Glucocorticoid therapy', 'Tissue necrosis (MI, burns, DKA)', 'Myeloproliferative neoplasms (CML)'],
+        lowCauses: ['Chemotherapy / metamizole / antithyroid drugs', 'Severe viral suppression / overwhelming sepsis', 'Megaloblastic anemia (B12/folate)', 'Acute leukemia marrow crowding'],
+        pearls: 'Steroids elevate ANC via demargination from vessel walls without toxic granulation or left shift (unlike bacterial sepsis).'
+      },
+      {
+        id: 'lymph', name: 'Lymphocytes (abs)', short: 'Lymph', category: 'cbc',
+        siUnit: 'G/L', usUnit: 'K/µL', toUs: v => v, siDec: 1, usDec: 1,
+        refM: [1.1, 3.5], refF: [1.1, 3.5], critLow: 0.4, critHigh: 25,
+        minDisp: 0, maxDisp: 15, step: 0.1, baselineM: 2.0, baselineF: 2.0,
+        physiology: 'T-cells, B-cells, and NK-cells orchestrating adaptive cellular and humoral immunity.',
+        clinicalUse: 'Distinguishes viral/lymphoproliferative responses from acute bacterial/cortisol-driven lymphopenia.',
+        highCauses: ['Viral infections (EBV, CMV, pertussis — atypical reactive lymphs)', 'Chronic lymphocytic leukemia (CLL >5 G/L monoclonal)', 'Acute lymphoblastic leukemia (ALL)'],
+        lowCauses: ['Acute bacterial sepsis / severe stress (cortisol-induced)', 'HIV / immunosuppression / steroids', 'Autoimmune flares (SLE)'],
+        pearls: 'A low neutrophil-to-lymphocyte ratio favors viral illness, while marked lymphopenia with neutrophilia is classic in bacterial sepsis.'
+      },
+      {
+        id: 'eos', name: 'Eosinophils (abs)', short: 'Eos', category: 'cbc',
+        siUnit: 'G/L', usUnit: 'K/µL', toUs: v => v, siDec: 2, usDec: 2,
+        refM: [0.0, 0.4], refF: [0.0, 0.4], critLow: null, critHigh: 5.0,
+        minDisp: 0, maxDisp: 3.0, step: 0.05, baselineM: 0.15, baselineF: 0.14,
+        physiology: 'Granulocytes containing major basic protein and cationic proteins active against helminths and allergic inflammation.',
+        clinicalUse: 'Evaluates allergic/atopic conditions, drug hypersensitivity (DRESS), helminthic infections, and vasculitides (EGPA).',
+        highCauses: ['Allergic asthma / atopy', 'Drug reactions (DRESS, AIN)', 'Helminthic parasitic infections', 'Adrenal insufficiency (Addison’s) & EGPA'],
+        lowCauses: ['Acute bacterial sepsis (eosinopenia)', 'High endogenous/exogenous glucocorticoids'],
+        pearls: 'Complete eosinopenia (<0.01 G/L) is a subtle supportive clue for acute bacterial infection or high cortisol states.'
+      },
+
+      // ---------------- 2. IRON, VITAMINS & HEMOLYSIS ----------------
+      {
+        id: 'ferritin', name: 'Ferritin', short: 'Ferr', category: 'iron',
+        siUnit: 'µg/L', usUnit: 'ng/mL', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [30, 300], refF: [15, 150], critLow: 10, critHigh: 1000,
+        minDisp: 0, maxDisp: 800, step: 5, baselineM: 120, baselineF: 68,
+        physiology: 'Intracellular iron-storage protein complex whose serum concentration correlates closely with total body iron stores in healthy subjects.',
+        clinicalUse: 'Most specific single test for iron deficiency (<30 µg/L; <100 µg/L if inflammation/HF/CKD present) and iron overload.',
+        highCauses: ['Acute/chronic inflammation (positive acute-phase reactant!)', 'Hereditary hemochromatosis / transfusional overload', 'Liver necrosis / alcoholic hepatitis', 'HLH / Adult Still’s disease (often >5000)'],
+        lowCauses: ['Iron deficiency anemia (virtually pathognomonic <30 µg/L)', 'Depleted iron stores without anemia'],
+        pearls: 'TRAP: Ferritin rises sharply during infection/sepsis. A patient with BOTH IDA and Sepsis can have a "normal" ferritin — check TSAT and sTfR!'
+      },
+      {
+        id: 'tsat', name: 'Transferrin Saturation', short: 'TSAT', category: 'iron',
+        siUnit: '%', usUnit: '%', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [16, 45], refF: [16, 45], critLow: 8, critHigh: 80,
+        minDisp: 0, maxDisp: 90, step: 1, baselineM: 30, baselineF: 26,
+        physiology: 'Percentage of iron-binding sites on circulating transferrin occupied by Fe³⁺ (Serum Iron / TIBC × 100).',
+        clinicalUse: 'Evaluates functional iron availability for erythropoiesis (<16–20% indicates iron-restricted erythropoiesis; >45% screens for hemochromatosis).',
+        highCauses: ['Hereditary hemochromatosis (>45%)', 'Iron overload / recent oral iron dose', 'Ineffective erythropoiesis (B12 def, MDS)', 'Acute hepatocellular necrosis'],
+        lowCauses: ['Iron deficiency anemia (<16%)', 'Anemia of chronic disease (hepcidin traps iron in macrophages)'],
+        pearls: 'Both IDA and ACD show low TSAT; differentiate them using Ferritin (low vs high) and sTfR (high in IDA vs normal in ACD).'
+      },
+      {
+        id: 'stfr', name: 'Soluble Transferrin Rec.', short: 'sTfR', category: 'iron',
+        siUnit: 'mg/L', usUnit: 'mg/L', toUs: v => v, siDec: 2, usDec: 2,
+        refM: [0.8, 1.8], refF: [0.8, 1.8], critLow: null, critHigh: null,
+        minDisp: 0.2, maxDisp: 5.5, step: 0.1, baselineM: 1.25, baselineF: 1.25,
+        physiology: 'Proteolytically cleaved extracellular domain of transferrin receptor-1 shed from erythroid precursors in proportion to cellular iron hunger.',
+        clinicalUse: 'Gold-standard tiebreaker distinguishing true Iron Deficiency (↑sTfR) from Anemia of Chronic Disease (normal sTfR) when CRP is elevated.',
+        highCauses: ['True iron deficiency anemia (even with concurrent sepsis!)', 'Hyperproliferative erythropoiesis (hemolysis, thalassemia)'],
+        lowCauses: ['Marrow hypoplasia / aplastic anemia', 'CKD with low erythropoietin'],
+        pearls: 'Unlike ferritin, sTfR is completely unaffected by inflammation — calculate sTfR / log(Ferritin) index for mixed IDA + ACD.'
+      },
+      {
+        id: 'b12', name: 'Vitamin B12', short: 'B12', category: 'iron',
+        siUnit: 'pmol/L', usUnit: 'pg/mL', toUs: v => v * 1.355, siDec: 0, usDec: 0,
+        refM: [220, 700], refF: [220, 700], critLow: 110, critHigh: null,
+        minDisp: 50, maxDisp: 850, step: 5, baselineM: 390, baselineF: 380,
+        physiology: 'Cobalamin cofactor essential for methionine synthase (DNA synthesis) and methylmalonyl-CoA mutase (myelin integrity).',
+        clinicalUse: 'Workup of macrocytic anemia, pancytopenia, glossitis, and subacute combined degeneration (dorsal columns + lateral corticospinal tracts).',
+        highCauses: ['B12 supplementation', 'Myeloproliferative neoplasms (CML — high transcobalamin)', 'Severe liver disease'],
+        lowCauses: ['Pernicious anemia (anti-IF/parietal cell Ab)', 'Vegan diet (takes 3–5 years to deplete hepatic stores)', 'Terminal ileum disease (Crohn’s) or gastrectomy', 'Long-term Metformin or PPI use'],
+        pearls: 'Borderline B12 (150–250 pmol/L) can still reflect tissue deficiency — confirm with Holo-Transcobalamin or Methylmalonic Acid (MMA).'
+      },
+      {
+        id: 'folate', name: 'Folate', short: 'Fol', category: 'iron',
+        siUnit: 'nmol/L', usUnit: 'ng/mL', toUs: v => v * 0.441, siDec: 1, usDec: 1,
+        refM: [10.0, 45.0], refF: [10.0, 45.0], critLow: 4.5, critHigh: null,
+        minDisp: 2, maxDisp: 55, step: 0.5, baselineM: 22.0, baselineF: 23.0,
+        physiology: 'Vitamin B9 required for one-carbon transfer in purine and thymidylate DNA synthesis; body stores last only 2–4 months.',
+        clinicalUse: 'Evaluated alongside B12 in macrocytic/megaloblastic anemia and elevated homocysteine.',
+        highCauses: ['Supplementation / fortified diet'],
+        lowCauses: ['Malnutrition / chronic alcohol use disorder', 'Malabsorption (celiac disease, jejunal resection)', 'High turnover (chronic hemolysis, pregnancy)', 'Antifolates (methotrexate, trimethoprim, phenytoin)'],
+        pearls: 'Never give folate alone before excluding B12 deficiency: folate corrects the anemia while B12 neurotoxicity silently progresses.'
+      },
+      {
+        id: 'hapto', name: 'Haptoglobin', short: 'Hapto', category: 'iron',
+        siUnit: 'g/L', usUnit: 'mg/dL', toUs: v => v * 100, siDec: 2, usDec: 0,
+        refM: [0.30, 2.00], refF: [0.30, 2.00], critLow: 0.10, critHigh: null,
+        minDisp: 0, maxDisp: 3.0, step: 0.05, baselineM: 1.15, baselineF: 1.10,
+        physiology: 'Hepatic plasma glycoprotein that scavenges free hemoglobin dimers released from lysed RBCs to prevent renal tubular iron toxicity.',
+        clinicalUse: 'Most sensitive marker of intravascular (and brisk extravascular/intramedullary) hemolysis; drops below detection once saturated.',
+        highCauses: ['Acute inflammation / sepsis (positive acute-phase reactant)', 'Corticosteroids', 'Nephrotic syndrome'],
+        lowCauses: ['Hemolytic anemias (AIHA, TTP/HUS, DIC, prosthetic valve)', 'Ineffective erythropoiesis (severe B12 deficiency)', 'Severe cirrhosis (impaired hepatic synthesis)', 'In-vitro hemolyzed sample artifact'],
+        pearls: 'Because haptoglobin is an acute-phase reactant, simultaneous sepsis can keep haptoglobin falsely normal despite ongoing hemolysis.'
+      },
+      {
+        id: 'ldh', name: 'Lactate Dehydrogenase', short: 'LDH', category: 'iron',
+        siUnit: 'U/L', usUnit: 'U/L', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [120, 250], refF: [120, 250], critLow: null, critHigh: 1000,
+        minDisp: 80, maxDisp: 1600, step: 10, baselineM: 185, baselineF: 180,
+        physiology: 'Ubiquitous intracellular enzyme catalyzing pyruvate ↔ lactate; heavily concentrated in RBCs, liver, heart, skeletal muscle, and tumors.',
+        clinicalUse: 'Key marker of hemolysis, high-grade tumor burden / tumor lysis (lymphoma, AML), ineffective erythropoiesis (B12 def), and tissue infarction.',
+        highCauses: ['Hemolysis & TMA (TTP/HUS, DIC)', 'Megaloblastic anemia (intramedullary hemolysis — often >1000)', 'Hematologic malignancy & tumor lysis syndrome', 'Rhabdomyolysis, MI, ischemic hepatitis, PE', 'Hemolyzed blood sample (in-vitro artifact!)'],
+        lowCauses: ['No clinical relevance'],
+        pearls: 'The triad of ↑LDH + ↓Haptoglobin + ↑Indirect Bilirubin defines hemolysis; always verify sample hemolysis index before diagnosing.'
+      },
+
+      // ---------------- 3. ELECTROLYTES & RENAL ----------------
+      {
+        id: 'na', name: 'Sodium', short: 'Na⁺', category: 'renal',
+        siUnit: 'mmol/L', usUnit: 'mEq/L', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [136, 145], refF: [136, 145], critLow: 120, critHigh: 160,
+        minDisp: 112, maxDisp: 168, step: 1, baselineM: 140, baselineF: 140,
+        physiology: 'Principal extracellular cation determining plasma osmolality and transcellular water balance; regulated mainly by ADH and thirst.',
+        clinicalUse: 'Reflects free-water balance relative to total body sodium; guides dysnatremia correction (limit chronic Na⁺ rise to ≤8 mmol/L/24h to prevent ODS).',
+        highCauses: ['Free-water loss (diabetes insipidus, fever, osmotic diuresis)', 'Inadequate water intake in elderly/ICU patients', 'Hypertonic saline or NaHCO₃ administration'],
+        lowCauses: ['SIADH & hypothyroidism (euvolemic)', 'Cirrhosis, heart failure, nephrotic syndrome (hypervolemic)', 'Thiazide diuretics, GI losses, Addison’s (hypovolemic)', 'Hyperglycemia (translocational — calculate Corrected Na⁺!)'],
+        pearls: 'In DKA/HHS, hyperglycemia pulls water out of cells diluting measured Na⁺. Always compute Katz Corrected Na⁺ before judging true tonicity.'
+      },
+      {
+        id: 'k', name: 'Potassium', short: 'K⁺', category: 'renal',
+        siUnit: 'mmol/L', usUnit: 'mEq/L', toUs: v => v, siDec: 1, usDec: 1,
+        refM: [3.5, 4.7], refF: [3.5, 4.7], critLow: 2.8, critHigh: 6.0,
+        minDisp: 2.0, maxDisp: 7.8, step: 0.1, baselineM: 4.1, baselineF: 4.1,
+        physiology: 'Major intracellular cation (~98% inside cells) governing resting cardiac/neuromuscular membrane potential via Na⁺/K⁺-ATPase.',
+        clinicalUse: 'Critical arrhythmia screen; K⁺ >6.0 or ECG changes (peaked T waves, widened QRS) require urgent IV calcium stabilization and shift therapy.',
+        highCauses: ['CKD / AKI / oliguria', 'Tumor lysis syndrome & rhabdomyolysis (massive cell release)', 'DKA / metabolic acidosis (transcellular shift)', 'RAAS blockers, spironolactone, RTA Type 4', 'Pseudohyperkalemia (hemolyzed tube, fist clenching, extreme WBC/PLT!)'],
+        lowCauses: ['Loop & thiazide diuretics', 'Vomiting, diarrhea, hyperaldosteronism', 'Insulin therapy, β2-agonists, alkalosis (shift into cells)', 'Hypomagnesemia (causes refractory renal K⁺ wasting)'],
+        pearls: 'In DKA, serum K⁺ is often normal or high despite profound total-body K⁺ depletion — starting insulin can crash K⁺ precipitously.'
+      },
+      {
+        id: 'cl', name: 'Chloride', short: 'Cl⁻', category: 'renal',
+        siUnit: 'mmol/L', usUnit: 'mEq/L', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [98, 107], refF: [98, 107], critLow: 80, critHigh: 120,
+        minDisp: 78, maxDisp: 125, step: 1, baselineM: 103, baselineF: 103,
+        physiology: 'Principal extracellular anion maintaining electroneutrality alongside HCO₃⁻ and driving renal macula densa TGF sensing.',
+        clinicalUse: 'Essential for calculating the Anion Gap (Na − Cl − HCO₃) and distinguishing hyperchloremic NAGMA from high-AG metabolic acidosis.',
+        highCauses: ['0.9% NaCl (154 mmol/L Cl⁻) large-volume infusion', 'Normal anion gap metabolic acidosis (diarrhea, RTA)', 'Dehydration / hypernatremia'],
+        lowCauses: ['Severe vomiting / NG suction (loss of gastric HCl)', 'Loop/thiazide diuretics (metabolic alkalosis)', 'Chronic respiratory acidosis (compensatory ↑HCO₃⁻)', 'SIADH / water overload'],
+        pearls: 'Cl⁻ moves inversely to HCO₃⁻ in non-anion-gap acid-base disorders; check the Anion Gap whenever Cl⁻ and Na⁺ diverge.'
+      },
+      {
+        id: 'hco3', name: 'Bicarbonate', short: 'HCO₃⁻', category: 'renal',
+        siUnit: 'mmol/L', usUnit: 'mEq/L', toUs: v => v, siDec: 1, usDec: 1,
+        refM: [22.0, 26.0], refF: [22.0, 26.0], critLow: 12.0, critHigh: 38.0,
+        minDisp: 5, maxDisp: 42, step: 0.5, baselineM: 24.0, baselineF: 24.0,
+        physiology: 'Primary extracellular pH buffer tightly regulated by renal proximal reabsorption and distal ammoniagenesis.',
+        clinicalUse: 'Core metabolic component of acid-base evaluation; combine with Anion Gap and Winter’s formula (PaCO₂ = 1.5×HCO₃ + 8 ± 2).',
+        highCauses: ['Metabolic alkalosis (vomiting, loop/thiazide diuretics, Conn’s)', 'Chronic respiratory acidosis compensation (COPD)'],
+        lowCauses: ['High-AG metabolic acidosis (DKA, lactic acidosis/sepsis, uremia, toxins)', 'Normal-AG metabolic acidosis (diarrhea, RTA 1/2/4)', 'Chronic respiratory alkalosis compensation'],
+        pearls: 'Venous total CO₂ on a chemistry panel closely approximates arterial HCO₃⁻ (typically ~1–2 mmol/L higher).'
+      },
+      {
+        id: 'ca', name: 'Total Calcium', short: 'Ca²⁺', category: 'renal',
+        siUnit: 'mmol/L', usUnit: 'mg/dL', toUs: v => v * 4.008, siDec: 2, usDec: 1,
+        refM: [2.15, 2.55], refF: [2.15, 2.55], critLow: 1.65, critHigh: 3.20,
+        minDisp: 1.4, maxDisp: 3.8, step: 0.02, baselineM: 2.35, baselineF: 2.35,
+        physiology: 'Exists ~50% biologically active ionized, ~40% albumin-bound, and ~10% complexed; tightly regulated by PTH, calcitriol, and CaSR.',
+        clinicalUse: 'Always interpret alongside Albumin (Corrected Ca²⁺) and PTH; hypercalcemia splits cleanly into PTH-high (pHPT) vs PTH-suppressed (malignancy).',
+        highCauses: ['Primary hyperparathyroidism (↑PTH)', 'Malignancy (PTHrP, osteolytic mets — ↓↓PTH)', 'Vitamin D intoxication / granulomatous disease (sarcoidosis)', 'Prolonged tourniquet stasis (artifact ↑Alb + ↑Ca)'],
+        lowCauses: ['Hypoalbuminemia (pseudohypocalcemia — check Corr. Ca!)', 'CKD (↓calcitriol + ↑PO₄)', 'Tumor lysis syndrome & rhabdomyolysis (Ca-PO₄ precipitation)', 'Hypoparathyroidism, severe pancreatitis, ↓Mg²⁺'],
+        pearls: 'Acidemia decreases Ca²⁺ binding to albumin (raising ionized Ca²⁺), whereas acute alkalosis lowers ionized Ca²⁺ triggering tetany.'
+      },
+      {
+        id: 'po4', name: 'Phosphate', short: 'PO₄', category: 'renal',
+        siUnit: 'mmol/L', usUnit: 'mg/dL', toUs: v => v * 3.097, siDec: 2, usDec: 1,
+        refM: [0.84, 1.45], refF: [0.84, 1.45], critLow: 0.32, critHigh: 2.80,
+        minDisp: 0.2, maxDisp: 3.4, step: 0.05, baselineM: 1.12, baselineF: 1.14,
+        physiology: 'Intracellular anion essential for ATP, 2,3-BPG, and bone hydroxyapatite; renal excretion is inhibited by low PTH and promoted by PTH & FGF-23.',
+        clinicalUse: 'High-yield marker in CKD-MBD, Tumor Lysis Syndrome, rhabdomyolysis, primary hyperparathyroidism (low PO₄), and refeeding syndrome.',
+        highCauses: ['CKD / AKI (impaired renal excretion)', 'Tumor lysis syndrome & rhabdomyolysis (intracellular release)', 'Hypoparathyroidism', 'Severe DKA prior to insulin'],
+        lowCauses: ['Primary hyperparathyroidism (PTH inhibits PCT NaPi2)', 'Refeeding syndrome & insulin therapy in DKA (cellular shift)', 'Severe Vitamin D deficiency / Fanconi syndrome', 'Chronic alcohol use disorder'],
+        pearls: 'When Ca × PO₄ product spikes in TLS or rhabdomyolysis, calcium precipitates into tissues causing acute hypocalcemia.'
+      },
+      {
+        id: 'mg', name: 'Magnesium', short: 'Mg²⁺', category: 'renal',
+        siUnit: 'mmol/L', usUnit: 'mg/dL', toUs: v => v * 2.431, siDec: 2, usDec: 1,
+        refM: [0.70, 1.05], refF: [0.70, 1.05], critLow: 0.45, critHigh: 2.00,
+        minDisp: 0.3, maxDisp: 2.2, step: 0.02, baselineM: 0.86, baselineF: 0.85,
+        physiology: 'Essential intracellular cofactor for ATPases, K⁺ channels (ROMK), and PTH secretion; reabsorbed primarily in the thick ascending limb.',
+        clinicalUse: 'Check in refractory hypokalemia, hypocalcemia, QT prolongation / Torsades de Pointes, and alcohol use disorder.',
+        highCauses: ['CKD / AKI with Mg-containing laxatives/antacids', 'IV MgSO₄ therapy (preeclampsia/eclampsia)'],
+        lowCauses: ['Loop & thiazide diuretics', 'Chronic alcohol use & malnutrition', 'Long-term PPI therapy & chronic diarrhea', 'DKA osmotic diuresis'],
+        pearls: 'Hypomagnesemia unblocks ROMK channels causing refractory renal K⁺ wasting and blunts PTH release -> replete Mg²⁺ first!'
+      },
+      {
+        id: 'crea', name: 'Creatinine', short: 'Crea', category: 'renal',
+        siUnit: 'µmol/L', usUnit: 'mg/dL', toUs: v => v / 88.4, siDec: 0, usDec: 2,
+        refM: [59, 104], refF: [45, 84], critLow: null, critHigh: 400,
+        minDisp: 25, maxDisp: 750, step: 2, baselineM: 80, baselineF: 64,
+        physiology: 'Non-enzymatic breakdown product of skeletal muscle creatine phosphate cleared almost exclusively by glomerular filtration.',
+        clinicalUse: 'Estimates GFR (CKD-EPI) and stages AKI (KDIGO: rise ≥26.5 µmol/L in 48h or ≥1.5× baseline).',
+        highCauses: ['AKI (prerenal, ATN/sepsis, obstruction, TMA)', 'Chronic kidney disease (CKD)', 'Rhabdomyolysis (direct muscle release + pigment AKI)', 'Trimethoprim / cimetidine (inhibits tubular secretion without dropping true GFR)'],
+        lowCauses: ['Low muscle mass / sarcopenia / frailty', 'Pregnancy (hyperfiltration)', 'Severe cirrhosis'],
+        pearls: 'Creatinine has a nonlinear hyperbolic curve with GFR: GFR can fall by 50% before creatinine rises above the upper reference limit.'
+      },
+      {
+        id: 'urea', name: 'Urea (BUN)', short: 'Urea', category: 'renal',
+        siUnit: 'mmol/L', usUnit: 'mg/dL', toUs: v => v * 2.801, siDec: 1, usDec: 0,
+        refM: [3.2, 7.3], refF: [3.2, 7.3], critLow: null, critHigh: 35,
+        minDisp: 1, maxDisp: 45, step: 0.5, baselineM: 5.2, baselineF: 4.8,
+        physiology: 'End-product of hepatic amino acid catabolism (urea cycle); freely filtered and partially reabsorbed in proximal tubule/collecting duct under ADH.',
+        clinicalUse: 'Urea/Creatinine ratio helps separate prerenal azotemia or upper GI bleeding (disproportionately ↑Urea) from intrinsic ATN.',
+        highCauses: ['CKD & AKI', 'Prerenal hypovolemia / dehydration (avid tubular reabsorption)', 'Upper GI bleeding (digested blood protein load)', 'High-dose corticosteroids / catabolic states'],
+        lowCauses: ['Severe liver failure / cirrhosis (impaired urea cycle)', 'Malnutrition / low protein diet', 'SIADH / overhydration'],
+        pearls: 'In US units, BUN (mg/dL) = Urea (mmol/L) × 2.8. A BUN/Cr (mg/dL) ratio >20:1 classically points to prerenal physiology or UGIB.'
+      },
+      {
+        id: 'uric', name: 'Uric Acid', short: 'Urate', category: 'renal',
+        siUnit: 'µmol/L', usUnit: 'mg/dL', toUs: v => v / 59.48, siDec: 0, usDec: 1,
+        refM: [202, 416], refF: [143, 339], critLow: null, critHigh: 650,
+        minDisp: 80, maxDisp: 900, step: 5, baselineM: 310, baselineF: 245,
+        physiology: 'Final product of purine nucleotide breakdown via xanthine oxidase; cleared ~70% renally.',
+        clinicalUse: 'Evaluates gout risk, Tumor Lysis Syndrome (crystal nephropathy), rhabdomyolysis, and preeclampsia.',
+        highCauses: ['Tumor lysis syndrome (AML/Burkitt — massive DNA release)', 'CKD (reduced clearance) & thiazide/loop diuretics', 'Rhabdomyolysis & DKA (ketoacids compete for tubular secretion)', 'Gout / high purine & alcohol intake'],
+        lowCauses: ['SIADH (volume expansion enhances urate clearance)', 'Allopurinol / rasburicase therapy', 'Fanconi syndrome'],
+        pearls: 'Low serum uric acid (<200 µmol/L) alongside hyponatremia is a classic supportive clue for SIADH over hypovolemic hyponatremia.'
+      },
+
+      // ---------------- 4. LIVER, BILIARY & PANCREAS ----------------
+      {
+        id: 'ast', name: 'AST (ASAT)', short: 'AST', category: 'liver',
+        siUnit: 'U/L', usUnit: 'U/L', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [10, 50], refF: [10, 35], critLow: null, critHigh: 1000,
+        minDisp: 0, maxDisp: 1500, step: 5, baselineM: 26, baselineF: 22,
+        physiology: 'Cytosolic and mitochondrial transaminase abundant in hepatocytes, skeletal muscle, myocardium, and erythrocytes.',
+        clinicalUse: 'Assesses hepatocellular necrosis (with ALT) and computes De Ritis Ratio (AST/ALT); also rises steeply in muscle injury and hemolysis.',
+        highCauses: ['Acute viral, toxic (acetaminophen), or ischemic hepatitis (>1000)', 'Alcoholic liver disease / cirrhosis (AST/ALT > 2)', 'Rhabdomyolysis & myocardial infarction (check CK & GGT!)', 'Hemolyzed blood sample (artifact)'],
+        lowCauses: ['Vitamin B6 (pyridoxine) deficiency', 'End-stage CKD / dialysis'],
+        pearls: 'CRITICAL TRAP: Markedly elevated AST > ALT with a completely normal GGT should immediately prompt a CK check for rhabdomyolysis!'
+      },
+      {
+        id: 'alt', name: 'ALT (ALAT)', short: 'ALT', category: 'liver',
+        siUnit: 'U/L', usUnit: 'U/L', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [10, 50], refF: [10, 35], critLow: null, critHigh: 1000,
+        minDisp: 0, maxDisp: 1800, step: 5, baselineM: 28, baselineF: 22,
+        physiology: 'Primarily cytosolic hepatic transaminase; substantially more liver-specific than AST.',
+        clinicalUse: 'Sensitive marker of hepatocellular injury; ALT > AST favors viral hepatitis or MASLD, whereas AST > 2×ALT favors alcohol, cirrhosis, or muscle.',
+        highCauses: ['Acute viral / drug-induced / ischemic hepatitis', 'MASLD / metabolic steatohepatitis', 'Acute biliary colic (transient early spike)', 'Severe rhabdomyolysis (minor compared to AST)'],
+        lowCauses: ['Vitamin B6 deficiency', 'Severe end-stage cirrhosis (burned-out hepatocyte mass)'],
+        pearls: 'In end-stage cirrhosis, AST/ALT can look deceptively near-normal because too few viable hepatocytes remain — check Albumin and INR for true function!'
+      },
+      {
+        id: 'ggt', name: 'Gamma-GT', short: 'GGT', category: 'liver',
+        siUnit: 'U/L', usUnit: 'U/L', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [10, 60], refF: [6, 40], critLow: null, critHigh: null,
+        minDisp: 0, maxDisp: 700, step: 5, baselineM: 28, baselineF: 20,
+        physiology: 'Membrane-bound biliary epithelial enzyme involved in glutathione metabolism; highly inducible by alcohol and enzyme-inducing drugs.',
+        clinicalUse: 'Confirms hepatobiliary origin of an elevated ALP (↑ALP + ↑GGT = cholestasis; ↑ALP + normal GGT = bone/placenta).',
+        highCauses: ['Obstructive cholestasis (choledocholithiasis, pancreatic head mass)', 'Alcohol consumption & hepatic steatosis', 'Drug enzyme induction (phenytoin, carbamazepine, barbiturates)', 'PBC / PSC / liver metastases'],
+        lowCauses: ['No clinical pathology'],
+        pearls: 'GGT is extremely sensitive to biliary stasis and alcohol, making an isolated GGT rise common without severe liver failure.'
+      },
+      {
+        id: 'alp', name: 'Alkaline Phosphatase', short: 'ALP', category: 'liver',
+        siUnit: 'U/L', usUnit: 'U/L', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [40, 129], refF: [35, 105], critLow: null, critHigh: null,
+        minDisp: 20, maxDisp: 650, step: 5, baselineM: 76, baselineF: 68,
+        physiology: 'Isoenzyme family located predominantly in biliary canalicular membranes, bone osteoblasts, placenta, and intestine.',
+        clinicalUse: 'Core cholestatic enzyme (paired with GGT) and bone-turnover marker (osteoblastic metastases, Paget’s, hyperparathyroidism).',
+        highCauses: ['Biliary obstruction / cholestasis (paired with ↑GGT)', 'Bone metastases / malignancy / Paget’s (normal GGT)', 'Primary hyperparathyroidism / osteomalacia', 'Third-trimester pregnancy & adolescent growth'],
+        lowCauses: ['Hypothyroidism, zinc deficiency, Wilson disease (fulminant)'],
+        pearls: 'Always interpret ALP with GGT: ↑ALP + ↑GGT localizes to biliary tree; ↑ALP + normal GGT points straight to bone turnover.'
+      },
+      {
+        id: 'tbili', name: 'Total Bilirubin', short: 'Bili', category: 'liver',
+        siUnit: 'µmol/L', usUnit: 'mg/dL', toUs: v => v / 17.1, siDec: 0, usDec: 1,
+        refM: [2, 17], refF: [2, 17], critLow: null, critHigh: 200,
+        minDisp: 0, maxDisp: 220, step: 1, baselineM: 10, baselineF: 9,
+        physiology: 'Heme degradation product transported bound to albumin (indirect/unconjugated), conjugated by hepatic UGT1A1 (direct), and excreted in bile.',
+        clinicalUse: 'Scleral icterus appears >35–45 µmol/L (~2.5 mg/dL); fractionate into Direct vs Indirect to separate hemolysis from hepatobiliary disease.',
+        highCauses: ['Prehepatic: Hemolysis, ineffective erythropoiesis (B12 def), Gilbert syndrome (indirect)', 'Hepatic: Acute hepatitis, cirrhosis, sepsis cholestasis', 'Posthepatic: Gallstone/tumor biliary obstruction (predominantly direct)'],
+        lowCauses: ['No clinical relevance'],
+        pearls: 'If Direct Bilirubin is <20% of Total Bilirubin, think prehepatic hemolysis or Gilbert syndrome rather than biliary obstruction.'
+      },
+      {
+        id: 'dbili', name: 'Direct Bilirubin', short: 'dBili', category: 'liver',
+        siUnit: 'µmol/L', usUnit: 'mg/dL', toUs: v => v / 17.1, siDec: 1, usDec: 2,
+        refM: [0, 5.0], refF: [0, 5.0], critLow: null, critHigh: null,
+        minDisp: 0, maxDisp: 160, step: 0.5, baselineM: 2.2, baselineF: 2.0,
+        physiology: 'Water-soluble glucuronide-conjugated bilirubin that can be filtered into urine (causing dark tea-colored bilirubinuria) when elevated.',
+        clinicalUse: 'Predominantly elevated (>50% of Total Bili) in biliary obstruction, cholestatic drug injury, and hepatocellular excretory failure.',
+        highCauses: ['Choledocholithiasis / malignant biliary obstruction', 'Hepatocellular injury / cirrhosis', 'Sepsis-associated cholestasis', 'Dubin-Johnson / Rotor syndrome'],
+        lowCauses: ['Normal physiological state'],
+        pearls: 'Pure unconjugated hyperbilirubinemia (hemolysis, Gilbert) NEVER causes dark urine because indirect bilirubin is albumin-bound and unfilterable.'
+      },
+      {
+        id: 'alb', name: 'Albumin', short: 'Alb', category: 'liver',
+        siUnit: 'g/L', usUnit: 'g/dL', toUs: v => v / 10, siDec: 0, usDec: 1,
+        refM: [35, 52], refF: [35, 52], critLow: 20, critHigh: null,
+        minDisp: 14, maxDisp: 60, step: 1, baselineM: 43, baselineF: 42,
+        physiology: 'Abundant hepatically synthesized plasma protein (~20-day half-life) providing ~75% of plasma oncotic pressure and binding Ca²⁺/drugs.',
+        clinicalUse: 'Chronic hepatic synthetic marker (Child-Pugh), nutritional/catabolic indicator, and required for Corrected Ca²⁺ and Corrected Anion Gap.',
+        highCauses: ['Dehydration / hemoconcentration', 'Prolonged venous tourniquet during blood draw (artifact)'],
+        lowCauses: ['Cirrhosis (chronic synthetic failure)', 'Acute inflammation / sepsis (negative acute-phase reactant + capillary leak!)', 'Nephrotic syndrome (urinary loss)', 'Protein-losing enteropathy / malignancy cachexia'],
+        pearls: 'Because albumin has a 20-day half-life, it stays normal in hyperacute liver failure (use INR instead) but drops quickly in sepsis via capillary leak.'
+      },
+      {
+        id: 'lipase', name: 'Lipase', short: 'Lip', category: 'liver',
+        siUnit: 'U/L', usUnit: 'U/L', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [13, 60], refF: [13, 60], critLow: null, critHigh: 500,
+        minDisp: 0, maxDisp: 450, step: 2, baselineM: 32, baselineF: 30,
+        physiology: 'Pancreatic acinar enzyme hydrolyzing dietary triglycerides; more specific and longer-elevated than amylase for pancreatic injury.',
+        clinicalUse: 'Acute pancreatitis diagnostic criterion requires Lipase >3× ULN (>180 U/L) alongside characteristic pain or imaging.',
+        highCauses: ['Acute pancreatitis (>3× ULN)', 'DKA (mild non-specific elevation <3× ULN)', 'CKD (reduced renal clearance)', 'Bowel ischemia / perforation / biliary colic'],
+        lowCauses: ['End-stage chronic pancreatitis (acinar burnout)'],
+        pearls: 'Mild lipase elevation (60–170 U/L) is common in DKA and CKD without true pancreatitis — avoid over-diagnosing below 3× ULN.'
+      },
+
+      // ---------------- 5. INFLAMMATION, COAG & CARDIAC ----------------
+      {
+        id: 'crp', name: 'C-Reactive Protein', short: 'CRP', category: 'coag',
+        siUnit: 'mg/L', usUnit: 'mg/dL', toUs: v => v / 10, siDec: 0, usDec: 1,
+        refM: [0, 5], refF: [0, 5], critLow: null, critHigh: 200,
+        minDisp: 0, maxDisp: 350, step: 2, baselineM: 2, baselineF: 2,
+        physiology: 'IL-6-driven hepatic acute-phase pentraxin that opsonizes pathogens and activates classical complement (peaks 24–48h post-stimulus).',
+        clinicalUse: 'Tracks infection, autoimmune flare, and tissue necrosis; also flags when Ferritin/Haptoglobin/Albumin are confounded by acute-phase response.',
+        highCauses: ['Bacterial infection & sepsis (often >100–250 mg/L)', 'Autoimmune / rheumatic flares & vasculitis', 'Malignancy & tissue necrosis (MI, pancreatitis, trauma)', 'Viral infections (typically modest 10–50 mg/L)'],
+        lowCauses: ['Normal healthy state'],
+        pearls: 'CRP lags behind fever/bacteremia by 12–24 hours; in early sepsis (<6h), Procalcitonin rises much faster than CRP.'
+      },
+      {
+        id: 'pct', name: 'Procalcitonin', short: 'PCT', category: 'coag',
+        siUnit: 'µg/L', usUnit: 'ng/mL', toUs: v => v, siDec: 2, usDec: 2,
+        refM: [0.0, 0.10], refF: [0.0, 0.10], critLow: null, critHigh: 2.0,
+        minDisp: 0, maxDisp: 15, step: 0.05, baselineM: 0.04, baselineF: 0.04,
+        physiology: 'Calcitonin precursor synthesized ubiquitously in response to bacterial endotoxins/TNF-α/IL-1β, but suppressed by viral IFN-γ.',
+        clinicalUse: 'Distinguishes systemic bacterial sepsis (>0.5–2.0 µg/L) from viral infections (<0.1–0.25) and guides antibiotic de-escalation.',
+        highCauses: ['Bacterial sepsis & septic shock (rises within 3–6h)', 'Severe trauma, burns, cardiogenic shock (non-infectious)', 'Medullary thyroid carcinoma'],
+        lowCauses: ['Healthy state & uncomplicated viral infections (IFN-γ blocks PCT!)'],
+        pearls: 'An elevated CRP with a persistently normal PCT (<0.1 µg/L) strongly favors a viral infection or autoimmune inflammation over bacterial sepsis.'
+      },
+      {
+        id: 'inr', name: 'INR (PT Ratio)', short: 'INR', category: 'coag',
+        siUnit: 'ratio', usUnit: 'ratio', toUs: v => v, siDec: 2, usDec: 2,
+        refM: [0.85, 1.15], refF: [0.85, 1.15], critLow: null, critHigh: 4.5,
+        minDisp: 0.7, maxDisp: 5.0, step: 0.05, baselineM: 1.00, baselineF: 1.00,
+        physiology: 'Standardized Prothrombin Time measuring Extrinsic (FVII) and Common (FX, FV, FII, Fibrinogen) coagulation pathways.',
+        clinicalUse: 'Monitors Vitamin K antagonists (target 2–3), acute liver synthetic function (FVII half-life is only 6 hours!), and DIC.',
+        highCauses: ['Warfarin / phenprocoumon & Vitamin K deficiency', 'Acute liver failure & cirrhosis (MELD score component)', 'Consumptive DIC', 'Direct Xa / IIa inhibitors (variable mild rise)'],
+        lowCauses: ['No clinical pathology'],
+        pearls: 'In cirrhosis, an elevated INR reflects reduced procoagulants only and ignores parallel loss of Protein C/AT-III — it does NOT accurately predict bleeding!'
+      },
+      {
+        id: 'aptt', name: 'aPTT', short: 'aPTT', category: 'coag',
+        siUnit: 's', usUnit: 's', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [25, 36], refF: [25, 36], critLow: null, critHigh: 90,
+        minDisp: 18, maxDisp: 110, step: 1, baselineM: 30, baselineF: 30,
+        physiology: 'Activated Partial Thromboplastin Time evaluating Intrinsic (FXII, XI, IX, VIII) and Common (X, V, II, Fibrinogen) pathways.',
+        clinicalUse: 'Monitors unfractionated heparin (UFH) and screens for Hemophilia A/B, vWD, DIC, and Lupus Anticoagulant.',
+        highCauses: ['Unfractionated heparin (UFH) & Dabigatran', 'Hemophilia A (FVIII), Hemophilia B (FIX), vWD', 'DIC & severe liver failure', 'Lupus Anticoagulant (prothrombotic in vivo despite ↑aPTT!)'],
+        lowCauses: ['Acute phase high FVIII (hypercoagulable state)'],
+        pearls: 'Normal INR + Normal aPTT + ↓↓Platelets + Hemolysis separates TTP/HUS cleanly from DIC (where INR and aPTT are prolonged).'
+      },
+      {
+        id: 'fbg', name: 'Fibrinogen', short: 'Fbg', category: 'coag',
+        siUnit: 'g/L', usUnit: 'mg/dL', toUs: v => v * 100, siDec: 2, usDec: 0,
+        refM: [1.80, 3.50], refF: [1.80, 3.50], critLow: 1.0, critHigh: null,
+        minDisp: 0.2, maxDisp: 7.5, step: 0.1, baselineM: 2.75, baselineF: 2.80,
+        physiology: 'Factor I glycoprotein cleaved by thrombin into insoluble fibrin mesh; also a strong positive acute-phase reactant.',
+        clinicalUse: 'Key marker of consumptive coagulopathy (DIC <1.0–1.5 g/L) and trauma hemorrhage; guides fibrinogen concentrate / cryoprecipitate.',
+        highCauses: ['Acute inflammation / sepsis (positive acute-phase reactant)', 'Pregnancy & malignancy', 'Nephrotic syndrome'],
+        lowCauses: ['Acute consumptive DIC', 'Hyperfibrinolysis / systemic tPA thrombolysis', 'Severe decompensated cirrhosis / acute liver failure', 'Massive hemorrhage dilution'],
+        pearls: 'Because fibrinogen rises during sepsis, a "low-normal" fibrinogen (e.g., 1.7 g/L) in a septic patient may already signal active DIC consumption.'
+      },
+      {
+        id: 'ddimer', name: 'D-Dimer', short: 'D-Dim', category: 'coag',
+        siUnit: 'µg/L', usUnit: 'ng/mL', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [0, 500], refF: [0, 500], critLow: null, critHigh: 4000,
+        minDisp: 0, maxDisp: 12000, step: 50, baselineM: 210, baselineF: 220,
+        physiology: 'Specific degradation fragment generated only when plasmin lyses Factor XIIIa cross-linked fibrin.',
+        clinicalUse: 'High-sensitivity rule-out for VTE (DVT/PE) in low/moderate pretest probability and major diagnostic criterion for DIC.',
+        highCauses: ['Acute DIC (markedly elevated >4000–10,000)', 'VTE (DVT / Pulmonary Embolism) & aortic dissection', 'Sepsis, surgery, trauma, malignancy, pregnancy'],
+        lowCauses: ['Normal (rules out VTE when pretest probability is low)'],
+        pearls: 'Age-adjusted VTE rule-out cutoff for patients >50 years is Age × 10 µg/L (e.g., 700 µg/L for a 70-year-old).'
+      },
+      {
+        id: 'trop', name: 'hs-Troponin T', short: 'hsTnT', category: 'coag',
+        siUnit: 'ng/L', usUnit: 'ng/L', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [0, 14], refF: [0, 14], critLow: null, critHigh: 52,
+        minDisp: 0, maxDisp: 250, step: 1, baselineM: 6, baselineF: 5,
+        physiology: 'Cardiac-specific sarcomeric regulatory protein released into circulation upon cardiomyocyte necrosis or severe wall stress.',
+        clinicalUse: 'Cornerstone biomarker for acute myocardial infarction (requires dynamic rise/fall on serial 0h/1h–3h sampling) vs chronic myocardial injury.',
+        highCauses: ['Type 1 MI (plaque rupture) & Type 2 MI (demand ischemia in sepsis/anemia)', 'Myocarditis, Takotsubo, pulmonary embolism', 'CKD (chronic stable elevation — look for delta!)', 'Severe rhabdomyolysis (minor TnT cross-elevation possible)'],
+        lowCauses: ['Normal healthy myocardium'],
+        pearls: 'A single elevated hs-TnT does not equal MI; always evaluate the serial kinetic delta (rise/fall) alongside ECG and clinical context.'
+      },
+      {
+        id: 'bnp', name: 'NT-proBNP', short: 'BNP', category: 'coag',
+        siUnit: 'ng/L', usUnit: 'pg/mL', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [0, 125], refF: [0, 125], critLow: null, critHigh: 1800,
+        minDisp: 0, maxDisp: 4500, step: 15, baselineM: 48, baselineF: 56,
+        physiology: 'Inactive N-terminal cleavage fragment of pro-BNP secreted by ventricular myocytes in response to wall stretch and volume overload.',
+        clinicalUse: 'High-sensitivity rule-out for acute heart failure (<300 ng/L) and prognostic marker in HF, PE, and sepsis.',
+        highCauses: ['Acute/chronic heart failure (volume & pressure overload)', 'CKD (reduced renal clearance)', 'Sepsis, atrial fibrillation, pulmonary embolism, age'],
+        lowCauses: ['Normal ventricular wall stress (note: obesity falsely lowers BNP/NT-proBNP)'],
+        pearls: 'Obesity suppresses NT-proBNP levels by up to 40–50%, whereas CKD elevates baseline values even without overt congestion.'
+      },
+      {
+        id: 'ck', name: 'Creatine Kinase', short: 'CK', category: 'coag',
+        siUnit: 'U/L', usUnit: 'U/L', toUs: v => v, siDec: 0, usDec: 0,
+        refM: [30, 190], refF: [25, 170], critLow: null, critHigh: 1000,
+        minDisp: 0, maxDisp: 15000, step: 20, baselineM: 105, baselineF: 82,
+        physiology: 'Intracellular ATP-buffering enzyme concentrated predominantly in skeletal muscle (CK-MM), myocardium (CK-MB), and brain (CK-BB).',
+        clinicalUse: 'Primary diagnostic marker of rhabdomyolysis (>5× ULN, often >10,000 U/L), myopathy, statin toxicity, and hypothyroidism myopathy.',
+        highCauses: ['Rhabdomyolysis (trauma, prolonged lie, seizures, exertional)', 'Primary hypothyroidism (classic mild-to-moderate CK rise!)', 'Statin myopathy / inflammatory myositis', 'Acute MI / strenuous exercise'],
+        lowCauses: ['Low muscle mass / cachexia / hyperthyroidism'],
+        pearls: 'Always check CK when AST > ALT with a normal GGT — rhabdomyolysis frequently masquerades as "acute hepatitis" on basic liver panels!'
+      },
+
+      // ---------------- 6. METABOLIC & ENDOCRINE ----------------
+      {
+        id: 'glu', name: 'Glucose (fasting)', short: 'Glu', category: 'meta',
+        siUnit: 'mmol/L', usUnit: 'mg/dL', toUs: v => v * 18.018, siDec: 1, usDec: 0,
+        refM: [3.9, 5.5], refF: [3.9, 5.5], critLow: 2.8, critHigh: 22.0,
+        minDisp: 1.5, maxDisp: 35, step: 0.2, baselineM: 4.9, baselineF: 4.8,
+        physiology: 'Primary cellular metabolic fuel regulated tightly by pancreatic insulin/glucagon, hepatic gluconeogenesis, and stress hormones.',
+        clinicalUse: 'Diagnoses diabetes (≥7.0 mmol/L fasting), DKA/HHS, and life-threatening hypoglycemia (acute liver failure, sepsis, insulin excess).',
+        highCauses: ['DKA & Hyperosmolar Hyperglycemic State (HHS)', 'Type 1 / Type 2 Diabetes mellitus', 'Stress hyperglycemia (sepsis, steroids, catecholamines)'],
+        lowCauses: ['Insulin or sulfonylurea excess', 'Acute liver failure (lost gluconeogenesis & glycogen stores)', 'Severe sepsis, adrenal insufficiency, prolonged fasting'],
+        pearls: 'Severe hypoglycemia in acute hepatitis is an ominous red flag for impending Acute Liver Failure (alongside INR >1.5 and encephalopathy).'
+      },
+      {
+        id: 'hba1c', name: 'HbA1c', short: 'A1c', category: 'meta',
+        siUnit: '%', usUnit: '%', toUs: v => v, siDec: 1, usDec: 1,
+        refM: [4.2, 5.6], refF: [4.2, 5.6], critLow: null, critHigh: 10.0,
+        minDisp: 3.5, maxDisp: 14.0, step: 0.1, baselineM: 5.2, baselineF: 5.1,
+        physiology: 'Non-enzymatically glycated fraction of hemoglobin A reflecting average glycemia over the preceding ~8–12 weeks (RBC lifespan).',
+        clinicalUse: 'Diagnoses diabetes (≥6.5%) and monitors long-term glycemic control.',
+        highCauses: ['Uncontrolled diabetes mellitus / DKA', 'Iron or B12 deficiency (prolonged RBC survival falsely raises A1c!)'],
+        lowCauses: ['Hemolysis / acute bleeding / recent transfusion (shortened RBC lifespan falsely lowers A1c!)', 'Pregnancy & EPO therapy'],
+        pearls: 'TRAP: Any condition shortening RBC lifespan (hemolysis, TTP, bleeding) yields a falsely LOW HbA1c despite true hyperglycemia.'
+      },
+      {
+        id: 'lactate', name: 'Lactate', short: 'Lac', category: 'meta',
+        siUnit: 'mmol/L', usUnit: 'mg/dL', toUs: v => v * 9.01, siDec: 1, usDec: 0,
+        refM: [0.5, 2.0], refF: [0.5, 2.0], critLow: null, critHigh: 4.0,
+        minDisp: 0, maxDisp: 10, step: 0.1, baselineM: 1.0, baselineF: 1.0,
+        physiology: 'Product of anaerobic glycolysis and β2-adrenergic aerobic glycolysis; cleared predominantly by hepatic Cori cycle (70%) and kidneys.',
+        clinicalUse: 'Core perfusion/shock biomarker in sepsis (>2 mmol/L; >4 severe), mesenteric ischemia, acute liver failure, and high-AG metabolic acidosis.',
+        highCauses: ['Type A: Septic/cardiogenic/hypovolemic shock, tissue ischemia', 'Type B: Acute liver failure (impaired clearance), metformin, malignancy, DKA', 'Seizures / intense exercise'],
+        lowCauses: ['Normal physiological state'],
+        pearls: 'Serial lactate clearance (>10–20% drop every 2 hours) is a stronger marker of resuscitation response than a single static value.'
+      },
+      {
+        id: 'ldl', name: 'LDL Cholesterol', short: 'LDL', category: 'meta',
+        siUnit: 'mmol/L', usUnit: 'mg/dL', toUs: v => v * 38.67, siDec: 2, usDec: 0,
+        refM: [0.0, 3.00], refF: [0.0, 3.00], critLow: null, critHigh: 5.0,
+        minDisp: 0.5, maxDisp: 7.0, step: 0.1, baselineM: 2.35, baselineF: 2.25,
+        physiology: 'Atherogenic apolipoprotein B-100 lipoprotein cleared primarily via hepatic LDL receptors (whose expression is upregulated by thyroid hormone).',
+        clinicalUse: 'Primary modifiable cardiovascular risk target (ESC targets: <3.0 low, <1.8 high, <1.4 mmol/L very high risk); always screen TSH in new hyperlipidemia.',
+        highCauses: ['Primary hypothyroidism (↓hepatic LDL-receptor expression!)', 'Familial hypercholesterolemia & dietary excess', 'Nephrotic syndrome & cholestasis (lipoprotein X)'],
+        lowCauses: ['Hyperthyroidism', 'Statin / PCSK9i therapy', 'Malnutrition, cirrhosis, acute sepsis (drops transiently)'],
+        pearls: 'Before initiating statins for new-onset severe LDL elevation, ALWAYS check TSH — hypothyroidism is a classic reversible secondary cause.'
+      },
+      {
+        id: 'tg', name: 'Triglycerides', short: 'TG', category: 'meta',
+        siUnit: 'mmol/L', usUnit: 'mg/dL', toUs: v => v * 88.57, siDec: 2, usDec: 0,
+        refM: [0.0, 1.70], refF: [0.0, 1.70], critLow: null, critHigh: 10.0,
+        minDisp: 0.2, maxDisp: 12.0, step: 0.1, baselineM: 1.15, baselineF: 1.05,
+        physiology: 'Energy-storage lipid transported in chylomicrons and VLDL, hydrolyzed by insulin-dependent lipoprotein lipase (LPL).',
+        clinicalUse: 'Assesses metabolic syndrome risk and pancreatitis threshold (>10 mmol/L or >885 mg/dL triggers chylomicronemia pancreatitis).',
+        highCauses: ['Uncontrolled diabetes / DKA (insulin deficiency impairs LPL)', 'Alcohol excess & metabolic syndrome', 'Hypothyroidism, CKD, nephrotic syndrome'],
+        lowCauses: ['Malnutrition / hyperthyroidism'],
+        pearls: 'Severe hypertriglyceridemia (>15 mmol/L) causes lipemic serum that can create pseudohyponatremia on indirect ISE analyzers.'
+      },
+      {
+        id: 'tsh', name: 'TSH', short: 'TSH', category: 'meta',
+        siUnit: 'mU/L', usUnit: 'µIU/mL', toUs: v => v, siDec: 2, usDec: 2,
+        refM: [0.30, 4.20], refF: [0.30, 4.20], critLow: 0.05, critHigh: 20.0,
+        minDisp: 0, maxDisp: 45, step: 0.1, baselineM: 1.65, baselineF: 1.80,
+        physiology: 'Anterior pituitary thyrotropin regulated with steep log-linear negative feedback by intracellular free T4/T3.',
+        clinicalUse: 'First-line screening test for primary thyroid dysfunction (small fT4 changes trigger exponential TSH shifts).',
+        highCauses: ['Primary hypothyroidism (Hashimoto’s, post-ablation)', 'Subclinical hypothyroidism', 'Recovery phase of non-thyroidal illness / TSHoma (rare)'],
+        lowCauses: ['Primary hyperthyroidism (Graves’, toxic nodule)', 'Central hypothyroidism (paired with low fT4)', 'Severe acute illness / high-dose steroids / dopamine'],
+        pearls: 'In primary hypothyroidism, watch for the classic chemistry tetrad: ↑↑TSH, ↑LDL, ↑CK, and mild euvolemic ↓Na⁺!'
+      },
+      {
+        id: 'ft4', name: 'Free T4', short: 'fT4', category: 'meta',
+        siUnit: 'pmol/L', usUnit: 'ng/dL', toUs: v => v / 12.87, siDec: 1, usDec: 2,
+        refM: [12.0, 22.0], refF: [12.0, 22.0], critLow: 6.0, critHigh: 40.0,
+        minDisp: 3, maxDisp: 45, step: 0.5, baselineM: 16.5, baselineF: 16.2,
+        physiology: 'Biologically available unbound thyroxine (~0.03% of total T4; ~7-day half-life), unaffected by TBG changes in pregnancy or liver disease.',
+        clinicalUse: 'Confirms overt vs subclinical thyroid dysfunction and monitors Levothyroxine therapy in central hypothyroidism.',
+        highCauses: ['Graves’ disease / toxic multinodular goiter / thyroiditis', 'Excessive Levothyroxine dosing / amiodarone'],
+        lowCauses: ['Primary hypothyroidism (paired with ↑↑TSH)', 'Central hypothyroidism (paired with low/normal TSH)', 'Severe non-thyroidal illness'],
+        pearls: 'Always order Free T4 rather than Total T4 because estrogen/pregnancy raises TBG and Total T4 while keeping fT4 euthyroid.'
+      },
+      {
+        id: 'pth', name: 'Parathyroid Hormone', short: 'PTH', category: 'meta',
+        siUnit: 'pmol/L', usUnit: 'pg/mL', toUs: v => v * 9.43, siDec: 1, usDec: 0,
+        refM: [1.6, 6.9], refF: [1.6, 6.9], critLow: 0.6, critHigh: 25.0,
+        minDisp: 0, maxDisp: 36, step: 0.2, baselineM: 3.8, baselineF: 3.9,
+        physiology: 'Chief-cell peptide secreted via CaSR sensing; raises Ca²⁺ (bone resorption, distal tubular uptake, 1α-hydroxylase) and lowers PO₄.',
+        clinicalUse: 'MUST always be interpreted simultaneously with serum Ca²⁺ to classify hyper- and hypocalcemia.',
+        highCauses: ['Primary hyperparathyroidism (↑Ca²⁺ + ↑PTH + ↓PO₄)', 'Secondary HPT in CKD or Vitamin D deficiency (↓Ca²⁺ + ↑PTH)', 'Tertiary HPT (autonomous in long-standing CKD)'],
+        lowCauses: ['Malignancy-associated hypercalcemia (↑↑Ca²⁺ suppresses PTH <1.0!)', 'Post-thyroidectomy / autoimmune hypoparathyroidism', 'Severe hypomagnesemia (blocks PTH release)'],
+        pearls: 'A "normal" PTH of 5.5 pmol/L in the presence of hypercalcemia (Ca²⁺ 2.85 mmol/L) is INAPPROPRIATELY ELEVATED and still diagnoses primary hyperparathyroidism!'
+      }
+    ];
+
+    const ANALYTE_MAP = Object.fromEntries(ANALYTES.map(a => [a.id, a]));
+
+    /* =========================================================================
+       3. 18 AUTHENTIC CLINICAL PATHOLOGY PRESETS
+       ========================================================================= */
+    const PATHOLOGIES = [
+      {
+        id: 'normal',
+        name: 'Normal Baseline',
+        tag: 'Physiological',
+        group: 'Reference',
+        smearMode: 'normal',
+        summary: 'All 54 hematology, iron, electrolyte, renal, hepatic, coagulation, cardiac, and endocrine parameters sit within healthy physiological reference intervals.',
+        keyClues: ['All values within physiological reference intervals', 'Normocytic normochromic peripheral smear'],
+        overrides: {}
+      },
+      {
+        id: 'ida',
+        name: 'Iron Deficiency Anemia (IDA)',
+        tag: '↓MCV · ↓↓Ferr',
+        group: 'Hematology',
+        smearMode: 'ida',
+        summary: 'Depleted iron stores impair heme synthesis → microcytic (↓MCV), hypochromic (↓MCH) anemia with high anisocytosis (↑RDW), hypoproliferative ↓Retics, ↓↓Ferritin (<15), ↓TSAT, ↑sTfR, and reactive thrombocytosis (↑PLT).',
+        keyClues: ['Microcytic hypochromic anemia with ↑RDW & Mentzer >13', '↓↓Ferritin + ↓TSAT + ↑sTfR + reactive ↑Platelets'],
+        overrides: { hb: 88, rbc: 4.10, hct: 0.28, mcv: 68.5, mch: 21.5, rdw: 18.8, retic: 22, plt: 485, ferritin: 8, tsat: 7, stfr: 4.10 }
+      },
+      {
+        id: 'acd',
+        name: 'Anemia of Chronic Disease (ACD)',
+        tag: '↑Ferr · ↓TSAT',
+        group: 'Hematology',
+        smearMode: 'acd',
+        summary: 'IL-6-driven hepcidin traps iron inside macrophages → normocytic/mildly microcytic ↓Hb with normal RDW, ↓Retics, ↓TSAT, but elevated acute-phase ↑Ferritin, ↑CRP, and NORMAL sTfR (key differentiator from IDA).',
+        keyClues: ['Normocytic ↓Hb with ↑CRP and ↑Ferritin', 'Low TSAT but NORMAL sTfR distinguishes ACD from IDA'],
+        overrides: { hb: 98, rbc: 3.60, hct: 0.30, mcv: 82.0, mch: 27.2, rdw: 13.6, retic: 24, ferritin: 385, tsat: 12, stfr: 1.20, crp: 72, fbg: 4.6, alb: 32, hapto: 2.35 }
+      },
+      {
+        id: 'b12',
+        name: 'Megaloblastic Anemia (B12 Def.)',
+        tag: '↑↑MCV · ↑↑LDH',
+        group: 'Hematology',
+        smearMode: 'b12',
+        summary: 'Impaired DNA synthesis produces pancytopenia (↓Hb, ↓WBC, ↓PLT), marked macrocytosis (MCV ~116 fL), ↑RDW, ↓Retics, ↓↓B12, and intramedullary hemolysis of fragile megaloblasts (↑↑LDH, ↓Haptoglobin, ↑indirect Bili).',
+        keyClues: ['Macrocytic pancytopenia (MCV >110 fL, ↓Retics) + ↓↓B12', 'Intramedullary hemolysis: ↑↑LDH + ↓Haptoglobin + ↑Indirect Bili'],
+        overrides: { hb: 82, rbc: 2.15, hct: 0.25, mcv: 116.5, mch: 38.1, rdw: 19.6, retic: 18, plt: 98, wbc: 2.9, neut: 1.4, b12: 85, ldh: 1180, hapto: 0.12, tbili: 34, dbili: 4.2, tsat: 54 }
+      },
+      {
+        id: 'ttp',
+        name: 'Acute Hemolysis / TMA (TTP)',
+        tag: '↓↓PLT · Nl INR',
+        group: 'Hematology',
+        smearMode: 'ttp',
+        summary: 'Microvascular platelet-vWF thrombi shear passing RBCs (schistocytes) → severe hemolytic anemia (↓Hb, ↑↑Retics, ↑↑LDH, ↓↓Haptoglobin, ↑indirect Bili), ↓↓Platelets, and ↑Creatinine with NORMAL INR/aPTT (ruling out DIC).',
+        keyClues: ['MAHA triad (↑↑LDH, ↓↓Haptoglobin, ↑↑Retics, schistocytes) + ↓↓PLT', 'Normal INR, aPTT & Fibrinogen differentiate TTP from DIC!'],
+        overrides: { hb: 78, rbc: 2.65, hct: 0.23, mcv: 91.0, rdw: 17.5, retic: 245, plt: 18, ldh: 1380, hapto: 0.05, tbili: 52, dbili: 4.5, crea: 168, urea: 11.4, ddimer: 780, inr: 1.02, aptt: 29, fbg: 2.90, hba1c: 4.3 }
+      },
+      {
+        id: 'sepsis',
+        name: 'Bacterial Sepsis',
+        tag: '↑↑PCT · ↑Lac',
+        group: 'Infection & Onc',
+        smearMode: 'sepsis',
+        summary: 'Systemic bacterial endotoxin cascade drives marked neutrophilic leukocytosis (↑↑WBC, ↑↑ANC, ↓Lymph, ↓Eos), ↑↑CRP, ↑↑PCT (>6 µg/L), tissue hypoperfusion (↑Lactate), early organ dysfunction (↑Crea, ↓PLT, ↑D-Dimer), and acute-phase ↑Ferritin/↓Albumin.',
+        keyClues: ['↑↑WBC/Neutrophils + ↑↑CRP + markedly ↑PCT (>2 µg/L)', '↑Lactate + ↓Platelets + ↑Creatinine + ↑D-Dimer indicate organ dysfunction'],
+        overrides: { wbc: 21.8, neut: 19.2, lymph: 0.7, eos: 0.01, plt: 94, crp: 245, pct: 8.60, lactate: 4.4, crea: 175, urea: 12.2, tbili: 29, dbili: 16.5, ast: 74, alt: 58, alb: 28, fbg: 5.4, ddimer: 2850, ferritin: 460, glu: 8.4, trop: 28 }
+      },
+      {
+        id: 'ebv',
+        name: 'Viral Infection (EBV / Mono)',
+        tag: '↑Lymph · Nl PCT',
+        group: 'Infection & Onc',
+        smearMode: 'ebv',
+        summary: 'Cytotoxic T-cell expansion causes marked absolute lymphocytosis with atypical lymphocytes on smear, mild ↑CRP, completely NORMAL PCT (IFN-γ suppression), and mild viral hepatitis transaminitis + ↑LDH.',
+        keyClues: ['↑Lymphocytes (atypical reactive lymphs) with NORMAL PCT (<0.1)', 'Modest ↑AST/ALT + ↑LDH typical of EBV mononucleosis'],
+        overrides: { wbc: 13.4, neut: 3.4, lymph: 8.8, plt: 158, crp: 28, pct: 0.06, ast: 118, alt: 142, ggt: 84, alp: 148, tbili: 24, dbili: 9.5, ldh: 430 }
+      },
+      {
+        id: 'aml_tls',
+        name: 'Acute Myeloid Leukemia + TLS',
+        tag: '↑↑WBC · ↑K/PO₄',
+        group: 'Infection & Onc',
+        smearMode: 'aml',
+        summary: 'Marrow blast proliferation crowds normal hematopoiesis (↑↑WBC with blasts/Auer rods, ↓Hb, ↓↓PLT, ↓Retics) while rapid blast turnover triggers Tumor Lysis Syndrome: ↑↑LDH, ↑↑Uric Acid, ↑K⁺, ↑Phosphate, secondary ↓Ca²⁺, and ↑Creatinine.',
+        keyClues: ['↑↑WBC (blasts + Auer rods) + ↓Hb + ↓↓Platelets', 'Cairo-Bishop TLS quartet: ↑↑Uric Acid, ↑K⁺, ↑PO₄, ↓Ca²⁺ + ↑↑LDH'],
+        overrides: { wbc: 54.0, neut: 0.8, lymph: 1.2, hb: 79, rbc: 2.65, hct: 0.24, retic: 14, plt: 24, ldh: 1490, uric: 745, k: 6.1, po4: 2.55, ca: 1.78, crea: 215, urea: 15.8, crp: 48, ddimer: 1650 }
+      },
+      {
+        id: 'hepatitis',
+        name: 'Acute Hepatocellular Injury',
+        tag: '↑↑↑ALT/AST',
+        group: 'Hepato-Renal',
+        smearMode: 'normal',
+        summary: 'Massive hepatocyte necrosis (viral, acetaminophen, or ischemic) releases cytosolic ALT & AST (>20× ULN) with mild ALP/GGT rise; impaired synthesis & gluconeogenesis elevate INR (>1.8), ↑Lactate, and drop fasting Glucose (red flags for ALF!).',
+        keyClues: ['Transaminases >1000 U/L with relatively modest ALP/GGT', '↑INR + ↓Glucose + ↑Lactate warn of impending Acute Liver Failure'],
+        overrides: { alt: 1480, ast: 1190, ggt: 128, alp: 162, tbili: 86, dbili: 54.0, inr: 1.95, aptt: 44, glu: 3.1, lactate: 3.6, ldh: 680, ferritin: 640, alb: 36 }
+      },
+      {
+        id: 'cholestasis',
+        name: 'Obstructive Cholestasis',
+        tag: '↑↑ALP · ↑↑GGT',
+        group: 'Hepato-Renal',
+        smearMode: 'normal',
+        summary: 'Biliary duct obstruction (stone or pancreatic head tumor) induces canalicular ALP & GGT (>4× ULN) and direct conjugated hyperbilirubinemia (>75% direct); fat-soluble Vitamin K malabsorption mildly elevates INR.',
+        keyClues: ['Disproportionate ↑↑ALP + ↑↑GGT + ↑↑Direct Bilirubin', 'Mildly ↑INR from Vitamin K malabsorption (corrects with Vit K)'],
+        overrides: { alp: 510, ggt: 540, tbili: 148, dbili: 118.0, ast: 96, alt: 115, inr: 1.38, ldl: 4.35, lipase: 82 }
+      },
+      {
+        id: 'cirrhosis',
+        name: 'Decompensated Cirrhosis',
+        tag: '↓Alb · ↑INR · ↓PLT',
+        group: 'Hepato-Renal',
+        smearMode: 'cirrhosis',
+        summary: 'Chronic synthetic failure drops ↓Albumin, ↓Fibrinogen, ↓Urea, and elevates ↑INR, while portal hypertension/hypersplenism drops ↓Platelets and ADH-mediated water retention causes dilutional ↓Na⁺. Notice De Ritis AST/ALT > 2.',
+        keyClues: ['Synthetic failure (↓Albumin, ↑INR, ↓Urea) + hypersplenism (↓PLT)', 'Dilutional ↓Na⁺, mild ↑MCV, and AST > ALT (>2:1)'],
+        overrides: { alb: 24, inr: 1.88, aptt: 45, fbg: 1.45, plt: 64, hb: 108, rbc: 3.25, hct: 0.33, mcv: 101.5, na: 129, ast: 86, alt: 38, ggt: 135, alp: 145, tbili: 68, dbili: 42.0, urea: 2.6, hapto: 0.18, ddimer: 1450 }
+      },
+      {
+        id: 'ckd',
+        name: 'Chronic Kidney Disease (Stage 4/5)',
+        tag: '↑↑Crea · ↑PTH',
+        group: 'Hepato-Renal',
+        smearMode: 'ckd',
+        summary: 'Severe nephron loss causes ↑↑Creatinine, ↑↑Urea, ↑Uric Acid, impaired acid/K⁺/PO₄ excretion (↓HCO₃⁻ HAGMA, ↑K⁺, ↑PO₄), ↓calcitriol-driven ↓Ca²⁺ with secondary ↑↑PTH, normocytic ↓Hb (↓EPO), and chronic ↑NT-proBNP/hs-TnT.',
+        keyClues: ['↑↑Creatinine (eGFR ~14) + ↑K⁺ + ↓HCO₃⁻ (high AG) + ↑PO₄', '↓Ca²⁺ + secondary ↑↑PTH + normocytic anemia (↓EPO)'],
+        overrides: { crea: 410, urea: 26.5, uric: 540, k: 5.7, hco3: 16.5, cl: 104, po4: 2.15, ca: 1.94, pth: 24.5, hb: 94, rbc: 3.15, hct: 0.29, mcv: 89.5, retic: 22, alb: 34, bnp: 1420, trop: 32, lipase: 88 }
+      },
+      {
+        id: 'dka',
+        name: 'Diabetic Ketoacidosis (DKA)',
+        tag: 'HAGMA · ↑↑Glu',
+        group: 'Metabolic & Endo',
+        smearMode: 'normal',
+        summary: 'Absolute insulin deficiency triggers ↑↑Glucose, ↑HbA1c, ketogenesis (↓↓HCO₃⁻ with high Anion Gap ~26), osmotic water shift causing translocational ↓Na⁺ (check Corr. Na⁺!), shift-mediated ↑K⁺ despite total deficit, stress ↑WBC, ↑TG, and mild ↑Lipase.',
+        keyClues: ['↑↑Glucose + ↓↓HCO₃⁻ + High Anion Gap (>20) + ↑HbA1c', 'Translocational ↓Na⁺ (Corr. Na⁺ normal) + ↑K⁺ despite total-body deficit'],
+        overrides: { glu: 27.8, hba1c: 11.4, hco3: 9.5, cl: 97, na: 130, k: 5.6, po4: 1.65, mg: 0.62, lactate: 2.9, crea: 136, urea: 11.8, uric: 495, wbc: 16.4, neut: 14.1, tg: 4.80, lipase: 112 }
+      },
+      {
+        id: 'dic',
+        name: 'Disseminated Intravasc. Coag (DIC)',
+        tag: '↓↓Fbg · ↑↑↑DD',
+        group: 'Coag & Muscle',
+        smearMode: 'dic',
+        summary: 'Systemic microvascular thrombin generation consumes ↓↓Platelets, ↓↓Fibrinogen, and coagulation factors (↑INR, ↑aPTT) while secondary fibrinolysis drives extreme ↑↑↑D-Dimer and microangiopathic hemolysis (schistocytes, ↑LDH, ↓Haptoglobin).',
+        keyClues: ['Global consumption: ↓↓PLT + ↓↓Fibrinogen + ↑INR + ↑aPTT', 'Sky-high D-Dimer (>8000) + schistocytes separates DIC from TTP'],
+        overrides: { plt: 34, inr: 2.25, aptt: 64, fbg: 0.72, ddimer: 9600, hb: 89, rbc: 3.00, hct: 0.27, ldh: 740, hapto: 0.08, tbili: 32, dbili: 6.5, crp: 165, pct: 4.8, lactate: 3.5, crea: 158 }
+      },
+      {
+        id: 'rhabdo',
+        name: 'Rhabdomyolysis',
+        tag: '↑↑↑CK · Nl GGT',
+        group: 'Coag & Muscle',
+        smearMode: 'normal',
+        summary: 'Skeletal myocyte breakdown floods plasma with ↑↑↑CK (>12,000), ↑LDH, ↑K⁺, ↑Phosphate (binding Ca²⁺ → early ↓Ca²⁺), ↑Uric Acid, and pigment-induced ↑Creatinine. Classic trap: ↑↑AST > ↑ALT with COMPLETELY NORMAL GGT!',
+        keyClues: ['Extreme ↑↑↑CK + ↑↑AST > ↑ALT with NORMAL GGT (muscle, not liver!)', 'Intracellular release: ↑K⁺, ↑PO₄, ↑Uric Acid, early ↓Ca²⁺, ↑Crea'],
+        overrides: { ck: 13400, ast: 640, alt: 215, ggt: 26, alp: 74, ldh: 1120, k: 5.9, po4: 2.25, ca: 1.88, uric: 620, crea: 238, urea: 13.5, hco3: 18.5, lactate: 2.8, trop: 22 }
+      },
+      {
+        id: 'phpt',
+        name: 'Primary Hyperparathyroidism',
+        tag: '↑Ca · ↑PTH · ↓PO₄',
+        group: 'Metabolic & Endo',
+        smearMode: 'normal',
+        summary: 'Autonomous parathyroid adenoma drives excessive ↑PTH despite hypercalcemia (↑Ca²⁺), enhancing renal phosphate wasting (↓PO₄) and bone remodeling (mild ↑ALP) with mild hyperchloremic trend.',
+        keyClues: ['Classic triad: ↑Ca²⁺ + ↑PTH (non-suppressed) + ↓Phosphate', 'Contrast with Malignancy where PTH is suppressed (<1.0)'],
+        overrides: { ca: 2.94, pth: 16.4, po4: 0.64, alp: 158, cl: 108, hco3: 21.5 }
+      },
+      {
+        id: 'malig_ca',
+        name: 'Malignancy Hypercalcemia',
+        tag: '↑↑Ca · ↓↓PTH',
+        group: 'Metabolic & Endo',
+        smearMode: 'acd',
+        summary: 'Tumor-derived PTHrP or osteolytic bone metastases cause severe ↑↑Ca²⁺ (even higher once corrected for ↓Albumin!) which strongly suppresses endogenous ↓↓PTH (<0.8), accompanied by ↑ALP (bone), ↑LDH, ↑CRP, and anemia of malignancy.',
+        keyClues: ['Severe ↑↑Ca²⁺ (higher after Albumin correction!) with ↓↓PTH', '↑ALP (normal GGT) + ↑LDH + ↓Albumin point to malignancy'],
+        overrides: { ca: 3.18, alb: 28, pth: 0.6, alp: 310, ggt: 34, ldh: 590, po4: 0.88, hb: 102, rbc: 3.55, hct: 0.31, crp: 58, crea: 134, urea: 10.2 }
+      },
+      {
+        id: 'hypothyroid',
+        name: 'Primary Hypothyroidism',
+        tag: '↑↑TSH · ↑LDL · ↑CK',
+        group: 'Metabolic & Endo',
+        smearMode: 'normal',
+        summary: 'Thyroid gland failure relieves pituitary feedback → ↑↑TSH with ↓fT4. Classic multi-system lab footprint: ↑LDL (downregulated hepatic LDL-R), ↑CK (hypothyroid myopathy), mild euvolemic ↓Na⁺ (impaired free-water clearance), and mild ↑MCV.',
+        keyClues: ['↑↑TSH + ↓fT4', 'Secondary metabolic clues: ↑LDL, ↑TG, ↑CK, mild ↓Na⁺ & ↑MCV'],
+        overrides: { tsh: 34.5, ft4: 6.4, ldl: 5.15, tg: 2.65, ck: 520, na: 132, mcv: 98.5, hb: 118, rbc: 3.65, hct: 0.36 }
+      }
+    ];
+
+    /* =========================================================================
+       4. WARD ROUNDS BLINDED CASE BANK
+       ========================================================================= */
+    const WARD_CASES = [
+      {
+        pathologyId: 'ida', sex: 'F', age: 34, artifact: null, comorbidity: 'none',
+        vignette: '34-year-old woman presents with 4 months of progressive fatigue, exertional dyspnea, brittle nails, and heavy menstrual bleeding.',
+        vitals: 'BP 114/70 · HR 96 · Temp 36.7°C · SpO₂ 99% RA',
+        hint: 'Look at MCV, RDW, Ferritin, TSAT, and the reactive Platelet count; compute Mentzer Index (MCV/RBC).',
+        distractors: ['acd', 'b12', 'hypothyroid']
+      },
+      {
+        pathologyId: 'acd', sex: 'F', age: 62, artifact: null, comorbidity: 'none',
+        vignette: '62-year-old woman with poorly controlled rheumatoid arthritis has persistent normocytic anemia on routine rheumatology follow-up.',
+        vitals: 'BP 126/78 · HR 78 · Temp 37.3°C · SpO₂ 98% RA',
+        hint: 'Notice low TSAT alongside HIGH Ferritin, elevated CRP, and a completely NORMAL sTfR.',
+        distractors: ['ida', 'ckd', 'b12']
+      },
+      {
+        pathologyId: 'b12', sex: 'M', age: 67, artifact: null, comorbidity: 'none',
+        vignette: '67-year-old man reports 6 months of progressive tingling in both feet, unsteady gait in the dark, smooth sore tongue, and fatigue.',
+        vitals: 'BP 122/72 · HR 92 · Temp 36.8°C · SpO₂ 98% RA',
+        hint: 'Check MCV, pancytopenia, low reticulocytes, hypersegmented neutrophils on smear, and intramedullary hemolysis markers (LDH, Haptoglobin).',
+        distractors: ['ttp', 'cirrhosis', 'aml_tls']
+      },
+      {
+        pathologyId: 'ttp', sex: 'F', age: 39, artifact: null, comorbidity: 'none',
+        vignette: '39-year-old previously healthy woman arrives at the ED with acute confusion, petechiae on her shins, mild fever, and dark tea-colored urine.',
+        vitals: 'BP 134/82 · HR 110 · Temp 38.1°C · SpO₂ 97% RA',
+        hint: 'Look for schistocytes + severe hemolysis + profound thrombocytopenia, then check INR, aPTT, and Fibrinogen to rule out DIC.',
+        distractors: ['dic', 'b12', 'sepsis']
+      },
+      {
+        pathologyId: 'sepsis', sex: 'M', age: 74, artifact: null, comorbidity: 'none',
+        vignette: '74-year-old man from a nursing home presents with rigors, flank tenderness, confusion, and oliguria for 12 hours.',
+        vitals: 'BP 86/52 · HR 118 · Temp 39.2°C · RR 26 · SpO₂ 94%',
+        hint: 'Compare Procalcitonin and CRP alongside Lactate, Neutrophils with toxic granulation, and acute kidney injury.',
+        distractors: ['ebv', 'dic', 'dka']
+      },
+      {
+        pathologyId: 'ebv', sex: 'M', age: 21, artifact: null, comorbidity: 'none',
+        vignette: '21-year-old university student presents with 8 days of severe sore throat, posterior cervical lymphadenopathy, fever, and mild RUQ discomfort.',
+        vitals: 'BP 118/72 · HR 88 · Temp 38.2°C · SpO₂ 99% RA',
+        hint: 'Note the absolute lymphocytosis (atypical lymphocytes on smear), mild transaminitis, and completely NORMAL Procalcitonin.',
+        distractors: ['sepsis', 'hepatitis', 'aml_tls']
+      },
+      {
+        pathologyId: 'aml_tls', sex: 'M', age: 58, artifact: null, comorbidity: 'none',
+        vignette: '58-year-old man presents with 3 weeks of drenching night sweats, gingival bleeding, bone pain, and sudden nausea/oliguria.',
+        vitals: 'BP 108/66 · HR 106 · Temp 38.0°C · SpO₂ 97% RA',
+        hint: 'Inspect the blood smear for Auer-rod blasts and check the classic electrolyte quartet: K⁺, Phosphate, Uric Acid, and Calcium.',
+        distractors: ['rhabdo', 'ckd', 'sepsis']
+      },
+      {
+        pathologyId: 'hepatitis', sex: 'F', age: 29, artifact: null, comorbidity: 'none',
+        vignette: '29-year-old woman is brought in 36 hours after an intentional overdose of an over-the-counter analgesic; she is nauseated and somnolent.',
+        vitals: 'BP 104/64 · HR 102 · Temp 36.6°C · SpO₂ 99% RA',
+        hint: 'Massive transaminase elevation (>1000) paired with rising INR, elevated Lactate, and low Glucose signals severe hepatic necrosis.',
+        distractors: ['cholestasis', 'rhabdo', 'cirrhosis']
+      },
+      {
+        pathologyId: 'cholestasis', sex: 'F', age: 66, artifact: null, comorbidity: 'none',
+        vignette: '66-year-old woman presents with 3 weeks of painless progressive jaundice, generalized pruritus, pale clay-colored stools, and dark urine.',
+        vitals: 'BP 130/78 · HR 76 · Temp 36.9°C · SpO₂ 98% RA',
+        hint: 'Compare the ratio of ALP/GGT & Direct Bilirubin against AST/ALT.',
+        distractors: ['hepatitis', 'cirrhosis', 'malig_ca']
+      },
+      {
+        pathologyId: 'cirrhosis', sex: 'M', age: 59, artifact: null, comorbidity: 'none',
+        vignette: '59-year-old man with long-standing alcohol use presents with increasing abdominal girth, spider angiomata, and ankle swelling.',
+        vitals: 'BP 102/62 · HR 86 · Temp 36.7°C · SpO₂ 97% RA',
+        hint: 'Look at chronic synthetic markers (Albumin, INR, Urea), hypersplenism (Platelets), De Ritis ratio (AST/ALT > 2), and dilutional Na⁺.',
+        distractors: ['hepatitis', 'cholestasis', 'dic']
+      },
+      {
+        pathologyId: 'ckd', sex: 'M', age: 68, artifact: null, comorbidity: 'none',
+        vignette: '68-year-old man with 20 years of hypertension and diabetes reports months of pruritus, fatigue, nocturia, and mild leg edema.',
+        vitals: 'BP 158/92 · HR 74 · Temp 36.6°C · SpO₂ 98% RA',
+        hint: 'Inspect Creatinine/eGFR, Potassium, Bicarbonate, Phosphate, Calcium, secondary PTH elevation, and normocytic anemia.',
+        distractors: ['phpt', 'dka', 'rhabdo']
+      },
+      {
+        pathologyId: 'dka', sex: 'F', age: 24, artifact: null, comorbidity: 'none',
+        vignette: '24-year-old woman arrives with 24 hours of polyuria, vomiting, abdominal pain, and deep rapid Kussmaul respirations.',
+        vitals: 'BP 98/60 · HR 122 · RR 28 · Temp 37.1°C · SpO₂ 99%',
+        hint: 'Check Glucose, HbA1c, Bicarbonate, the live Anion Gap, and Katz Corrected Na⁺ in the top derived indices bar.',
+        distractors: ['sepsis', 'ckd', 'rhabdo']
+      },
+      {
+        pathologyId: 'dic', sex: 'F', age: 44, artifact: null, comorbidity: 'none',
+        vignette: '44-year-old woman in the ICU post-septic shock develops oozing from all IV catheter sites, diffuse ecchymoses, and acrocyanosis.',
+        vitals: 'BP 88/54 · HR 120 · Temp 38.4°C · SpO₂ 95%',
+        hint: 'Global coagulation consumption (↓↓PLT, ↓↓Fibrinogen, ↑INR, ↑aPTT) plus extreme D-Dimer separates this from TTP.',
+        distractors: ['ttp', 'cirrhosis', 'sepsis']
+      },
+      {
+        pathologyId: 'rhabdo', sex: 'M', age: 52, artifact: null, comorbidity: 'none',
+        vignette: '52-year-old man is found on his apartment floor after a 14-hour prolonged lie; he has severe thigh tenderness and dark reddish-brown urine.',
+        vitals: 'BP 116/74 · HR 104 · Temp 37.2°C · SpO₂ 98% RA',
+        hint: 'Don’t fall for the AST/ALT "hepatitis" trap! Check GGT (normal!) and Creatine Kinase alongside K⁺, PO₄, Ca²⁺, and Creatinine.',
+        distractors: ['hepatitis', 'aml_tls', 'ckd']
+      },
+      {
+        pathologyId: 'phpt', sex: 'F', age: 56, artifact: null, comorbidity: 'none',
+        vignette: '56-year-old woman with recurrent calcium oxalate nephrolithiasis and osteopenia undergoes routine metabolic workup.',
+        vitals: 'BP 134/82 · HR 72 · Temp 36.7°C · SpO₂ 99% RA',
+        hint: 'Interpret Calcium simultaneously with PTH and Phosphate.',
+        distractors: ['malig_ca', 'ckd', 'hypothyroid']
+      },
+      {
+        pathologyId: 'malig_ca', sex: 'M', age: 71, artifact: null, comorbidity: 'none',
+        vignette: '71-year-old heavy smoker presents with 10 kg weight loss, severe constipation, polyuria, and new-onset lethargy.',
+        vitals: 'BP 118/70 · HR 94 · Temp 36.8°C · SpO₂ 96% RA',
+        hint: 'Check Corrected Calcium alongside suppressed PTH, elevated ALP (with normal GGT), and elevated LDH.',
+        distractors: ['phpt', 'cholestasis', 'ckd']
+      },
+      {
+        pathologyId: 'hypothyroid', sex: 'F', age: 49, artifact: null, comorbidity: 'none',
+        vignette: '49-year-old woman complains of cold intolerance, 6 kg weight gain, proximal muscle stiffness, constipation, and dry skin.',
+        vitals: 'BP 124/84 · HR 54 · Temp 36.1°C · SpO₂ 99% RA',
+        hint: 'Look at TSH/fT4 plus the classic secondary footprint: elevated LDL cholesterol, elevated CK, mild ↓Na⁺, and mild ↑MCV.',
+        distractors: ['rhabdo', 'b12', 'ida']
+      }
+    ];
+
+    /* =========================================================================
+       5. APPLICATION STATE
+       ========================================================================= */
+    const state = {
+      appMode: 'explorer',        // 'explorer' | 'quiz'
+      sex: 'M',                   // 'M' | 'F'
+      unit: 'SI',                 // 'SI' | 'US'
+      pathologyId: 'normal',
+      comorbidity: 'none',        // 'none' | 'sepsis_inf' | 'cirrhosis_etoh' | 'ckd4' | 'dehydration'
+      artifacts: {
+        hemolyzed: false,
+        edta_clump: false,
+        tourniquet: false
+      },
+      manualOverrides: {},        // { analyteId: siValue }
+      selectedAnalyteId: 'hb',
+      activeCategory: 'all',
+      abnormalOnly: false,
+      searchQuery: '',
+      pathologySearch: '',
+      // Quiz Mode state
+      quiz: {
+        caseIdx: 0,
+        caseNumber: 1,
+        order: [],
+        jitterMap: {},
+        options: [],
+        answered: false,
+        selectedAnswer: null,
+        hintShown: false,
+        score: 0,
+        total: 0,
+        streak: 0
+      },
+      // Computed cache
+      values: {},                 // { analyteId: currentSiVal }
+      baselines: {},              // { analyteId: normalBaselineSiVal }
+      flags: {}                   // { analyteId: { code, level, pct } }
+    };
+
+    /* =========================================================================
+       6. VALUE COMPUTATION ENGINE (PRIMARY + COMORBIDITY + ARTIFACTS + EDITS)
+       ========================================================================= */
+    function getRefRange(a, sex) {
+      return sex === 'F' ? a.refF : a.refM;
+    }
+
+    function getBaseline(a, sex) {
+      return sex === 'F' ? a.baselineF : a.baselineM;
+    }
+
+    function formatValue(a, siVal, unit) {
+      const v = unit === 'US' ? a.toUs(siVal) : siVal;
+      const dec = unit === 'US' ? a.usDec : a.siDec;
+      return Number.isFinite(v) ? v.toFixed(dec) : '--';
+    }
+
+    function formatRef(a, sex, unit) {
+      const [lo, hi] = getRefRange(a, sex);
+      const loS = formatValue(a, lo, unit);
+      const hiS = formatValue(a, hi, unit);
+      return lo === 0 ? `< ${hiS}` : `${loS}–${hiS}`;
+    }
+
+    function getUnitStr(a, unit) {
+      return unit === 'US' ? a.usUnit : a.siUnit;
+    }
+
+    function computeAllValues() {
+      const sex = state.sex;
+      const activePathoId = state.appMode === 'quiz'
+        ? WARD_CASES[state.quiz.caseIdx].pathologyId
+        : state.pathologyId;
+      const patho = PATHOLOGIES.find(p => p.id === activePathoId) || PATHOLOGIES[0];
+      const comorb = state.appMode === 'quiz' ? 'none' : state.comorbidity;
+      const arts = state.appMode === 'quiz' ? { hemolyzed: false, edta_clump: false, tourniquet: false } : state.artifacts;
+
+      const vals = {};
+      const bases = {};
+
+      // 1. Physiological baseline
+      for (const a of ANALYTES) {
+        const b = getBaseline(a, sex);
+        bases[a.id] = b;
+        vals[a.id] = b;
+      }
+
+      // 2. Apply Primary Pathology overrides (adjust sex-sensitive baseline shifts subtly for F)
+      for (const [k, v] of Object.entries(patho.overrides || {})) {
+        if (k in vals) {
+          let adj = v;
+          if (sex === 'F') {
+            if (k === 'hb') adj = Math.max(45, v - 6);
+            else if (k === 'crea' && v > 110) adj = Math.round(v * 0.88);
+          }
+          vals[k] = adj;
+        }
+      }
+
+      // 3. Apply Stackable Comorbidity Overlay (Explorer Mode)
+      if (comorb === 'sepsis_inf') {
+        vals.crp = Math.min(340, vals.crp + 145);
+        vals.pct = Math.min(14, vals.pct + 4.8);
+        vals.wbc = clamp(vals.wbc + 7.2, 0.5, 62);
+        vals.neut = clamp(vals.neut + 6.4, 0.2, 30);
+        vals.lymph = Math.max(0.4, vals.lymph * 0.55);
+        vals.eos = 0.01;
+        vals.ferritin = Math.min(780, vals.ferritin + 125); // Classic IDA + Sepsis ferritin false-normalization trap!
+        vals.tsat = Math.max(5, Math.round(vals.tsat * 0.72));
+        vals.alb = Math.max(18, vals.alb - 8);
+        vals.fbg = Math.min(7.2, vals.fbg + 1.8);
+        vals.ddimer = Math.min(11500, vals.ddimer + 1100);
+        vals.lactate = Math.min(9.5, vals.lactate + 1.4);
+        vals.hapto = Math.min(2.8, vals.hapto + 0.65);
+      } else if (comorb === 'cirrhosis_etoh') {
+        vals.plt = Math.max(22, Math.round(vals.plt * 0.55));
+        vals.alb = Math.max(18, vals.alb - 10);
+        vals.inr = Math.min(4.8, vals.inr + 0.48);
+        vals.ggt = Math.min(680, vals.ggt + 145);
+        vals.ast = Math.min(1450, vals.ast + 52);
+        vals.alt = Math.min(1750, vals.alt + 22);
+        vals.tbili = Math.min(210, vals.tbili + 24);
+        vals.dbili = Math.min(150, vals.dbili + 14);
+        vals.mcv = Math.min(126, vals.mcv + 8.5);
+        vals.na = Math.max(115, vals.na - 4);
+      } else if (comorb === 'ckd4') {
+        vals.crea = Math.min(720, vals.crea + 240);
+        vals.urea = Math.min(44, vals.urea + 14.5);
+        vals.k = Math.min(7.4, vals.k + 0.9);
+        vals.po4 = Math.min(3.2, vals.po4 + 0.75);
+        vals.pth = Math.min(35, vals.pth + 15.0);
+        vals.hco3 = Math.max(6.5, vals.hco3 - 5.2);
+        vals.ca = Math.max(1.55, vals.ca - 0.22);
+        vals.hb = Math.max(55, vals.hb - 24);
+        vals.hct = Math.max(0.18, vals.hct - 0.07);
+        vals.rbc = Math.max(1.9, vals.rbc - 0.8);
+      } else if (comorb === 'dehydration') {
+        vals.hb = Math.min(205, vals.hb + 17);
+        vals.hct = Math.min(0.62, vals.hct + 0.05);
+        vals.rbc = Math.min(7.2, vals.rbc + 0.48);
+        vals.alb = Math.min(58, vals.alb + 6);
+        vals.na = Math.min(162, vals.na + 5);
+        vals.urea = Math.min(42, vals.urea + 6.4);
+        vals.crea = Math.min(700, vals.crea + 32);
+        vals.uric = Math.min(860, vals.uric + 72);
+      }
+
+      // 4. Apply Pre-Analytical Lab Artifacts (Explorer Mode)
+      if (arts.hemolyzed) {
+        vals.k = Math.min(7.6, vals.k + 2.3);
+        vals.ldh = Math.min(1580, vals.ldh + 490);
+        vals.ast = Math.min(1480, vals.ast + 68);
+        vals.hapto = Math.max(0.06, vals.hapto * 0.24);
+      }
+      if (arts.edta_clump) {
+        vals.plt = 19; // Spurious severe thrombocytopenia!
+      }
+      if (arts.tourniquet) {
+        vals.alb = Math.min(59, vals.alb + 7);
+        vals.ca = Math.min(3.6, vals.ca + 0.24);
+        vals.hb = Math.min(205, vals.hb + 14);
+        vals.hct = Math.min(0.62, vals.hct + 0.04);
+      }
+
+      // 5. Apply Biological Jitter in Ward Rounds Quiz Mode (keeps values authentic)
+      if (state.appMode === 'quiz') {
+        for (const a of ANALYTES) {
+          const j = state.quiz.jitterMap[a.id] || 1.0;
+          vals[a.id] = clamp(vals[a.id] * j, a.minDisp, a.maxDisp);
+        }
+      }
+
+      // 6. Apply Manual Sandbox Overrides (always highest priority)
+      for (const [k, v] of Object.entries(state.manualOverrides)) {
+        if (k in vals && Number.isFinite(v)) {
+          vals[k] = v;
+        }
+      }
+
+      // 7. Compute Severity Flags & Range Bar Percentages
+      const flags = {};
+      for (const a of ANALYTES) {
+        const v = vals[a.id];
+        const [lo, hi] = getRefRange(a, sex);
+        const span = Math.max(0.001, hi - lo);
+        let code = 'N';
+        let level = 'normal'; // 'normal' | 'warn' | 'crit'
+
+        if ((a.critLow !== null && v <= a.critLow) || (a.critHigh !== null && v >= a.critHigh)) {
+          code = v <= (a.critLow ?? -Infinity) ? 'CRIT ↓' : 'CRIT ↑';
+          level = 'crit';
+        } else if (v < lo) {
+          code = v < lo - 0.5 * span ? '↓↓' : 'L';
+          level = v < lo - 0.65 * span ? 'crit' : 'warn';
+        } else if (v > hi) {
+          code = v > hi + 0.55 * span ? '↑↑' : 'H';
+          level = v > hi + 0.85 * span ? 'crit' : 'warn';
+        }
+
+        const pct = clamp(((v - a.minDisp) / (a.maxDisp - a.minDisp)) * 100, 1.5, 98.5);
+        flags[a.id] = { code, level, pct, abnormal: level !== 'normal' };
+      }
+
+      state.values = vals;
+      state.baselines = bases;
+      state.flags = flags;
+    }
+
+    /** Compute the 6 Live Derived Clinical Indices */
+    function computeDerivedIndices() {
+      const v = state.values;
+      const isUS = state.unit === 'US';
+      const sex = state.sex;
+      const age = state.appMode === 'quiz' ? WARD_CASES[state.quiz.caseIdx].age : 50;
+
+      // 1. Anion Gap = Na - (Cl + HCO3)
+      const ag = v.na - (v.cl + v.hco3);
+      const agStatus = ag > 14 ? 'crit' : (ag > 12 ? 'warn' : 'ok');
+
+      // 2. Albumin-Corrected Ca2+ = Ca + 0.02 * (40 - Alb) [SI mmol/L]
+      const corrCaSI = v.ca + 0.02 * (40.0 - v.alb);
+      const corrCaDisp = isUS ? `${(corrCaSI * 4.008).toFixed(1)} mg/dL` : `${corrCaSI.toFixed(2)} mmol/L`;
+      const corrCaStatus = (corrCaSI > 2.65 || corrCaSI < 2.05) ? 'crit' : ((corrCaSI > 2.55 || corrCaSI < 2.15) ? 'warn' : 'ok');
+
+      // 3. Katz Glucose-Corrected Na+ = Na + 1.6 * max(0, (Glu_mmol - 5.5) / 5.5)
+      const corrNa = v.na + (v.glu > 5.5 ? 1.6 * ((v.glu - 5.5) / 5.5) : 0);
+      const corrNaStatus = (corrNa < 130 || corrNa > 150) ? 'crit' : ((corrNa < 135 || corrNa > 146) ? 'warn' : 'ok');
+
+      // 4. De Ritis Ratio (AST / ALT)
+      const deRitis = v.ast / Math.max(1, v.alt);
+      const liverHigh = v.ast > 50 || v.alt > 50;
+      const deRitisStatus = liverHigh ? (deRitis > 2.0 ? 'warn' : 'ok') : 'ok';
+      const deRitisSub = liverHigh
+        ? (v.ggt <= 60 && v.ck > 400 ? 'Muscle source!' : (deRitis > 2.0 ? 'EtOH / Cirrh / Musc' : 'Hepatocellular'))
+        : 'Normal enzymes';
+
+      // 5. Mentzer Index (MCV / RBC)
+      const mentzer = v.mcv / Math.max(0.5, v.rbc);
+      const isMicro = v.mcv < 80;
+      const mentzerStatus = isMicro ? 'warn' : 'ok';
+      const mentzerSub = isMicro ? (mentzer < 13 ? '<13 Thalassemia' : '>13 Iron Defic.') : 'Use if MCV <80';
+
+      // 6. 2021 CKD-EPI eGFR (mL/min/1.73m²)
+      const scrMg = Math.max(0.25, v.crea / 88.4);
+      const kappa = sex === 'F' ? 0.7 : 0.9;
+      const alpha = sex === 'F' ? -0.241 : -0.302;
+      const sexMult = sex === 'F' ? 1.012 : 1.0;
+      const ratio = scrMg / kappa;
+      const egfr = clamp(142 * Math.pow(Math.min(ratio, 1), alpha) * Math.pow(Math.max(ratio, 1), -1.200) * Math.pow(0.9938, age) * sexMult, 4, 145);
+      const egfrStatus = egfr < 30 ? 'crit' : (egfr < 60 ? 'warn' : 'ok');
+
+      return [
+        {
+          label: 'Anion Gap',
+          val: `${ag.toFixed(1)}`,
+          unit: isUS ? 'mEq/L' : 'mmol/L',
+          sub: ag > 14 ? 'High-AG Acidosis' : 'Ref 8–12',
+          status: agStatus
+        },
+        {
+          label: 'Corr. Ca²⁺',
+          val: corrCaDisp,
+          unit: '',
+          sub: Math.abs(v.alb - 40) >= 6 ? `Raw ${formatValue(ANALYTE_MAP.ca, v.ca, state.unit)}` : 'Alb-adjusted',
+          status: corrCaStatus
+        },
+        {
+          label: 'Corr. Na⁺',
+          val: `${corrNa.toFixed(1)}`,
+          unit: isUS ? 'mEq/L' : 'mmol/L',
+          sub: v.glu > 10 ? `Raw ${Math.round(v.na)} (Katz)` : 'Ref 136–145',
+          status: corrNaStatus
+        },
+        {
+          label: 'De Ritis',
+          val: `${deRitis.toFixed(2)}`,
+          unit: 'AST/ALT',
+          sub: deRitisSub,
+          status: deRitisStatus
+        },
+        {
+          label: 'Mentzer',
+          val: `${mentzer.toFixed(1)}`,
+          unit: 'MCV/RBC',
+          sub: mentzerSub,
+          status: mentzerStatus
+        },
+        {
+          label: 'eGFR',
+          val: `${Math.round(egfr)}`,
+          unit: 'mL/min',
+          sub: egfr < 15 ? 'CKD G5' : (egfr < 30 ? 'CKD G4' : (egfr < 60 ? 'CKD G3' : 'CKD-EPI 2021')),
+          status: egfrStatus
+        }
+      ];
+    }
+
+    /* =========================================================================
+       7. PROCEDURAL PERIPHERAL BLOOD SMEAR (BLUTAUSSTRICH) CANVAS RENDERER
+       ========================================================================= */
+    const smearWrap = document.getElementById('smear-wrap');
+    const smearCanvas = document.getElementById('smear-canvas');
+    const smearCtx = smearCanvas.getContext('2d');
+
+    // Deterministic mulberry32 PRNG so resizing never flickers or jumps cell positions
+    function mulberry32(seed) {
+      let a = seed >>> 0;
+      return function () {
+        a |= 0;
+        a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    // STRICT ZERO-STRETCH CANVAS SIZING HELPER
+    function syncSmearCanvas() {
+      if (!smearWrap || !smearCanvas) return false;
+      const w = smearWrap.clientWidth;
+      const h = smearWrap.clientHeight;
+      if (!(w > 10 && h > 10 && w < 4000 && h < 2000)) return false;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const tw = Math.round(w * dpr);
+      const th = Math.round(h * dpr);
+      if (smearCanvas.width !== tw || smearCanvas.height !== th) {
+        smearCanvas.width = tw;
+        smearCanvas.height = th;
+        return true;
+      }
+      return false;
+    }
+
+    function drawBloodSmear() {
+      if (!smearCanvas.width || !smearCanvas.height) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = smearCanvas.width / dpr;
+      const H = smearCanvas.height / dpr;
+      const ctx = smearCtx;
+      const isDark = document.documentElement.classList.contains('dark');
+
+      const v = state.values;
+      const activePathoId = state.appMode === 'quiz'
+        ? WARD_CASES[state.quiz.caseIdx].pathologyId
+        : state.pathologyId;
+      const patho = PATHOLOGIES.find(p => p.id === activePathoId) || PATHOLOGIES[0];
+      const edtaClump = state.appMode === 'explorer' && state.artifacts.edta_clump;
+      const hasSepsis = activePathoId === 'sepsis' || (state.appMode === 'explorer' && state.comorbidity === 'sepsis_inf');
+
+      // Morphologic signals driven dynamically by live values + pathology
+      const isMicro = v.mcv < 80;
+      const isMacro = v.mcv > 98;
+      const isHypochromic = v.mch < 26.5;
+      const anisocytosis = clamp((v.rdw - 12.5) / 8.0, 0, 1.0);
+      const hasSchistocytes = activePathoId === 'ttp' || activePathoId === 'dic' || (v.ldh > 700 && v.hapto < 0.15 && v.plt < 60);
+      const hasBlasts = activePathoId === 'aml_tls' || (v.wbc > 38 && v.neut < 1.5);
+      const hasHyperseg = activePathoId === 'b12' || (v.mcv > 108 && v.b12 < 150);
+      const hasAtypicalLymph = activePathoId === 'ebv' || (v.lymph > 5.5 && v.pct < 0.15);
+      const hasBurrCells = activePathoId === 'ckd' || (v.crea > 320);
+      const hasTargetCells = activePathoId === 'cirrhosis' || (state.appMode === 'explorer' && state.comorbidity === 'cirrhosis_etoh');
+      const highRetics = v.retic > 130;
+
+      const rng = mulberry32(42197);
+
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      // Wright-Giemsa Microscope Field Backdrop with Subtle Optical Vignette
+      const bgGrad = ctx.createRadialGradient(W * 0.5, H * 0.5, Math.min(W, H) * 0.12, W * 0.5, H * 0.5, Math.max(W, H) * 0.72);
+      if (isDark) {
+        bgGrad.addColorStop(0, '#231f2b');
+        bgGrad.addColorStop(0.75, '#17141e');
+        bgGrad.addColorStop(1, '#0d0b12');
+      } else {
+        bgGrad.addColorStop(0, '#f6eff5');
+        bgGrad.addColorStop(0.78, '#ebe2eb');
+        bgGrad.addColorStop(1, '#d8cdd9');
+      }
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      // 1. ERYTHROCYTES (Density scales with RBC/Hb; radius scales with MCV; pallor scales with MCH)
+      const rbcCount = clamp(Math.round((v.rbc / 5.0) * 58), 18, 78);
+      const baseR = clamp(8.5 * Math.pow(v.mcv / 88.0, 0.36), 6.2, 11.4);
+      const rbcEdgeCol = isDark ? 'rgba(219, 108, 128, 0.85)' : 'rgba(196, 86, 110, 0.82)';
+      const rbcFillCol = isDark ? 'rgba(205, 96, 118, 0.52)' : 'rgba(214, 112, 134, 0.56)';
+      const rbcPallorCol = isDark ? 'rgba(42, 34, 52, 0.78)' : 'rgba(248, 240, 246, 0.84)';
+      const polyCol = isDark ? 'rgba(162, 126, 198, 0.62)' : 'rgba(146, 112, 184, 0.58)';
+
+      for (let i = 0; i < rbcCount; i++) {
+        const cx = 14 + rng() * (W - 28);
+        const cy = 14 + rng() * (H - 28);
+        const jitterR = 1 + (rng() * 2 - 1) * (0.07 + anisocytosis * 0.25);
+        const r = baseR * jitterR;
+        const rot = rng() * Math.PI * 2;
+        const roll = rng();
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rot);
+
+        // Schistocytes (helmet / triangular fragments) in TMA/DIC
+        if (hasSchistocytes && roll < 0.22) {
+          ctx.beginPath();
+          ctx.moveTo(-r * 0.85, r * 0.55);
+          ctx.quadraticCurveTo(0, -r * 0.9, r * 0.85, r * 0.4);
+          ctx.lineTo(r * 0.2, r * 0.15);
+          ctx.lineTo(-r * 0.25, r * 0.65);
+          ctx.closePath();
+          ctx.fillStyle = rbcFillCol;
+          ctx.fill();
+          ctx.strokeStyle = rbcEdgeCol;
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+        // Echinocytes / Burr cells in uremic CKD
+        else if (hasBurrCells && roll < 0.24) {
+          ctx.beginPath();
+          const spikes = 12;
+          for (let k = 0; k < spikes * 2; k++) {
+            const ang = (k / (spikes * 2)) * Math.PI * 2;
+            const rad = k % 2 === 0 ? r * 1.1 : r * 0.82;
+            const px = Math.cos(ang) * rad, py = Math.sin(ang) * rad;
+            if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fillStyle = rbcFillCol;
+          ctx.fill();
+          ctx.strokeStyle = rbcEdgeCol;
+          ctx.lineWidth = 1.0;
+          ctx.stroke();
+        }
+        // Polychromatic macro-reticulocytes in acute hemolysis
+        else if (highRetics && roll < 0.22) {
+          ctx.beginPath();
+          ctx.arc(0, 0, r * 1.14, 0, Math.PI * 2);
+          ctx.fillStyle = polyCol;
+          ctx.fill();
+          ctx.strokeStyle = isDark ? 'rgba(180, 145, 225, 0.85)' : 'rgba(126, 92, 168, 0.85)';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+        // Standard / Microcytic / Macro-ovalocyte / Target Cell RBC
+        else {
+          const rx = isMacro && roll < 0.55 ? r * 1.22 : r;
+          const ry = isMacro && roll < 0.55 ? r * 0.82 : r;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+          ctx.fillStyle = rbcFillCol;
+          ctx.fill();
+          ctx.strokeStyle = rbcEdgeCol;
+          ctx.lineWidth = isHypochromic ? 1.55 : 1.15;
+          ctx.stroke();
+
+          // Central pallor (expanded in IDA hypochromia!)
+          const pallorFrac = isHypochromic ? 0.64 : (isMacro ? 0.22 : 0.34);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, rx * pallorFrac, ry * pallorFrac, 0, 0, Math.PI * 2);
+          ctx.fillStyle = rbcPallorCol;
+          ctx.fill();
+
+          // Target cell central bullseye in cirrhosis/liver disease
+          if (hasTargetCells && roll < 0.28) {
+            ctx.beginPath();
+            ctx.arc(0, 0, r * 0.22, 0, Math.PI * 2);
+            ctx.fillStyle = rbcEdgeCol;
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      }
+
+      // 2. PLATELETS (or Large Purple Platelet Clumps in EDTA Pseudothrombocytopenia!)
+      const pltCol = isDark ? '#c084fc' : '#7e22ce';
+      if (edtaClump) {
+        // Draw 2 unmistakable purple platelet aggregates
+        const clumps = [[W * 0.28, H * 0.36], [W * 0.72, H * 0.66]];
+        for (const [cx, cy] of clumps) {
+          for (let k = 0; k < 22; k++) {
+            const px = cx + (rng() * 2 - 1) * 14;
+            const py = cy + (rng() * 2 - 1) * 11;
+            ctx.beginPath();
+            ctx.arc(px, py, 1.8 + rng() * 1.4, 0, Math.PI * 2);
+            ctx.fillStyle = pltCol;
+            ctx.fill();
+          }
+        }
+      } else {
+        const pltDots = clamp(Math.round((v.plt / 250) * 24), 1, 68);
+        for (let i = 0; i < pltDots; i++) {
+          const px = 12 + rng() * (W - 24);
+          const py = 12 + rng() * (H - 24);
+          ctx.beginPath();
+          ctx.arc(px, py, 1.5 + rng() * 1.0, 0, Math.PI * 2);
+          ctx.fillStyle = pltCol;
+          ctx.globalAlpha = 0.82;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      // 3. LEUKOCYTES (Neutrophils, Hypersegmented Neutrophils, Toxic Bands, Atypical Lymphs, AML Blasts with Auer Rods)
+      const wbcCount = clamp(Math.round((v.wbc / 7.0) * 3.2), 1, 11);
+      const nucCol = isDark ? '#7c3aed' : '#4c1d95';
+      const nucEdge = isDark ? '#a78bfa' : '#3b0764';
+      const cytoNeut = isDark ? 'rgba(216, 198, 224, 0.38)' : 'rgba(232, 218, 240, 0.78)';
+      const cytoBlast = isDark ? 'rgba(139, 92, 246, 0.36)' : 'rgba(167, 139, 250, 0.45)';
+
+      for (let i = 0; i < wbcCount; i++) {
+        const wx = 28 + rng() * (W - 56);
+        const wy = 28 + rng() * (H - 56);
+        const typeRoll = rng();
+
+        ctx.save();
+        ctx.translate(wx, wy);
+
+        if (hasBlasts && typeRoll < 0.75) {
+          // Large Myeloblast with high N:C ratio, nucleoli, and crisp crimson Auer Rod!
+          const wr = 15.5;
+          ctx.beginPath(); ctx.arc(0, 0, wr, 0, Math.PI * 2);
+          ctx.fillStyle = cytoBlast; ctx.fill();
+          ctx.strokeStyle = nucEdge; ctx.lineWidth = 1.2; ctx.stroke();
+
+          ctx.beginPath(); ctx.arc(-1.5, -1, wr * 0.76, 0, Math.PI * 2);
+          ctx.fillStyle = isDark ? 'rgba(124, 58, 237, 0.78)' : 'rgba(91, 33, 182, 0.74)';
+          ctx.fill();
+          // Prominent pale nucleolus
+          ctx.beginPath(); ctx.arc(-4, -3, 2.8, 0, Math.PI * 2);
+          ctx.fillStyle = isDark ? 'rgba(221, 214, 254, 0.45)' : 'rgba(245, 243, 255, 0.65)';
+          ctx.fill();
+          // Auer rod in cytoplasm
+          ctx.strokeStyle = '#fb7185';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath(); ctx.moveTo(6, 4); ctx.lineTo(12.5, -1.5); ctx.stroke();
+        } else if (hasAtypicalLymph && typeRoll < 0.72) {
+          // Large Atypical Reactive Lymphocyte (Downey cell: scalloped basophilic skirt)
+          const wr = 14.5;
+          ctx.beginPath();
+          for (let k = 0; k < 10; k++) {
+            const ang = (k / 10) * Math.PI * 2;
+            const rad = wr * (0.86 + (k % 2) * 0.16);
+            const px = Math.cos(ang) * rad, py = Math.sin(ang) * rad;
+            if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fillStyle = isDark ? 'rgba(56, 189, 248, 0.28)' : 'rgba(56, 189, 248, 0.34)';
+          ctx.fill();
+          ctx.strokeStyle = isDark ? '#38bdf8' : '#0284c7';
+          ctx.lineWidth = 1.2; ctx.stroke();
+
+          ctx.beginPath(); ctx.ellipse(-2, 0, 8.5, 7.2, 0.3, 0, Math.PI * 2);
+          ctx.fillStyle = nucCol; ctx.fill();
+        } else {
+          // Neutrophil (Normal 3-4 lobes | Hypersegmented 6 lobes | Band + Toxic Granulation)
+          const wr = 13.5;
+          ctx.beginPath(); ctx.arc(0, 0, wr, 0, Math.PI * 2);
+          ctx.fillStyle = cytoNeut; ctx.fill();
+          ctx.strokeStyle = isDark ? 'rgba(161,161,170,0.4)' : 'rgba(113,113,122,0.45)';
+          ctx.lineWidth = 1; ctx.stroke();
+
+          if (hasSepsis && typeRoll < 0.45) {
+            // Horseshoe Band Neutrophil + dark toxic granules
+            ctx.strokeStyle = nucCol;
+            ctx.lineWidth = 4.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(0, 1, 6.2, Math.PI * 0.95, Math.PI * 2.05);
+            ctx.stroke();
+            for (let g = 0; g < 16; g++) {
+              const gx = (rng() * 2 - 1) * 9, gy = (rng() * 2 - 1) * 9;
+              ctx.beginPath(); ctx.arc(gx, gy, 0.95, 0, Math.PI * 2);
+              ctx.fillStyle = isDark ? '#1e1b4b' : '#312e81';
+              ctx.fill();
+            }
+          } else {
+            const lobes = hasHyperseg ? 6 : 3 + (i % 2);
+            ctx.strokeStyle = nucEdge;
+            ctx.lineWidth = 1.1;
+            let prevX = 0, prevY = 0;
+            for (let l = 0; l < lobes; l++) {
+              const ang = (l / lobes) * Math.PI * 2 + 0.4;
+              const rad = hasHyperseg ? 6.6 : 5.4;
+              const lx = Math.cos(ang) * rad;
+              const ly = Math.sin(ang) * rad;
+              if (l > 0) {
+                ctx.beginPath(); ctx.moveTo(prevX, prevY); ctx.lineTo(lx, ly); ctx.stroke();
+              }
+              ctx.beginPath(); ctx.arc(lx, ly, hasHyperseg ? 3.2 : 3.7, 0, Math.PI * 2);
+              ctx.fillStyle = nucCol; ctx.fill();
+              prevX = lx; prevY = ly;
+            }
+            if (hasSepsis) {
+              for (let g = 0; g < 14; g++) {
+                ctx.beginPath(); ctx.arc((rng() * 2 - 1) * 9, (rng() * 2 - 1) * 9, 0.9, 0, Math.PI * 2);
+                ctx.fillStyle = isDark ? '#312e81' : '#1e1b4b';
+                ctx.fill();
+              }
+            }
+          }
+        }
+        ctx.restore();
+      }
+
+      // Subtle Microscope Optical Field Ring & Scale Bar
+      ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(9,9,11,0.08)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(10, H - 14, 24, 1.5);
+      ctx.fillStyle = isDark ? 'rgba(244,244,245,0.45)' : 'rgba(24,24,27,0.5)';
+      ctx.font = '500 8.5px "JetBrains Mono", monospace';
+      ctx.fillText('10 µm', 38, H - 10);
+
+      ctx.restore();
+
+      // Update 1-line Microscopic Findings Caption
+      const findings = [];
+      if (isMicro && isHypochromic) findings.push('Microcytic hypochromic RBCs (↑central pallor)');
+      else if (isMacro) findings.push('Macro-ovalocytes');
+      else findings.push('Normocytic RBCs');
+
+      if (anisocytosis > 0.35) findings.push('anisocytosis');
+      if (hasSchistocytes) findings.push('schistocytes (fragmented RBCs)');
+      if (highRetics) findings.push('polychromasia');
+      if (hasTargetCells) findings.push('target cells');
+      if (hasBurrCells) findings.push('echinocytes (burr cells)');
+      if (hasHyperseg) findings.push('hypersegmented neutrophils (≥6 lobes)');
+      if (hasBlasts) findings.push('myeloblasts with Auer rods');
+      if (hasAtypicalLymph) findings.push('atypical reactive lymphocytes');
+      if (hasSepsis) findings.push('toxic granulation & left-shift bands');
+      if (edtaClump) findings.push('LARGE PLATELET CLUMPS (EDTA artifact!)');
+      else if (v.plt < 50) findings.push('markedly reduced platelets');
+      else if (v.plt > 450) findings.push('thrombocytosis');
+
+      document.getElementById('smear-caption').textContent = findings.join(' · ') + '.';
+    }
+
+    /* =========================================================================
+       8. UI RENDERERS (DERIVED INDICES, BANNER, LAB SHEET, INSPECTOR, QUIZ)
+       ========================================================================= */
+    function renderDerivedIndices() {
+      const indices = computeDerivedIndices();
+      const clsMap = {
+        ok: 'text-[#09090b] dark:text-[#f4f4f5]',
+        warn: 'text-amber-600 dark:text-amber-400',
+        crit: 'text-rose-600 dark:text-rose-400'
+      };
+      document.getElementById('derived-indices-bar').innerHTML = indices.map(idx => `
+        <div class="px-3 py-2 flex flex-col justify-between min-w-0">
+          <div class="text-[9.5px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400 truncate">${idx.label}</div>
+          <div class="flex items-baseline gap-1 mt-0.5 min-w-0">
+            <span class="font-mono text-[13.5px] font-semibold tabular-nums truncate ${clsMap[idx.status]}">${idx.val}</span>
+            ${idx.unit ? `<span class="font-mono text-[9px] text-zinc-400 dark:text-zinc-500 shrink-0">${idx.unit}</span>` : ''}
+          </div>
+          <div class="font-mono text-[9px] text-zinc-400 dark:text-zinc-500 truncate mt-0.5">${idx.sub}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderPathologyBanner() {
+      const banner = document.getElementById('pathology-banner');
+      if (state.appMode === 'quiz' && !state.quiz.answered) {
+        banner.classList.add('hidden');
+        return;
+      }
+      banner.classList.remove('hidden');
+
+      const activeId = state.appMode === 'quiz' ? WARD_CASES[state.quiz.caseIdx].pathologyId : state.pathologyId;
+      const p = PATHOLOGIES.find(x => x.id === activeId) || PATHOLOGIES[0];
+      const abnCount = Object.values(state.flags).filter(f => f.abnormal).length;
+      const critCount = Object.values(state.flags).filter(f => f.level === 'crit').length;
+
+      document.getElementById('banner-title').textContent = p.name;
+      const tagEl = document.getElementById('banner-tag');
+      tagEl.textContent = p.tag;
+      tagEl.className = `font-mono text-[10px] px-2 py-0.5 rounded-md border ${
+        p.id === 'normal'
+          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+          : 'border-tealLight/40 dark:border-tealDark/40 bg-teal-500/10 text-tealLight dark:text-tealDark'
+      }`;
+      document.getElementById('banner-counts').textContent = `${abnCount} abnormal${critCount ? ` (${critCount} crit)` : ''} / ${ANALYTES.length}`;
+      document.getElementById('banner-summary').textContent = p.summary;
+
+      // Warnings for Comorbidities, Artifacts & Manual Sandbox Edits
+      const warnings = [];
+      if (state.appMode === 'explorer') {
+        if (state.comorbidity === 'sepsis_inf') {
+          warnings.push({ txt: 'Comorbidity: +Acute Inflammation/Sepsis (Ferritin falsely elevated — rely on TSAT & sTfR!)', lvl: 'amber' });
+        } else if (state.comorbidity === 'cirrhosis_etoh') {
+          warnings.push({ txt: 'Comorbidity: +Alcohol/Cirrhosis (↑GGT, ↓PLT, ↓Albumin, ↑INR)', lvl: 'amber' });
+        } else if (state.comorbidity === 'ckd4') {
+          warnings.push({ txt: 'Comorbidity: +CKD Stage 4 (↑Crea, ↑K⁺, ↑PO₄, ↓HCO₃⁻, ↓Hb)', lvl: 'amber' });
+        } else if (state.comorbidity === 'dehydration') {
+          warnings.push({ txt: 'Comorbidity: +Dehydration / Hemoconcentration (↑Hb, ↑Alb, ↑Na⁺, ↑Urea)', lvl: 'amber' });
+        }
+        if (state.artifacts.hemolyzed) {
+          warnings.push({ txt: 'ARTIFACT: Hemolyzed Tube — Spurious ↑↑K⁺, ↑LDH, ↑AST, ↓Haptoglobin. Check serum index & ECG before treating K⁺!', lvl: 'rose' });
+        }
+        if (state.artifacts.edta_clump) {
+          warnings.push({ txt: 'ARTIFACT: EDTA Platelet Clumping — Spurious PLT 19 G/L (clumps visible on smear). Redraw in Citrate tube!', lvl: 'rose' });
+        }
+        if (state.artifacts.tourniquet) {
+          warnings.push({ txt: 'ARTIFACT: Prolonged Tourniquet Stasis — Hemoconcentration falsely raises Albumin, Total Ca²⁺ & Hb.', lvl: 'rose' });
+        }
+      }
+      const editCount = Object.keys(state.manualOverrides).length;
+      if (editCount > 0) {
+        warnings.push({ txt: `Sandbox Active: ${editCount} analyte${editCount > 1 ? 's' : ''} manually perturbed`, lvl: 'teal' });
+      }
+
+      const warnWrap = document.getElementById('banner-warnings');
+      if (warnings.length === 0) {
+        warnWrap.classList.add('hidden');
+        warnWrap.innerHTML = '';
+      } else {
+        warnWrap.classList.remove('hidden');
+        const wCls = {
+          amber: 'border-amber-500/35 bg-amber-500/10 text-amber-800 dark:text-amber-300',
+          rose: 'border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-300',
+          teal: 'border-tealLight/35 dark:border-tealDark/35 bg-teal-500/10 text-tealLight dark:text-tealDark'
+        };
+        warnWrap.innerHTML = warnings.map(w =>
+          `<span class="font-mono text-[10px] px-2 py-0.5 rounded-md border ${wCls[w.lvl]}">${w.txt}</span>`
+        ).join('');
+      }
+    }
+
+    function renderLabSheet() {
+      const container = document.getElementById('lab-sheet-body');
+      const q = state.searchQuery.trim().toLowerCase();
+      const sex = state.sex;
+      const unit = state.unit;
+
+      const filtered = ANALYTES.filter(a => {
+        if (state.activeCategory !== 'all' && a.category !== state.activeCategory) return false;
+        if (state.abnormalOnly && !state.flags[a.id].abnormal) return false;
+        if (q && !(a.name.toLowerCase().includes(q) || a.short.toLowerCase().includes(q) || a.id.includes(q))) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="p-8 text-center text-xs text-zinc-500 dark:text-zinc-400">
+            No analytes match the current filter. Try switching from <strong class="text-tealLight dark:text-tealDark">Abnormal Only</strong> to <strong>All</strong> or clearing your search.
+          </div>
+        `;
+        return;
+      }
+
+      // Group filtered analytes by category in canonical order
+      const catGroups = CATEGORIES.filter(c => c.id !== 'all');
+      let html = '';
+
+      for (const cat of catGroups) {
+        const items = filtered.filter(a => a.category === cat.id);
+        if (items.length === 0) continue;
+
+        html += `
+          <div class="px-3.5 py-1.5 bg-zinc-100/75 dark:bg-elevatedDark/80 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm">
+            <span>${cat.label}</span>
+            <span class="font-normal">${items.length}</span>
+          </div>
+        `;
+
+        for (const a of items) {
+          const v = state.values[a.id];
+          const base = state.baselines[a.id];
+          const f = state.flags[a.id];
+          const [lo, hi] = getRefRange(a, sex);
+          const isSelected = a.id === state.selectedAnalyteId;
+          const isEdited = a.id in state.manualOverrides;
+
+          // Precision horizontal range bar percentages
+          const loPct = clamp(((lo - a.minDisp) / (a.maxDisp - a.minDisp)) * 100, 0, 100);
+          const hiPct = clamp(((hi - a.minDisp) / (a.maxDisp - a.minDisp)) * 100, 0, 100);
+          const basePct = clamp(((base - a.minDisp) / (a.maxDisp - a.minDisp)) * 100, 1, 99);
+          const critLoPct = a.critLow !== null ? clamp(((a.critLow - a.minDisp) / (a.maxDisp - a.minDisp)) * 100, 1, 99) : null;
+          const critHiPct = a.critHigh !== null ? clamp(((a.critHigh - a.minDisp) / (a.maxDisp - a.minDisp)) * 100, 1, 99) : null;
+
+          const valCls = f.level === 'crit'
+            ? 'text-rose-600 dark:text-rose-400 font-semibold'
+            : (f.level === 'warn' ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-[#09090b] dark:text-[#f4f4f5] font-medium');
+
+          const flagPill = f.level === 'normal'
+            ? ''
+            : `<span class="font-mono text-[9px] font-semibold px-1.5 py-0.2 rounded border shrink-0 ${
+                f.level === 'crit'
+                  ? 'border-rose-500/40 bg-rose-500/15 text-rose-700 dark:text-rose-300'
+                  : 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+              }">${f.code}</span>`;
+
+          const dotBg = f.level === 'crit'
+            ? 'bg-rose-500 ring-rose-500/30'
+            : (f.level === 'warn' ? 'bg-amber-500 ring-amber-500/30' : 'bg-tealLight dark:bg-tealDark ring-teal-500/25');
+
+          html += `
+            <button data-select-analyte="${a.id}" type="button" class="lab-row w-full text-left px-3.5 py-2 grid grid-cols-12 gap-2 items-center transition-colors focus:outline-none ${
+              isSelected
+                ? 'bg-teal-500/[0.08] dark:bg-teal-400/[0.10] border-l-2 border-l-tealLight dark:border-l-tealDark'
+                : 'hover:bg-zinc-50 dark:hover:bg-zinc-900/60 border-l-2 border-l-transparent'
+            }">
+              <!-- Name & Short Code -->
+              <div class="col-span-6 sm:col-span-4 min-w-0 flex items-center gap-1.5">
+                <span class="text-xs font-medium text-[#09090b] dark:text-[#f4f4f5] truncate">${a.name}</span>
+                <span class="font-mono text-[9.5px] text-zinc-400 dark:text-zinc-500 shrink-0">${a.short}</span>
+                ${isEdited ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="Manually perturbed in sandbox"></span>' : ''}
+              </div>
+
+              <!-- Value + Unit + Flag -->
+              <div class="col-span-6 sm:col-span-3 flex items-center justify-end gap-1.5 font-mono tabular-nums min-w-0">
+                ${flagPill}
+                <span class="text-xs ${valCls}">${formatValue(a, v, unit)}</span>
+                <span class="text-[9.5px] text-zinc-400 dark:text-zinc-500 shrink-0">${getUnitStr(a, unit)}</span>
+              </div>
+
+              <!-- Ref Range -->
+              <div class="hidden sm:block sm:col-span-2 text-right font-mono text-[10.5px] text-zinc-400 dark:text-zinc-500 tabular-nums truncate">
+                ${formatRef(a, sex, unit)}
+              </div>
+
+              <!-- Precision Horizontal Range Bar -->
+              <div class="col-span-12 sm:col-span-3 pl-0 sm:pl-2 flex items-center">
+                <div class="relative w-full h-2 rounded-full bg-zinc-200/80 dark:bg-zinc-800/90 overflow-visible">
+                  <!-- Physiological Normal Zone -->
+                  <div class="absolute top-0 bottom-0 rounded-full bg-emerald-500/25 dark:bg-teal-400/20 border-x border-emerald-500/40 dark:border-teal-400/35" style="left:${loPct.toFixed(1)}%; width:${Math.max(2, hiPct - loPct).toFixed(1)}%"></div>
+                  <!-- Critical Panic Threshold Ticks -->
+                  ${critLoPct !== null ? `<div class="absolute -top-0.5 -bottom-0.5 w-0.5 bg-rose-500/60" style="left:${critLoPct.toFixed(1)}%"></div>` : ''}
+                  ${critHiPct !== null ? `<div class="absolute -top-0.5 -bottom-0.5 w-0.5 bg-rose-500/60" style="left:${critHiPct.toFixed(1)}%"></div>` : ''}
+                  <!-- Faint Baseline Ghost Tick -->
+                  <div class="absolute top-0 bottom-0 w-0.5 bg-zinc-500/45 dark:bg-zinc-400/40" style="left:${basePct.toFixed(1)}%"></div>
+                  <!-- Live Current Value Dot -->
+                  <div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full ring-2 ${dotBg}" style="left:${f.pct.toFixed(1)}%"></div>
+                </div>
+              </div>
+            </button>
+          `;
+        }
+      }
+
+      container.innerHTML = html;
+
+      container.querySelectorAll('[data-select-analyte]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.selectedAnalyteId = btn.dataset.selectAnalyte;
+          renderLabSheet();
+          renderInspector();
+        });
+      });
+
+      const hasEdits = Object.keys(state.manualOverrides).length > 0;
+      document.getElementById('btn-clear-edits').classList.toggle('hidden', !hasEdits);
+    }
+
+    function renderInspector() {
+      const a = ANALYTE_MAP[state.selectedAnalyteId] || ANALYTES[0];
+      const v = state.values[a.id];
+      const f = state.flags[a.id];
+      const cat = CATEGORIES.find(c => c.id === a.category);
+
+      document.getElementById('insp-name').textContent = a.name;
+      document.getElementById('insp-code').textContent = a.short;
+      document.getElementById('insp-cat').textContent = cat ? cat.label : a.category;
+
+      const valEl = document.getElementById('insp-val');
+      valEl.textContent = `${formatValue(a, v, state.unit)} ${getUnitStr(a, state.unit)}`;
+      valEl.className = `font-mono text-sm font-semibold tabular-nums ${
+        f.level === 'crit' ? 'text-rose-600 dark:text-rose-400' : (f.level === 'warn' ? 'text-amber-600 dark:text-amber-400' : 'text-tealLight dark:text-tealDark')
+      }`;
+      document.getElementById('insp-ref').textContent = `Ref ${formatRef(a, state.sex, state.unit)} ${getUnitStr(a, state.unit)}`;
+
+      // Sync Sandbox Slider bounds & value (operates in SI internally)
+      const slider = document.getElementById('insp-slider');
+      slider.min = a.minDisp;
+      slider.max = a.maxDisp;
+      slider.step = a.step;
+      slider.value = v;
+
+      // Structured Clinical Reference Body
+      document.getElementById('insp-body').innerHTML = `
+        <div class="space-y-1">
+          <div class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-tealLight dark:text-tealDark">Physiology</div>
+          <p class="text-[11.5px] leading-relaxed text-zinc-700 dark:text-zinc-300">${a.physiology}</p>
+        </div>
+
+        <div class="space-y-1 pt-2 border-t border-[#e4e4e7]/70 dark:border-borderDark/70">
+          <div class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">Clinical Use</div>
+          <p class="text-[11.5px] leading-relaxed text-zinc-700 dark:text-zinc-300">${a.clinicalUse}</p>
+        </div>
+
+        <div class="space-y-1 pt-2 border-t border-[#e4e4e7]/70 dark:border-borderDark/70">
+          <div class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-600 dark:text-rose-400">&uarr; Elevated Causes</div>
+          <ul class="space-y-1 text-[11.5px] text-zinc-700 dark:text-zinc-300 list-disc pl-4">
+            ${a.highCauses.map(c => `<li>${c}</li>`).join('')}
+          </ul>
+        </div>
+
+        <div class="space-y-1 pt-2 border-t border-[#e4e4e7]/70 dark:border-borderDark/70">
+          <div class="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-600 dark:text-sky-400">&darr; Decreased Causes</div>
+          <ul class="space-y-1 text-[11.5px] text-zinc-700 dark:text-zinc-300 list-disc pl-4">
+            ${a.lowCauses.map(c => `<li>${c}</li>`).join('')}
+          </ul>
+        </div>
+
+        <div class="p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/[0.07] space-y-1">
+          <div class="font-mono text-[9.5px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">Lab Pearl &amp; Pre-Analytical Trap</div>
+          <p class="text-[11.5px] leading-snug text-zinc-700 dark:text-zinc-200">${a.pearls}</p>
+        </div>
+      `;
+    }
+
+    /* =========================================================================
+       9. LEFT SIDEBAR PATHOLOGY LIST & FILTER BUILDERS
+       ========================================================================= */
+    function renderPathologyList() {
+      const el = document.getElementById('pathology-list');
+      const q = state.pathologySearch.trim().toLowerCase();
+      const filtered = PATHOLOGIES.filter(p =>
+        !q || p.name.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q) || p.group.toLowerCase().includes(q)
+      );
+
+      if (filtered.length === 0) {
+        el.innerHTML = '<div class="p-3 text-xs text-zinc-400 text-center">No matching pathologies.</div>';
+        return;
+      }
+
+      const groups = [...new Set(filtered.map(p => p.group))];
+      el.innerHTML = groups.map(grp => `
+        <div class="pt-1.5 first:pt-0">
+          <div class="px-1.5 pb-1 font-mono text-[9.5px] uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">${grp}</div>
+          <div class="space-y-1">
+            ${filtered.filter(p => p.group === grp).map(p => {
+              const active = p.id === state.pathologyId;
+              return `
+                <button data-patho="${p.id}" type="button" class="w-full text-left px-2.5 py-2 rounded-lg border transition-colors flex items-center justify-between gap-2 ${
+                  active
+                    ? 'border-tealLight/60 dark:border-tealDark/50 bg-teal-500/[0.08] text-[#09090b] dark:text-[#f4f4f5]'
+                    : 'border-transparent hover:border-[#e4e4e7] dark:hover:border-borderDark hover:bg-zinc-50 dark:hover:bg-zinc-900/50 text-zinc-700 dark:text-zinc-300'
+                }">
+                  <span class="text-xs font-medium truncate">${p.name}</span>
+                  <span class="font-mono text-[9px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-elevatedDark text-zinc-500 dark:text-zinc-400 border border-[#e4e4e7]/80 dark:border-borderDark/80 shrink-0">${p.tag}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `).join('');
+
+      el.querySelectorAll('[data-patho]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.pathologyId = btn.dataset.patho;
+          state.manualOverrides = {};
+          renderPathologyList();
+          refreshAll();
+        });
+      });
+    }
+
+    function renderCategoryPills() {
+      const el = document.getElementById('category-pills');
+      el.innerHTML = CATEGORIES.map(cat => {
+        const on = cat.id === state.activeCategory;
+        return `
+          <button data-cat="${cat.id}" type="button" class="px-2 py-0.5 rounded-md border text-[10.5px] font-medium transition-colors ${
+            on
+              ? 'border-tealLight/50 dark:border-tealDark/50 bg-teal-500/12 text-tealLight dark:text-tealDark'
+              : 'border-[#e4e4e7] dark:border-borderDark bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-zinc-200'
+          }">${cat.label}</button>
+        `;
+      }).join('');
+
+      el.querySelectorAll('[data-cat]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.activeCategory = btn.dataset.cat;
+          renderCategoryPills();
+          renderLabSheet();
+        });
+      });
+    }
+
+    function syncControlStates() {
+      // App Mode buttons
+      document.querySelectorAll('.appmode-btn').forEach(b => {
+        const on = b.dataset.appmode === state.appMode;
+        b.className = `appmode-btn px-3 h-full rounded-md transition-colors flex items-center gap-1.5 ${
+          on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-[#09090b] dark:hover:text-zinc-200'
+        }`;
+      });
+
+      // Sex buttons
+      document.querySelectorAll('.sex-btn').forEach(b => {
+        const on = b.dataset.sex === state.sex;
+        b.className = `sex-btn px-2 h-full rounded-md transition-colors ${
+          on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm' : 'text-zinc-500 dark:text-zinc-400'
+        }`;
+      });
+
+      // Unit buttons
+      document.querySelectorAll('.unit-btn').forEach(b => {
+        const on = b.dataset.unit === state.unit;
+        b.className = `unit-btn px-2 h-full rounded-md transition-colors ${
+          on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm' : 'text-zinc-500 dark:text-zinc-400'
+        }`;
+      });
+
+      // Abnormal Only buttons
+      document.querySelectorAll('.abn-btn').forEach(b => {
+        const on = (b.dataset.abnfilter === 'abnormal') === state.abnormalOnly;
+        b.className = `abn-btn px-2 h-full rounded transition-colors ${
+          on ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm' : 'text-zinc-500 dark:text-zinc-400'
+        }`;
+      });
+
+      // Artifact pills
+      document.querySelectorAll('.artifact-btn').forEach(b => {
+        const on = Boolean(state.artifacts[b.dataset.artifact]);
+        b.className = `artifact-btn px-2 py-1 rounded-md border text-[11px] font-medium transition-colors ${
+          on
+            ? 'border-rose-500/60 bg-rose-500/15 text-rose-700 dark:text-rose-300'
+            : 'border-[#e4e4e7] dark:border-borderDark bg-zinc-50 dark:bg-obsidian text-zinc-600 dark:text-zinc-400 hover:border-rose-500/40'
+        }`;
+      });
+
+      // Toggle Left Explorer vs Quiz Panel
+      document.getElementById('left-explorer-panel').classList.toggle('hidden', state.appMode !== 'explorer');
+      document.getElementById('left-quiz-panel').classList.toggle('hidden', state.appMode !== 'quiz');
+
+      // Nav streak badge
+      const sb = document.getElementById('nav-quiz-streak');
+      sb.textContent = `🔥 ${state.quiz.streak}`;
+      sb.classList.toggle('hidden', state.quiz.streak === 0);
+    }
+
+    /* =========================================================================
+       10. WARD ROUNDS QUIZ CONTROLLER
+       ========================================================================= */
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function startQuizCase(advance = false) {
+      if (state.quiz.order.length === 0) {
+        state.quiz.order = shuffleArray(WARD_CASES.map((_, i) => i));
+      }
+      if (advance) {
+        state.quiz.order.shift();
+        if (state.quiz.order.length === 0) {
+          state.quiz.order = shuffleArray(WARD_CASES.map((_, i) => i));
+        }
+        state.quiz.caseNumber++;
+      }
+
+      const idx = state.quiz.order[0];
+      const wCase = WARD_CASES[idx];
+      state.quiz.caseIdx = idx;
+      state.quiz.answered = false;
+      state.quiz.selectedAnswer = null;
+      state.quiz.hintShown = false;
+      state.sex = wCase.sex;
+      state.manualOverrides = {};
+
+      // Generate subtle realistic biological jitter (±3–6%) per analyte (kept subtle for electrolytes)
+      const jMap = {};
+      for (const a of ANALYTES) {
+        const maxJ = (a.id === 'na' || a.id === 'ca' || a.id === 'k' || a.id === 'cl' || a.id === 'hco3' || a.id === 'inr') ? 0.015 : 0.05;
+        jMap[a.id] = 1 + (Math.random() * 2 - 1) * maxJ;
+      }
+      state.quiz.jitterMap = jMap;
+      state.quiz.options = shuffleArray([wCase.pathologyId, ...wCase.distractors]);
+
+      renderQuizPanel();
+      syncControlStates();
+      refreshAll();
+    }
+
+    function renderQuizPanel() {
+      const q = state.quiz;
+      const wCase = WARD_CASES[q.caseIdx];
+      const correctPatho = PATHOLOGIES.find(p => p.id === wCase.pathologyId);
+
+      document.getElementById('quiz-score').textContent = `${q.score}/${q.total}`;
+      document.getElementById('quiz-streak').textContent = String(q.streak);
+      document.getElementById('quiz-case-num').textContent = `Case #${q.caseNumber}`;
+      document.getElementById('quiz-patient-demo').textContent = `${wCase.age}y ${wCase.sex}`;
+      document.getElementById('quiz-vignette').textContent = wCase.vignette;
+      document.getElementById('quiz-vitals').textContent = wCase.vitals;
+
+      const hintBox = document.getElementById('quiz-hint-box');
+      hintBox.textContent = wCase.hint;
+      hintBox.classList.toggle('hidden', !q.hintShown);
+
+      const optsEl = document.getElementById('quiz-options');
+      optsEl.innerHTML = q.options.map((pid, idx) => {
+        const pObj = PATHOLOGIES.find(x => x.id === pid);
+        const letter = String.fromCharCode(65 + idx);
+        let cls = 'border-[#e4e4e7] dark:border-borderDark bg-zinc-50/50 dark:bg-obsidian/60 hover:border-tealLight/60 dark:hover:border-tealDark/60 text-[#09090b] dark:text-[#f4f4f5]';
+
+        if (q.answered) {
+          if (pid === wCase.pathologyId) {
+            cls = 'border-emerald-500/70 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 font-semibold';
+          } else if (pid === q.selectedAnswer) {
+            cls = 'border-rose-500/70 bg-rose-500/15 text-rose-800 dark:text-rose-200';
+          } else {
+            cls = 'border-[#e4e4e7]/60 dark:border-borderDark/60 opacity-50 text-zinc-500';
+          }
+        }
+
+        return `
+          <button data-qopt="${pid}" type="button" ${q.answered ? 'disabled' : ''} class="w-full text-left px-3 py-2.5 rounded-lg border text-xs transition-colors flex items-center gap-2.5 ${cls}">
+            <span class="font-mono text-[10.5px] w-5 h-5 rounded border border-current/30 flex items-center justify-center shrink-0">${letter}</span>
+            <span class="leading-snug">${pObj ? pObj.name : pid}</span>
+          </button>
+        `;
+      }).join('');
+
+      optsEl.querySelectorAll('[data-qopt]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (q.answered) return;
+          q.answered = true;
+          q.selectedAnswer = btn.dataset.qopt;
+          q.total++;
+          const isCorrect = q.selectedAnswer === wCase.pathologyId;
+          if (isCorrect) {
+            q.score++;
+            q.streak++;
+          } else {
+            q.streak = 0;
+          }
+          renderQuizPanel();
+          syncControlStates();
+          renderPathologyBanner();
+        });
+      });
+
+      const fbEl = document.getElementById('quiz-feedback');
+      const inspBtn = document.getElementById('btn-quiz-inspect');
+      if (q.answered) {
+        const isCorrect = q.selectedAnswer === wCase.pathologyId;
+        fbEl.className = `p-3 rounded-lg border space-y-1.5 text-xs leading-relaxed ${
+          isCorrect
+            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100'
+            : 'border-rose-500/40 bg-rose-500/10 text-rose-900 dark:text-rose-100'
+        }`;
+        fbEl.innerHTML = `
+          <div class="font-mono text-[10.5px] font-semibold uppercase tracking-wider">
+            ${isCorrect ? '✓ Correct Diagnosis' : `✗ Incorrect — Diagnosis: ${correctPatho.name}`}
+          </div>
+          <p class="text-[11.5px] opacity-95">${correctPatho.summary}</p>
+          <ul class="list-disc pl-4 space-y-0.5 text-[11px] font-mono opacity-90">
+            ${correctPatho.keyClues.map(c => `<li>${c}</li>`).join('')}
+          </ul>
+        `;
+        fbEl.classList.remove('hidden');
+        inspBtn.classList.remove('hidden');
+      } else {
+        fbEl.classList.add('hidden');
+        inspBtn.classList.add('hidden');
+      }
+    }
+
+    function refreshAll() {
+      computeAllValues();
+      renderDerivedIndices();
+      renderPathologyBanner();
+      renderLabSheet();
+      renderInspector();
+      drawBloodSmear();
+    }
+
+    /* =========================================================================
+       11. EVENT WIRING & STRICT ANTI-STRETCH RESIZE OBSERVER
+       ========================================================================= */
+    function wireEvents() {
+      // Theme Toggle (persisted to medlab-theme & theme)
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        const val = isDark ? 'dark' : 'light';
+        try {
+          localStorage.setItem('medlab-theme', val);
+          localStorage.setItem('theme', val);
+        } catch (_) {}
+        drawBloodSmear();
+      });
+
+      // Mode Switcher (Lab Explorer | Ward Rounds Quiz)
+      document.querySelectorAll('.appmode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = btn.dataset.appmode;
+          if (target === state.appMode) return;
+          state.appMode = target;
+          if (target === 'quiz') {
+            startQuizCase(false);
+          } else {
+            state.manualOverrides = {};
+            syncControlStates();
+            renderPathologyList();
+            refreshAll();
+          }
+        });
+      });
+
+      // Sex Toggle
+      document.querySelectorAll('.sex-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.sex = btn.dataset.sex;
+          syncControlStates();
+          refreshAll();
+        });
+      });
+
+      // Unit Toggle (SI / US)
+      document.querySelectorAll('.unit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.unit = btn.dataset.unit;
+          syncControlStates();
+          renderDerivedIndices();
+          renderLabSheet();
+          renderInspector();
+        });
+      });
+
+      // Reset All
+      document.getElementById('btn-reset-all').addEventListener('click', () => {
+        state.appMode = 'explorer';
+        state.pathologyId = 'normal';
+        state.comorbidity = 'none';
+        state.artifacts = { hemolyzed: false, edta_clump: false, tourniquet: false };
+        state.manualOverrides = {};
+        state.activeCategory = 'all';
+        state.abnormalOnly = false;
+        state.searchQuery = '';
+        state.pathologySearch = '';
+        document.getElementById('comorbidity-select').value = 'none';
+        document.getElementById('analyte-search').value = '';
+        document.getElementById('pathology-search').value = '';
+        syncControlStates();
+        renderCategoryPills();
+        renderPathologyList();
+        refreshAll();
+      });
+
+      // Comorbidity Dropdown
+      document.getElementById('comorbidity-select').addEventListener('change', e => {
+        state.comorbidity = e.target.value;
+        refreshAll();
+      });
+
+      // Artifact Switches
+      document.querySelectorAll('.artifact-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const k = btn.dataset.artifact;
+          state.artifacts[k] = !state.artifacts[k];
+          syncControlStates();
+          refreshAll();
+        });
+      });
+
+      // Pathology Search
+      document.getElementById('pathology-search').addEventListener('input', e => {
+        state.pathologySearch = e.target.value;
+        renderPathologyList();
+      });
+
+      // Analyte Search + '/' Shortcut
+      const searchInput = document.getElementById('analyte-search');
+      searchInput.addEventListener('input', e => {
+        state.searchQuery = e.target.value;
+        renderLabSheet();
+      });
+      document.addEventListener('keydown', e => {
+        if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'SELECT') {
+          e.preventDefault();
+          searchInput.focus();
+          searchInput.select();
+        }
+      });
+
+      // All vs Abnormal Only Toggle
+      document.querySelectorAll('.abn-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.abnormalOnly = btn.dataset.abnfilter === 'abnormal';
+          syncControlStates();
+          renderLabSheet();
+        });
+      });
+
+      // Sandbox Slider Perturbation
+      document.getElementById('insp-slider').addEventListener('input', e => {
+        const a = ANALYTE_MAP[state.selectedAnalyteId];
+        if (!a) return;
+        state.manualOverrides[a.id] = parseFloat(e.target.value);
+        refreshAll();
+      });
+
+      // Reset Single Analyte Override
+      document.getElementById('btn-reset-single').addEventListener('click', () => {
+        delete state.manualOverrides[state.selectedAnalyteId];
+        refreshAll();
+      });
+
+      // Clear All Sandbox Edits
+      document.getElementById('btn-clear-edits').addEventListener('click', () => {
+        state.manualOverrides = {};
+        refreshAll();
+      });
+
+      // Ward Rounds Quiz Controls
+      document.getElementById('btn-quiz-hint').addEventListener('click', () => {
+        state.quiz.hintShown = !state.quiz.hintShown;
+        renderQuizPanel();
+      });
+      document.getElementById('btn-quiz-next').addEventListener('click', () => {
+        startQuizCase(true);
+      });
+      document.getElementById('btn-quiz-inspect').addEventListener('click', () => {
+        const wCase = WARD_CASES[state.quiz.caseIdx];
+        state.appMode = 'explorer';
+        state.pathologyId = wCase.pathologyId;
+        state.sex = wCase.sex;
+        state.manualOverrides = {};
+        syncControlStates();
+        renderPathologyList();
+        refreshAll();
+      });
+
+      // STRICT ZERO-STRETCH RESIZE OBSERVER: Observe WRAPPERS ONLY!
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(entries => {
+          for (const entry of entries) {
+            if (entry.target === smearWrap && syncSmearCanvas()) {
+              drawBloodSmear();
+            }
+          }
+        });
+        ro.observe(smearWrap);
+      }
+
+      window.addEventListener('resize', () => {
+        if (syncSmearCanvas()) drawBloodSmear();
+      });
+    }
+
+    // Bootstrap cleanly on window load
+    window.addEventListener('load', () => {
+      wireEvents();
+      syncControlStates();
+      renderCategoryPills();
+      renderPathologyList();
+      syncSmearCanvas();
+      refreshAll();
+    });
+  })();
+  </script>
+</body>
+</html>
