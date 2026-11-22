@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="de" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedLab — PharmaLab (SJ3 HS2026 Bern/Fribourg)</title>
+
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') document.documentElement.classList.remove('dark');
+        else document.documentElement.classList.add('dark');
+      } catch (_) {}
+    })();
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            obsidian: '#09090b',
+            surfaceDark: '#111113',
+            borderDark: '#27272a',
+            canvasLight: '#fafafa',
+            tealDark: '#2dd4bf',
+            tealLight: '#0f766e',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      overflow-x: hidden;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+    }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(113,113,122,0.28); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(113,113,122,0.48); }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-canvasLight text-zinc-900 dark:bg-obsidian dark:text-zinc-100 transition-colors duration-200 selection:bg-teal-500/20">
+
+  <!-- ==================== 1. STICKY HEADER ==================== -->
+  <header class="sticky top-0 z-40 h-14 w-full border-b border-zinc-200/80 dark:border-zinc-800/80 bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors shrink-0">
+          &larr; MedLab
+        </a>
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-[15px] font-semibold tracking-tight text-zinc-950 dark:text-white shrink-0">PharmaLab</span>
+          <span class="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[10px] uppercase tracking-wider bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/25 truncate">SJ3 HS2026 · PHA01–17</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <div class="hidden md:flex items-center gap-2 px-2.5 h-8 rounded-lg border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark text-[11px] font-mono">
+          <span class="text-zinc-400">Sicher:</span>
+          <span id="hdr-mastery-count" class="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">0 / 0</span>
+          <div class="w-16 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+            <div id="hdr-mastery-bar" class="h-full bg-emerald-500 transition-all duration-300" style="width:0%"></div>
+          </div>
+        </div>
+        <button id="theme-toggle" type="button" aria-label="Theme wechseln" class="w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white transition-colors">
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. MAIN WORKSPACE ==================== -->
+  <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4">
+
+    <!-- KPI STRIP -->
+    <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-3">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400">Wirkstoffliste HS26</div>
+        <div id="kpi-total" class="mt-0.5 text-lg font-mono font-semibold tabular-nums text-zinc-950 dark:text-white">—</div>
+        <div class="text-[11px] text-zinc-500">10 Kapitel · Bern &amp; Fribourg</div>
+      </div>
+      <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-3">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400">Lernfortschritt</div>
+        <div id="kpi-mastered" class="mt-0.5 text-lg font-mono font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">0%</div>
+        <div id="kpi-mastered-sub" class="text-[11px] text-zinc-500">0 sicher · 0 unsicher</div>
+      </div>
+      <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-3">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400">Prüfungs-Antidote</div>
+        <div id="kpi-antidotes" class="mt-0.5 text-lg font-mono font-semibold tabular-nums text-rose-600 dark:text-rose-400">—</div>
+        <div class="text-[11px] text-zinc-500">Direkt im Antidot-Tab abfragbar</div>
+      </div>
+      <div class="rounded-xl border border-teal-500/30 dark:border-teal-500/25 bg-teal-500/5 p-3">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-tealLight dark:text-tealDark">Aktiver Filter</div>
+        <div id="kpi-shown" class="mt-0.5 text-lg font-mono font-semibold tabular-nums text-zinc-950 dark:text-white">—</div>
+        <div id="kpi-shown-sub" class="text-[11px] text-zinc-500">Alle 10 Kapitel</div>
+      </div>
+    </section>
+
+    <!-- TOP MODE TABS -->
+    <nav class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-zinc-200/80 dark:border-zinc-800/80" aria-label="PharmaLab Ansichten">
+      <button type="button" data-tab="explorer" class="main-tab shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">1. Wirkstoff-Explorer</button>
+      <button type="button" data-tab="matrices" class="main-tab shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">2. Vergleichs-Matrizen</button>
+      <button type="button" data-tab="antidotes" class="main-tab shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">3. Antidote &amp; PK/CYP-Fallen</button>
+      <button type="button" data-tab="quiz" class="main-tab shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">4. Aktiv-Trainer &amp; MC-Quiz</button>
+    </nav>
+
+    <!-- ==================== TAB 1: WIRKSTOFF-EXPLORER ==================== -->
+    <section id="panel-explorer" class="main-panel grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      <div class="lg:col-span-7 xl:col-span-8 space-y-3 min-w-0">
+        <!-- Search & Status Filter Bar -->
+        <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-3.5 space-y-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <input id="drug-search" type="search" placeholder="Suche nach Wirkstoff, Rezeptor, Mechanismus, UAW, Antidot, CYP..." class="h-9 flex-1 min-w-[200px] px-3 rounded-lg text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-teal-500" />
+            <select id="mastery-filter" class="h-9 px-2.5 rounded-lg text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none">
+              <option value="all">Status: Alle</option>
+              <option value="todo">Noch offen (Neu/Unsicher)</option>
+              <option value="unsure">Nur Unsicher</option>
+              <option value="known">Nur Sicher</option>
+              <option value="antidote">Mit Antidot</option>
+            </select>
+          </div>
+          <!-- 10 Chapter Filter Chips -->
+          <div id="chapter-chips" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
+        <!-- Grouped Drug List -->
+        <div id="drug-list" class="space-y-3"></div>
+      </div>
+
+      <!-- Sticky Right Detail Inspector -->
+      <aside class="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-20 rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-3.5">
+        <div class="flex items-start justify-between gap-2 pb-3 border-b border-zinc-200/70 dark:border-zinc-800/70">
+          <div class="min-w-0">
+            <div id="insp-chapter" class="font-mono text-[10px] uppercase tracking-wider text-tealLight dark:text-tealDark">Wirkstoff-Inspector</div>
+            <h2 id="insp-name" class="text-lg font-semibold tracking-tight text-zinc-950 dark:text-white leading-tight mt-0.5">Substanz auswählen</h2>
+            <p id="insp-class" class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Klicke auf einen Wirkstoff links für Mechanismus, UAW, PK/PD und Anki-Export.</p>
+          </div>
+          <button id="btn-copy-anki" type="button" class="hidden shrink-0 px-2.5 py-1.5 rounded-lg font-mono text-[10.5px] border border-teal-500/35 bg-teal-500/10 text-tealLight dark:text-tealDark hover:bg-teal-500/20 transition-colors" title="Als Anki Cloze in die Zwischenablage kopieren">
+            Anki Cloze
+          </button>
+        </div>
+
+        <!-- Mastery Self-Rating Controls -->
+        <div id="insp-mastery-row" class="hidden flex items-center justify-between gap-2 p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900/70 border border-zinc-200/70 dark:border-zinc-800/70">
+          <span class="font-mono text-[10px] uppercase tracking-wider text-zinc-500">Lernstatus:</span>
+          <div class="flex items-center gap-1">
+            <button type="button" data-rate="new" class="rate-btn px-2 py-1 rounded text-[11px] font-medium border transition-colors">Neu</button>
+            <button type="button" data-rate="unsure" class="rate-btn px-2 py-1 rounded text-[11px] font-medium border transition-colors">Unsicher</button>
+            <button type="button" data-rate="known" class="rate-btn px-2 py-1 rounded text-[11px] font-medium border transition-colors">Sicher</button>
+          </div>
+        </div>
+
+        <div id="insp-body" class="space-y-3 text-xs leading-relaxed"></div>
+        <div id="insp-links" class="pt-2.5 border-t border-zinc-200/70 dark:border-zinc-800/70 flex flex-wrap gap-1.5 empty:hidden"></div>
+      </aside>
+    </section>
+
+    <!-- ==================== TAB 2: VERGLEICHS-MATRIZEN ==================== -->
+    <section id="panel-matrices" class="main-panel hidden space-y-4">
+      <div class="flex flex-wrap items-center gap-1.5">
+        <button type="button" data-mat="adreno" class="mat-btn px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors">Adrenozeptoren (α/β)</button>
+        <button type="button" data-mat="steroids" class="mat-btn px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors">Glukokortikoid-Potenzen</button>
+        <button type="button" data-mat="diuretics" class="mat-btn px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors">Diuretika &amp; Nephron</button>
+        <button type="button" data-mat="anticoag" class="mat-btn px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors">Hämostase &amp; Antikoagulation</button>
+        <button type="button" data-mat="aar" class="mat-btn px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors">Antiarrhythmika (Vaughan-Williams)</button>
+        <button type="button" data-mat="viro" class="mat-btn px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors">Virostatika-Angriffspunkte</button>
+      </div>
+      <div id="matrix-container" class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 overflow-x-auto"></div>
+    </section>
+
+    <!-- ==================== TAB 3: ANTIDOTE & PK/CYP-FALLEN ==================== -->
+    <section id="panel-antidotes" class="main-panel hidden space-y-5">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-zinc-200/70 dark:border-zinc-800/70 pb-2">
+            <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">Prüfungsrelevante Antidote (HS2026)</h2>
+            <span class="font-mono text-[10px] text-rose-500 uppercase">High-Yield</span>
+          </div>
+          <div id="antidote-grid" class="space-y-2"></div>
+        </div>
+        <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-zinc-200/70 dark:border-zinc-800/70 pb-2">
+            <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">Klassische PK/PD-, Prodrug- &amp; Interaktionsfallen</h2>
+            <span class="font-mono text-[10px] text-amber-500 uppercase">Exam Traps</span>
+          </div>
+          <div id="traps-grid" class="space-y-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: AKTIV-TRAINER & MC-QUIZ ==================== -->
+    <section id="panel-quiz" class="main-panel hidden space-y-4">
+      <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-900 p-0.5 border border-zinc-200/80 dark:border-zinc-800 text-xs">
+            <button type="button" data-qmode="flash" class="qmode-btn px-3 py-1.5 rounded-md font-medium transition-colors">Lernkarten (Active Recall)</button>
+            <button type="button" data-qmode="mc" class="qmode-btn px-3 py-1.5 rounded-md font-medium transition-colors">MC-Prüfungstrainer</button>
+          </div>
+          <select id="quiz-chapter-select" class="h-8 px-2.5 rounded-lg text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none">
+            <option value="all">Alle 10 Kapitel</option>
+            <option value="todo">Nur noch nicht sichere</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-3 font-mono text-xs tabular-nums">
+          <span id="quiz-counter" class="text-zinc-500">0 / 0</span>
+          <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">Treffer: <b id="quiz-score">0</b></span>
+          <span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400">Streak: <b id="quiz-streak">0</b></span>
+          <button id="quiz-restart" type="button" class="px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-950 dark:hover:text-white transition-colors">Neu mischen</button>
+        </div>
+      </div>
+
+      <!-- Flashcard Arena -->
+      <div id="quiz-flash-box" class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-6 max-w-3xl mx-auto space-y-5"></div>
+
+      <!-- Multiple Choice Arena -->
+      <div id="quiz-mc-box" class="hidden rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-6 max-w-3xl mx-auto space-y-4"></div>
+    </section>
+
+  </main>
+
+  <footer class="w-full border-t border-zinc-200/80 dark:border-zinc-800/80 mt-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-zinc-500">
+      <span>Grundlage: Wirkstoffliste Medizin SJ3 HS2026 (Universitäten Bern &amp; Fribourg · PHA01–PHA17)</span>
+      <span class="font-mono">MedLab · Nur zu Lernzwecken</span>
+    </div>
+  </footer>
+
+  <!-- ==================== SCRIPT (STEP 1: KAPITEL 1–6 DATENBANK) ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    const CHAPTERS = [
+      { id: 1, short: '1. Adrenerg', name: '1. Adrenerges System' },
+      { id: 2, short: '2. Cholinerg', name: '2. Cholinerges System' },
+      { id: 3, short: '3. Herz/Inotrop', name: '3. Herzwirksame Substanzen' },
+      { id: 4, short: '4. Antiarrhythm.', name: '4. Antiarrhythmika' },
+      { id: 5, short: '5. RAAS & Diur.', name: '5. Renin-Angiotensin-System & Diuretika' },
+      { id: 6, short: '6. Gefässwirksam', name: '6. Gefässwirksame Substanzen' },
+      { id: 7, short: '7. Hämostase', name: '7. Hämostase & Thrombose' },
+      { id: 8, short: '8. NSAR & Steroide', name: '8. Antiphlogistika & Glukokortikoide' },
+      { id: 9, short: '9. Anti-Asthma', name: '9. Anti-Asthmatika' },
+      { id: 10, short: '10. Virostatika', name: '10. Virostatika' },
+    ];
+
+    // Vollständige Wirkstoffliste SJ3 HS2026 (Kapitel 1–6 in Step 1, Kapitel 7–10 in Step 2)
+    const DRUGS = [
+      // ==================== 1. ADRENERGES SYSTEM ====================
+      { id:'amphetamin', ch:1, sub:'Indirekte Sympathomimetika', name:'Amphetamin', target:'NET / DAT / VMAT2 (Noradrenalin & Dopamin ↑)',
+        moa:'Verdrängt Katecholamine aus synaptischen Vesikeln (VMAT2) und kehrt NET/DAT-Transport um -> starke nicht-vesikuläre Freisetzung von NA & DA; schwache MAO-Hemmung.',
+        ind:'ADHS (Lisdexamfetamin-Prodrug), Narkolepsie; hohes Missbrauchspotenzial.',
+        uaw:'Tachykardie, Hypertonie, Arrhythmien, Agitiertheit, Psychosen, Appetitverlust, Abhängigkeit, Tachyphylaxie (Vesikelentleerung).',
+        pk:'Lipophil -> hohe ZNS-Gängigkeit; renale Elimination pH-abhängig (saurer Urin beschleunigt Ausscheidung).', links:['pkpd.html'] },
+      { id:'cocain', ch:1, sub:'Indirekte Sympathomimetika', name:'Cocain', target:'NET / DAT / SERT-Inhibitor + Na+-Kanalblocker',
+        moa:'Hemmt die präsynaptische Wiederaufnahme von Noradrenalin, Dopamin und Serotonin (NET/DAT/SERT) + hemmt spannungsabhängige Na+-Kanäle (Lokalanästhetikum).',
+        ind:'Obsolet ausser seltene topische HNO-Schleimhautanästhesie mit Vasokonstriktion; toxikologisch hochrelevant.',
+        uaw:'Koronarspasmus / Myokardinfarkt, maligne Hypertonie, Arrhythmien, Krampfanfälle, Mydriasis, Psychose, Septumperforation.',
+        pk:'Ester-Lokalanästhetikum, rasche Hydrolyse durch Plasmacholinesterase; β-Blocker bei Kokain-Thoraxschmerz vermeiden (ungehemmte α1-Vasokonstriktion!).', links:['cardiosim.html','ecglab.html'] },
+      { id:'pseudoephedrin', ch:1, sub:'Indirekte Sympathomimetika', name:'Pseudoephedrin', target:'NA-Freisetzung (indirekt) + schwacher α/β-Agonist',
+        moa:'Fördert präsynaptische Noradrenalin-Freisetzung und wirkt schwach direkt an α1-Rezeptoren -> Vasokonstriktion der Nasenschleimhaut.',
+        ind:'Kurzzeitige systemische Abschwellung bei Rhinitis/Sinusitis (oft in Kombi-Erkältungspräparaten).',
+        uaw:'Hypertonie, Tachykardie, Unruhe, Schlafstörungen, Harnverhalt (BPH), selten ischämische Kolitis/Schlaganfall.',
+        pk:'Oral gut bioverfügbar; geringere ZNS-Gängigkeit als Ephedrin/Amphetamin; unverändert renal eliminiert; Doping-relevant.' },
+      { id:'adrenalin', ch:1, sub:'Körpereigene Botenstoffe', name:'Adrenalin (Epinephrin)', target:'α1, α2, β1, β2 (dosisabhängig)',
+        moa:'Niedrigdosiert dominieren β2 (Vasodilatation Skelettmuskel, Bronchodilatation) & β1 (Ino-/Chronotropie); hochdosiert dominiert α1-Vasokonstriktion (RR ↑↑).',
+        ind:'Anaphylaktischer Schock (1. Wahl i.m.!), Reanimation (CPR i.v.), Zusatz zu Lokalanästhetika, Pseudokrupp (inhalativ).',
+        uaw:'Tachykardie, Kammerflimmern, Myokardischämie, hypertensive Krise, Hyperglykämie (β2-Glykogenolyse), Hypokaliämie, Tremor.',
+        pk:'Keine orale Bioverfügbarkeit (rascher COMT/MAO-Abbau in Darm/Leber); sehr kurze t½ (~2 min) -> i.m. bei Anaphylaxie, Perfusor auf IPS.', links:['cardiosim.html','pkpd.html'] },
+      { id:'noradrenalin', ch:1, sub:'Körpereigene Botenstoffe', name:'Noradrenalin (Norepinephrin)', target:'α1 >> β1 >>> β2 (kaum β2!)',
+        moa:'Starke α1-vermittelte arterielle/venöse Vasokonstriktion (TPR ↑↑, MAP ↑↑) + β1-Inotropie; Reflexbradykardie über Barorezeptoren überwiegt oft die direkte β1-Chronotropie.',
+        ind:'Vasopressor 1. Wahl bei septischem und distributivem Schock (Ziel-MAP ≥ 65 mmHg).',
+        uaw:'Periphere/mesenteriale/renale Ischämie, Nekrose bei Paravasat (zentralvenös geben!), Reflexbradykardie, ↑ Nachlast.',
+        pk:'Nur i.v. als Dauerinfusion (t½ ~2 min); Abbau über MAO/COMT und neuronale Wiederaufnahme (NET).', links:['cardiosim.html','fluidsim.html'] },
+      { id:'dopamin', ch:1, sub:'Körpereigene Botenstoffe', name:'Dopamin', target:'D1 (niedrig) → β1 (mittel) → α1 (hoch)',
+        moa:'Dosisabhängige Rezeptoraktivierung: niedrig D1 (renale/mesenteriale Vasodilatation), mittel β1 (positiv inotrop/chronotrop), hoch α1 (Vasokonstriktion).',
+        ind:'Historisch Schock/symptomatische Bradykardie (heute meist durch Noradrenalin/Dobutamin ersetzt wegen Arrhythmierisiko).',
+        uaw:'Tachyarrhythmien (häufiger als unter Noradrenalin!), Übelkeit, Hypertonie, periphere Ischämie.',
+        pk:'Passiert die Blut-Hirn-Schranke NICHT (im Gegensatz zu L-DOPA); kurze t½ (~2 min), nur i.v. Infusion.', links:['cardiosim.html'] },
+      { id:'xylometazolin', ch:1, sub:'α-Adrenozeptor-Agonisten', name:'Xylometazolin', target:'α1 / α2-Agonist (Imidazolin)',
+        moa:'Lokale Aktivierung vaskulärer α-Rezeptoren in der Nasenschleimhaut -> Vasokonstriktion, Ödemrückgang, freie Nasenatmung.',
+        ind:'Topische Behandlung der akuten Rhinitis / Sinusitis (max. 5–7 Tage!).',
+        uaw:'Rhinitis medicamentosa (Rebound-Hyperämie & Schleimhautatrophie bei >7 Tagen Anwendung), systemische ZNS-Depression/Bradykardie bei Säuglings-Überdosierung (α2).',
+        pk:'Topische Anwendung (Nasenspray); rascher Wirkeintritt (5–10 min), Wirkdauer 6–8 h.' },
+      { id:'etilefrin', ch:1, sub:'α-Adrenozeptor-Agonisten', name:'Etilefrin', target:'α1 > β1 > β2-Agonist',
+        moa:'Direkte Stimulation venöser und arterieller α1-Rezeptoren (↑ venöser Rückstrom/Vorlast) sowie leichte β1-Inotropie -> Blutdruckstabilisierung.',
+        ind:'Orthostatische Hypotonie, selten intrakavernös bei Low-Flow-Priapismus.',
+        uaw:'Palpitationen, Tachykardie, Hypertonie im Liegen, Unruhe, Kopfschmerzen, Angina pectoris.',
+        pk:'Niedrige orale Bioverfügbarkeit (~35–50% durch First-Pass-Sulfatierung); rasche Elimination.' },
+      { id:'phenylefrin', ch:1, sub:'α1-selektiver Agonist', name:'Phenylefrin', target:'Reiner α1-Agonist (Gq)',
+        moa:'Selektive α1-Aktivierung -> Vasokonstriktion (TPR ↑↑, MAP ↑) mit ausgeprägter vagaler Reflexbradykardie; Mydriasis ohne Zykloplegie (M. dilatator pupillae).',
+        ind:'Hypotonie in der Anästhesie (v.a. bei Tachykardie/HOCM/Aortenstenose), Mydriatikum zur Fundoskopie, topisch nasal.',
+        uaw:'Reflexbradykardie, Hypertonie, ↑ Nachlast (↓ HZV bei Herzinsuffizienz), Engwinkelglaukomanfall am Auge.',
+        pk:'Kein Substrat der COMT (längere Wirkdauer als Noradrenalin, i.v. Bolus ~5–15 min); hohe First-Pass-Clearance p.o.', links:['cardiosim.html','neuroophtho.html'] },
+      { id:'isoprenalin', ch:1, sub:'β1/β2-Agonisten', name:'Isoprenalin', target:'Reiner β1 = β2-Agonist (Gs, kein α)',
+        moa:'Maximale β1-Stimulation (Herzfrequenz ↑↑, AV-Überleitung ↑↑, Kontraktilität ↑) + β2-Vasodilatation (diastolischer RR ↓, Pulsdruck ↑↑).',
+        ind:'Überbrückung bei hochgradigem AV-Block / schwerer Bradykardie bis zum Schrittmacher; Torsades de pointes bei Bradykardie.',
+        uaw:'Tachyarrhythmien, Myokardischämie (↑ O2-Verbrauch bei ↓ diastol. Koronarperfusion), Hypotonie, Tremor, Hypokaliämie.',
+        pk:'Nur i.v. (schlecht oral resorbierbar); Substrat der COMT (nicht MAO), sehr kurze t½ (~2 min).', links:['cardiosim.html','ecglab.html'] },
+      { id:'dobutamin', ch:1, sub:'β1/β2-Agonisten', name:'Dobutamin', target:'β1 > β2 / α1 (Racemat)',
+        moa:'(+)-Enantiomer wirkt β1/β2-agonistisch & α1-antagonistisch, (−)-Enantiomer α1-agonistisch -> Netto: starke β1-Inotropie (HZV ↑) bei neutralem/leicht sinkendem TPR.',
+        ind:'Akuter kardiogener Schock / dekompensierte Herzinsuffizienz (Inotropikum), pharmakologische Stressechokardiographie.',
+        uaw:'Tachykardie, Arrhythmien (VHF-Überleitung ↑), Myokardischämie, leichte Hypotonie, Tachyphylaxie nach >72 h.',
+        pk:'Nur i.v. Perfusor, t½ ~2 min (COMT-Abbau); keine D1-Wirkung.', links:['cardiosim.html'] },
+      { id:'salbutamol', ch:1, extraCh:[9], sub:'β2-Agonisten (SABA)', name:'Salbutamol', target:'β2-Adrenozeptor (Gs → cAMP ↑)',
+        moa:'Aktiviert β2-Rezeptoren der glatten Bronchialmuskulatur (MLCK-Hemmung -> rasche Bronchodilatation) und Na+/K+-ATPase (K+-Shift nach intrazellulär).',
+        ind:'Bedarfs-/Notfallmedikament (Reliever) bei Asthma- und COPD-Exazerbation; akut bei Hyperkaliämie (Shift).',
+        uaw:'Feinschlägiger Skelettmuskeltremor, Reflextachykardie / Palpitationen (β1-Restwirkung bei hoher Dosis), Hypokaliämie, Laktatazidose, Hyperglykämie.',
+        pk:'Inhalativ rascher Wirkeintritt (<5 min), Wirkdauer 4–6 h (SABA); bei chronischer Monotherapie im Asthma β2-Desensibilisierung & ↑ Mortalität!', links:['bloodlab.html'] },
+      { id:'formoterol', ch:1, extraCh:[9], sub:'β2-Agonisten (LABA)', name:'Formoterol', target:'β2-Adrenozeptor (Gs, langwirksam)',
+        moa:'Langwirksamer β2-Agonist mit raschem Wirkeintritt (im Gegensatz zu Salmeterol!) -> anhaltende Bronchodilatation über 12 h.',
+        ind:'Dauertherapie Asthma (IMMER in Fixkombination mit ICS, z.B. Budesonid/Formoterol als MART!) und COPD.',
+        uaw:'Tremor, Tachykardie, Hypokaliämie, Krämpfe; NIEMALS als Monotherapie bei Asthma (Black-Box-Warnung: erhöhtes Risiko schwerer Exazerbationen).',
+        pk:'Inhalativ; mässig lipophil -> rascher Eintritt (~3 min) UND lange Haftung in Lipidmembran (~12 h Wirkdauer).' },
+      { id:'mirabegron', ch:1, sub:'β3-Adrenozeptor-Agonist', name:'Mirabegron', target:'β3-Adrenozeptor (Gs, Detrusor)',
+        moa:'Aktiviert β3-Rezeptoren im M. detrusor vesicae -> Relaxation der Blasenwand während der Füllungsphase -> erhöhte Blasenkapazität ohne anticholinerge ZNS-UAW.',
+        ind:'Überaktive Blase (OAB: Imperativer Harndrang, Pollakisurie, Dranginkontinenz) — v.a. bei älteren Patienten (kein Delir-Risiko!).',
+        uaw:'Blutdruckanstieg (Kontraindikation bei unkontrollierter Hypertonie!), Tachykardie, Harnwegsinfekte, Kopfschmerzen.',
+        pk:'Oral, lange t½ (~50 h); moderater CYP2D6-Inhibitor (Interaktion z.B. mit Metoprolol/Flecainid beachten!).' },
+      { id:'clonidin', ch:1, sub:'Antisympathotonika (α2-Agonisten)', name:'Clonidin', target:'Zentraler α2-Adrenozeptor (Gi) + Imidazolin-R',
+        moa:'Stimuliert präsynaptische α2-Autorezeptoren im Hirnstamm (Nucleus tractus solitarii) -> ↓ zentraler Sympathikotonus -> RR ↓, HF ↓, Sedation, Analgesie.',
+        ind:'Therapieresistente Hypertonie (Reserve), Alkohol-/Opioidentzug, IPS-Sedation, ADHS (2. Wahl).',
+        uaw:'Starke Sedation, Mundtrockenheit, Bradykardie/AV-Block, Orthostase; GEFÄHRLICHE Rebound-Hypertonie bei abruptem Absetzen!',
+        pk:'Gut lipophil (ZNS-gängig); initial nach schneller i.v.-Gabe kurzer RR-Anstieg möglich (periphere postsynaptische α2-Vasokonstriktion); ausschleichen!' },
+      { id:'moxonidin', ch:1, sub:'Antisympathotonika (α2-Agonisten)', name:'Moxonidin', target:'Imidazolin-I1-Rezeptor > α2 (zentral)',
+        moa:'Selektiver Agonist an zentralen I1-Imidazolinrezeptoren in der rostralen ventrolateralen Medulla -> ↓ Sympathikusaktivität -> TPR ↓, RR ↓.',
+        ind:'Reserve-Antihypertensivum (v.a. bei metabolischem Syndrom, da verbesserte Insulinsensitivität).',
+        uaw:'Weniger Sedation und Mundtrockenheit als Clonidin, dennoch Müdigkeit/Schwindel; Kontraindikation bei Herzinsuffizienz (MOXCON-Studie: ↑ Mortalität!).',
+        pk:'Gute orale Bioverfügbarkeit (~90%), überwiegend unverändert renal eliminiert -> Dosisanpassung bei Niereninsuffizienz.' },
+      { id:'methyldopa', ch:1, sub:'Antisympathotonika (α2-Agonisten)', name:'α-Methyldopa', target:'Prodrug → α-Methylnoradrenalin (α2 zentral)',
+        moa:'Wird in zentralen Neuronen über DOPA-Decarboxylase und DBH zum falschen Transmitter α-Methylnoradrenalin umgewandelt -> starker zentraler α2-Agonist -> ↓ Sympathikus.',
+        ind:'Schwangerschaftshypertonie / Präeklampsie (historisch 1. Wahl neben Labetalol/Nifedipin, da sicher für den Fetus).',
+        uaw:'Sedation, Depression, Orthostase, positiver Coombs-Test (selten autoimmunhämolytische Anämie!), Hepatotoxizität, Hyperprolaktinämie.',
+        pk:'PRODUG! Aktiver Transport über Aminosäuretransporter ins ZNS; verzögerter Wirkeintritt (4–6 h), Wirkdauer bis 24 h.' },
+      { id:'doxazosin', ch:1, sub:'α1-Adrenozeptor-Antagonisten', name:'Doxazosin', target:'α1A / α1B / α1D-Antagonist (vaskulär + Prostata)',
+        moa:'Blockiert vaskuläre α1-Rezeptoren (arterielle & venöse Vasodilatation -> TPR ↓, RR ↓) und α1A-Rezeptoren in Prostata/Blasenhals (Harnfluss ↑).',
+        ind:'Reserve-Antihypertensivum (z.B. bei Komorbidität Hypertonie + BPH), Phäochromozytom-Vorbehandlung (alternativ zu Phenoxybenzamin).',
+        uaw:'Ausgeprägte orthostatische Hypotonie ("First-Dose-Phänomen" -> abends einschleichen!), Reflextachykardie, Ödeme, Floppy-Iris-Syndrom; ↑ Herzinsuffizienz-Risiko als Monotherapie (ALLHAT).',
+        pk:'Oral, lange t½ (~22 h -> 1×/Tag), hepatische Metabolisierung.' },
+      { id:'tamsulosin', ch:1, sub:'α1-Adrenozeptor-Antagonisten', name:'Tamsulosin', target:'α1A / α1D-selektiver Antagonist (Uroselektiv)',
+        moa:'Selektive Blockade der α1A-Rezeptoren in glatter Muskulatur von Prostata, Blasenhals und Urethra -> rasche Senkung des Auslasswiderstands ohne starke Blutdrucksenkung.',
+        ind:'Benigne Prostatahyperplasie (BPH, LUTS), off-label zur Steinabgangsförderung bei distalem Ureterstein.',
+        uaw:'Retrograde Ejakulation (klassische Prüfungsfrage!), leichter Schwindel, intraoperatives Floppy-Iris-Syndrom (IFIS bei Katarakt-OP!).',
+        pk:'Retardformulierung (1×/Tag nach dem Frühstück); Abbau über CYP3A4/CYP2D6.' },
+      { id:'propranolol', ch:1, extraCh:[4], sub:'β1/β2-Antagonisten (nicht-selektiv)', name:'Propranolol', target:'β1 = β2-Antagonist (+ Membranstabilisierung)',
+        moa:'Nicht-selektive β-Blockade: β1 (HF ↓, Kontraktilität ↓, AV-Leitung ↓, Renin ↓) + β2 (Vasokonstriktion im Splanchnikusgebiet -> ↓ Pfortaderdruck; Tremor ↓).',
+        ind:'Portale Hypertonie / Ösophagusvarizen-Prophylaxe, essentieller Tremor, Migräneprophylaxe, Thyreotoxikose (hemmt auch D1-Konversion T4→T3!), infantiles Hämangiom.',
+        uaw:'BRONCHOSPASMUS (streng kontraindiziert bei Asthma!), Bradykardie/AV-Block, Hypoglykämie-Maskierung, Müdigkeit/Albträume (hoch lipophil), Raynaud.',
+        pk:'Sehr hoher First-Pass-Effekt (orale BV ~25%), stark lipophil (ZNS-gängig), hepatischer Abbau (CYP2D6/1A2); langsam ausschleichen (Rebound-Tachykardie!).', links:['cardiosim.html','endosim.html'] },
+      { id:'carvedilol', ch:1, extraCh:[4], sub:'β1/β2-Antagonisten (+ α1)', name:'Carvedilol', target:'β1 / β2 + α1-Antagonist',
+        moa:'Kombiniert nicht-selektive β-Blockade (HF ↓, Renin ↓, Anti-Remodeling) mit α1-Blockade (Vasodilatation -> Nachlast ↓, ↓ Pfortaderdruck stärker als Propranolol).',
+        ind:'Chronische HFrEF (Mortalitätssenkung!), Hypertonie, portale Hypertonie (heute oft bevorzugt gegenüber Propranolol).',
+        uaw:'Hypotonie/Orthostase (α1), Bradykardie, Bronchospasmus (β2 -> cave Asthma!), Müdigkeit, Verschlechterung akuter Dekompensation bei zu rascher Aufdosierung.',
+        pk:'Starker First-Pass (BV ~25%), Abbau über CYP2D6; bei HFrEF "Start low, go slow" eintitrieren.', links:['cardiosim.html'] },
+      { id:'metoprolol', ch:1, extraCh:[4], sub:'β1-selektiver Antagonist (Klasse II)', name:'Metoprolol', target:'β1-selektiver Antagonist (kardioselektiv)',
+        moa:'Selektive β1-Blockade (in niedrigen/mittleren Dosen): negativ chronotrop, dromotrop (AV-Knoten), inotrop, bathmotrop; hemmt Reninfreisetzung an JG-Zellen.',
+        ind:'KHK / Post-MI, HFrEF (Metoprololsuccinat!), Frequenzkontrolle bei Vorhofflimmern, Hypertonie, Migräneprophylaxe.',
+        uaw:'Bradykardie, AV-Block II/III, Hypotonie, Müdigkeit, erektile Dysfunktion; in hohen Dosen Verlust der β1-Selektivität (cave schweres Asthma).',
+        pk:'Metoprololsuccinat (Retard, 1×/d für HFrEF) vs. Tartrat (kurz); starker CYP2D6-Metabolismus (genetischer Polymorphismus!). Antidot bei Intox: Glukagon i.v.!', links:['cardiosim.html','ecglab.html'] },
+
+      // ==================== 2. CHOLINERGES SYSTEM ====================
+      { id:'pilocarpin', ch:2, sub:'Direktes Parasympathomimetikum', name:'Pilocarpin', target:'M3-Agonist (Gq, direkt)',
+        moa:'Kontrahiert M. sphincter pupillae (Miosis) und M. ciliaris (Akkommodation -> Öffnung des Trabekelwerks -> Kammerwasserabfluss ↑, IOD ↓); stimuliert exokrine Drüsen.',
+        ind:'Akuter Engwinkelglaukomanfall (Augentropfen!), Xerostomie bei Sjögren-Syndrom oder nach Kopf-Hals-Radiotherapie (systemisch).',
+        uaw:'Akkommodationskrampf / Myopie, schlechtes Nachtsehen, Kopfschmerzen; systemisch: Schwitzen, Salivation, Bronchospasmus, Bradykardie, Diarrhö.',
+        pk:'Tertiäres Amin (hornhaut- und ZNS-gängig); nicht durch AChE spaltbar.', links:['neuroophtho.html'] },
+      { id:'atropin', ch:2, extraCh:[4], sub:'Parasympatholytika', name:'Atropin', target:'Unselektiver Muskarin-Antagonist (M1–M5)',
+        moa:'Kompetitive Blockade aller Muskarinrezeptoren: hebt Vagotonus am SA-/AV-Knoten auf (HF ↑, AV-Leitung ↑), Sekretion ↓, Mydriasis + Zykloplegie, Darm-/Blasenrelaxation.',
+        ind:'Symptomatische Bradykardie / AV-Block (notfallmässig), ANTIDOT bei Organophosphat-/Sarin-/Cholinergika-Intoxikation, Mydriatikum.',
+        uaw:'Anticholinerges Syndrom ("Hot as a hare, blind as a bat, dry as a bone, red as a beet, mad as a hatter"): Tachykardie, Harnverhalt, Obstipation, Glaukomanfall, Delir.',
+        pk:'Tertiäres Amin -> ZNS-gängig! Paradoxe Bradykardie bei sehr niedriger Dosis (<0.5 mg i.v., präsynaptische M1-Blockade). Antidot bei Überdosierung: Physostigmin.', links:['ecglab.html','neuroophtho.html'] },
+      { id:'ipratropium', ch:2, extraCh:[9], sub:'Parasympatholytika (SAMA)', name:'Ipratropiumbromid', target:'M1–M3-Antagonist (quartäres Amin)',
+        moa:'Blockiert bronchiale M3-Rezeptoren -> hemmt vagale Bronchokonstriktion und Schleimsekretion (Bronchodilatation).',
+        ind:'COPD (Basis/Bedarf) und akuter schwerer Asthmaanfall (Kombination mit Salbutamol).',
+        uaw:'Mundtrockenheit, Husten, bitterer Geschmack; bei versehentlichem Augenkontakt (Vernebler!) Mydriasis / akutes Engwinkelglaukom.',
+        pk:'Quartäre Ammoniumverbindung -> permanent geladen -> kaum systemische Resorption, KEINE ZNS-Gängigkeit! Wirkeintritt ~15 min, Dauer 4–6 h.' },
+      { id:'butylscopolamin', ch:2, sub:'Parasympatholytika', name:'Butylscopolamin', target:'M3-Antagonist im GI-Trakt (quartäres Amin)',
+        moa:'Blockiert Muskarinrezeptoren der glatten Muskulatur im Gastrointestinal-, Gallen- und Urogenitaltrakt -> Spasmolyse.',
+        ind:'Kolikartige Bauchschmerzen, Gallen-/Nierenkoliken (Kombination mit Analgetika), Reizdarmsyndrom.',
+        uaw:'Mundtrockenheit, Tachykardie (v.a. nach i.v.-Gabe!), Akkommodationsstörung, Harnverhalt, Obstipation.',
+        pk:'Quartäres Amin -> KEINE ZNS-Gängigkeit (im Gegensatz zu Scopolamin!); extrem niedrige orale Bioverfügbarkeit (<1%, wirkt primär lokal an der Darmwand), i.v. volle systemische Wirkung.' },
+      { id:'biperiden', ch:2, sub:'Parasympatholytika (ZNS-gängig)', name:'Biperiden', target:'Zentraler M1-Antagonist (tertiäres Amin)',
+        moa:'Passiert Blut-Hirn-Schranke und stellt im Striatum das Gleichgewicht zwischen Dopamin-Mangel und relativem Acetylcholin-Überschuss wieder her.',
+        ind:'Akute Frühdyskinesien / extrapyramidal-motorische Störungen (EPMS) durch Antipsychotika (i.v./p.o.), Tremor-dominanter M. Parkinson (selten, nur junge Pat.).',
+        uaw:'Kognitive Störungen, Delir/Verwirrtheit (streng vermeiden bei älteren Patienten!), Mundtrockenheit, Harnverhalt, Obstipation, Mydriasis.',
+        pk:'Tertiäres Amin -> hohe ZNS-Gängigkeit; rascher Wirkungseintritt nach i.v.-Gabe bei akuter Dystonie.' },
+      { id:'solifenacin', ch:2, sub:'M3-selektives Parasympatholytikum', name:'Solifenacin', target:'M3-selektiver Antagonist (Blase)',
+        moa:'Blockiert relativ selektiv M3-Rezeptoren des M. detrusor vesicae -> unterdrückt unwillkürliche Blasenkontraktionen in der Füllungsphase.',
+        ind:'Überaktive Blase (OAB: Dranginkontinenz, Pollakisurie).',
+        uaw:'Mundtrockenheit (Speicheldrüsen haben auch M3!), Obstipation, Akkommodationsstörungen, Harnverhalt, ZNS-UAW/Delir bei Geriatrie (Alternativ: Mirabegron).',
+        pk:'Oral 1×/Tag, sehr lange Halbwertszeit (~45–68 h); CYP3A4-Substrat.' },
+      { id:'nikotin', ch:2, sub:'Nikotinischer ACh-R Agonist', name:'Nikotin', target:'nAChR (vegetative Ganglien, ZNS, NNM)',
+        moa:'Aktiviert nikotinische Ionenkanäle (Na+/Ca2+-Einstrom): im ZNS Dopamin-Freisetzung im mesolimbischen Belohnungssystem (Sucht!), peripher Sympathikus- & Parasympathikus-Erregung; hohe Dosen -> Depolarisationsblock.',
+        ind:'Nikotinersatztherapie zur Raucherentwöhnung (Pflaster, Kaugummi, Spray); toxikologisch relevant.',
+        uaw:'Hohes Suchtpotenzial, Tachykardie, Vasokonstriktion, Übelkeit; Intoxikation (z.B. Kinder/E-Liquid): Krämpfe, Atemlähmung durch Depolarisationsblock.',
+        pk:'Rasche pulmonale/bukkale Resorption (Sekunden beim Rauchen), Abbau über CYP2A6 zu Cotinin (Biomarker).' },
+      { id:'rocuronium', ch:2, sub:'Nikotinischer ACh-R Antagonist', name:'Rocuronium', target:'nAChR motorische Endplatte (NM-Typ)',
+        moa:'Nicht-depolarisierendes Muskelrelaxans: blockiert kompetitiv nikotinische ACh-Rezeptoren der motorischen Endplatte -> schlaffe Skelettmuskellähmung ohne Faszikulationen.',
+        ind:'Intubation (auch Rapid Sequence Induction in höherer Dosis) und Muskelrelaxation bei Operationen/Beatmung.',
+        uaw:'Atemlähmung (IMMER kontrollierte Beatmung!), Anaphylaxie (häufigster Auslöser perioperativer Anaphylaxien), verlängerte Blockade bei Leberinsuffizienz.',
+        pk:'Rascher Wirkeintritt (~60 s), mittellange Dauer (~30–45 min), überwiegend biliäre Elimination. Antidot: Sugammadex (spezif. Verkapselung) oder Neostigmin + Atropin!', links:['pkpd.html'] },
+      { id:'neostigmin', ch:2, sub:'Reversible Cholinesterasehemmer', name:'Neostigmin', target:'Acetylcholinesterase (AChE, reversibel, peripher)',
+        moa:'Carbamat-Inhibitor der AChE -> verzögert ACh-Abbau im synaptischen Spalt -> verstärkt muskarinische UND nikotinische (Endplatte) Signalübertragung.',
+        ind:'Antagonisierung nicht-depolarisierender Muskelrelaxanzien (mit Atropin/Glycopyrrolat!), Myasthenia gravis (meist Pyridostigmin), postoperativer paralytischer Ileus (Ogilvie).',
+        uaw:'Cholinerges Syndrom: Bradykardie/Asystolie, Bronchospasmus, Hypersalivation, Bauchkrämpfe, Diarrhö, Miosis (daher bei Antagonisierung mit Atropin kombinieren!).',
+        pk:'Quartäres Amin -> KEINE ZNS-Gängigkeit! (Im Gegensatz zu Physostigmin/Rivastigmin).', links:['pkpd.html'] },
+      { id:'rivastigmin', ch:2, sub:'Reversible Cholinesterasehemmer', name:'Rivastigmin', target:'Zentrale AChE & BuChE (pseudo-irreversibel)',
+        moa:'ZNS-gängiger Carbamat-Hemmer der zentralen AChE/BuChE -> erhöht kortikale Acetylcholin-Verfügbarkeit bei cholinergem Neuronenverlust.',
+        ind:'Leichte bis mittelschwere Alzheimer-Demenz und Parkinson-Demenz.',
+        uaw:'Übelkeit, Erbrechen, Diarrhö, Gewichtsverlust (deutlich seltener mit transdermalem Pflaster!), Bradykardie/Synkopen, Schlafstörungen.',
+        pk:'Lipophil (ZNS-gängig); transdermales Pflaster vermeidet Peak-induzierte GI-UAW; kaum CYP-Interaktionen (Hydrolyse durch Zielenzym).' },
+      { id:'sarin', ch:2, sub:'Irreversible Cholinesterasehemmer', name:'Sarin (Organophosphat / Kampfstoff)', target:'Irreversible Phosphorylierung der AChE',
+        moa:'Kovalente Phosphorylierung des Serin-Restes der AChE -> massiver ACh-Überschuss an allen muskarinischen, nikotinischen und zentralen Synapsen; rasche "Alterung" (Dealkylierung) macht Bindung endgültig irreversibel.',
+        ind:'Keine medizinische Indikation — chemischer Nervenkampfstoff (analog: Insektizide wie Parathion).',
+        uaw:'Fulminante cholinerge Krise (SLUDGE/DUMBELS): Bronchorrhö, Bronchospasmus, Bradykardie, Miosis, Faszikulationen -> schlaffe Atemlähmung, Status epilepticus, Tod.',
+        pk:'Extrem lipophil (Resorption über Lunge & Haut!). ANTIDOT: Hochdosis ATROPIN (muskarinisch, nach Bronchialsekretion titrieren!) + OBIDOXIM/Pralidoxim (Reaktivierung VOR Alterung!) + Benzodiazepin.',
+        antidote:'Atropin hochdosiert (gegen muskarinische Krise) + Obidoxim (AChE-Reaktivator vor Alterung) + Midazolam' },
+
+      // ==================== 3. HERZWIRKSAME SUBSTANZEN ====================
+      { id:'digoxin', ch:3, extraCh:[4], sub:'Digitalisglykosid', name:'Digoxin', target:'Na+/K+-ATPase (Kardiomyozyten) + Vagotonus ↑',
+        moa:'Hemmt Na+/K+-ATPase -> intrazelluläres Na+ ↑ -> verminderter Ca2+-Ausstrom über NCX -> SR-Ca2+ ↑ -> positiv inotrop. Zentral & direkt vagomimetisch -> AV-Überleitung ↓↓ (negativ dromotrop).',
+        ind:'Frequenzkontrolle bei Vorhofflimmern (v.a. bei koexistenter HFrEF), symptomatische HFrEF (Add-on, senkt Hospitalisationen, NICHT Mortalität).',
+        uaw:'Sehr enge therapeutische Breite! Übelkeit, Gelb-Grün-Sehen (Xanthopsie), muldenförmige ST-Senkung (kein Tox-Zeichen!), schwere Arrhythmien (VES, Bigeminus, bidirektionale VT, AV-Block).',
+        pk:'Überwiegend RENAL eliminiert (t½ ~36–48 h -> Kumulation bei Niereninsuffizienz!); P-gp-Substrat (Interaktion mit Amiodaron, Verapamil!). HYPOKALIÄMIE verstärkt Bindung & Toxizität massiv!',
+        antidote:'Digoxin-spezifische Fab-Antikörperfragmente + K+-Ausgleich (nur wenn kein schwerer AV-Block/Hyperkaliämie)', links:['cardiosim.html','ecglab.html','bloodlab.html'] },
+      { id:'milrinon', ch:3, extraCh:[6], sub:'PDE3-selektiver Hemmer', name:'Milrinon', target:'Phosphodiesterase-3 (Herz + Gefässe)',
+        moa:'Hemmt cAMP-Abbau in Kardiomyozyten (Ca2+-Einstrom ↑ -> positiv inotrop & lusitrop, unabhängig von β-Rezeptoren!) und Gefässmuskulatur (MLCK ↓ -> arterielle/venöse Vasodilatation = "Inodilatator").',
+        ind:'Kurzzeitige i.v.-Therapie der schweren akut dekompensierten Herzinsuffizienz / kardiogener Schock (v.a. bei β-Blocker-Vorbehandlung oder pulmonaler Hypertonie).',
+        uaw:'Hypotonie (Vasodilatation), ventrikuläre Arrhythmien / Vorhofflimmern, Thrombozytopenie; bei Langzeitanwendung erhöhte Mortalität.',
+        pk:'Nur i.v., überwiegend renal unverändert eliminiert (t½ ~2.5 h -> Kumulation bei Niereninsuffizienz!).', links:['cardiosim.html'] },
+      { id:'ivabradin', ch:3, extraCh:[4], sub:'If-Kanalhemmer', name:'Ivabradin', target:'HCN / If-"Funny"-Kanal (Sinusknoten)',
+        moa:'Selektive Hemmung des diastolischen Schrittmacherstroms If im Sinusknoten -> flachere diastolische Depolarisation -> reine Herzfrequenzsenkung OHNE Einfluss auf Kontraktilität (Inotropie) oder Blutdruck.',
+        ind:'Chronische HFrEF im SINUSRHYTHMUS mit HF ≥ 75/min trotz maximaler β-Blocker-Dosis; stabile Angina pectoris (2. Wahl). Unwirksam bei Vorhofflimmern!',
+        uaw:'Phosphene (Lichtblitze durch Blockade retinaler Ih-Kanäle — klassische Prüfungsfrage!), Bradykardie, erhöhtes Risiko für Vorhofflimmern.',
+        pk:'Oral 2×/d, Metabolisierung über CYP3A4 (Kontraindikation mit starken CYP3A4-Hemmern und Verapamil/Diltiazem).', links:['cardiosim.html','ecglab.html'] },
+
+      // ==================== 4. ANTIARRHYTHMIKA ====================
+      { id:'lidocain', ch:4, sub:'Antiarrhythmikum Klasse Ib', name:'Lidocain', target:'Spannungsabhängiger Na+-Kanal (schnelle Kinetik)',
+        moa:'Blockiert bevorzugt inaktivierte Na+-Kanäle (ischämisches, depolarisiertes Ventrikelmyokard) mit sehr rascher Dissoziation -> verkürzt Aktionspotentialdauer (APD ↓), kaum QRS-Verbreiterung im Normalgewebe.',
+        ind:'Akute ventrikuläre Tachykardien / Kammerflimmern (2. Wahl nach Amiodaron, v.a. ischämiebedingt); ausserdem Amid-Lokalanästhetikum.',
+        uaw:'ZNS-Toxizität (periorale Parästhesien, metallischer Geschmack, Tinnitus, Schwindel, Krampfanfälle -> Koma), Bradykardie/Hypotonie bei Überdosierung.',
+        pk:'NUR i.v. als Antiarrhythmikum (extremer hepatischer First-Pass-Effekt >70%!); rascher Abbau in der Leber (CYP3A4/1A2), t½ ~1.5–2 h.', links:['ecglab.html','pkpd.html'] },
+      { id:'flecainid', ch:4, sub:'Antiarrhythmikum Klasse Ic', name:'Flecainid', target:'Spannungsabhängiger Na+-Kanal (langsame Kinetik)',
+        moa:'Starke, langsam dissoziierende Na+-Kanalblockade -> deutliche Verlangsamung der Erregungsleitung (Aufstrich Vmax ↓↓, QRS ↑) ohne wesentliche Verlängerung der APD/QT-Zeit; ausgeprägte "Use-Dependence".',
+        ind:'Rhythmuserhalt / "Pill-in-the-Pocket"-Kardioversion bei paroxysmalem Vorhofflimmern (NUR bei strukturell gesundem Herzen!), WPW-Syndrom.',
+        uaw:'PROARRHYTHMIE (tödliche VT/VF bei struktureller Herzerkrankung/KHK -> CAST-Studie: streng kontraindiziert!), 1:1-Überleitung bei Vorhofflattern (immer mit AV-Blocker kombinieren!), Sehstörungen.',
+        pk:'Oral gut resorbierbar, t½ ~14–20 h; Abbau über CYP2D6 + renale Elimination.', links:['ecglab.html'] },
+      { id:'amiodaron', ch:4, sub:'Antiarrhythmikum Klasse III', name:'Amiodaron', target:'K+-Kanäle (IKr) + Na+/Ca2+-Kanäle + β-Blockade',
+        moa:'Verlängert Aktionspotentialdauer und Refraktärzeit (QT ↑) in Vorhof und Ventrikel + blockiert Na+-, Ca2+-Kanäle und nicht-kompetitiv α/β-Rezeptoren; extrem breites Wirkspektrum, niedriges Torsades-Risiko trotz QT ↑.',
+        ind:'Lebensbedrohliche ventrikuläre Tachykardien / CPR bei VF, Rhythmuserhalt bei Vorhofflimmern (auch bei HFrEF & struktureller Herzerkrankung einsetzbar!).',
+        uaw:'EXTREME ORGANTOXIZITÄT (Jod-haltig!): Schilddrüse (Hypo- & Hyperthyreose!), Lungenfibrose (potentiell tödlich), Kornea-Mikroablagerungen, Phototoxizität/graublaue Haut, Hepatotoxizität, Neuropathie, Bradykardie.',
+        pk:'Extrem lipophil, gigantisches Verteilungsvolumen, t½ = 20–100 TAGE (Aufsättigung nötig, UAW persistieren Monate nach Absetzen!). Starker CYP- & P-gp-Hemmer (↑↑ Digoxin-, VKA-, Statin-Spiegel!).', links:['ecglab.html','endosim.html','pkpd.html'] },
+      { id:'sotalol', ch:4, sub:'Antiarrhythmikum Klasse III (+ II)', name:'Sotalol', target:'K+-Kanal (IKr) + nicht-selektiver β-Blocker',
+        moa:'Racemat: L-Sotalol wirkt als nicht-selektiver β-Blocker (Klasse II), beide Enantiomere hemmen IKr (Klasse III) -> verlängert APD und QTc-Zeit ("Reverse Use-Dependence": stärkster Effekt bei Bradykardie!).',
+        ind:'Rhythmuserhalt bei Vorhofflimmern und ventrikulären Tachykardien (Reserve).',
+        uaw:'TORSADES DE POINTES (hohes Risiko bei QTc > 500 ms, Hypokaliämie, Bradykardie, Niereninsuffizienz!), Bronchospasmus, Bradykardie, Hypotonie.',
+        pk:'Hydrophil, NICHT hepatisch metabolisiert -> fast vollständig unverändert RENAL eliminiert (streng kontraindiziert bei schwerer Niereninsuffizienz!).', links:['ecglab.html','bloodlab.html'] },
+      { id:'diltiazem', ch:4, extraCh:[6], sub:'Ca2+-Kanalblocker Nicht-DHP (Klasse IV)', name:'Diltiazem', target:'L-Typ Ca2+-Kanal (Herz = Gefässe)',
+        moa:'Hemmt L-Typ-Ca2+-Kanäle am SA-/AV-Knoten (negativ chronotrop & dromotrop -> AV-Refraktärzeit ↑) und in glatter Gefässmuskulatur (Vasodilatation, Koronardilatation).',
+        ind:'Frequenzkontrolle bei supraventrikulären Tachykardien / Vorhofflimmern, stabile & vasospastische (Prinzmetal-)Angina, Hypertonie.',
+        uaw:'Bradykardie, AV-Block (NIEMALS mit β-Blocker i.v. kombinieren!), Hypotonie, Knöchelödeme, Kopfschmerzen; Kontraindikation bei HFrEF (negativ inotrop!).',
+        pk:'Hoher First-Pass-Effekt, moderater CYP3A4-Inhibitor (Interaktion mit Statinen, DOAK, Ivabradin).', links:['cardiosim.html','ecglab.html'] },
+      { id:'verapamil', ch:4, extraCh:[6], sub:'Ca2+-Kanalblocker Nicht-DHP (Klasse IV)', name:'Verapamil', target:'L-Typ Ca2+-Kanal (Herz > Gefässe)',
+        moa:'Stärkste kardiale Ca2+-Kanalblockade (Phenylalkylamin): hemmt Depolarisation im SA-/AV-Knoten (AV-Überleitung ↓↓) und myokardiale Kontraktilität (negativ inotrop) + moderate Vasodilatation.',
+        ind:'Frequenzkontrolle bei VHF/Vorhofflattern, Prophylaxe paroxysmaler SVT, Cluster-Kopfschmerz-Prophylaxe, HOCM, Hypertonie.',
+        uaw:'OBSTIPATION (klassische UAW!), Bradykardie, AV-Block II/III (streng kontraindiziert in Kombi mit β-Blocker & bei WPW mit VHF!), Herzinsuffizienz-Dekompensation (kontraindiziert bei HFrEF!).',
+        pk:'Starker First-Pass (BV ~20%), kräftiger CYP3A4- UND P-gp-Hemmer (↑↑ Digoxin-, Dabigatran-, Simvastatin-Spiegel!).', links:['cardiosim.html','ecglab.html'] },
+      { id:'adenosin', ch:4, sub:'Weitere Antiarrhythmika', name:'Adenosin', target:'A1-Rezeptor (Gi) am AV-Knoten',
+        moa:'Aktiviert kardiale A1-Rezeptoren -> öffnet K+(ACh)-Kanäle (Hyperpolarisation) und senkt cAMP (Ca2+-Einstrom ↓) -> kompletter, kurzzeitiger AV-Block für wenige Sekunden -> durchbricht Re-Entry-Kreise.',
+        ind:'Akuttherapie 1. Wahl bei regelmässiger Schmalkomplex-SVT (AVNRT, orthodrome AVRT); pharmakologische Myokard-Perfusionsszintigraphie.',
+        uaw:'Kurze Asystolie (erwünscht!), intensives Beklemmungs-/Todesangstgefühl, Flush, Dyspnoe, Bronchospasmus (cave schweres Asthma!).',
+        pk:'Extrem kurze t½ (<10 Sekunden! Aufnahme in Erythrozyten & Desaminierung) -> MUSS als sehr schneller i.v.-Bolus gefolgt von NaCl-Flush gegeben werden! Theophyllin/Koffein antagonisieren die Wirkung!', links:['ecglab.html'] },
+      { id:'magnesium', ch:4, sub:'Weitere Antiarrhythmika', name:'Magnesium (Mg²⁺)', target:'Physiologischer Ca2+-Antagonist / K+-Stabilisator',
+        moa:'Hemmt späte Nachdepolarisationen (EADs) durch Blockade des L-Typ-Ca2+-Einstroms und Stabilisierung der Na+/K+-ATPase; senkt neuromuskuläre Erregbarkeit.',
+        ind:'TORSADES DE POINTES (Therapie 1. Wahl i.v. — auch bei normalem Serum-Mg²⁺!), schwere Präeklampsie/Eklampsie (Krampfanfallsprophylaxe), schwerer therapierefraktärer Asthmaanfall.',
+        uaw:'Flush, Hypotonie, Verlust der Muskeleigenreflexe (frühes klinisches Toxizitätszeichen!), Atemdepression, Bradykardie/AV-Block bei Hypermagnesiämie.',
+        pk:'Rein renale Elimination -> Vorsicht/Spiegelkontrolle bei Niereninsuffizienz. Antidot bei Überdosierung: Kalziumglukonat i.v.',
+        antidote:'Kalziumglukonat i.v. (physiologischer Antagonist bei Mg²⁺-Intoxikation)', links:['ecglab.html','bloodlab.html'] },
+
+      // ==================== 5. RAAS & DIURETIKA ====================
+      { id:'aliskiren', ch:5, sub:'Renin-Inhibitor', name:'Aliskiren', target:'Direkte Hemmung von Renin',
+        moa:'Blockiert das aktive Zentrum von Renin -> verhindert Spaltung von Angiotensinogen zu Angiotensin I -> Ang I ↓, Ang II ↓, Aldosteron ↓ (ohne Bradykinin-Anstieg).',
+        ind:'Reserve-Antihypertensivum (selten eingesetzt; kein Vorteil gegenüber ACE-Hemmer/AT1-Blocker).',
+        uaw:'Hyperkaliämie, Nierenfunktionsverschlechterung, Diarrhö, Hypotonie, fetotoxisch; streng kontraindiziert in Kombination mit ACE-Hemmer/ARB bei Diabetes oder CKD (ALTITUDE-Studie!).',
+        pk:'Sehr niedrige orale Bioverfügbarkeit (~2.5%), lange t½ (~40 h), biliäre Ausscheidung.', links:['nephrosim.html'] },
+      { id:'enalapril', ch:5, sub:'ACE-Hemmer', name:'Enalapril', target:'Angiotensin-Converting-Enzyme (ACE)',
+        moa:'Hemmt Umwandlung von Ang I -> Ang II (Vasodilatation inkl. Vas efferens der Niere, Aldosteron ↓, Anti-Remodeling) UND hemmt Abbau von BRADYKININ (zusätzliche NO-Vasodilatation).',
+        ind:'Arterielle Hypertonie, HFrEF (Mortalitätssenkung!), Post-MI, diabetische/proteinurische Nephropathie (senkt intraglomerulären Druck).',
+        uaw:'Trockener Reizhusten (Bradykinin! ~10–15%), ANGIOÖDEM (notfallmässig absetzen!), Hyperkaliämie, initialer Kreatininanstieg (cave bilaterale Nierenarterienstenose!), TERATOGEN (2./3. Trimenon: Nierendysplasie).',
+        pk:'PRODUG (Enalapril -> hepatische Esterase -> aktives Enalaprilat), renale Elimination von Enalaprilat. "Triple Whammy"-Falle: ACEi + NSAR + Diuretikum -> akutes Nierenversagen!', links:['nephrosim.html','cardiosim.html','bloodlab.html'] },
+      { id:'valsartan', ch:5, sub:'AT1-Antagonist (Sartan)', name:'Valsartan', target:'AT1-Rezeptor-Antagonist (selektiv)',
+        moa:'Blockiert direkt den AT1-Rezeptor -> verhindert Ang-II-Vasokonstriktion, Aldosteronfreisetzung und myokardiales Remodeling; KEIN Einfluss auf den Bradykinin-Abbau!',
+        ind:'Hypertonie, HFrEF (bei ACE-Hemmer-Unverträglichkeit), Post-MI, diabetische Nephropathie.',
+        uaw:'Hyperkaliämie, Hypotonie, Nierenfunktionsstörung (cave bilaterale NAST), TERATOGEN; Reizhusten & Angioödem extrem selten (Vorteil vs. ACE-Hemmer!).',
+        pk:'Direkt wirksam (kein Prodrug), überwiegend biliär/fäkal eliminiert (~80%); t½ ~6 h.', links:['nephrosim.html','cardiosim.html'] },
+      { id:'sacubitril_valsartan', ch:5, sub:'AT1-Neprilysin-Inhibitor (ARNI)', name:'Sacubitril / Valsartan', target:'Neprilysin (NEP) + AT1-Rezeptor',
+        moa:'Sacubitril (Prodrug -> Sacubitrilat) hemmt Neprilysin -> verzögert Abbau natriuretischer Peptide (ANP, BNP -> Natriurese, Vasodilatation, Antifibrose). Valsartan blockiert gleichzeitig die überschiessende Ang-II-Wirkung.',
+        ind:'Chronische HFrEF (1. Wahl gemäss ESC, überlegen gegenüber Enalapril in PARADIGM-HF!).',
+        uaw:'Symptomatische Hypotonie, Hyperkaliämie, Nierenfunktionsverschlechterung, ANGIOÖDEM (erhöhtes Risiko -> NIEMALS mit ACE-Hemmer kombinieren, 36h Washout nach ACE-Hemmer zwingend!).',
+        pk:'DIAGNOSTIK-FALLE: BNP steigt unter ARNI künstlich an (Neprilysin baut BNP ab) -> zur Verlaufskontrolle IMMER NT-proBNP messen!', links:['cardiosim.html','nephrosim.html'] },
+      { id:'hct', ch:5, sub:'Thiaziddiuretikum', name:'Hydrochlorothiazid (HCT)', target:'NCC (Na+/Cl−-Cotransporter, früh-distaler Tubulus)',
+        moa:'Hemmt NaCl-Rückresorption im früh-distalen Tubulus (~5–10% des filtrierten Na+) -> milde Natriurese & chronische Gefässrelaxation; steigert indirekt Ca2+-Rückresorption (Ca2+ im Urin ↓!).',
+        ind:'Arterielle Hypertonie (1. Wahl), chronische Ödeme, Kalzium-Nierensteinprophylaxe, nephrogene Polyurie.',
+        uaw:'HYPOKALIÄMIE, HYPONATRIÄMIE (häufiger als bei Schleifendiuretika!), Hyperkalzämie, Hyperurikämie (Gichtanfall!), Hyperglykämie/Dyslipidämie, Phototoxizität (↑ Risiko für weissen Hautkrebs).',
+        pk:'Sekretion über OAT ins Tubuluslumen (Wirkverlust bei eGFR < 30 mL/min, ausgenommen sequentielle Nephronblockade mit Schleifendiuretikum).', links:['nephrosim.html','bloodlab.html'] },
+      { id:'furosemid', ch:5, sub:'Schleifendiuretikum', name:'Furosemid', target:'NKCC2 (Na+/K+/2Cl−-Cotransporter, dicke aufsteigende Henle-Schleife)',
+        moa:'Hemmt NKCC2 -> eliminiert den kortikomedullären osmotischen Gradienten -> maximale Diurese (bis ~25% des filtrierten Na+!) + hemmt parazelluläre Ca2+/Mg2+-Resorption (Ca2+-Ausscheidung ↑!).',
+        ind:'Akutes Lungenödem & kardiale/renale/hepatische Ödeme, akute Hyperkalzämie (mit NaCl!), Hyperkaliämie, fortgeschrittene CKD (auch bei eGFR < 30 wirksam!).',
+        uaw:'Hypovolämie, HYPOKALIÄMIE, Hypomagnesiämie, Hypokalzämie, metabolische Alkalose, Hyperurikämie (Gicht), OTOTOXIZITÄT (bei schneller hochdosierter i.v.-Gabe!).',
+        pk:'Starke Plasmaproteinbindung (>95%), gelangt per aktiver OAT-Sekretion ins Lumen (NSAR konkurrieren -> Wirkverlust!); variable orale BV (~50%, Torasemid stabiler); rascher i.v.-Eintritt (5–10 min, Venodilatation!).', links:['nephrosim.html','fluidsim.html','bloodlab.html'] },
+      { id:'spironolacton', ch:5, sub:'Aldosteron-Antagonist (MRA)', name:'Spironolacton', target:'Mineralokortikoid-Rezeptor (Sammelrohr, intrazellulär)',
+        moa:'Kompetitiver Antagonist am intrazellulären Aldosteronrezeptor der Hauptzellen -> vermindert Expression von ENaC und Na+/K+-ATPase -> milde Natriurese, K+-Retention, starke kardiale Antifibrose.',
+        ind:'HFrEF (1. Wahl, Mortalitätssenkung!), Leberzirrhose mit Aszites (1. Wahl!), primärer Hyperaldosteronismus (M. Conn), therapieresistente Hypertonie.',
+        uaw:'HYPERKALIÄMIE (v.a. in Kombi mit ACEi/ARB/CKD!), metabolische Azidose, GYNÄKOMASTIE / Libidoverlust / Zyklusstörungen (antiandrogene & gestagene Kreuzreaktivität!).',
+        pk:'PRODUG (aktiver Metabolit Canrenon, lange t½ ~16 h); langsamer Wirkeintritt über 2–4 Tage (transkriptionelle Genregulation!).', links:['nephrosim.html','cardiosim.html','bloodlab.html'] },
+      { id:'eplerenon', ch:5, sub:'Aldosteron-Antagonist (MRA)', name:'Eplerenon', target:'Selektiver Mineralokortikoid-Rezeptor-Antagonist',
+        moa:'Wie Spironolacton (ENaC ↓, K+-Einsparung, kardiales Anti-Remodeling), aber hochselektiv für den MR ohne wesentliche Bindung an Androgen-/Progesteronrezeptoren.',
+        ind:'Chronische HFrEF (v.a. bei Gynäkomastie unter Spironolacton) und Post-MI-Herzinsuffizienz (EPHESUS-Studie).',
+        uaw:'HYPERKALIÄMIE, Nierenfunktionsverschlechterung; kaum endokrine UAW (deutlich weniger Gynäkomastie als Spironolacton!).',
+        pk:'Direkt wirksam, CYP3A4-Substrat (Kontraindikation mit starken CYP3A4-Hemmern wie Ritonavir/Clarithromycin!), kürzere t½ (~4–6 h).', links:['nephrosim.html','cardiosim.html'] },
+      { id:'mannit', ch:5, sub:'Osmotisches Diuretikum', name:'Mannit (Mannitol)', target:'Osmotisch wirksam im proximalen Tubulus & Henle-Schleife',
+        moa:'Frei glomerulär filtriert, kaum tubulär rückresorbiert -> bindet Wasser osmotisch im Tubuluslumen (osmotische Diurese) UND zieht akut Wasser aus Hirnparenchym/Auge in den Intravasalraum.',
+        ind:'Akute Hirndrucksenkung (Hirnödem, Schädel-Hirn-Trauma), akuter Glaukomanfall.',
+        uaw:'Initiale INTRAVASALE VOLUMENEXPANSION (akutes Lungenödem -> streng kontraindiziert bei dekompensierter Herzinsuffizienz & Anurie!), Hypernatriämie/Dehydratation nach Diurese, Rebound-Hirnödem bei defekter BHS.',
+        pk:'Nur i.v. (p.o. osmotisches Laxans!), wird unverändert renal eliminiert.', links:['fluidsim.html','nephrosim.html'] },
+      { id:'acetazolamid', ch:5, sub:'Carboanhydrase-Hemmstoff', name:'Acetazolamid', target:'Carboanhydrase (proximaler Tubulus, Ziliarkörper, Plexus)',
+        moa:'Hemmt HCO3−-Rückresorption im proximalen Tubulus -> Ausscheidung von NaHCO3 & Wasser (schwache Diurese, rasche Toleranz) + vermindert Kammerwasser- und Liquorproduktion.',
+        ind:'Akutes Engwinkelglaukom, Höhenkrankheit (Prophylaxe/Therapie: metabolische Azidose stimuliert Atemantrieb!), idiopathische intrakranielle Hypertension (Pseudotumor cerebri).',
+        uaw:'Hyperchlorämische METABOLISCHE AZIDOSE (normale Anionenlücke!), Hypokaliämie, Parästhesien (Finger/Lippen), Nephrolithiasis (alkalischer Urin -> Kalziumphosphatsteine), Sulfonamid-Allergie.',
+        pk:'Oral oder i.v., unverändert renal eliminiert; diuretische Wirkung erschöpft sich nach 2–3 Tagen durch Azidose.', links:['nephrosim.html','bloodlab.html'] },
+      { id:'desmopressin', ch:5, sub:'Vasopressin-Analogon', name:'Desmopressin (DDAVP)', target:'Selektiver V2-Rezeptor-Agonist (Gs)',
+        moa:'Aktiviert renale V2-Rezeptoren im Sammelrohr -> Aquaporin-2-Einbau -> Wasserrückresorption ↑ (Antidiurese) OHNE wesentliche V1-Vasokonstriktion; setzt zusätzlich vWF & Faktor VIII aus Endothel (Weibel-Palade) frei.',
+        ind:'Zentraler Diabetes insipidus (AVP-Mangel), Enuresis nocturna, leichtes von-Willebrand-Syndrom Typ 1 & milde Hämophilie A, urämische Thrombozytopathie.',
+        uaw:'WASSERINTOXIKATION / schwere HYPONATRIÄMIE (Hirnödem/Krampfanfälle -> Trinkmengenbeschränkung!), Flush, Kopfschmerzen.',
+        pk:'Intranasal, sublingual/oral oder i.v.; resistent gegen Vasopressinase (längere t½ ~3 h als endogenes ADH).', links:['fluidsim.html','nephrosim.html','coagsim.html'] },
+
+      // ==================== 6. GEFÄSSWIRKSAME SUBSTANZEN ====================
+      { id:'gtn', ch:6, sub:'Organische Nitrate (NO-Donator)', name:'Glycerintrinitrat (Nitroglycerin)', target:'Bioaktivierung (ALDH2) → NO → sGC → cGMP ↑',
+        moa:'Setzt enzymatisch Stickstoffmonoxid (NO) frei -> aktiviert lösliche Guanylatzyklase -> cGMP ↑ -> PKG -> Relaxation vorwiegend der VENÖSEN Kapazitätsgefässe (Vorlast ↓↓, linksventrikuläre Wandspannung & O2-Bedarf ↓↓) + Koronardilatation.',
+        ind:'Akuter Angina-pectoris-Anfall (Sublingualspray/Kapsel), akutes Linksherzversagen / Lungenödem & hypertensive Krise (i.v.).',
+        uaw:'Nitrat-Kopfschmerzen (sehr häufig!), orthostatische Hypotonie/Synkope, Reflextachykardie, Flush, Nitrattoleranz bei Dauerexposition (nitratfreies Intervall 8–12 h nötig!).',
+        pk:'Extremer First-Pass-Effekt -> sublingual (Wirkung in 1–2 min), transdermal oder i.v.; ABSOLUTE KONTRAINDIKATION mit PDE5-Hemmern (Sildenafil -> lebensbedrohlicher Blutdrucksturz!).', links:['cardiosim.html'] },
+      { id:'isdn', ch:6, sub:'Organische Nitrate (NO-Donator)', name:'Isosorbiddinitrat (ISDN)', target:'NO-Donator → sGC → cGMP ↑ (venös > arteriell)',
+        moa:'Wie Glycerintrinitrat: NO-Freisetzung -> cGMP-vermittelte venöse Vorlastsenkung und Koronardilatation, aber längere Wirkdauer.',
+        ind:'Prophylaxe und Akuttherapie der stabilen Angina pectoris (sowie Kombination mit Hydralazin bei HFrEF).',
+        uaw:'Kopfschmerzen, Hypotonie, Reflextachykardie, Nitrattoleranz (exzentrische Dosierung mit nächtlicher Nitratpause nötig!). Streng kontraindiziert mit PDE5-Hemmern!',
+        pk:'Aktiver Hauptmetabolit Isosorbid-5-mononitrat (längere t½ ~4–5 h); sublingual oder oral retardiert.' },
+      { id:'nitroprussid', ch:6, sub:'Sonstige NO-Donatoren', name:'Nitroprussidnatrium', target:'Spontane NO-Freisetzung (arteriell = venös)',
+        moa:'Spontane (nicht-enzymatische!) NO-Abgabe -> gleichmässige maximale Dilatation von Arteriolen (Nachlast ↓↓) UND Venen (Vorlast ↓↓) ohne klassische Nitrattoleranz.',
+        ind:'Hypertensive Notfälle (z.B. Aortendissektion nach β-Blocker, schwerste therapierefraktäre Krise) unter invasiver arterieller Druckmessung auf IPS.',
+        uaw:'Schwere Hypotonie, Reflextachykardie, CYANID- & THIOCYANAT-INTOXIKATION (Laktatazidose, Verwirrtheit bei hoher Dosis / >48 h / Niereninsuffizienz -> Antidot Hydroxocobalamin!).',
+        pk:'Lichtempfindlich (Perfusor lichtgeschützt!), sekundenschneller Eintritt und Abklingen (t½ ~2 min); setzt pro Molekül 5 Cyanid-Ionen frei!',
+        antidote:'Hydroxocobalamin (Vitamin B12a) oder Natriumthiosulfat bei Cyanid-Intoxikation', links:['cardiosim.html'] },
+      { id:'amlodipin', ch:6, sub:'Ca2+-Kanalblocker (Dihydropyridin)', name:'Amlodipin', target:'Vaskulärer L-Typ Ca2+-Kanal (arteriolär)',
+        moa:'Gefässselektive Blockade arteriolärer L-Typ-Ca2+-Kanäle -> periphere arterielle Vasodilatation (TPR ↓↓, Nachlast ↓) OHNE direkte AV-Knoten-Hemmung oder relevante negative Inotropie.',
+        ind:'Arterielle Hypertonie (1. Wahl), stabile und vasospastische (Prinzmetal-)Angina pectoris.',
+        uaw:'PERIPHERE KNÖCHELÖDEME (präkapilläre Vasodilatation -> reagieren NICHT auf Diuretika, besser Kombi mit ACEi/ARB!), Flush, Kopfschmerzen, Gingivahyperplasie.',
+        pk:'Sehr langsamer Wirkeintritt und extrem lange Halbwertszeit (35–50 h -> 1×/Tag, KEINE relevante Reflextachykardie!); CYP3A4-Metabolismus.', links:['cardiosim.html'] },
+      { id:'nifedipin', ch:6, sub:'Ca2+-Kanalblocker (Dihydropyridin)', name:'Nifedipin', target:'Vaskulärer L-Typ Ca2+-Kanal (arteriolär)',
+        moa:'Arterioläre Vasodilatation durch L-Typ-Ca2+-Kanalblockade (TPR ↓↓); hemmt auch Uteruskontraktionen (Tokolyse).',
+        ind:'Hypertonie (nur Retardpräparate!), Schwangerschaftshypertonie, Raynaud-Phänomen, Tokolyse bei drohender Frühgeburt.',
+        uaw:'REFLEXTACHYKARDIE & Koronarischämie (bei unretardierter Gabe -> bei ACS kontraindiziert!), Knöchelödeme, Kopfschmerzen, Flush, Gingivahyperplasie.',
+        pk:'Kurze t½ (~2 h) -> nur als Retardformulierung für Hypertonie! Starker CYP3A4-Abbau (Grapefruitsaft hemmt Abbau -> Hypotonie!).', links:['cardiosim.html'] },
+      { id:'minoxidil', ch:6, sub:'K+-Kanalöffner', name:'Minoxidil', target:'ATP-abhängiger K+-Kanal (KATP, Arteriolen)',
+        moa:'Prodrug (Minoxidilsulfat) öffnet vaskuläre KATP-Kanäle -> K+-Ausstrom -> Hyperpolarisation -> Schliessung von Ca2+-Kanälen -> extrem starke arterioläre Vasodilatation.',
+        ind:'Schwerste therapieresistente Hypertonie (letzte Reserve, nur in Dreifachkombi!); topisch bei androgenetischer Alopezie.',
+        uaw:'Massive Reflextachykardie + starke Na+/Wasser-Retention/Ödeme (MUSS systemisch mit β-Blocker + Schleifendiuretikum kombiniert werden!), HYPERTRICHOSE (Bart-/Körperbehaarung!), Perikarderguss.',
+        pk:'Systemisch Prodrug (hepatische Sulfotransferase -> Minoxidilsulfat); Wirkung hält 24–72 h an.' },
+      { id:'theophyllin', ch:6, extraCh:[9], sub:'Nicht-selektiver PDE-Hemmer', name:'Theophyllin', target:'PDE-Hemmung (cAMP ↑) + Adenosin-R-Antagonist',
+        moa:'Unspezifische PDE-Hemmung (Bronchodilatation) + kompetitiver Antagonismus an Adenosinrezeptoren (Atemantrieb ↑, Diaphragmakraft ↑, zentrale Stimulation, Diurese).',
+        ind:'Reserve-Bronchodilatator bei schwerer COPD / Asthma (heute wegen Toxizität kaum noch 1. Wahl).',
+        uaw:'SEHR ENGE THERAPEUTISCHE BREITE! Übelkeit/Erbrechen, Tremor, Schlaflosigkeit, supraventrikuläre & ventrikuläre Arrhythmien, KRAMPFANFÄLLE (schwer behandelbar!), Hypokaliämie.',
+        pk:'Metabolismus über CYP1A2: Rauchen induziert CYP1A2 (↑ Bedarf), Ciprofloxacin/Erythromycin/Fluvoxamin hemmen CYP1A2 (Intoxikation!); Spiegelkontrolle (TDM) obligat! Antagonisiert Adenosin!' },
+      { id:'sildenafil', ch:6, sub:'PDE5-selektiver Hemmer', name:'Sildenafil', target:'Phosphodiesterase-5 (Corpus cavernosum & Pulmonalgefässe)',
+        moa:'Hemmt selektiv den Abbau von cGMP durch PDE5 -> verstärkt den lokalen NO-Signalweg -> Vasodilatation im Corpus cavernosum und in den Pulmonalarterien.',
+        ind:'Erektile Dysfunktion (bei sexueller Stimulation), pulmonal-arterielle Hypertonie (PAH).',
+        uaw:'Kopfschmerzen, Flush, Dyspepsie, nasale Kongestion, BLAUSEHEN (schwache PDE6-Hemmung in der Retina!), selten Priapismus/NAION.',
+        pk:'CYP3A4-Substrat (cave Ritonavir/Clarithromycin -> Spiegel ↑↑); ABSOLUTE KONTRAINDIKATION mit organischen Nitraten (GTN, ISDN) oder Molsidomin -> synergistischer cGMP-Anstieg -> letaler Blutdruckabfall!', links:['cardiosim.html'] },
+      { id:'bosentan', ch:6, sub:'Endothelin-Rezeptor-Antagonist', name:'Bosentan', target:'Dualer ETA- & ETB-Rezeptor-Antagonist',
+        moa:'Blockiert die Bindung des potenten Vasokonstriktors Endothelin-1 an pulmonalvaskuläre ETA- und ETB-Rezeptoren -> senkt pulmonalarteriellen Druck und hemmt Gefässremodeling.',
+        ind:'Pulmonal-arterielle Hypertonie (PAH), Prophylaxe neuer digitaler Ulzera bei systemischer Sklerose.',
+        uaw:'HEPATOTOXIZITÄT (monatliche Transaminasenkontrolle obligat!), stark TERATOGEN (doppelte Kontrazeption nötig), periphere Ödeme, Anämie.',
+        pk:'Oral 2×/Tag; starker INDUKTOR von CYP3A4 & CYP2C9 (schwächt Wirkung hormoneller Kontrazeptiva und VKA/DOAK ab!).' },
+
+      // ==================== END OF STEP 1 — PASTE STEP 2 DIRECTLY BELOW ====================
+      // ==================== 7. HÄMOSTASE & THROMBOSE ====================
+      { id:'heparin', ch:7, sub:'Unfraktioniertes Heparin (UFH)', name:'Heparin (UFH)', target:'Antithrombin III ↑↑ (Faktor IIa = Xa)',
+        moa:'Bindet an Antithrombin III (ATIII) -> 1000-fache Beschleunigung der Inaktivierung von Thrombin (IIa, benötigt lange Kette als Brücke!) und Faktor Xa.',
+        ind:'Akute TVT/LE (v.a. bei schwerer Niereninsuffizienz eGFR < 15–30!), ACS/PCI, Herz-Lungen-Maschine, rasche Steuerbarkeit auf IPS.',
+        uaw:'Blutungen, HIT Typ II (immunvermittelte Antikörper gegen PF4-Heparin -> Thrombozytenabfall >50% + schwere THROMBOSEN nach 5–10 d -> sofort stoppen!), Osteoporose bei Langzeitgabe, Hyperkaliämie.',
+        pk:'Nur parenteral (i.v./s.c.), nicht plazentagängig (sicher in Schwangerschaft!), Abbau über RES (nicht renal!); Monitoring mittels aPTT! Voll antagonisierbar mit Protamin.',
+        antidote:'Protamin (bindet elektrostatisch an negativ geladenes Heparin; 100% bei UFH)', links:['coagsim.html','bloodlab.html'] },
+      { id:'enoxaparin', ch:7, sub:'Niedermolekulares Heparin (NMH)', name:'Enoxaparin', target:'Antithrombin III ↑↑ (Faktor Xa >> IIa)',
+        moa:'Kürzere Heparinketten aktivieren ATIII vorwiegend gegen Faktor Xa (zu kurz für Thrombin-Brücke) -> stabilere Dosis-Wirkung ohne Routine-aPTT-Kontrolle.',
+        ind:'Thromboseprophylaxe (s.c.), akute TVT/LE, ACS, Bridging, Antikoagulation in der Schwangerschaft (nicht plazentagängig).',
+        uaw:'Blutungen, deutlich seltener HIT II als bei UFH (aber möglich -> bei HIT II ebenfalls kontraindiziert!), Hyperkaliämie.',
+        pk:'S.c. hohe Bioverfügbarkeit (~90%), längere t½ (~4–5 h); RENALE ELIMINATION -> Kumulation bei eGFR < 30 mL/min! Monitoring (nur bei Niereninsuff./Schwangerschaft/Adipositas): Anti-Xa-Aktivität. Protamin wirkt nur partiell (~60%).',
+        antidote:'Protamin (nur partielle Antagonisierung ~60%, da kurze Ketten schlechter binden)', links:['coagsim.html'] },
+      { id:'protamin', ch:7, sub:'Heparin-Antidot', name:'Protamin', target:'Elektrostatische Neutralisation von Heparin',
+        moa:'Stark basisches (positiv geladenes) Peptid, das mit stark saurem (negativ geladenem) Heparin einen stabilen, inaktiven Salzkomplex bildet.',
+        ind:'Antagonisierung von UFH (z.B. nach Herz-OP mit HLM oder bei schwerer Blutung); partielle Antagonisierung von NMH (~60%). Unwirksam bei Fondaparinux!',
+        uaw:'Anaphylaktoide Reaktion / Hypotonie / pulmonale Vasokonstriktion (langsam i.v. geben!; Fischallergie/NPH-Insulin-Vorbehandlung), PARADOXE ANTIKOAGULATION bei Überdosierung.',
+        pk:'I.v. sofortiger Wirkeintritt (<5 min); Dosis 1:1 zu UFH (ca. 1 mg Protamin neutralisiert ~100 IE UFH).', links:['coagsim.html'] },
+      { id:'fondaparinux', ch:7, sub:'Pentasaccharid (indirekter Xa-Hemmer)', name:'Fondaparinux', target:'Antithrombin III → rein selektiv Faktor Xa',
+        moa:'Synthetisches Pentasaccharid (exakte ATIII-Bindungssequenz) -> hochselektive, ATIII-abhängige Inaktivierung von Faktor Xa ohne IIa-Wirkung.',
+        ind:'Thromboseprophylaxe, TVT/LE, NSTEMI, sowie Alternative bei V.a. HIT Typ II (kreuzreagiert praktisch nicht mit PF4-Antikörpern!).',
+        uaw:'Blutungen; KEIN spezifisches Antidot (Protamin ist UNWIRKSAM!).',
+        pk:'S.c. 1×/Tag (lange t½ ~17 h), 100% unverändert RENAL eliminiert -> streng kontraindiziert bei eGFR < 20–30 mL/min.', links:['coagsim.html'] },
+      { id:'bivalirudin', ch:7, sub:'Hirudin-Analogon (direkter IIa-Hemmer)', name:'Bivalirudin', target:'Direkte, reversible Thrombin-Hemmung (IIa)',
+        moa:'Synthetisches Hirudin-Analogon: blockiert direkt (ATIII-unabhängig!) freies und fibringebundenes Thrombin.',
+        ind:'Antikoagulation bei PCI / ACS (v.a. bei bekannter HIT Typ II als Heparin-Alternative!).',
+        uaw:'Blutungen; kein spezifisches Antidot, aber sehr rasch abklingende Wirkung.',
+        pk:'Nur i.v., sehr kurze t½ (~25 min) durch proteolytische Spaltung durch Thrombin selbst + ~20% renal.', links:['coagsim.html'] },
+      { id:'dabigatran', ch:7, sub:'Direkter Thrombininhibitor (DOAK)', name:'Dabigatran', target:'Direkte, reversible Hemmung von Faktor IIa',
+        moa:'Orales Prodrug (Dabigatranetexilat) -> direktes, ATIII-unabhängiges Blockieren von freiem und fibringebundenem Thrombin (IIa).',
+        ind:'Schlaganfallprophylaxe bei nicht-valvulärem Vorhofflimmern, Therapie/Prophylaxe von TVT/LE. Kontraindiziert bei mechanischen Herzklappen!',
+        uaw:'Blutungen (GI-Blutungen etwas häufiger als VKA, intrakranielle deutlich seltener!), Dyspepsie (Weinsäure-Kern!).',
+        pk:'PRODUG! Niedrige BV (~6.5%), P-gp-Substrat (Interaktion Verapamil/Amiodaron!); zu ~80% RENAL eliminiert (kontraindiziert bei CrCl < 30 mL/min!). Thrombinzeit extrem sensitiv zum Ausschluss.',
+        antidote:'Idarucizumab (spezifisches humanisiertes Fab-Fragment gegen Dabigatran)', links:['coagsim.html'] },
+      { id:'idarucizumab', ch:7, sub:'Dabigatran-Antidot', name:'Idarucizumab', target:'Monoklonales Fab-Fragment gegen Dabigatran',
+        moa:'Bindet Dabigatran mit ~350-fach höherer Affinität als Thrombin -> hebt die Antikoagulation innerhalb von Minuten vollständig auf, ohne selbst prothrombotisch zu wirken.',
+        ind:'Lebensbedrohliche Blutungen oder dringliche Notfall-OPs unter Dabigatran.',
+        uaw:'Sehr gut verträglich; nach Aufhebung der Antikoagulation besteht das zugrundeliegende Thromboserisiko wieder.',
+        pk:'I.v. Bolus (2× 2.5 g), sofortige Normalisierung von Thrombinzeit / dTT.', links:['coagsim.html'] },
+      { id:'rivaroxaban', ch:7, sub:'Direkter Faktor-Xa-Inhibitor (DOAK)', name:'Rivaroxaban', target:'Direkte, reversible Hemmung von Faktor Xa',
+        moa:'Hemmt ATIII-unabhängig freies und im Prothrombinase-Komplex gebundenes Faktor Xa -> Thrombinbildung ↓↓.',
+        ind:'VHF (Schlaganfallprophylaxe), TVT/LE-Therapie & -Prophylaxe, chronische KHK/pAVK (Low-Dose 2× 2.5 mg + ASS). Kontraindiziert bei mechanischen Klappen!',
+        uaw:'Blutungen (weniger ICB als VKA, aber GI-Blutungen bei 1×/d-Spitzenspiegeln).',
+        pk:'Einnahme von 15/20 mg ZUM ESSEN zwingend (sonst Bioverfügbarkeit ↓)! ~33% unverändert renal + CYP3A4/P-gp-Abbau. Messung: kalibrierte Anti-Xa-Aktivität.',
+        antidote:'Andexanet alfa (oder 4-Faktor-PPS/Beriplex als klinische Alternative)', links:['coagsim.html'] },
+      { id:'apixaban', ch:7, sub:'Direkter Faktor-Xa-Inhibitor (DOAK)', name:'Apixaban', target:'Direkte, reversible Hemmung von Faktor Xa',
+        moa:'Wie Rivaroxaban: selektive, direkte Hemmung von Faktor Xa (2×/Tag -> flachere Spitzenspiegel -> niedrigstes GI-Blutungsrisiko unter den DOAK).',
+        ind:'Nicht-valvuläres VHF, TVT/LE-Therapie & -Prophylaxe (auch bei Tumor-assoziierter Thrombose).',
+        uaw:'Blutungen (insgesamt günstiges Blutungsprofil vs. VKA und Rivaroxaban).',
+        pk:'Geringste renale Ausscheidung der DOAK (~27% renal -> oft bevorzugt bei moderater CKD!), Abbau über CYP3A4 & P-gp; 2×/Tag nahrungsunabhängig.',
+        antidote:'Andexanet alfa (oder 4-Faktor-PPS)', links:['coagsim.html'] },
+      { id:'andexanet', ch:7, sub:'Faktor-Xa-Inhibitor-Antidot', name:'Andexanet alfa', target:'Rekombinanter Faktor-Xa-Köder ("Decoy")',
+        moa:'Katalytisch inaktives rekombinantes Faktor-Xa-Protein -> bindet und sequestriert zirkulierende Faktor-Xa-Inhibitoren (Apixaban, Rivaroxaban) -> endogenes Xa wird wieder frei.',
+        ind:'Lebensbedrohliche oder unkontrollierbare Blutungen unter Apixaban oder Rivaroxaban.',
+        uaw:'THROMBOEMBOLIEN (~10% — bindet auch endogenes TFPI!), Infusionsreaktionen, sehr hohe Kosten; hemmt auch Heparin (nicht vor Herz-OP mit HLM einsetzen!).',
+        pk:'I.v. Bolus gefolgt von 2h-Infusion (kurze t½ ~1 h -> Rebound der Anti-Xa-Aktivität nach Infusionsende möglich).', links:['coagsim.html'] },
+      { id:'phenprocoumon', ch:7, sub:'Vitamin-K-Antagonist (Cumarin)', name:'Phenprocoumon', target:'VKORC1 (Vitamin-K-Epoxid-Reduktase)',
+        moa:'Hemmt Regeneration von aktivem Vitamin K -> verhindert γ-Carboxylierung der Faktoren II, VII, IX, X sowie Protein C & S -> verzögerter Wirkeintritt (3–5 Tage!).',
+        ind:'Mechanische Herzklappen (1. Wahl — DOAK kontraindiziert!), Antiphospholipidsyndrom, schwere Mitralstenose, schwere CKD.',
+        uaw:'Blutungen, CUMARINNEKROSE initial (Protein C hat kürzeste t½ ~6 h -> transient hyperkoagulabel -> anfangs mit Heparin überlappen!), TERATOGEN (Cumarin-Embryopathie!).',
+        pk:'Sehr lange t½ (~140–160 h / 6–7 Tage -> träge steuerbar!), hohe Plasmaproteinbindung (>99%), CYP2C9/3A4-Abbau (massiv viele Interaktionen + Vitamin-K-Aufnahme über Nahrung!). Monitoring: INR (Quick).',
+        antidote:'Phytomenadion (Vit. K1, wirkt erst nach 6–24 h!) + bei akuter Blutung sofort 4-Faktor-PPS (Konzentrat II/VII/IX/X)', links:['coagsim.html','bloodlab.html'] },
+      { id:'acenocoumarol', ch:7, sub:'Vitamin-K-Antagonist (Cumarin)', name:'Acenocoumarol', target:'VKORC1 (Vitamin-K-Epoxid-Reduktase)',
+        moa:'Identischer Mechanismus wie Phenprocoumon (Hemmung γ-Carboxylierung von II, VII, IX, X, Protein C/S).',
+        ind:'Wie Phenprocoumon (in der Westschweiz / Romandie traditionell häufiger als Marcoumar/Phenprocoumon eingesetzt).',
+        uaw:'Blutungen, initiale Cumarinnekrose (Heparin-Überlappung nötig!), Teratogenität, INR-Schwankungen.',
+        pk:'DEUTLICH KÜRZERE Halbwertszeit (~8–12 h vs. ~150 h bei Phenprocoumon!) -> rascher abklingend bei Überdosierung, aber stärkere INR-Schwankungen; CYP2C9-Metabolismus.',
+        antidote:'Phytomenadion (Vit. K1) + 4-Faktor-PPS bei schwerer Blutung', links:['coagsim.html'] },
+      { id:'phytomenadion', ch:7, sub:'Vitamin-K-Substitution', name:'Phytomenadion (Vitamin K₁)', target:'Cofaktor der γ-Glutamylcarboxylase',
+        moa:'Umgeht die durch Cumarine blockierte VKORC1 über eine alternative Reduktase -> ermöglicht hepatische Neusynthese funktionsfähiger Gerinnungsfaktoren II, VII, IX, X.',
+        ind:'Antagonisierung von Vitamin-K-Antagonisten (erhöhte INR / Blutung), Vitamin-K-Mangel-Prophylaxe bei Neugeborenen, Malabsorption.',
+        uaw:'Selten anaphylaktoide Reaktion bei schneller i.v.-Gabe (besser p.o. oder langsam i.v.); hohe Dosen führen zu tagelanger VKA-Resistenz.',
+        pk:'VERZÖGERTER WIRKEINTRITT (6–24 h, da Faktoren neu synthetisiert werden müssen!) -> bei lebensbedrohlicher Blutung IMMER sofort mit 4-Faktor-PPS kombinieren!', links:['coagsim.html'] },
+      { id:'alteplase', ch:7, sub:'Fibrinolytikum (tPA)', name:'Alteplase (rt-PA)', target:'Fibrin-gebundenes Plasminogen → Plasmin',
+        moa:'Rekombinanter Gewebe-Plasminogenaktivator: aktiviert relativ fibrinspezifisch Plasminogen direkt am Thrombus zu Plasmin -> enzymatische Lyse des Fibrinnetzes.',
+        ind:'Akuter ischämischer Schlaganfall (Zeitfenster ≤ 4.5 h nach Blutungsausschluss im CT!), fulminante Lungenembolie mit Schock, STEMI (nur wenn PCI > 120 min entfernt).',
+        uaw:'SCHWERE BLUTUNGEN (intrakranielle Blutung ~5–6% bei Stroke!), Reperfusionsarrhythmien, selten Angioödem (v.a. unter ACE-Hemmern).',
+        pk:'Nur i.v. (10% Bolus, 90% über 60 min), sehr kurze Plasma-t½ (~5 min, hepatisch); Antidot bei Blutung: Tranexamsäure + Fibrinogen/FFP.',
+        antidote:'Tranexamsäure + Fibrinogenkonzentrat / FFP', links:['coagsim.html'] },
+      { id:'tranexamsaeure', ch:7, sub:'Antifibrinolytikum', name:'Tranexamsäure', target:'Lysin-Bindungsstelle von Plasminogen',
+        moa:'Synthetisches Lysin-Analogon: blockiert reversibel die Bindung von Plasminogen an Fibrin -> hemmt Plasminbildung und stabilisiert bestehende Thromben.',
+        ind:'Schweres Trauma mit Blutung (CRASH-2: innerhalb von 3 h i.v.!), postpartale Hämorrhagie, Hypermenorrhö, grosse OPs, Schleimhautblutungen, Lyse-Antidot.',
+        uaw:'Übelkeit/Diarrhö, Krampfanfälle bei sehr hoher Dosis (GABA-Antagonismus!), Kontraindikation bei Makrohämaturie (Uretertamponade durch Koagel!) und aktiver Thromboembolie.',
+        pk:'Oral, topisch oder i.v.; überwiegend unverändert renal eliminiert (Dosisanpassung bei CKD!).', links:['coagsim.html'] },
+      { id:'ass', ch:7, extraCh:[8], sub:'COX-Hemmer (Thrombozytenhemmer / NSAR)', name:'Acetylsalicylsäure (ASS)', target:'Irreversible Acetylierung von COX-1 & COX-2',
+        moa:'Acetyliert irreversibel Serin-530 der COX-1 in kernlosen Thrombozyten -> Thromboxan-A2-Synthese (TXA2) für die gesamte Thrombozytenlebensdauer (~7–10 Tage) blockiert! Höhere Dosen: analgetisch/antipyretisch/antiphlogistisch.',
+        ind:'Low-Dose (100 mg/d): Sekundärprophylaxe KHK/ACS/Stroke/pAVK. Hochdosis (500–1000 mg): Schmerz/Fieber/Migräne/Perikarditis.',
+        uaw:'GI-Ulzera & Blutungen, Analgetika-Asthma (Leukotrien-Shift!), Tinnitus bei Überdosierung, REYE-SYNDROM bei Kindern mit Virusinfekt (streng kontraindiziert <16 J.!).',
+        pk:'Kurze t½ von ASS (~20 min -> Salicylat), aber Thrombozytenhemmung hält 7–10 d! INTERAKTION: Ibuprofen/Metamizol blockieren COX-1-Bindungstasche -> ASS mind. 30–60 min VOR Ibuprofen einnehmen!', links:['coagsim.html'] },
+      { id:'clopidogrel', ch:7, sub:'ADP-Rezeptor-Antagonist (P2Y12)', name:'Clopidogrel', target:'Irreversible Blockade des P2Y12-Rezeptors',
+        moa:'Thienopyridin-Prodrug: der aktive Metabolit blockiert irreversibel den ADP-P2Y12-Rezeptor auf Thrombozyten -> verhindert GPIIb/IIIa-Aktivierung & Aggregation für 7–10 Tage.',
+        ind:'Sekundärprophylaxe nach Schlaganfall/pAVK, DAPT nach elektiver PCI (mit ASS), Alternative bei ASS-Unverträglichkeit.',
+        uaw:'Blutungen, GI-Beschwerden, selten TTP (thrombotisch-thrombozytopenische Purpura).',
+        pk:'PRODUG! Zweistufige hepatische Aktivierung über CYP2C19 -> ~20–30% genetische Poor/Intermediate Metabolizer (Wirkverlust!) & Interaktion mit CYP2C19-Hemmern (OMEPRAZOL vermeiden -> Pantoprazol nehmen!).', links:['coagsim.html'] },
+      { id:'ticagrelor', ch:7, sub:'ADP-Rezeptor-Antagonist (P2Y12)', name:'Ticagrelor', target:'Direkte, REVERSIBLE P2Y12-Hemmung',
+        moa:'Bindet allosterisch und REVERSIBEL an den P2Y12-Rezeptor -> raschere, stärkere und zuverlässigere Thrombozytenhemmung als Clopidogrel (kein CYP2C19 nötig!).',
+        ind:'DAPT 1. Wahl bei akutem Koronarsyndrom (STEMI/NSTEMI, zusammen mit ASS max. 100 mg!).',
+        uaw:'Blutungen, DYSPNOE (~15%, klassische Prüfungsfrage — durch Hemmung der Adenosin-Wiederaufnahme!), ventrikuläre Pausen/Bradykardie, Hyperurikämie.',
+        pk:'KEIN Prodrug (direkt wirksam -> schneller Eintritt <30 min), 2×/Tag, CYP3A4-Abbau; raschere Erholung nach Absetzen (3–5 d vs. 5–7 d bei Clopidogrel).', links:['coagsim.html'] },
+      { id:'tirofiban', ch:7, sub:'GPIIb/IIIa-Inhibitor', name:'Tirofiban', target:'Glykoprotein-IIb/IIIa-Rezeptor (Endstrecke)',
+        moa:'Blockiert reversibel die Fibrinogen-Bindungsstelle am GPIIb/IIIa-Rezeptor -> hemmt die gemeinsame Endstrecke der Thrombozytenaggregation unabhängig vom Aktivierungspfad.',
+        ind:'"Bail-out"-Therapie im Herzkatheterlabor bei hoher Thrombuslast / No-Reflow während PCI beim ACS.',
+        uaw:'Schwere Blutungen, akute schwere THROMBOZYTOPENIE (immunvermittelt innert Stunden -> Plättchenkontrolle nach 2–6 h!).',
+        pk:'Nur i.v. Infusion, kurze t½ (~2 h), überwiegend unverändert renal eliminiert (Dosis halbieren bei CrCl < 30 mL/min).', links:['coagsim.html'] },
+
+      // ==================== 8. ANTIPHLOGISTIKA & GLUKOKORTIKOIDE ====================
+      { id:'ibuprofen', ch:8, sub:'Nicht-selektiver COX-Hemmer (NSAR)', name:'Ibuprofen', target:'Reversible COX-1- & COX-2-Hemmung',
+        moa:'Hemmt Prostaglandinsynthese (PGE2, PGI2) -> analgetisch, antipyretisch, antiphlogistisch; in geringeren Dosen relativ ausgewogenes COX-1/COX-2-Profil.',
+        ind:'Akute und chronische Schmerzen, Fieber, entzündliche Gelenkerkrankungen, Verschluss eines persistierenden Ductus arteriosus (Neonatologie).',
+        uaw:'GI-Ulzera/Blutungen (PGE2 ↓), akutes Nierenversagen (Vas afferens Konstriktion -> "Triple Whammy" mit ACEi + Diuretikum!), RR-Anstieg/Ödeme, Analgetika-Asthma, vorzeitiger Ductus-Verschluss im 3. Trimenon!',
+        pk:'Oral, rasche Resorption, t½ ~2 h, hepatisch (CYP2C9). Antagonisiert ASS-Wirkung bei zeitgleicher Gabe (ASS zuerst geben!).', links:['nephrosim.html'] },
+      { id:'diclofenac', ch:8, sub:'Nicht-selektiver COX-Hemmer (NSAR)', name:'Diclofenac', target:'COX-2 > COX-1 (präferenziell, reversibel)',
+        moa:'Potente Prostaglandin-Synthesehemmung mit etwas stärkerer COX-2- als COX-1-Affinität -> stark antiphlogistisch und analgetisch, aber erhöhtes kardiovaskuläres Risiko.',
+        ind:'Entzündlich-rheumatische Schmerzen, akute Gicht, Nieren-/Gallenkolik, topisch bei Arthrose/Sportverletzungen.',
+        uaw:'ERHÖHTES KARDIOVASKULÄRES RISIKO (MI/Stroke ähnlich wie Coxibe -> kontraindiziert bei KHK/pAVK/Herzinsuffizienz!), GI-Ulzera, Nephrotoxizität, Transaminasenanstieg.',
+        pk:'Reichert sich im sauren Entzündungsgewebe/Synovialflüssigkeit an ("Ion Trapping"); t½ im Plasma ~2 h, im Gelenk deutlich länger; CYP2C9-Abbau.' },
+      { id:'metamizol', ch:8, sub:'Nicht-opioides Analgetikum (Pyrazolon)', name:'Metamizol', target:'Zentrale & periphere COX-Hemmung + Spasmolyse',
+        moa:'Starke analgetische, antipyretische und SPASMOLYTISCHE Wirkung (bei kaum relevanter Antiphlogese); zentral vermittelt über Prostaglandin-/Endocannabinoid-Wege.',
+        ind:'Starke akute/chronische Schmerzen, Kolikschmerzen (Galle/Niere), Tumorschmerzen, therapierefraktäres hohes Fieber (in CH sehr verbreitet, in USA/UK wegen Agranulozytose nicht zugelassen).',
+        uaw:'AGRANULOZYTOSE (selten, aber potenziell tödlich -> Warnzeichen: Fieber, Halsschmerzen, Schleimhautulzera -> sofort Blutbild!), schwere Hypotonie/Schock bei zu schneller i.v.-Gabe!',
+        pk:'PRODUG (Hydrolyse zu aktivem 4-MAA); i.v. IMMER langsam als Kurzinfusion geben! Geringere GI- und Nierentoxizität als klassische NSAR.', links:['bloodlab.html'] },
+      { id:'paracetamol', ch:8, sub:'Nicht-opioides Analgetikum (nicht antiphlogistisch!)', name:'Paracetamol (Acetaminophen)', target:'Zentrale COX-Hemmung (Peroxidase-Stelle) + AM404',
+        moa:'Hemmt zentrale Prostaglandinsynthese (im peripheren Entzündungsgewebe wegen hoher Peroxidspiegel unwirksam -> NICHT entzündungshemmend!) und wirkt über Metabolit AM404 an CB1/TRPV1.',
+        ind:'Leichte bis mässige Schmerzen und Fieber (1. Wahl in Schwangerschaft, bei Kindern, Niereninsuffizienz und Ulkusrisiko).',
+        uaw:'Therapeutisch (max. 4 g/d, bei Risikopatienten 2–3 g/d) sehr gut verträglich; bei ÜBERDOSIERUNG (>7–10 g): SCHWERE LEBERNEKROSE durch toxischen CYP2E1-Metaboliten NAPQI (Glutathion erschöpft!).',
+        pk:'Abbau ~90% über Glukuronidierung/Sulfatierung, ~5–10% über CYP2E1 zu NAPQI (durch Glutathion entgiftet). Alkohol-/Fastenzustand erhöht Toxizität! Rumack-Matthew-Nomogramm.',
+        antidote:'N-Acetylcystein (NAC i.v. — liefert Cystein zur Glutathion-Regeneration; optimal < 8–10 h!)', links:['bloodlab.html','pkpd.html'] },
+      { id:'nac', ch:8, sub:'Paracetamol-Antidot', name:'N-Acetylcystein (NAC)', target:'Glutathion-Vorstufe (SH-Gruppen-Donator)',
+        moa:'Liefert L-Cystein für die hepatische Glutathion-Synthese und bindet direkt den toxischen Paracetamol-Metaboliten NAPQI -> verhindert zentrilobuläre Leberzellnekrose.',
+        ind:'Paracetamol-Intoxikation (i.v.-Schema nach Rumack-Matthew-Nomogramm; am wirksamsten < 8–10 h, aber auch später noch sinnvoll!).',
+        uaw:'Anaphylaktoide Reaktionen (Flush, Urtikaria, Bronchospasmus bei initialer Ladedosis -> Infusion verlangsamen + Antihistaminikum).',
+        pk:'I.v. bei Intoxikation (p.o. als Mukolytikum mit geringer Evidenz); rasche hepatische Bereitstellung von SH-Gruppen.' },
+      { id:'celecoxib', ch:8, sub:'Selektiver COX-2-Hemmer (Coxib)', name:'Celecoxib', target:'Selektive COX-2-Inhibition',
+        moa:'Hemmt selektiv die induzierbare COX-2 im Entzündungsgewebe -> analgetisch/antiphlogistisch unter weitgehender Schonung der COX-1-vermittelten Magenschleimhautprotektion und Thrombozytenfunktion.',
+        ind:'Arthrose, rheumatoide Arthritis, Spondyloarthritis bei Patienten mit hohem GI-Risiko und niedrigem kardiovaskulärem Risiko.',
+        uaw:'KARDIOVASKULÄRE THROMBOEMBOLIEN (MI/Stroke: endotheliale PGI2 ↓ bei intakter thrombozytärer TXA2 -> streng kontraindiziert bei KHK/pAVK/Stroke/HF!), Nephrotoxizität & RR-Anstieg wie NSAR, Sulfonamid-Allergie.',
+        pk:'Oral, t½ ~8–12 h, Metabolismus über CYP2C9 (genetischer Polymorphismus!).' },
+      { id:'montelukast', ch:8, extraCh:[9], sub:'Leukotrien-Rezeptor-Antagonist', name:'Montelukast', target:'CysLT1-Rezeptor-Antagonist (Bronchien)',
+        moa:'Blockiert selektiv die Bindung der Cysteinyl-Leukotriene (LTC4, LTD4, LTE4) am CysLT1-Rezeptor -> hemmt Bronchokonstriktion, Schleimsekretion und eosinophile Entzündung.',
+        ind:'Add-on bei persistierendem Asthma, Analgetika-Asthma (AERD), Anstrengungsasthma, allergische Rhinitis (oral, v.a. Pädiatrie).',
+        uaw:'NEUROPSYCHIATRISCHE UAW (Black-Box-Warnung: Albträume, Agitation, Depression, Suizidalität!), Kopfschmerzen, selten EGPA (Churg-Strauss beim Steroid-Ausschleichen).',
+        pk:'Oral 1× abends (gute Adhärenz bei Kindern); NICHT für akuten Asthmaanfall geeignet (langsamer Wirkeintritt).' },
+      { id:'hydrokortison', ch:8, sub:'Glukokortikoid (kurzwirksam)', name:'Hydrokortison (Kortisol) & Kortison', target:'Intrazellulärer GR (= 1) + MR (= 1)',
+        moa:'Hydrokortison ist das körpereigene Kortisol (bindet GR + MR gleicher Potenz 1:1). Kortison ist das inaktive Prodrug, das hepatisch über 11β-HSD1 zu Kortisol aktiviert wird -> transkriptionelle Entzündungshemmung (NF-κB ↓, Lipocortin-1 ↑ -> PLA2 ↓).',
+        ind:'Physiologische Substitution bei Nebennierenrindeninsuffizienz (M. Addison, sekundäre AI), Addison-Krise (100 mg i.v.!), septischer Schock (therapierefraktär), topisch Dermatologie.',
+        uaw:'Bei Substitution gering; bei Überdosierung Cushing-Syndrom, Hypertonie/Ödeme & Hypokaliämie (starke MR-Wirkung!), Hyperglykämie, Osteoporose, HPA-Suppression.',
+        pk:'Biologische HWZ 8–12 h (kurzwirksam -> 2–3 Einzeldosen zirkadian bei Substitution!). Kortison NICHT lokal/bei schwerem Leberversagen wirksam (braucht 11β-HSD1!).', links:['endosim.html'] },
+      { id:'prednison', ch:8, extraCh:[9], sub:'Glukokortikoid (mittelwirksam)', name:'Prednison & Prednisolon', target:'Intrazellulärer GR (4×) > MR (0.6×)',
+        moa:'4-fach höhere glukokortikoide Potenz als Kortisol bei reduzierter mineralokortikoider Wirkung -> Standard-Systemsteroid zur Immunsuppression/Antiphlogese.',
+        ind:'Akute Asthma-/COPD-Exazerbation, Autoimmunerkrankungen (Riesenzellarteriitis, SLE, CED, RA), allergische Reaktionen, Transplantationsmedizin.',
+        uaw:'Cushing-Syndrom, Osteoporose (ab >3 Mon. Ca/VitD/Bisphosphonat prüfen!), Steroiddiabetes, Hautatrophie, Myopathie, Infektanfälligkeit, Katarakt/Glaukom, Ulkus (v.a. + NSAR), HPA-Achsen-Atrophie (ab >2 Wo. ausschleichen!).',
+        pk:'Prednison = PRODRUG (Aktivierung in Leber via 11β-HSD1 zu aktivem Prednisolon -> bei schwerer Leberinsuffizienz oder i.v./topisch direkt Prednisolon verwenden!). Biol. HWZ 18–36 h.', links:['endosim.html'] },
+      { id:'dexamethason', ch:8, sub:'Glukokortikoid (langwirksam, hochpotent)', name:'Dexamethason', target:'Intrazellulärer GR (30×) · KEINE MR-Wirkung (0)',
+        moa:'Extrem potente, reine GR-Aktivierung (~30× Kortisol) ohne mineralokortikoide Na+/Wasser-Retention -> ideal bei Ödemen (ZNS!) und zur maximalen HPA-Suppression.',
+        ind:'Tumorbedingtes Hirnödem, bakterielle Meningitis (VOR 1. Antibiotikum!), schweres COVID-19 mit O2-Bedarf, Antiemese (PONV/Chemo), Pseudokrupp, Dexamethason-Hemmtest (1 mg/8 mg DST).',
+        uaw:'Stärkste HPA-Achsen-Suppression (auch nach kurzer Gabe!), ausgeprägte Hyperglykämie, Psychose/Schlaflosigkeit, Infekte, Osteoporose, Myopathie.',
+        pk:'Sehr lange biologische HWZ (36–72 h); kreuzreagiert NICHT im Serum-Kortisol-Assay (deshalb ideal für den DST in EndoSim!).', links:['endosim.html'] },
+      { id:'budesonid', ch:8, extraCh:[9], sub:'Topisches Glukokortikoid (ICS / GI)', name:'Budesonid', target:'Lokaler GR (hohe Rezeptoraffinität)',
+        moa:'Entzündungshemmendes Glukokortikoid mit sehr hoher lokaler Potenz in Bronchial- oder Darmschleimhaut bei minimaler systemischer Exposition.',
+        ind:'Inhalativ (ICS): Basistherapie 1. Wahl bei Asthma (oft fix mit Formoterol als MART) & ausgewählter COPD; Oral (retardiert): M. Crohn (Ileozökalbefall), mikroskopische Kolitis, Autoimmunhepatitis.',
+        uaw:'Lokal (ICS): ORALE KANDIDOSE (Soor) & Heiserkeit (Mund nach Inhalation ausspülen / Spacer nutzen!); systemische Steroid-UAW erst bei sehr hohen Dosen.',
+        pk:'EXTREMER FIRST-PASS-EFFEKT (~90% Inaktivierung in der Leber via CYP3A4) -> verschluckter Anteil wirkt kaum systemisch (Ausnahme: starke CYP3A4-Hemmer wie Ritonavir -> iatrogenes Cushing!).' },
+      { id:'betamethason', ch:8, sub:'Glukokortikoid (langwirksam, hochpotent)', name:'Betamethason', target:'Intrazellulärer GR (25–30×) · KEINE MR-Wirkung (0)',
+        moa:'Stereoisomer von Dexamethason: hochpotente reine GR-Wirkung ohne Na+-Retention; passiert Plazenta unverändert (wird nicht durch plazentare 11β-HSD2 inaktiviert!).',
+        ind:'FETALE LUNGENREIFUNG (Surfactant-Induktion bei drohender Frühgeburt 24.–34. SSW!), hochpotente topische Dermatika (Psoriasis, Ekzeme), intraartikuläre Injektionen.',
+        uaw:'Systemisch wie Dexamethason (Hyperglykämie, HPA-Suppression); topisch: Hautatrophie, Striae, Teleangiektasien, periorale Dermatitis.',
+        pk:'Lange biologische HWZ (36–54 h); plazentagängig (im Gegensatz zu Prednisolon, das von plazentarer 11β-HSD2 inaktiviert wird -> deshalb Betamethason/Dexamethason für fetale Therapie!).' },
+      { id:'metyrapon', ch:8, sub:'Glukokortikoidsynthesehemmer', name:'Metyrapon', target:'11β-Hydroxylase (CYP11B1) in der NNR',
+        moa:'Blockiert den letzten Schritt der Kortisolsynthese (11-Desoxykortisol -> Kortisol) in der Nebennierenrinde -> Kortisol ↓ -> über negative Rückkopplung steigt ACTH & 11-Desoxykortisol kompensatorisch an.',
+        ind:'Medikamentöse Kortisolsenkung bei schwerem Cushing-Syndrom (z.B. präoperativ/ektopes ACTH) sowie Metyrapon-Funktionstest zur Prüfung der zentralen HPA-Reserve.',
+        uaw:'Nebenniereninsuffizienz, HYPERANDROGENISMUS (Hirsutismus/Akne) & Hypertonie/Hypokaliämie (Anstau von Androgen- und Desoxykortikosteron-Vorstufen durch ↑ ACTH!).',
+        pk:'Oral, rascher Wirkeintritt (Stunden), kurze t½ (~2 h -> mehrfache tägliche Gabe).', links:['endosim.html'] },
+      { id:'fludrocortison', ch:8, sub:'Mineralkortikoid', name:'Fludrocortison', target:'Intrazellulärer MR (125×) >> GR (10×)',
+        moa:'Synthetisches Aldosteron-Analogon mit extremer mineralokortikoider Potenz -> steigert ENaC & Na+/K+-ATPase im Sammelrohr -> Na+/Wasser-Retention & K+/H+-Ausscheidung.',
+        ind:'Substitution bei PRIMÄRER Nebennierenrindeninsuffizienz (M. Addison, zusätzlich zu Hydrokortison! Bei sekundärer AI NICHT nötig, da RAAS intakt!), schwere neurogene orthostatische Hypotonie.',
+        uaw:'Hypertonie, Ödeme/Herzinsuffizienz-Dekompensation, HYPOKALIÄMIE, metabolische Alkalose.',
+        pk:'Oral gut bioverfügbar (im Gegensatz zu natürlichem Aldosteron mit ~100% First-Pass!); 1× morgens; Monitoring über Blutdruck, Kalium und Renin.', links:['endosim.html','nephrosim.html'] },
+
+      // ==================== 9. ANTI-ASTHMATIKA ====================
+      { id:'cromoglykat', ch:9, sub:'Mastzellstabilisator', name:'Cromoglykat (Cromoglicinsäure)', target:'Mastzellmembran (Degranulationshemmung)',
+        moa:'Stabilisiert Mastzellmembranen (Hemmung von Cl−-Kanälen / Ca2+-Einstrom) -> verhindert allergische Freisetzung von Histamin und Leukotrienen bei Allergenkontakt.',
+        ind:'Rein PROPHYLAKTISCH bei allergischer Konjunktivitis (Augentropfen) und allergischer Rhinitis; beim Asthma heute kaum noch eingesetzt (ICS klar überlegen).',
+        uaw:'Sehr nebenwirkungsarm; selten lokale Reizung/Brennen oder Husten nach Inhalation.',
+        pk:'Sehr polar -> kaum systemische Resorption (rein topisch); KEINE Akutwirkung (Wirkung erst nach Tagen regelmässiger Prophylaxe!).' },
+      { id:'omalizumab', ch:9, sub:'Anti-IgE-Antikörper (Biologikum)', name:'Omalizumab', target:'Freies zirkulierendes IgE (FcεRI-Bindungsstelle)',
+        moa:'Humanisierter monoklonaler Antikörper gegen die Fc-Domäne von freiem IgE -> verhindert Bindung an hochaffine FcεRI-Rezeptoren auf Mastzellen & Basophilen und führt zu deren Rezeptor-Downregulation.',
+        ind:'Schweres persistierendes allergisches Asthma (Add-on bei erhöhtem IgE), chronische spontane Urtikaria, chronische Rhinosinusitis mit Nasenpolypen.',
+        uaw:'Lokale Injektionsreaktionen, Kopfschmerzen, selten ANAPHYLAXIE (Nachbeobachtung!), leicht erhöhtes Risiko für Helminthen-Infektionen.',
+        pk:'Subkutane Injektion alle 2–4 Wochen (Dosierung nach Körpergewicht & Ausgangs-IgE!); sehr lange t½ (~26 Tage).' },
+
+      // ==================== 10. VIROSTATIKA ====================
+      { id:'aciclovir', ch:10, sub:'Herpesviren · Antimetabolit (Nukleosidanalogon)', name:'Aciclovir', target:'Virale Thymidinkinase → virale DNA-Polymerase',
+        moa:'PRODRUG-PRINZIP (hohe Selektivität!): 1. Phosphorylierung erfolgt fast NUR durch virale Thymidinkinase (HSV/VZV) -> zelluläre Kinasen bilden Aciclovir-Triphosphat -> kompetitive Hemmung der viralen DNA-Polymerase + OBLIGATER KETTENABBRUCH (fehlende 3\'-OH-Gruppe!).',
+        ind:'HSV-1/2 (Herpes labialis/genitalis, HSV-Enzephalitis i.v.!), VZV (Herpes zoster, schwere Varizellen). NICHT wirksam gegen CMV (keine virale TK -> Ganciclovir!).',
+        uaw:'KRISTALLNEPHROPATHIE / akutes Nierenversagen bei i.v.-Gabe (langsam infundieren + reichlich hydrieren!), Neurotoxizität (Verwirrtheit/Krampfanfälle bei Niereninsuffizienz).',
+        pk:'Schlechte orale BV (~15–20% -> Valaciclovir als L-Valyl-Ester-Prodrug hat ~55% BV!); überwiegend unverändert renal eliminiert (Dosisanpassung bei CKD!).', links:['nephrosim.html'] },
+      { id:'tenofovir', ch:10, sub:'HIV & Hepatitis B · Nukleotid-RT-Hemmer (NtRTI)', name:'Tenofovir (TDF / TAF)', target:'HIV-Reverse-Transkriptase & HBV-DNA-Polymerase',
+        moa:'Bereits monophosphoryliertes Adenosin-Nukleotidanalogon (umgeht ersten Phosphorylierungsschritt!) -> nach Diphosphorylierung Kettenabbruch der viralen cDNA bei HIV UND HBV.',
+        ind:'Backbone der HIV-1-ART & HIV-PrEP (mit Emtricitabin); Erstlinientherapie der chronischen HEPATITIS B (sehr hohe Resistenzbarriere!).',
+        uaw:'TDF (Tenofovirdisoproxil): PROXIMALE TUBULOPATHIE (Fanconi-Syndrom!), eGFR-Abfall und Abnahme der Knochendichte (Osteopenie). TAF (Alafenamid): deutlich nierenschonender & knochenschonender, aber leichter Lipid-/Gewichtsanstieg.',
+        pk:'Prodrugs (TDF/TAF verbessern orale Aufnahme); renale Elimination; bei HIV/HBV-Koinfektion nie abrupt absetzen (schwerer HBV-Rebound-Flare!).', links:['nephrosim.html'] },
+      { id:'efavirenz', ch:10, sub:'HIV · Nicht-Nukleosid-RT-Hemmer (NNRTI)', name:'Efavirenz', target:'Allosterische Tasche der HIV-1 Reverse Transkriptase',
+        moa:'Bindet direkt (OHNE Phosphorylierung!) an eine hydrophobe allosterische Tasche der HIV-1-RT -> Konformationsänderung hemmt Enzymaktivität. Unwirksam gegen HIV-2!',
+        ind:'HIV-1-Kombinationstherapie (früher Standard, heute durch Integrasehemmer verdrängt wegen ZNS-UAW und niedriger Resistenzbarriere).',
+        uaw:'AUSGEPRÄGTE ZNS-UAW (lebhafte/bizarre Albträume, Schwindel, Depression, Konzentrationsstörungen -> vor dem Schlafengehen nüchtern einnehmen!), Exanthem, Hepatotoxizität, QTc-Verlängerung.',
+        pk:'Sehr lange t½ (~40–55 h -> Gefahr von Monotherapie-Resistenz bei unregelmässiger Einnahme!); STARKER CYP3A4-/CYP2B6-INDUKTOR (senkt Spiegel vieler Begleitmedikamente!).' },
+      { id:'darunavir', ch:10, sub:'HIV · Protease-Inhibitor (PI)', name:'Darunavir', target:'HIV-1-Protease (Virion-Reifung)',
+        moa:'Hemmt die virale Aspartatprotease -> verhindert Spaltung der viralen gag-pol-Polyproteine -> es entstehen nur unreife, nicht-infektiöse Viruspartikel.',
+        ind:'HIV-1-Kombinationstherapie (v.a. bei Resistenzen wegen extrem hoher genetischer Resistenzbarriere); IMMER geboostert mit Ritonavir oder Cobicistat!',
+        uaw:'Metabolische Störungen (Dyslipidämie, Insulinresistenz, Lipodystrophie), GI-Beschwerden/Diarrhö, Hepatotoxizität, Sulfonamid-Exanthem.',
+        pk:'PHARMAKOKINETISCHES BOOSTING: Ritonavir/Cobicistat blockieren CYP3A4 -> Darunavir-Spiegel ↑↑! Dadurch jedoch MASSIVE CYP3A4-Interaktionsgefahr mit Begleitmedikation (Statine, DOAK, Budesonid, Sildenafil!).' },
+      { id:'dolutegravir', ch:10, sub:'HIV · Integrase-Inhibitor (INSTI)', name:'Dolutegravir', target:'HIV-Integrase (Strangtransfer)',
+        moa:'Chelatisiert die beiden essenziellen Mg²⁺-Ionen im aktiven Zentrum der viralen Integrase -> blockiert Einbau der viralen Provirus-DNA in das menschliche Wirtsgenom.',
+        ind:'ERSTLINIENTHERAPIE bei HIV-1 (mit 1–2 NRTIs): hohe Wirksamkeit, sehr hohe Resistenzbarriere, ausgezeichnete Verträglichkeit.',
+        uaw:'Gewichtszunahme, selten Schlafstörungen/Kopfschmerzen; HARMLOSER PSEUDO-KREATININANSTIEG (+10–15% durch Hemmung der tubulären OCT2-Kreatininsekretion ohne echten GFR-Verlust!).',
+        pk:'INTERAKTION: Zwei-/dreiwertige Kationen (Ca²⁺, Mg²⁺, Fe²⁺, Al³⁺ in Antazida/Supplementen) chelatisieren Dolutegravir im Darm -> Wirkverlust (zeitlicher Abstand nötig!). Abbau primär über UGT1A1 (kaum CYP-Interaktionen).' },
+      { id:'enfuvirtid', ch:10, sub:'HIV · Fusion-Inhibitor', name:'Enfuvirtid', target:'Virales Hüllprotein gp41 (HIV-1)',
+        moa:'Synthetisches 36-Aminosäuren-Peptid, das an virales gp41 bindet -> verhindert die Konformationsänderung ("Six-Helix-Bundle") für die Verschmelzung von Virushülle und CD4-Zellmembran.',
+        ind:'Salvage-Therapie bei multiresistenter HIV-1-Infektion (letzte Reserve).',
+        uaw:'Lokale schmerzhafte Injektionsstellenreaktionen/Knötchen bei fast allen Patienten (>95%), leicht erhöhtes Pneumonierisiko, Überempfindlichkeit.',
+        pk:'Peptid -> oral unwirksam -> MUSS 2× täglich subkutan injiziert werden; keine CYP-Interaktionen.' },
+      { id:'maraviroc', ch:10, sub:'HIV · CCR5-Ko-Rezeptor-Antagonist', name:'Maraviroc', target:'Menschlicher CCR5-Chemokinrezeptor (CD4-Zelle)',
+        moa:'Bindet allosterisch an den WIRTSZELL-Ko-Rezeptor CCR5 -> verhindert das Andocken des HIV-1-Hüllproteins gp120 und blockiert so den Viruseintritt.',
+        ind:'Reserve-HIV-1-Therapie — zwingend NUR nach vorherigem Tropismus-Test (ausschliesslich bei CCR5-tropen Viren wirksam, UNWIRKSAM bei CXCR4-tropen Stämmen!).',
+        uaw:'Orthostatische Hypotonie, Hepatotoxizität, Infekte der oberen Atemwege, Husten.',
+        pk:'Oral 2×/Tag; starkes CYP3A4-Substrat (Dosis muss bei CYP3A4-Hemmern wie Ritonavir halbiert und bei Induktoren wie Efavirenz verdoppelt werden!).' },
+      { id:'oseltamivir', ch:10, sub:'Influenza · Neuraminidase-Hemmer', name:'Oseltamivir', target:'Influenza-A & -B Neuraminidase',
+        moa:'Hemmt die virale Neuraminidase -> neu gebildete Viren können sich nicht von Sialinsäureresten der Wirtszellmembran ablösen -> Verklumpung an Zelloberfläche, keine Weiterverbreitung.',
+        ind:'Frühe Therapie (< 48 h nach Symptombeginn!) bei hospitalisierten oder Hochrisiko-Influenza-Patienten sowie Postexpositionsprophylaxe.',
+        uaw:'Übelkeit, Erbrechen, Kopfschmerzen, selten neuropsychiatrische Ereignisse (v.a. Jugendliche).',
+        pk:'PRODUG (Oseltamivirphosphat -> hepatische Esterasen -> Oseltamivircarboxylat); renale Elimination (Dosisanpassung bei CKD!). Verkürzt Krankheitsdauer bei rechtzeitigem Start um ca. 1 Tag.' },
+      { id:'amantadin', ch:10, sub:'Influenza A · Hemmer Nukleinsäurefreisetzung', name:'Amantadin', target:'M2-Ionenkanal (Influenza A) + NMDA-Antagonist',
+        moa:'Blockiert den viralen M2-Protonenkanal -> verhindert Ansäuerung des Endosoms und damit das "Uncoating" (Freisetzung viraler RNA). Im ZNS zusätzlich NMDA-Antagonist & Dopamin-Freisetzung.',
+        ind:'Gegen Influenza wegen >99% weltweiter Resistenz OBSOLET (und ohnehin nur gegen Influenza A, nicht B wirksam!). Klinisch heute noch bei M. Parkinson (L-DOPA-Dyskinesien!).',
+        uaw:'ZNS-UAW (Unruhe, Halluzinationen, Schlaflosigkeit, Krämpfe), LIVEDO RETICULARIS (marmorierte Haut — klassische Prüfungsfrage!), Knöchelödeme, anticholinerge Effekte, QTc-Verlängerung.',
+        pk:'Oral, fast vollständig unverändert RENAL eliminiert (starke Kumulation & Delir-Gefahr bei Niereninsuffizienz!).' },
+      { id:'entecavir', ch:10, sub:'Hepatitis B · Nukleosidanalogon', name:'Entecavir', target:'HBV-DNA-Polymerase / Reverse Transkriptase',
+        moa:'Guanosin-Nukleosidanalogon -> intrazelluläre Triphosphorylierung -> hemmt alle drei Schritte der HBV-Replikation (Priming, Reverse Transkription, DNA-Synthese).',
+        ind:'Erstlinientherapie der chronischen Hepatitis B (neben Tenofovir; sehr hohe Resistenzbarriere bei therapienaiven Pat., bevorzugt bei Nieren-/Knochenerkrankung).',
+        uaw:'Sehr gut verträglich (Kopfschmerzen, Müdigkeit); selten Laktatazidose bei dekompensierter Zirrhose; HBV-Flare bei abruptem Absetzen.',
+        pk:'Oral 1×/Tag NÜCHTERN (Nahrung senkt Bioverfügbarkeit um ~20%!); renale Elimination (Dosisintervall bei CKD strecken). Cave bei unbehandelter HIV-Koinfektion (selektioniert HIV-Resistenz!).' },
+      { id:'sofosbuvir', ch:10, sub:'Hepatitis C · NS5B-Polymerase-Inhibitor', name:'Sofosbuvir', target:'HCV NS5B RNA-abhängige RNA-Polymerase',
+        moa:'Uridin-Nukleotid-Prodrug -> nach intrazellulärer Aktivierung zum Triphosphat Einbau in die HCV-RNA -> Kettenabbruch; pangenotypisch (Genotyp 1–6) mit extrem hoher Resistenzbarriere.',
+        ind:'Kurative pangenotypische Hepatitis-C-Therapie (SVR > 95% in 12 Wochen), fest kombiniert mit Velpatasvir (Epclusa).',
+        uaw:'Sehr gut verträglich (Müdigkeit, Kopfschmerzen); LEBENSBEDROHLICHE BRADYCARDIE bei gleichzeitiger Gabe von AMIODARON (streng kontraindiziert!).',
+        pk:'Oral 1×/Tag; P-gp-Substrat (starke P-gp-Induktoren wie Rifampicin/Johanniskraut vermeiden!).' },
+      { id:'velpatasvir', ch:10, sub:'Hepatitis C · NS5A-Inhibitor', name:'Velpatasvir', target:'HCV NS5A-Replikationskomplex-Protein',
+        moa:'Hemmt das virale NS5A-Protein -> blockiert sowohl die virale RNA-Replikation als auch den Zusammenbau neuer HCV-Partikel (pangenotypisch).',
+        ind:'Immer in Fixkombination mit Sofosbuvir zur pangenotypischen Heilung der chronischen Hepatitis C (12 Wochen).',
+        uaw:'Sehr gut verträglich (Kopfschmerzen, Müdigkeit, Übelkeit).',
+        pk:'pH-ABHÄNGIGE RESORPTION -> PPI (Omeprazol/Pantoprazol) vermindern Aufnahme massiv (möglichst vermeiden!); Substrat von CYP2B6/2C8/3A4 & P-gp.' },
+      { id:'nirmatrelvir_ritonavir', ch:10, sub:'SARS-CoV-2 · 3CL-Proteasehemmer + Booster', name:'Nirmatrelvir + Ritonavir', target:'SARS-CoV-2 Hauptprotease (Mpro / 3CLpro) + CYP3A4-Boost',
+        moa:'Nirmatrelvir hemmt kovalent-reversibel die SARS-CoV-2-Hauptprotease (stoppt Polyprotein-Spaltung & Virusreplikation). Ritonavir hat KEINE Wirkung gegen SARS-CoV-2, sondern hemmt maximal CYP3A4 als PK-Booster.',
+        ind:'Frühe orale Therapie (< 5 Tage nach Symptombeginn) bei mildem/moderatem COVID-19 mit hohem Risiko für schweren Verlauf (Immunsuppression, hohes Alter).',
+        uaw:'DYSGEUSIE (metallisch-bitterer Geschmack sehr häufig!), Diarrhö, Hypertonie; Hauptgefahr sind SCHWERE ARZNEIMITTELINTERAKTIONEN durch Ritonavir!',
+        pk:'EXTREME CYP3A4- & P-gp-HEMMUNG durch Ritonavir -> zwingend Interaktionscheck (z.B. Simvastatin, Amiodaron, Rivaroxaban/Apixaban, Tacrolimus, Eplerenon, Sildenafil pausieren/kontraindiziert!) + Dosisanpassung bei eGFR 30–59.' },
+    ];
+
+    /* ==================== VERGLEICHS-MATRIZEN (TAB 2) ==================== */
+    const MATRICES = {
+      adreno: {
+        title: 'Adrenozeptoren- & Sympathomimetika-Selektivität',
+        note: 'Merksatz: Noradrenalin hat praktisch keine β2-Wirkung (TPR ↑↑, Reflexbradykardie); Isoprenalin hat keine α-Wirkung (TPR ↓, HF ↑↑); Adrenalin schaltet dosisabhängig von β2 (niedrig) auf α1 (hoch).',
+        cols: ['Substanz', 'α1 (Gefässe ↑)', 'α2 (ZNS ↓)', 'β1 (Herz ↑)', 'β2 (Bronch/Dil.)', 'Klinischer Einsatz'],
+        rows: [
+          ['Phenylefrin', '+++', '—', '—', '—', 'Anästhesie-Hypotonie, Mydriasis'],
+          ['Noradrenalin', '+++', '+', '++', '(+)', 'Septischer Schock (1. Wahl)'],
+          ['Adrenalin', '++ / +++', '+', '+++', '+++', 'Anaphylaxie (i.m.), CPR (i.v.)'],
+          ['Dobutamin', '+ (Racemat)', '—', '+++', '+', 'Kardiogener Schock (Inotropie)'],
+          ['Isoprenalin', '—', '—', '+++', '+++', 'AV-Block-Überbrückung'],
+          ['Salbutamol / Formoterol', '—', '—', '(+)', '+++', 'Asthma / COPD (SABA / LABA)'],
+          ['Mirabegron', '—', '—', '—', 'β3: +++', 'Überaktive Blase (OAB)'],
+          ['Clonidin / α-Methyldopa', '—', '+++ (ZNS)', '—', '—', 'Reserve-HTN / Schwangerschaft'],
+          ['Doxazosin / Tamsulosin', 'Antag. (α1 / α1A)', '—', '—', '—', 'HTN + BPH / uroselektiv BPH'],
+          ['Metoprolol', '—', '—', 'Antag. (β1)', '— (niedrig)', 'KHK, HFrEF, VHF'],
+          ['Propranolol / Carvedilol', 'Carv: Antag.', '—', 'Antag.', 'Antag. (cave Asthma!)', 'Portale HTN, Tremor / HFrEF'],
+        ],
+      },
+      steroids: {
+        title: 'Glukokortikoid- & Mineralkortikoid-Potenzen (Referenz: Kortisol = 1)',
+        note: 'Prodrugs beachten: Kortison → Kortisol und Prednison → Prednisolon über hepatische 11β-HSD1. Dexamethason & Betamethason haben KEINE MR-Wirkung (0) und sind plazentagängig.',
+        cols: ['Substanz', 'GR-Potenz', 'MR-Potenz', 'Biol. HWZ', 'Besonderheit / Hauptindikation'],
+        rows: [
+          ['Hydrokortison (Kortisol)', '1', '1', '8–12 h', 'Physiol. Substitution (Addison), Addison-Krise (i.v.)'],
+          ['Kortison (Prodrug)', '0.8', '0.8', '8–12 h', 'Braucht 11β-HSD1 in Leber -> nicht topisch / bei Leberversagen'],
+          ['Prednison / Prednisolon', '4', '0.6', '18–36 h', 'System-Standard (Autoimmun, Asthma); Prednison = Prodrug'],
+          ['Budesonid', 'lokal ↑↑↑', '~0', 'lokal', '90% First-Pass (CYP3A4) -> ICS (Asthma), M. Crohn'],
+          ['Dexamethason', '30', '0', '36–72 h', 'Hirnödem, Meningitis, COVID-19, DST (kein Assay-Kreuz!)'],
+          ['Betamethason', '25–30', '0', '36–54 h', 'Fetale Lungenreifung (plazentagängig!), starke Topika'],
+          ['Fludrocortison', '10', '125', '18–36 h', 'Reines Mineralkortikoid: primäre AI (M. Addison)'],
+        ],
+      },
+      diuretics: {
+        title: 'Diuretika-Angriffsorte am Nephron & Elektrolyt-Signaturen',
+        note: 'Klassische Prüfungsfalle Ca²⁺: Schleifendiuretika erhöhen die Ca²⁺-Ausscheidung (Hyperkalzämie-Therapie!), Thiazide senken sie (Hyperkalzämie-UAW / Nierensteinprophylaxe!).',
+        cols: ['Wirkstoff', 'Nephron-Segment & Target', 'Max. Na+-Fraktion', 'K+ (Serum)', 'Ca2+ (Urin)', 'Säure-Base / Spez. UAW'],
+        rows: [
+          ['Acetazolamid', 'Prox. Tubulus (Carboanhydrase)', '~3–5%', '↓', '↑ (Steine)', 'Hyperchlorämische met. AZIDOSE'],
+          ['Mannit', 'Prox. Tubulus / Henle (osmotisch)', 'variabel', '↓ / ↑', '↑', 'Initiale Volumenexpansion (cave Lungenödem!)'],
+          ['Furosemid', 'TAL Henle (NKCC2)', '20–25%', '↓↓', '↑↑ (Ca2+ ↓ Serum)', 'Met. Alkalose, Ototoxizität, Gicht'],
+          ['Hydrochlorothiazid', 'Früh-distal (NCC)', '5–10%', '↓↓', '↓↓ (Ca2+ ↑ Serum)', 'Hyponatriämie, Hyperkalzämie, Gicht, Haut-CA'],
+          ['Spironolacton / Eplerenon', 'Sammelrohr (MR-Antagonist)', '2–3%', '↑↑ (Hyper-K+)', 'neutral', 'Met. Azidose; Spironolacton -> Gynäkomastie'],
+          ['Desmopressin (Antidiur.)', 'Sammelrohr (V2 → AQP2)', 'Wasser ↑', 'neutral', 'neutral', 'Hyponatriämie / Wasserintoxikation'],
+        ],
+      },
+      anticoag: {
+        title: 'Antikoagulantien, Thrombozytenhemmer & Antidote',
+        note: 'Mechanische Herzklappen = IMMER VKA (Phenprocoumon/Acenocoumarol), DOAK sind kontraindiziert. Bei HIT Typ II sind UFH UND NMH kontraindiziert -> Fondaparinux oder Bivalirudin.',
+        cols: ['Substanz', 'Target / Mechanismus', 'Elimination / PK', 'Monitoring', 'Spezifisches Antidot'],
+        rows: [
+          ['Heparin (UFH)', 'ATIII → IIa = Xa', 'RES (renal unabhängig!)', 'aPTT', 'Protamin (100%)'],
+          ['Enoxaparin (NMH)', 'ATIII → Xa >> IIa', 'Renal (cave eGFR <30)', 'Anti-Xa (Spezial)', 'Protamin (~60%)'],
+          ['Fondaparinux', 'ATIII → rein Xa', '100% renal, t½ 17 h', 'Anti-Xa (selten)', 'KEINS (Protamin unwirksam)'],
+          ['Bivalirudin', 'Direkt IIa (i.v.)', 'Proteolyse (t½ 25 min)', 'ACT / aPTT', 'Keins (sehr kurze t½)'],
+          ['Dabigatran', 'Direkt IIa (Prodrug)', '~80% renal, P-gp', 'Thrombinzeit / dTT', 'Idarucizumab'],
+          ['Rivaroxaban / Apixaban', 'Direkt Xa (p.o.)', 'Renal (33% / 27%) + CYP3A4', 'Kalibrierte Anti-Xa', 'Andexanet alfa (o. 4F-PPS)'],
+          ['Phenprocoumon / Acenoc.', 'VKORC1 (II,VII,IX,X,C,S)', 'CYP2C9 (t½ 150h vs 10h)', 'INR (Quick)', 'Phytomenadion + 4F-PPS'],
+          ['ASS / Clopidogrel / Ticagr.', 'COX-1 / P2Y12 irrev. / rev.', 'Clop = CYP2C19-Prodrug', 'Kein Routine-Lab', 'Keins (evtl. TK bei ASS/Clop)'],
+        ],
+      },
+      aar: {
+        title: 'Antiarrhythmika nach Vaughan-Williams (HS2026-Liste)',
+        note: 'Merke CAST-Studie: Klasse Ic (Flecainid) ist bei struktureller Herzerkrankung/KHK kontraindiziert! Sotalol hat hohes Torsades-Risiko (Reverse Use-Dependence), Amiodaron trotz QT-Verlängerung sehr niedriges.',
+        cols: ['Klasse', 'Wirkstoffe (Liste)', 'Ionenkanal / AP-Effekt', 'EKG-Veränderung', 'Prüfungs-Highlight / Kontraindikation'],
+        rows: [
+          ['Klasse Ib', 'Lidocain', 'Na+ schnell (ischämisch) · APD ↓', 'Kaum QRS-Effekt', 'Nur i.v. (hoher First-Pass!), ZNS-Toxizität'],
+          ['Klasse Ic', 'Flecainid', 'Na+ langsam · Vmax ↓↓ · APD ↔', 'QRS ↑↑', 'NUR strukturell gesundes Herz! + AV-Blocker bei Flatter'],
+          ['Klasse II', 'Metoprolol, Propranolol, Carvedilol', 'β1-Blockade · SA/AV ↓', 'HF ↓, PQ ↑', 'Post-MI & HFrEF Mortalitätssenkung'],
+          ['Klasse III', 'Amiodaron, Sotalol', 'K+ (IKr) · APD ↑↑, Refraktärzeit ↑', 'QTc ↑↑', 'Amio: t½ 20–100d, SD/Lunge! Sotalol: Torsades, renal!'],
+          ['Klasse IV', 'Verapamil, Diltiazem', 'L-Typ Ca2+ (SA/AV-Knoten)', 'HF ↓, PQ ↑', 'Nie mit β-Blocker i.v. / HFrEF! Verapamil -> Obstipation'],
+          ['Weitere', 'Adenosin, Digoxin, Atropin, Ivabradin, Mg²⁺', 'A1 / Na-K-ATPase / M2 / If / EAD ↓', 'AV-Block / HF', 'Adenosin: t½ <10s Bolus; Mg²⁺ = 1. Wahl Torsades!'],
+        ],
+      },
+      viro: {
+        title: 'Virostatika nach Virus & Angriffspunkt im Replikationszyklus',
+        note: 'Achte auf die großen PK-Interaktionen: Ritonavir (in Darunavir/r und Paxlovid) = maximaler CYP3A4-Hemmer; Efavirenz = CYP3A4-Induktor; Dolutegravir = Kationen-Chelatierung + OCT2-Pseudo-Kreatinin!',
+        cols: ['Virus', 'Wirkstoff', 'Klasse / Angriffspunkt', 'Schlüssel-UAW / Prüfungs-Pearl'],
+        rows: [
+          ['HSV / VZV', 'Aciclovir', 'Nukleosidanalogon (virale TK → Kettenabbruch)', 'Kristallnephropathie (hydrieren!), unwirksam bei CMV'],
+          ['HIV', 'Enfuvirtid / Maraviroc', 'Eintritt: gp41-Fusion / CCR5-Ko-Rezeptor', 'Enfuvirtid: s.c. 2×/d; Maraviroc: Tropismus-Test obligat'],
+          ['HIV / HBV', 'Tenofovir (TDF/TAF)', 'NtRTI (Monophosphat -> RT/Pol-Kettenabbruch)', 'TDF: Fanconi-Tubulopathie & Osteopenie; HIV+HBV aktiv!'],
+          ['HIV', 'Efavirenz', 'NNRTI (allosterisch, nur HIV-1)', 'Lebhafte Albträume/ZNS-UAW; starker CYP3A4-Induktor'],
+          ['HIV', 'Dolutegravir', 'Integrase-Inhibitor (Mg²⁺-Chelat)', '1. Wahl! Pseudo-Kreatininanstieg (OCT2); Abstand zu Ca/Mg/Fe'],
+          ['HIV', 'Darunavir (+r/c)', 'HIV-Protease-Inhibitor', 'Braucht CYP3A4-Booster -> massive Interaktionen, Dyslipidämie'],
+          ['Influenza', 'Oseltamivir / Amantadin', 'Neuraminidase / M2-Kanal (Uncoating)', 'Oseltamivir <48h; Amantadin obsolet (>99% Resistenz), Livedo'],
+          ['HBV', 'Entecavir (+ Tenofovir)', 'Nukleosidanalogon (HBV-Polymerase)', 'Nüchtern einnehmen; hohe Resistenzbarriere; nie abrupt stoppen'],
+          ['HCV', 'Sofosbuvir + Velpatasvir', 'NS5B-Polymerase + NS5A-Inhibitor', 'Heilung >95%! Sofosbuvir + Amiodaron = Bradykardie; Velp. + PPI ↓'],
+          ['SARS-CoV-2', 'Nirmatrelvir + Ritonavir', '3CL-Proteasehemmer + CYP3A4-Booster', 'Start <5d; Dysgeusie; strenger Ritonavir-CYP3A4-Check!'],
+        ],
+      },
+    };
+
+    /* ==================== PK / CYP / PRODRUG EXAM TRAPS (TAB 3) ==================== */
+    const EXAM_TRAPS = [
+      { tag: 'PRODRUGS', title: 'Wichtige Prodrugs der HS2026-Liste', text: 'Enalapril (→ Enalaprilat), Sacubitril (→ Sacubitrilat), Spironolacton (→ Canrenon), α-Methyldopa (→ α-Methylnoradrenalin), Minoxidil (→ Sulfat), Dabigatranetexilat, Clopidogrel (CYP2C19!), Metamizol (→ 4-MAA), Kortison (11β-HSD1 → Kortisol), Prednison (11β-HSD1 → Prednisolon), Aciclovir (virale TK!), Oseltamivir, Tenofovir (TDF/TAF), Sofosbuvir.' },
+      { tag: 'TÖDLICHE KOMBI', title: 'Organische Nitrate + PDE5-Hemmer (Sildenafil)', text: 'GTN/ISDN steigern cGMP-Bildung, Sildenafil blockiert cGMP-Abbau -> synergistische Vasodilatation -> lebensbedrohlicher Blutdrucksturz!' },
+      { tag: 'CYP3A4-BOOSTER', title: 'Ritonavir (Nirmatrelvir/r & Darunavir/r)', text: 'Maximaler CYP3A4- & P-gp-Hemmer: Statine (Simvastatin), Eplerenon, Amiodaron, Rivaroxaban/Apixaban, Sildenafil und sogar inhalatives Budesonid können toxisch akkumulieren!' },
+      { tag: 'CYP-INDUKTOREN', title: 'Bosentan & Efavirenz (und Rauchen bei CYP1A2)', text: 'Bosentan (CYP3A4/2C9) und Efavirenz (CYP3A4/2B6) schwächen Kontrazeptiva, VKA und DOAK ab. Rauchen induziert CYP1A2 -> höherer Theophyllin-Bedarf!' },
+      { tag: 'ASS + IBUPROFEN', title: 'Kompetitive Blockade der COX-1-Tasche', text: 'Ibuprofen und Metamizol verhindern die irreversible Acetylierung durch ASS -> ASS immer mindestens 30–60 Min. VOR Ibuprofen einnehmen.' },
+      { tag: 'CLOPIDOGREL + PPI', title: 'CYP2C19-Aktivierung blockiert', text: 'Omeprazol/Esomeprazol hemmen CYP2C19 -> geringere Aktivierung von Clopidogrel -> erhöhtes Stentthrombose-Risiko. Bei Bedarf Pantoprazol wählen!' },
+      { tag: 'TRIPLE WHAMMY', title: 'ACE-Hemmer/ARB + NSAR + Diuretikum', text: 'NSAR konstringieren Vas afferens, ACEi/ARB dilatieren Vas efferens, Diuretika senken Volumen -> Filtrationsdruck kollabiert -> akutes Nierenversagen!' },
+      { tag: 'LAB-FALLEN', title: 'NT-proBNP (ARNI) & Pseudo-Kreatinin (Dolutegravir)', text: 'Unter Sacubitril/Valsartan steigt BNP künstlich (immer NT-proBNP messen!). Unter Dolutegravir steigt Serum-Kreatinin durch OCT2-Hemmung ohne echten GFR-Verlust.' },
+      { tag: 'HYPOKALIÄMIE + DIGOXIN', title: 'Furosemid/HCT verstärken Digoxin-Toxizität', text: 'K+ und Digoxin konkurrieren um dieselbe Bindungsstelle an der Na+/K+-ATPase -> Hypokaliämie (und Niereninsuffizienz oder Amiodaron/Verapamil via P-gp) führt rasch zur Digoxin-Intoxikation!' },
+      { tag: 'ARNI + ACE-HEMMER', title: '36 Stunden Washout-Pflicht', text: 'Gleichzeitige Hemmung von ACE und Neprilysin führt zu massivem Bradykinin-Anstieg -> lebensbedrohliches Angioödem.' },
+      { tag: 'SOFOSBUVIR + AMIODARON', title: 'Schwere symptomatische Bradykardie', text: 'Streng kontraindizierte Kombination! Wegen der extremen HWZ von Amiodaron (20–100 Tage) auch Monate nach Absetzen noch relevant.' },
+      { tag: 'PLAZENTA-SCHRANKE', title: 'Prednisolon vs. Betamethason / Heparin vs. VKA', text: 'Betamethason/Dexamethason passieren die Plazenta (Lungenreifung!), Prednisolon wird durch 11β-HSD2 inaktiviert (schützt Fetus!). UFH/NMH sind nicht plazentagängig, VKA sind teratogen!' },
+    ];
+
+    /* ==================== STATE & PERSISTENCE ==================== */
+    const STORAGE_KEY = 'medlab-pharma-mastery-hs26';
+    const STATE = {
+      tab: 'explorer',
+      chapter: 'all',
+      search: '',
+      masteryFilter: 'all',
+      selectedId: DRUGS[0].id,
+      matrix: 'adreno',
+      mastery: {}, // { [drugId]: 'known' | 'unsure' }
+      qMode: 'flash',
+      qFilter: 'all',
+      qDeck: [],
+      qIdx: 0,
+      qFlipped: false,
+      qScore: 0,
+      qStreak: 0,
+      qAnswered: false,
+      qCurrentMC: null,
+    };
+
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      if (saved && typeof saved === 'object') STATE.mastery = saved;
+    } catch (_) {}
+
+    function saveMastery() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE.mastery)); } catch (_) {}
+    }
+
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const getStatus = id => STATE.mastery[id] || 'new';
+    const inChapter = (d, ch) => ch === 'all' || d.ch === ch || (d.extraCh && d.extraCh.includes(ch));
+
+    const SIM_LABELS = {
+      'cardiosim.html': 'CardioSim',
+      'nephrosim.html': 'NephroSim',
+      'endosim.html': 'EndoSim',
+      'fluidsim.html': 'FluidSim',
+      'coagsim.html': 'CoagSim',
+      'pkpd.html': 'PK/PD Lab',
+      'neuroophtho.html': 'Neuro-Ophtho',
+      'bloodlab.html': 'BloodLab',
+      'ecglab.html': '12-Lead ECG Lab',
+    };
+
+    /* ==================== KPI & MASTERY SYNC ==================== */
+    function updateKPIs(shownCount) {
+      const total = DRUGS.length;
+      let known = 0, unsure = 0, antidotes = 0;
+      for (const d of DRUGS) {
+        const st = getStatus(d.id);
+        if (st === 'known') known++;
+        else if (st === 'unsure') unsure++;
+        if (d.antidote) antidotes++;
+      }
+      const pct = Math.round((known / total) * 100);
+      $('kpi-total').textContent = `${total} Wirkstoffe`;
+      $('kpi-mastered').textContent = `${pct}%`;
+      $('kpi-mastered-sub').textContent = `${known} sicher · ${unsure} unsicher`;
+      $('kpi-antidotes').textContent = String(antidotes);
+      $('hdr-mastery-count').textContent = `${known} / ${total}`;
+      $('hdr-mastery-bar').style.width = `${pct}%`;
+      if (typeof shownCount === 'number') {
+        $('kpi-shown').textContent = `${shownCount} angezeigt`;
+        const chObj = CHAPTERS.find(c => c.id === STATE.chapter);
+        $('kpi-shown-sub').textContent = chObj ? chObj.name : 'Alle 10 Kapitel';
+      }
+    }
+
+    /* ==================== TAB 1: WIRKSTOFF-EXPLORER ==================== */
+    function renderChapterChips() {
+      const wrap = $('chapter-chips');
+      const allActive = STATE.chapter === 'all';
+      let html = `<button type="button" data-ch="all" class="ch-chip px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${
+        allActive ? 'bg-teal-500/15 border-teal-500/45 text-tealLight dark:text-tealDark' : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+      }">Alle (${DRUGS.length})</button>`;
+
+      for (const ch of CHAPTERS) {
+        const cnt = DRUGS.filter(d => inChapter(d, ch.id)).length;
+        const active = STATE.chapter === ch.id;
+        html += `<button type="button" data-ch="${ch.id}" class="ch-chip px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${
+          active ? 'bg-teal-500/15 border-teal-500/45 text-tealLight dark:text-tealDark' : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+        }">${esc(ch.short)} <span class="font-mono text-[10px] opacity-70">${cnt}</span></button>`;
+      }
+      wrap.innerHTML = html;
+      wrap.querySelectorAll('.ch-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          STATE.chapter = btn.dataset.ch === 'all' ? 'all' : Number(btn.dataset.ch);
+          renderChapterChips();
+          renderDrugList();
+        });
+      });
+    }
+
+    function getFilteredDrugs() {
+      const q = STATE.search.trim().toLowerCase();
+      return DRUGS.filter(d => {
+        if (!inChapter(d, STATE.chapter)) return false;
+        const st = getStatus(d.id);
+        if (STATE.masteryFilter === 'todo' && st === 'known') return false;
+        if (STATE.masteryFilter === 'unsure' && st !== 'unsure') return false;
+        if (STATE.masteryFilter === 'known' && st !== 'known') return false;
+        if (STATE.masteryFilter === 'antidote' && !d.antidote) return false;
+        if (!q) return true;
+        const blob = `${d.name} ${d.sub} ${d.target} ${d.moa} ${d.ind} ${d.uaw} ${d.pk} ${d.antidote || ''}`.toLowerCase();
+        return q.split(/\s+/).every(tok => blob.includes(tok));
+      });
+    }
+
+    function statusDot(st) {
+      if (st === 'known') return '<span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Sicher"></span>';
+      if (st === 'unsure') return '<span class="w-2 h-2 rounded-full bg-amber-500 shrink-0" title="Unsicher"></span>';
+      return '<span class="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-700 shrink-0" title="Neu"></span>';
+    }
+
+    function renderDrugList() {
+      const list = getFilteredDrugs();
+      updateKPIs(list.length);
+      const container = $('drug-list');
+
+      if (!list.length) {
+        container.innerHTML = `<div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-8 text-center text-xs text-zinc-500">Keine Wirkstoffe für diesen Filter gefunden.</div>`;
+        return;
+      }
+
+      const chaptersToShow = STATE.chapter === 'all' ? CHAPTERS : CHAPTERS.filter(c => c.id === STATE.chapter);
+      let html = '';
+
+      for (const ch of chaptersToShow) {
+        const items = list.filter(d => STATE.chapter === 'all' ? d.ch === ch.id : inChapter(d, ch.id));
+        if (!items.length) continue;
+
+        html += `
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark overflow-hidden">
+            <div class="px-3.5 py-2 border-b border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/70 dark:bg-zinc-900/50 flex items-center justify-between">
+              <span class="font-mono text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">${esc(ch.name)}</span>
+              <span class="font-mono text-[10px] text-zinc-400">${items.length} Substanzen</span>
+            </div>
+            <div class="divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
+              ${items.map(d => {
+                const sel = d.id === STATE.selectedId;
+                const st = getStatus(d.id);
+                return `
+                  <button type="button" data-id="${d.id}" class="drug-row w-full text-left px-3.5 py-2.5 flex items-center justify-between gap-3 transition-colors ${
+                    sel ? 'bg-teal-500/[0.08] dark:bg-teal-400/[0.09]' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900/60'
+                  }">
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        ${statusDot(st)}
+                        <span class="text-[13.5px] font-semibold ${sel ? 'text-tealLight dark:text-tealDark' : 'text-zinc-950 dark:text-white'}">${esc(d.name)}</span>
+                        <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-500 border border-zinc-200/70 dark:border-zinc-800">${esc(d.sub)}</span>
+                        ${d.antidote ? '<span class="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/25">Antidot</span>' : ''}
+                      </div>
+                      <div class="text-[11.5px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5 pl-4">${esc(d.target)}</div>
+                    </div>
+                    <span class="text-xs text-zinc-400 shrink-0">&rarr;</span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+      container.querySelectorAll('.drug-row').forEach(btn => {
+        btn.addEventListener('click', () => selectDrug(btn.dataset.id));
+      });
+    }
+
+    function selectDrug(id) {
+      const d = DRUGS.find(x => x.id === id);
+      if (!d) return;
+      STATE.selectedId = d.id;
+      const ch = CHAPTERS.find(c => c.id === d.ch);
+      const extraLabel = d.extraCh ? ` · auch Kap. ${d.extraCh.join(', ')}` : '';
+      $('insp-chapter').textContent = `${ch ? ch.name : ''}${extraLabel}`;
+      $('insp-name').textContent = d.name;
+      $('insp-class').textContent = `${d.sub} · Target: ${d.target}`;
+      $('btn-copy-anki').classList.remove('hidden');
+      $('insp-mastery-row').classList.remove('hidden');
+
+      updateRateButtons(getStatus(d.id));
+
+      const sections = [
+        { label: 'Wirkmechanismus (MOA)', text: d.moa, cls: 'text-zinc-700 dark:text-zinc-200' },
+        { label: 'Therapeutische Wirkungen & Indikationen', text: d.ind, cls: 'text-zinc-700 dark:text-zinc-200' },
+        { label: 'Wichtigste unerwünschte Wirkungen (UAW)', text: d.uaw, cls: 'text-rose-800 dark:text-rose-200/95 bg-rose-500/[0.06] border border-rose-500/20 rounded-lg p-2.5' },
+        { label: 'Besonderheiten in PK / PD & Interaktionen', text: d.pk, cls: 'text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800 rounded-lg p-2.5' },
+      ];
+      if (d.antidote) {
+        sections.push({ label: 'Spezifisches Antidot', text: d.antidote, cls: 'font-medium text-emerald-800 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 rounded-lg p-2.5' });
+      }
+
+      $('insp-body').innerHTML = sections.map(s => `
+        <div class="space-y-1">
+          <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400">${esc(s.label)}</div>
+          <div class="${s.cls}">${esc(s.text)}</div>
+        </div>
+      `).join('');
+
+      const links = (d.links || []).map(href => `
+        <a href="${href}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[11px] bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/25 hover:bg-teal-500/20 transition-colors">
+          <span>${esc(SIM_LABELS[href] || href)}</span><span>&nearr;</span>
+        </a>
+      `).join('');
+      $('insp-links').innerHTML = links;
+
+      renderDrugList();
+    }
+
+    function updateRateButtons(current) {
+      document.querySelectorAll('.rate-btn').forEach(btn => {
+        const r = btn.dataset.rate;
+        const active = r === current;
+        let cls = 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-950 dark:hover:text-white';
+        if (active && r === 'known') cls = 'border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold';
+        else if (active && r === 'unsure') cls = 'border-amber-500/50 bg-amber-500/15 text-amber-700 dark:text-amber-300 font-semibold';
+        else if (active && r === 'new') cls = 'border-zinc-400 dark:border-zinc-600 bg-zinc-200/70 dark:bg-zinc-800 text-zinc-900 dark:text-white font-semibold';
+        btn.className = `rate-btn px-2 py-1 rounded text-[11px] font-medium border transition-colors ${cls}`;
+      });
+    }
+
+    /* ==================== TAB 2: VERGLEICHS-MATRIZEN ==================== */
+    function renderMatrix() {
+      document.querySelectorAll('.mat-btn').forEach(b => {
+        const active = b.dataset.mat === STATE.matrix;
+        b.className = `mat-btn px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+          active ? 'bg-teal-500/15 border-teal-500/45 text-tealLight dark:text-tealDark' : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'
+        }`;
+      });
+      const m = MATRICES[STATE.matrix];
+      $('matrix-container').innerHTML = `
+        <div class="space-y-3">
+          <div>
+            <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">${esc(m.title)}</h2>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">${esc(m.note)}</p>
+          </div>
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-zinc-200 dark:border-zinc-800 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+                ${m.cols.map(c => `<th class="py-2 px-2.5">${esc(c)}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
+              ${m.rows.map(row => `
+                <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+                  ${row.map((cell, i) => `<td class="py-2 px-2.5 ${i === 0 ? 'font-semibold text-zinc-950 dark:text-white whitespace-nowrap' : 'text-zinc-600 dark:text-zinc-300'}">${esc(cell)}</td>`).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    /* ==================== TAB 3: ANTIDOTE & PK/CYP-FALLEN ==================== */
+    function renderAntidotesAndTraps() {
+      const antiDrugs = DRUGS.filter(d => d.antidote);
+      $('antidote-grid').innerHTML = antiDrugs.map(d => `
+        <button type="button" data-jump="${d.id}" class="anti-jump w-full text-left p-3 rounded-lg border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 hover:border-teal-500/45 transition-colors space-y-1">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-semibold text-zinc-950 dark:text-white">${esc(d.name)}</span>
+            <span class="font-mono text-[10px] text-tealLight dark:text-tealDark">Details &rarr;</span>
+          </div>
+          <div class="text-xs font-medium text-emerald-700 dark:text-emerald-400">${esc(d.antidote)}</div>
+          <div class="text-[11px] text-zinc-500 dark:text-zinc-400">${esc(d.sub)}</div>
+        </button>
+      `).join('');
+
+      $('antidote-grid').querySelectorAll('.anti-jump').forEach(btn => {
+        btn.addEventListener('click', () => {
+          switchMainTab('explorer');
+          STATE.chapter = 'all';
+          STATE.search = '';
+          $('drug-search').value = '';
+          renderChapterChips();
+          selectDrug(btn.dataset.jump);
+        });
+      });
+
+      $('traps-grid').innerHTML = EXAM_TRAPS.map(t => `
+        <div class="p-3 rounded-lg border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25">${esc(t.tag)}</span>
+            <span class="text-xs font-semibold text-zinc-950 dark:text-white">${esc(t.title)}</span>
+          </div>
+          <p class="text-[11.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">${esc(t.text)}</p>
+        </div>
+      `).join('');
+    }
+
+    /* ==================== TAB 4: ACTIVE RECALL & MC-PRÜFUNGSTRAINER ==================== */
+    function populateQuizChapters() {
+      const sel = $('quiz-chapter-select');
+      for (const ch of CHAPTERS) {
+        const opt = document.createElement('option');
+        opt.value = String(ch.id);
+        opt.textContent = ch.name;
+        sel.appendChild(opt);
+      }
+    }
+
+    function buildQuizDeck() {
+      let pool = DRUGS;
+      if (STATE.qFilter === 'todo') {
+        pool = DRUGS.filter(d => getStatus(d.id) !== 'known');
+        if (!pool.length) pool = DRUGS;
+      } else if (STATE.qFilter !== 'all') {
+        const chId = Number(STATE.qFilter);
+        pool = DRUGS.filter(d => inChapter(d, chId));
+      }
+      STATE.qDeck = [...pool].sort(() => Math.random() - 0.5);
+      STATE.qIdx = 0;
+      STATE.qFlipped = false;
+      STATE.qScore = 0;
+      STATE.qStreak = 0;
+      STATE.qAnswered = false;
+      renderQuizView();
+    }
+
+    function buildMCQuestion(targetDrug) {
+      const modes = ['moa_to_drug', 'uaw_to_drug', 'pk_to_drug', 'drug_to_target'];
+      if (targetDrug.antidote) modes.push('antidote_to_drug');
+      const mode = modes[Math.floor(Math.random() * modes.length)];
+
+      // Prefer distractors from same or adjacent chapter for realistic exam difficulty
+      const sameCh = DRUGS.filter(d => d.id !== targetDrug.id && (d.ch === targetDrug.ch || Math.abs(d.ch - targetDrug.ch) <= 1));
+      const others = DRUGS.filter(d => d.id !== targetDrug.id);
+      const sourcePool = sameCh.length >= 3 ? sameCh : others;
+      const distractors = [...sourcePool].sort(() => Math.random() - 0.5).slice(0, 3);
+
+      let prompt = '', badge = '', opts = [];
+      if (mode === 'moa_to_drug') {
+        badge = 'Wirkmechanismus → Wirkstoff';
+        prompt = `Welcher Wirkstoff passt zu diesem Mechanismus? "${targetDrug.moa}"`;
+        opts = [targetDrug, ...distractors].map(d => ({ label: `${d.name} (${d.sub})`, ok: d.id === targetDrug.id }));
+      } else if (mode === 'uaw_to_drug') {
+        badge = 'Leit-UAW → Wirkstoff';
+        prompt = `Welche Substanz ist typischerweise mit diesem Nebenwirkungsprofil assoziiert? "${targetDrug.uaw}"`;
+        opts = [targetDrug, ...distractors].map(d => ({ label: d.name, ok: d.id === targetDrug.id }));
+      } else if (mode === 'pk_to_drug') {
+        badge = 'PK/PD-Besonderheit → Wirkstoff';
+        prompt = `Zu welchem Wirkstoff gehört diese PK/PD-Besonderheit? "${targetDrug.pk}"`;
+        opts = [targetDrug, ...distractors].map(d => ({ label: d.name, ok: d.id === targetDrug.id }));
+      } else if (mode === 'antidote_to_drug') {
+        badge = 'Antidot → Wirkstoff';
+        prompt = `Für welchen Wirkstoff ist dieses spezifische Antidot prüfungsrelevant? "${targetDrug.antidote}"`;
+        opts = [targetDrug, ...distractors].map(d => ({ label: d.name, ok: d.id === targetDrug.id }));
+      } else {
+        badge = 'Wirkstoff → Zielstruktur / Target';
+        prompt = `Was ist das primäre pharmakologische Target von ${targetDrug.name}?`;
+        opts = [targetDrug, ...distractors].map(d => ({ label: d.target, ok: d.id === targetDrug.id }));
+      }
+      opts.sort(() => Math.random() - 0.5);
+      return { badge, prompt, opts, drug: targetDrug };
+    }
+
+    function renderQuizView() {
+      document.querySelectorAll('.qmode-btn').forEach(b => {
+        const active = b.dataset.qmode === STATE.qMode;
+        b.className = `qmode-btn px-3 py-1.5 rounded-md font-medium transition-colors ${
+          active ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+        }`;
+      });
+      $('quiz-flash-box').classList.toggle('hidden', STATE.qMode !== 'flash');
+      $('quiz-mc-box').classList.toggle('hidden', STATE.qMode !== 'mc');
+
+      const total = STATE.qDeck.length;
+      $('quiz-score').textContent = String(STATE.qScore);
+      $('quiz-streak').textContent = String(STATE.qStreak);
+      $('quiz-counter').textContent = total ? `${Math.min(STATE.qIdx + 1, total)} / ${total}` : '0 / 0';
+
+      if (!total || STATE.qIdx >= total) {
+        const box = STATE.qMode === 'flash' ? $('quiz-flash-box') : $('quiz-mc-box');
+        box.innerHTML = `
+          <div class="text-center py-6 space-y-3">
+            <div class="font-mono text-xs uppercase tracking-wider text-tealLight dark:text-tealDark">Durchgang abgeschlossen</div>
+            <h3 class="text-xl font-semibold text-zinc-950 dark:text-white">Ergebnis: ${STATE.qScore} / ${total} (${total ? Math.round(STATE.qScore / total * 100) : 0}%)</h3>
+            <p class="text-xs text-zinc-500">Alle Bewertungen wurden im Lernfortschritt gespeichert.</p>
+            <button type="button" id="q-done-restart" class="px-4 py-2 rounded-lg text-xs font-medium bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian">Neue Runde starten</button>
+          </div>
+        `;
+        $('q-done-restart').addEventListener('click', buildQuizDeck);
+        return;
+      }
+
+      const d = STATE.qDeck[STATE.qIdx];
+      const ch = CHAPTERS.find(c => c.id === d.ch);
+
+      if (STATE.qMode === 'flash') {
+        const box = $('quiz-flash-box');
+        if (!STATE.qFlipped) {
+          box.innerHTML = `
+            <div class="flex items-center justify-between text-[11px] font-mono text-zinc-400">
+              <span>${esc(ch ? ch.name : '')}</span>
+              <span>Leertaste = Aufdecken</span>
+            </div>
+            <div class="py-8 text-center space-y-2">
+              <div class="text-2xl font-semibold tracking-tight text-zinc-950 dark:text-white">${esc(d.name)}</div>
+              <div class="text-xs text-zinc-500">Nenne Gruppe/Target, Mechanismus, Hauptindikation, Leit-UAW &amp; PK/Antidot</div>
+            </div>
+            <div class="flex justify-center">
+              <button type="button" id="flash-reveal-btn" class="px-5 py-2 rounded-lg text-xs font-medium bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian hover:opacity-90 transition-opacity">Antwort aufdecken</button>
+            </div>
+          `;
+          $('flash-reveal-btn').addEventListener('click', () => { STATE.qFlipped = true; renderQuizView(); });
+        } else {
+          box.innerHTML = `
+            <div class="flex items-center justify-between pb-3 border-b border-zinc-200/70 dark:border-zinc-800/70">
+              <div>
+                <div class="font-mono text-[10px] uppercase text-tealLight dark:text-tealDark">${esc(d.sub)} · ${esc(d.target)}</div>
+                <h3 class="text-lg font-semibold text-zinc-950 dark:text-white">${esc(d.name)}</h3>
+              </div>
+              <span class="font-mono text-[10px] text-zinc-400">1 = Unsicher · 2 = Sicher</span>
+            </div>
+            <div class="space-y-2.5 text-xs leading-relaxed">
+              <div><b class="font-mono text-[10px] uppercase text-zinc-400 block">Mechanismus</b>${esc(d.moa)}</div>
+              <div><b class="font-mono text-[10px] uppercase text-zinc-400 block">Indikation</b>${esc(d.ind)}</div>
+              <div class="p-2.5 rounded-lg bg-rose-500/[0.06] border border-rose-500/20 text-rose-800 dark:text-rose-200"><b class="font-mono text-[10px] uppercase block mb-0.5">Leit-UAW</b>${esc(d.uaw)}</div>
+              <div class="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800"><b class="font-mono text-[10px] uppercase text-zinc-400 block mb-0.5">PK / PD</b>${esc(d.pk)}</div>
+              ${d.antidote ? `<div class="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-800 dark:text-emerald-300"><b class="font-mono text-[10px] uppercase block mb-0.5">Antidot</b>${esc(d.antidote)}</div>` : ''}
+            </div>
+            <div class="flex items-center justify-center gap-3 pt-2">
+              <button type="button" id="flash-unsure" class="px-4 py-2 rounded-lg text-xs font-medium border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-colors">1 · Unsicher (nochmals üben)</button>
+              <button type="button" id="flash-known" class="px-4 py-2 rounded-lg text-xs font-medium border border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 transition-colors">2 · Sicher gewusst</button>
+            </div>
+          `;
+          $('flash-unsure').addEventListener('click', () => rateFlashcard('unsure'));
+          $('flash-known').addEventListener('click', () => rateFlashcard('known'));
+        }
+      } else {
+        if (!STATE.qCurrentMC || STATE.qCurrentMC.drug.id !== d.id) {
+          STATE.qCurrentMC = buildMCQuestion(d);
+        }
+        const mc = STATE.qCurrentMC;
+        const box = $('quiz-mc-box');
+        box.innerHTML = `
+          <div class="flex items-center justify-between text-[11px] font-mono">
+            <span class="text-tealLight dark:text-tealDark uppercase">${esc(mc.badge)}</span>
+            <span class="text-zinc-400">${esc(ch ? ch.short : '')}</span>
+          </div>
+          <p class="text-[14.5px] font-medium leading-relaxed text-zinc-950 dark:text-white">${esc(mc.prompt)}</p>
+          <div id="mc-opts" class="grid grid-cols-1 gap-2">
+            ${mc.opts.map((o, idx) => `
+              <button type="button" data-idx="${idx}" class="mc-opt text-left px-3.5 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/50 hover:border-teal-500/50 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition-colors">
+                <span class="font-mono text-[10px] text-zinc-400 mr-2">${String.fromCharCode(65 + idx)}</span>${esc(o.label)}
+              </button>
+            `).join('')}
+          </div>
+          <div id="mc-fb" class="hidden rounded-lg border p-3.5 text-xs leading-relaxed"></div>
+          <div class="flex justify-end"><button id="mc-next" type="button" class="hidden px-4 py-1.5 rounded-lg text-xs font-medium bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian">Nächste Frage &rarr;</button></div>
+        `;
+
+        box.querySelectorAll('.mc-opt').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (STATE.qAnswered) return;
+            STATE.qAnswered = true;
+            const chosen = Number(btn.dataset.idx);
+            const ok = mc.opts[chosen].ok;
+            if (ok) {
+              STATE.qScore++;
+              STATE.qStreak++;
+              if (getStatus(d.id) !== 'known') { STATE.mastery[d.id] = 'known'; saveMastery(); updateKPIs(); }
+            } else {
+              STATE.qStreak = 0;
+              STATE.mastery[d.id] = 'unsure';
+              saveMastery();
+              updateKPIs();
+            }
+            $('quiz-score').textContent = String(STATE.qScore);
+            $('quiz-streak').textContent = String(STATE.qStreak);
+
+            box.querySelectorAll('.mc-opt').forEach(b => {
+              const i = Number(b.dataset.idx);
+              b.disabled = true;
+              if (mc.opts[i].ok) b.className = 'mc-opt text-left px-3.5 py-2.5 rounded-lg border border-emerald-500/50 bg-emerald-500/15 text-xs font-semibold text-emerald-800 dark:text-emerald-300';
+              else if (i === chosen) b.className = 'mc-opt text-left px-3.5 py-2.5 rounded-lg border border-rose-500/50 bg-rose-500/15 text-xs font-medium text-rose-800 dark:text-rose-300';
+              else b.classList.add('opacity-45');
+            });
+
+            const fb = $('mc-fb');
+            fb.className = `rounded-lg border p-3.5 text-xs leading-relaxed ${ok ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200' : 'border-rose-500/35 bg-rose-500/10 text-rose-900 dark:text-rose-200'}`;
+            fb.innerHTML = `<strong>${ok ? 'Richtig!' : 'Falsch.'} ${esc(d.name)}</strong> (${esc(d.sub)}): ${esc(d.moa)} <br/><span class="opacity-85">PK/PD: ${esc(d.pk)}</span>`;
+            fb.classList.remove('hidden');
+            $('mc-next').classList.remove('hidden');
+          });
+        });
+
+        $('mc-next').addEventListener('click', () => {
+          STATE.qIdx++;
+          STATE.qAnswered = false;
+          STATE.qCurrentMC = null;
+          renderQuizView();
+        });
+      }
+    }
+
+    function rateFlashcard(rating) {
+      const d = STATE.qDeck[STATE.qIdx];
+      if (!d) return;
+      STATE.mastery[d.id] = rating;
+      saveMastery();
+      updateKPIs();
+      if (rating === 'known') { STATE.qScore++; STATE.qStreak++; }
+      else { STATE.qStreak = 0; }
+      STATE.qIdx++;
+      STATE.qFlipped = false;
+      renderQuizView();
+    }
+
+    /* ==================== NAVIGATION & EVENT WIRING ==================== */
+    function switchMainTab(tab) {
+      STATE.tab = tab;
+      document.querySelectorAll('.main-tab').forEach(b => {
+        const active = b.dataset.tab === tab;
+        b.className = `main-tab shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+          active ? 'bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian' : 'text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900'
+        }`;
+      });
+      document.querySelectorAll('.main-panel').forEach(p => p.classList.toggle('hidden', p.id !== `panel-${tab}`));
+      if (tab === 'matrices') renderMatrix();
+      if (tab === 'quiz' && !STATE.qDeck.length) buildQuizDeck();
+    }
+
+    $('theme-toggle').addEventListener('click', () => {
+      const darkNow = document.documentElement.classList.toggle('dark');
+      const val = darkNow ? 'dark' : 'light';
+      try { localStorage.setItem('medlab-theme', val); localStorage.setItem('theme', val); } catch (_) {}
+    });
+
+    document.querySelectorAll('.main-tab').forEach(b => b.addEventListener('click', () => switchMainTab(b.dataset.tab)));
+    $('drug-search').addEventListener('input', e => { STATE.search = e.target.value; renderDrugList(); });
+    $('mastery-filter').addEventListener('change', e => { STATE.masteryFilter = e.target.value; renderDrugList(); });
+
+    document.querySelectorAll('.rate-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const r = btn.dataset.rate;
+        if (r === 'new') delete STATE.mastery[STATE.selectedId];
+        else STATE.mastery[STATE.selectedId] = r;
+        saveMastery();
+        updateRateButtons(r);
+        renderDrugList();
+      });
+    });
+
+    $('btn-copy-anki').addEventListener('click', () => {
+      const d = DRUGS.find(x => x.id === STATE.selectedId);
+      if (!d) return;
+      const antiPart = d.antidote ? ` | Antidot: {{c4::${d.antidote}}}` : '';
+      const cloze = `{{c1::${d.name}}} (${d.sub}): Target = {{c2::${d.target}}}. MOA: ${d.moa} Leit-UAW: {{c3::${d.uaw}}} PK/PD: ${d.pk}${antiPart}`;
+      navigator.clipboard?.writeText(cloze).then(() => {
+        const b = $('btn-copy-anki');
+        b.textContent = 'Kopiert ✓';
+        setTimeout(() => { b.textContent = 'Anki Cloze'; }, 1400);
+      }).catch(() => {});
+    });
+
+    document.querySelectorAll('.mat-btn').forEach(b => b.addEventListener('click', () => { STATE.matrix = b.dataset.mat; renderMatrix(); }));
+
+    document.querySelectorAll('.qmode-btn').forEach(b => {
+      b.addEventListener('click', () => { STATE.qMode = b.dataset.qmode; STATE.qFlipped = false; STATE.qAnswered = false; STATE.qCurrentMC = null; renderQuizView(); });
+    });
+    $('quiz-chapter-select').addEventListener('change', e => { STATE.qFilter = e.target.value; buildQuizDeck(); });
+    $('quiz-restart').addEventListener('click', buildQuizDeck);
+
+    // Keyboard shortcuts for Active Recall Flashcards
+    document.addEventListener('keydown', e => {
+      if (STATE.tab !== 'quiz' || STATE.qMode !== 'flash') return;
+      if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
+      if (e.code === 'Space' && !STATE.qFlipped) { e.preventDefault(); STATE.qFlipped = true; renderQuizView(); }
+      else if (STATE.qFlipped && e.key === '1') rateFlashcard('unsure');
+      else if (STATE.qFlipped && e.key === '2') rateFlashcard('known');
+    });
+
+    // Boot
+    populateQuizChapters();
+    renderChapterChips();
+    renderAntidotesAndTraps();
+    selectDrug(DRUGS[0].id);
+    switchMainTab('explorer');
+  })();
+  </script>
+</body>
+</html>
