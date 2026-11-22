@@ -3,16 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MedLab — Swiss Epidemiology &amp; Disease Atlas</title>
+  <title>MedLab — Swiss Epidemiology &amp; Clinical Atlas</title>
 
   <script>
     (function () {
       try {
-        if (localStorage.getItem('medlab-theme') === 'light') {
-          document.documentElement.classList.remove('dark');
-        } else {
-          document.documentElement.classList.add('dark');
-        }
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') document.documentElement.classList.remove('dark');
+        else document.documentElement.classList.add('dark');
       } catch (_) {}
     })();
   </script>
@@ -33,6 +31,8 @@
           },
           colors: {
             obsidian: '#09090b',
+            surfaceDark: '#111113',
+            borderDark: '#27272a',
             canvasLight: '#fafafa',
             tealDark: '#2dd4bf',
             tealLight: '#0f766e',
@@ -49,1825 +49,511 @@
       -webkit-font-smoothing: antialiased;
     }
     .tabular-nums { font-variant-numeric: tabular-nums; }
-    input[type="range"] { accent-color: #14b8a6; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(113,113,122,0.28); border-radius: 9999px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(113,113,122,0.48); }
+
+    input[type="range"].epi-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      border-radius: 9999px;
+      background: #e4e4e7;
+      outline: none;
+      cursor: pointer;
+    }
+    .dark input[type="range"].epi-slider { background: #27272a; }
+    input[type="range"].epi-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .dark input[type="range"].epi-slider::-webkit-slider-thumb { background: #2dd4bf; border-color: #09090b; }
   </style>
 </head>
 
 <body class="min-h-screen flex flex-col bg-canvasLight text-zinc-900 dark:bg-obsidian dark:text-zinc-100 transition-colors duration-200 selection:bg-teal-500/20">
 
-  <!-- ==================== STICKY HEADER ==================== -->
-  <header class="sticky top-0 z-40 h-14 w-full border-b border-zinc-200/80 dark:border-zinc-800/80 bg-canvasLight/85 dark:bg-obsidian/85 backdrop-blur-md">
-    <div class="max-w-7xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between gap-4">
-      <div class="flex items-center gap-3 min-w-0">
-        <a href="index.html" class="flex items-center gap-2 shrink-0 text-xs font-medium text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors">
-          <span class="w-7 h-7 rounded-lg flex items-center justify-center border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-zinc-950">
-            <svg class="w-4 h-4 text-tealLight dark:text-tealDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2.5 13h4l2.1-6.2 3.5 11.2 2.3-5h7.1" />
-            </svg>
-          </span>
-          <span class="hidden sm:inline">MedLab</span>
+  <!-- ==================== 1. STICKY HEADER ==================== -->
+  <header class="sticky top-0 z-40 h-14 w-full border-b border-zinc-200/80 dark:border-zinc-800/80 bg-canvasLight/90 dark:bg-obsidian/90 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <a href="index.html" class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors shrink-0">
+          &larr; MedLab
         </a>
-        <span class="text-zinc-300 dark:text-zinc-700">/</span>
-        <div class="flex items-center gap-2 truncate">
-          <span class="text-[14px] font-semibold tracking-tight text-zinc-950 dark:text-white truncate">Swiss Epidemiology &amp; Disease Atlas</span>
-          <span class="hidden md:inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[10px] uppercase tracking-wider bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/20">BFS · BAG · NKRS</span>
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-[15px] font-semibold tracking-tight text-zinc-950 dark:text-white shrink-0">Swiss Epidemiology</span>
+          <span class="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[10px] uppercase tracking-wider bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/25 truncate">BFS · BAG · NKRS · ANRESIS</span>
         </div>
       </div>
 
-      <div class="flex items-center gap-2.5 shrink-0">
-        <span class="hidden lg:inline font-mono text-[11px] text-zinc-400 dark:text-zinc-500">CH Baseline · Pop. 9.0M</span>
-        <button id="theme-toggle" type="button" aria-label="Toggle theme" class="w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white transition-colors">
-          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-          </svg>
-          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-          </svg>
+      <div class="flex items-center gap-2 shrink-0">
+        <span id="hdr-baseline" class="hidden md:inline font-mono text-[10.5px] text-zinc-400">2022–2024 Curated CH Baseline</span>
+        <button id="theme-toggle" type="button" aria-label="Toggle dark and light theme" class="w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-surfaceDark text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white transition-colors">
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- ==================== MAIN WORKSPACE ==================== -->
-  <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-5">
+  <!-- ==================== 2. MAIN WORKSPACE ==================== -->
+  <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4">
+
+    <!-- Missing-Files Warning Banner (Hidden when epi/*.js load cleanly) -->
+    <div id="missing-banner" class="hidden rounded-xl border border-rose-500/40 bg-rose-500/10 p-4 text-xs text-rose-700 dark:text-rose-300">
+      <strong>Missing modular files:</strong> Ensure <code>epi/data-core.js</code>, <code>epi/data-clinical.js</code>, <code>epi/ch-map.js</code>, and <code>epi/views-part1..3.js</code> are saved inside the <code>epi/</code> folder next to <code>epidemiology.html</code>.
+    </div>
 
     <!-- KPI SUMMARY STRIP -->
-    <section class="grid grid-cols-2 md:grid-cols-5 gap-3">
-      <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-3">
-        <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500">CH Population</div>
-        <div class="mt-1 text-lg font-semibold font-mono tabular-nums text-zinc-950 dark:text-white">9.00 M</div>
-        <div class="text-[11px] text-zinc-500 dark:text-zinc-400">Life exp. 82.2 M / 85.8 F</div>
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-3">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400">Swiss Population</div>
+        <div class="mt-0.5 text-lg font-mono font-semibold tabular-nums text-zinc-950 dark:text-white">9.00 M</div>
+        <div class="text-[11px] text-zinc-500">Life exp: 82.2 M · 85.8 F (BFS)</div>
       </div>
-      <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-3">
-        <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Annual Deaths (BFS)</div>
-        <div class="mt-1 text-lg font-semibold font-mono tabular-nums text-zinc-950 dark:text-white">71,822</div>
-        <div class="text-[11px] text-zinc-500 dark:text-zinc-400">~87% NCD · CVD #1 (28%)</div>
+      <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-3">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400">Annual Deaths / Cancer</div>
+        <div class="mt-0.5 text-lg font-mono font-semibold tabular-nums text-zinc-950 dark:text-white">71.8k · 48k</div>
+        <div class="text-[11px] text-zinc-500">1.50 M inpatient admissions/yr</div>
       </div>
-      <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-3">
-        <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Cancer Incidence (NKRS)</div>
-        <div class="mt-1 text-lg font-semibold font-mono tabular-nums text-zinc-950 dark:text-white">48,000<span class="text-xs font-normal text-zinc-400">/yr</span></div>
-        <div class="text-[11px] text-zinc-500 dark:text-zinc-400">17.1k deaths · 70% 5y surv.</div>
+      <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-3">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400">Disease Atlas</div>
+        <div id="kpi-atlas-count" class="mt-0.5 text-lg font-mono font-semibold tabular-nums text-zinc-950 dark:text-white">52 Conditions</div>
+        <div class="text-[11px] text-zinc-500">5 orders of magnitude (1:2 to 1:250k)</div>
       </div>
-      <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-3">
-        <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Notifiable IDs (BAG)</div>
-        <div class="mt-1 text-lg font-semibold font-mono tabular-nums text-zinc-950 dark:text-white">40+</div>
-        <div class="text-[11px] text-zinc-500 dark:text-zinc-400">VMüK: 2h · 24h · 1 wk tiers</div>
-      </div>
-      <div class="col-span-2 md:col-span-1 rounded-xl border border-teal-500/30 dark:border-teal-500/25 bg-teal-500/5 p-3">
-        <div id="kpi-context-label" class="font-mono text-[10px] uppercase tracking-wider text-tealLight dark:text-tealDark">Dominant Driver</div>
-        <div id="kpi-context-val" class="mt-1 text-lg font-semibold font-mono tabular-nums text-zinc-950 dark:text-white">28.4% CVD</div>
-        <div id="kpi-context-sub" class="text-[11px] text-zinc-500 dark:text-zinc-400">All ages · Both sexes</div>
+      <div class="rounded-xl border border-teal-500/30 dark:border-teal-500/25 bg-teal-500/5 p-3">
+        <div id="kpi-dyn-label" class="font-mono text-[10px] uppercase tracking-wider text-tealLight dark:text-tealDark">Active Metric</div>
+        <div id="kpi-dyn-val" class="mt-0.5 text-lg font-mono font-semibold tabular-nums text-zinc-950 dark:text-white">—</div>
+        <div id="kpi-dyn-sub" class="text-[11px] text-zinc-500 truncate">Select any item to inspect</div>
       </div>
     </section>
 
-    <!-- NAVIGATION TABS -->
-    <nav class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-zinc-200/80 dark:border-zinc-800/80" aria-label="Epidemiology views">
-      <button type="button" data-tab="mortality" class="tab-btn shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">1. Mortality &amp; Burden</button>
-      <button type="button" data-tab="infectious" class="tab-btn shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">2. BAG Surveillance</button>
-      <button type="button" data-tab="oncology" class="tab-btn shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">3. Oncology (NKRS)</button>
-      <button type="button" data-tab="atlas" class="tab-btn shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">4. Disease Atlas</button>
-      <button type="button" data-tab="bayesian" class="tab-btn shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">5. Bayesian PPV Lab</button>
-      <button type="button" data-tab="quiz" class="tab-btn shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">6. Base-Rate Quiz</button>
+    <!-- 6-TAB NAVIGATION -->
+    <nav class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-zinc-200/80 dark:border-zinc-800/80" aria-label="Epidemiology Views">
+      <button type="button" data-tab="spectrum"   class="epi-tab shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">1. Prevalence Spectrum</button>
+      <button type="button" data-tab="pyramids"   class="epi-tab shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">2. Pyramids &amp; Lifespan</button>
+      <button type="button" data-tab="map"        class="epi-tab shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">3. Swiss Canton Map</button>
+      <button type="button" data-tab="burden"     class="epi-tab shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">4. Ward Burden &amp; Oncology</button>
+      <button type="button" data-tab="infectious" class="epi-tab shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">5. BAG &amp; ANRESIS</button>
+      <button type="button" data-tab="lab"        class="epi-tab shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors">6. Bayesian Lab &amp; Quiz</button>
     </nav>
 
-    <!-- TWO-COLUMN WORKSPACE: MAIN STAGE (8 cols) + CLINICAL INSPECTOR (4 cols) -->
+    <!-- WORKSPACE GRID: LEFT 8 COLS (CHARTS) + RIGHT 4 COLS (PERSISTENT CLINICAL INSPECTOR) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
-      <!-- ==================== LEFT / MAIN STAGE ==================== -->
-      <div class="lg:col-span-8 min-w-0 space-y-5">
+      <!-- LEFT VIEWPORT -->
+      <div class="lg:col-span-8 space-y-4 min-w-0">
 
-        <!-- TAB 1: MORTALITY & BURDEN (BFS) -->
-        <section id="panel-mortality" class="tab-panel space-y-4">
-          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-4 space-y-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div class="flex items-center gap-1.5 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/70 dark:border-zinc-800">
-                <button type="button" data-mode="death" class="mort-mode-btn px-2.5 py-1 rounded-md text-xs font-medium transition-colors">Mortality (BFS)</button>
-                <button type="button" data-mode="hosp" class="mort-mode-btn px-2.5 py-1 rounded-md text-xs font-medium transition-colors">Hospitalizations</button>
-                <button type="button" data-mode="chronic" class="mort-mode-btn px-2.5 py-1 rounded-md text-xs font-medium transition-colors">Chronic &amp; Risks</button>
-              </div>
-              <div id="mort-sex-wrap" class="flex items-center gap-1 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/70 dark:border-zinc-800">
-                <button type="button" data-sex="all" class="mort-sex-btn px-2.5 py-1 rounded-md text-xs font-mono transition-colors">All</button>
-                <button type="button" data-sex="m" class="mort-sex-btn px-2.5 py-1 rounded-md text-xs font-mono transition-colors">Male</button>
-                <button type="button" data-sex="f" class="mort-sex-btn px-2.5 py-1 rounded-md text-xs font-mono transition-colors">Female</button>
-              </div>
-            </div>
-
-            <div id="mort-age-wrap" class="flex flex-wrap items-center gap-1.5">
-              <span class="font-mono text-[10px] uppercase tracking-wider text-zinc-400 mr-1">Age Stratum:</span>
-              <button type="button" data-age="all" class="mort-age-btn px-2.5 py-1 rounded-md font-mono text-[11px] border transition-colors">All Ages</button>
-              <button type="button" data-age="0-14" class="mort-age-btn px-2.5 py-1 rounded-md font-mono text-[11px] border transition-colors">0–14 y</button>
-              <button type="button" data-age="15-44" class="mort-age-btn px-2.5 py-1 rounded-md font-mono text-[11px] border transition-colors">15–44 y</button>
-              <button type="button" data-age="45-64" class="mort-age-btn px-2.5 py-1 rounded-md font-mono text-[11px] border transition-colors">45–64 y</button>
-              <button type="button" data-age="65-84" class="mort-age-btn px-2.5 py-1 rounded-md font-mono text-[11px] border transition-colors">65–84 y</button>
-              <button type="button" data-age="85+" class="mort-age-btn px-2.5 py-1 rounded-md font-mono text-[11px] border transition-colors">85+ y</button>
-            </div>
-
-            <!-- Strictly Locked Zero-Stretch Canvas Wrapper -->
-            <div id="mort-canvas-wrap" class="relative w-full h-72 overflow-hidden rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/50 dark:bg-zinc-900/30">
-              <canvas id="mort-canvas" class="absolute inset-0 w-full h-full block"></canvas>
-            </div>
-
-            <p id="mort-summary-text" class="text-xs leading-relaxed text-zinc-600 dark:text-zinc-400"></p>
-          </div>
-
-          <div id="mort-cards" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-        </section>
-
-        <!-- TAB 2: BAG INFECTIOUS SURVEILLANCE -->
-        <section id="panel-infectious" class="tab-panel hidden space-y-4">
-          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-4 space-y-3">
+        <!-- ==================== TAB 1: PREVALENCE SPECTRUM ==================== -->
+        <section id="panel-spectrum" class="epi-panel space-y-4">
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">Swiss Seasonality Heatmap (Jan–Dec)</h2>
-                <p class="text-[11px] text-zinc-500 dark:text-zinc-400">Relative monthly incidence intensity across BAG sentinel &amp; mandatory reporting. Click any row below to inspect VMüK reporting rules.</p>
+                <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">Swiss Base-Rate Spectrum (Log Scale: 1 in 2 → 1 in 250,000)</h2>
+                <p class="text-xs text-zinc-500">Filled dots = Prevalence · Hollow rings = Annual Incidence. Click any point or row to inspect.</p>
               </div>
-              <span class="font-mono text-[10px] text-zinc-400">BAG IDD · Sentinella</span>
-            </div>
-            <div id="heat-canvas-wrap" class="relative w-full h-64 overflow-hidden rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/50 dark:bg-zinc-900/30">
-              <canvas id="heat-canvas" class="absolute inset-0 w-full h-full block"></canvas>
-            </div>
-          </div>
-
-          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-4 space-y-3">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div class="flex flex-wrap items-center gap-1.5">
-                <button type="button" data-cat="all" class="inf-cat-btn px-2 py-1 rounded-md text-[11px] font-medium border transition-colors">All</button>
-                <button type="button" data-cat="resp" class="inf-cat-btn px-2 py-1 rounded-md text-[11px] font-medium border transition-colors">Respiratory</button>
-                <button type="button" data-cat="sti" class="inf-cat-btn px-2 py-1 rounded-md text-[11px] font-medium border transition-colors">STI</button>
-                <button type="button" data-cat="vector" class="inf-cat-btn px-2 py-1 rounded-md text-[11px] font-medium border transition-colors">Vector / Ticks</button>
-                <button type="button" data-cat="food" class="inf-cat-btn px-2 py-1 rounded-md text-[11px] font-medium border transition-colors">Food / Water</button>
-                <button type="button" data-cat="vax" class="inf-cat-btn px-2 py-1 rounded-md text-[11px] font-medium border transition-colors">Vaccine-Prev</button>
-                <button type="button" data-cat="import" class="inf-cat-btn px-2 py-1 rounded-md text-[11px] font-medium border transition-colors">Imported</button>
-              </div>
-              <div class="flex items-center gap-2">
-                <input id="inf-search" type="search" placeholder="Filter pathogen..." class="h-8 w-36 sm:w-44 px-2.5 rounded-lg text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-teal-500" />
-                <select id="inf-sort" class="h-8 px-2 rounded-lg text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none">
-                  <option value="cases">Sort: Cases/yr</option>
-                  <option value="inc">Sort: Per 100k</option>
-                  <option value="urgency">Sort: Meldepflicht</option>
-                  <option value="name">Sort: A–Z</option>
-                </select>
+              <div class="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-900 p-0.5 border border-zinc-200/80 dark:border-zinc-800">
+                <button type="button" data-setting="all"  class="spec-set-btn">All</button>
+                <button type="button" data-setting="gp"   class="spec-set-btn">GP</button>
+                <button type="button" data-setting="ed"   class="spec-set-btn">ED</button>
+                <button type="button" data-setting="ward" class="spec-set-btn">Ward</button>
+                <button type="button" data-setting="icu"  class="spec-set-btn">ICU</button>
               </div>
             </div>
 
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr class="border-b border-zinc-200/80 dark:border-zinc-800 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-                    <th class="py-2 pr-3">Pathogen / Disease</th>
-                    <th class="py-2 px-2 text-right">Cases/yr</th>
-                    <th class="py-2 px-2 text-right">/100k</th>
-                    <th class="py-2 px-2">Trend</th>
-                    <th class="py-2 pl-2 text-right">Meldepflicht</th>
-                  </tr>
-                </thead>
-                <tbody id="inf-tbody" class="divide-y divide-zinc-200/60 dark:divide-zinc-800/60"></tbody>
-              </table>
-            </div>
-            <div class="flex items-center justify-between text-[11px] text-zinc-400 pt-1">
-              <span id="inf-count"></span>
-              <span class="font-mono">2h = phone to Kantonsarzt + BAG · 24h / 1wk = VMüK form</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- TAB 3: ONCOLOGY MATRIX (NKRS) -->
-        <section id="panel-oncology" class="tab-panel hidden space-y-4">
-          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-4 space-y-3">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">Incidence vs. 5-Year Relative Survival (NKRS 2018–2022)</h2>
-                <p class="text-[11px] text-zinc-500 dark:text-zinc-400">Bubble area scales with annual Swiss deaths. Click a cancer bubble or row for Swiss screening &amp; red flags.</p>
-              </div>
-              <div class="flex items-center gap-1 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/70 dark:border-zinc-800">
-                <button type="button" data-sex="all" class="onc-sex-btn px-2.5 py-1 rounded-md text-xs font-mono transition-colors">All</button>
-                <button type="button" data-sex="m" class="onc-sex-btn px-2.5 py-1 rounded-md text-xs font-mono transition-colors">Male</button>
-                <button type="button" data-sex="f" class="onc-sex-btn px-2.5 py-1 rounded-md text-xs font-mono transition-colors">Female</button>
-              </div>
-            </div>
-
-            <div id="onc-canvas-wrap" class="relative w-full h-80 overflow-hidden rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/50 dark:bg-zinc-900/30 cursor-crosshair">
-              <canvas id="onc-canvas" class="absolute inset-0 w-full h-full block"></canvas>
-            </div>
-          </div>
-
-          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-4 overflow-x-auto">
-            <table class="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr class="border-b border-zinc-200/80 dark:border-zinc-800 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-                  <th class="py-2 pr-3">Malignancy</th>
-                  <th class="py-2 px-2 text-right">New/yr</th>
-                  <th class="py-2 px-2 text-right">Deaths/yr</th>
-                  <th class="py-2 px-2 text-right">5-Yr Surv.</th>
-                  <th class="py-2 pl-2">CH Screening</th>
-                </tr>
-              </thead>
-              <tbody id="onc-tbody" class="divide-y divide-zinc-200/60 dark:divide-zinc-800/60"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- TAB 4: DISEASE ATLAS -->
-        <section id="panel-atlas" class="tab-panel hidden space-y-4">
-          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-4 space-y-3">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <input id="atlas-search" type="search" placeholder="Search disease, red flag, biomarker, or therapy..." class="h-9 flex-1 min-w-[200px] px-3 rounded-lg text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-teal-500" />
-              <span id="atlas-count" class="font-mono text-[11px] text-zinc-400"></span>
-            </div>
-            <div class="flex flex-wrap items-center gap-1.5">
-              <button type="button" data-sys="all" class="atlas-sys-btn px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors">All Systems</button>
-              <button type="button" data-sys="cardio" class="atlas-sys-btn px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors">Cardio</button>
-              <button type="button" data-sys="pulm" class="atlas-sys-btn px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors">Pulm</button>
-              <button type="button" data-sys="renal" class="atlas-sys-btn px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors">Renal</button>
-              <button type="button" data-sys="endo" class="atlas-sys-btn px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors">Endo</button>
-              <button type="button" data-sys="heme" class="atlas-sys-btn px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors">Heme/Coag</button>
-              <button type="button" data-sys="neuro" class="atlas-sys-btn px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors">Neuro</button>
-              <button type="button" data-sys="inf" class="atlas-sys-btn px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors">Infectious</button>
-              <button type="button" data-sys="gi" class="atlas-sys-btn px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors">GI/Hepato</button>
-            </div>
-          </div>
-          <div id="atlas-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
-        </section>
-
-        <!-- TAB 5: BAYESIAN PRE-TEST PROBABILITY LAB -->
-        <section id="panel-bayesian" class="tab-panel hidden space-y-4">
-          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-4 space-y-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">Bayesian Screening &amp; Base-Rate Playground</h2>
-                <p class="text-[11px] text-zinc-500 dark:text-zinc-400">Load real Swiss prevalence/incidence rates and observe how low base rates dominate Positive Predictive Value.</p>
-              </div>
-              <select id="bayes-preset" class="h-8 px-2.5 rounded-lg text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none">
-                <option value="custom">Custom Parameters</option>
-                <option value="hiv_screen">HIV 4th-Gen Screening (CH General Pop · 0.2%)</option>
-                <option value="crc_fit">Colorectal Cancer FIT (CH Age 50–69 · 0.5%)</option>
-                <option value="pe_ed">Pulmonary Embolism D-Dimer (Low-Risk ED · 4.0%)</option>
-                <option value="lyme_elisa">Lyme IgG/IgM ELISA (Nonspecific Fatigue · 1.0%)</option>
-                <option value="tbe_csf">TBE IgM (Aseptic Meningitis Summer CH · 12%)</option>
-                <option value="htn_office">Hypertension Office BP (CH Adults · 22%)</option>
-                <option value="panc_ca199">Pancreatic Cancer CA 19-9 (Asymptomatic · 0.02%)</option>
+            <div class="flex flex-wrap items-center gap-2">
+              <input id="spec-search" type="search" placeholder="Filter diseases, diagnostics, treatments..." class="h-8 flex-1 min-w-[180px] px-2.5 rounded-lg text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-teal-500" />
+              <select id="spec-metric" class="h-8 px-2 rounded-lg text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none">
+                <option value="all">Metric: Prev &amp; Inc</option>
+                <option value="prev">Prevalence Only</option>
+                <option value="inc">Annual Incidence Only</option>
               </select>
             </div>
+            <div id="spec-sys-chips" class="flex flex-wrap gap-1.5"></div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div class="space-y-1">
-                <div class="flex justify-between text-xs"><span class="text-zinc-500">Pre-Test Prob (Base Rate)</span><span id="bayes-prev-val" class="font-mono font-semibold text-tealLight dark:text-tealDark tabular-nums">1.00%</span></div>
-                <input id="bayes-prev-slider" type="range" min="0" max="1000" value="638" class="w-full" />
-              </div>
-              <div class="space-y-1">
-                <div class="flex justify-between text-xs"><span class="text-zinc-500">Sensitivity (SnNOut)</span><span id="bayes-sens-val" class="font-mono font-semibold tabular-nums">95.0%</span></div>
-                <input id="bayes-sens-slider" type="range" min="50" max="99.9" step="0.1" value="95" class="w-full" />
-              </div>
-              <div class="space-y-1">
-                <div class="flex justify-between text-xs"><span class="text-zinc-500">Specificity (SpPIn)</span><span id="bayes-spec-val" class="font-mono font-semibold tabular-nums">95.0%</span></div>
-                <input id="bayes-spec-slider" type="range" min="50" max="99.9" step="0.1" value="95" class="w-full" />
-              </div>
+            <!-- Strictly Locked Canvas Wrapper -->
+            <div id="spec-canvas-wrap" class="relative w-full h-80 rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-950/60 overflow-hidden">
+              <canvas id="spec-canvas" class="absolute inset-0 w-full h-full block"></canvas>
             </div>
+          </div>
 
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <div class="rounded-lg border border-zinc-200/80 dark:border-zinc-800 p-2.5 bg-zinc-50/70 dark:bg-zinc-900/40">
-                <div class="font-mono text-[10px] uppercase text-zinc-400">PPV (If Test +)</div>
-                <div id="bayes-ppv" class="text-lg font-mono font-semibold tabular-nums text-tealLight dark:text-tealDark">—</div>
-              </div>
-              <div class="rounded-lg border border-zinc-200/80 dark:border-zinc-800 p-2.5 bg-zinc-50/70 dark:bg-zinc-900/40">
-                <div class="font-mono text-[10px] uppercase text-zinc-400">NPV (If Test −)</div>
-                <div id="bayes-npv" class="text-lg font-mono font-semibold tabular-nums text-zinc-900 dark:text-white">—</div>
-              </div>
-              <div class="rounded-lg border border-zinc-200/80 dark:border-zinc-800 p-2.5 bg-zinc-50/70 dark:bg-zinc-900/40">
-                <div class="font-mono text-[10px] uppercase text-zinc-400">LR+ / LR−</div>
-                <div class="text-sm font-mono font-semibold tabular-nums mt-1"><span id="bayes-lrp" class="text-emerald-600 dark:text-emerald-400">—</span> <span class="text-zinc-400">/</span> <span id="bayes-lrn" class="text-amber-600 dark:text-amber-400">—</span></div>
-              </div>
-              <div class="rounded-lg border border-zinc-200/80 dark:border-zinc-800 p-2.5 bg-zinc-50/70 dark:bg-zinc-900/40">
-                <div class="font-mono text-[10px] uppercase text-zinc-400">Per 10,000 Tested</div>
-                <div class="text-[11px] font-mono tabular-nums mt-0.5 text-zinc-600 dark:text-zinc-300">TP <b id="bayes-tp">0</b> · FP <b id="bayes-fp" class="text-rose-500">0</b><br/>FN <b id="bayes-fn">0</b> · TN <b id="bayes-tn">0</b></div>
-              </div>
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-semibold uppercase tracking-wider font-mono text-zinc-500">Ranked Prevalence Table</h3>
+              <span id="spec-count" class="font-mono text-[11px] text-zinc-400"></span>
             </div>
-
-            <div id="bayes-canvas-wrap" class="relative w-full h-72 overflow-hidden rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/50 dark:bg-zinc-900/30">
-              <canvas id="bayes-canvas" class="absolute inset-0 w-full h-full block"></canvas>
-            </div>
-            <p id="bayes-verdict" class="text-xs leading-relaxed text-zinc-600 dark:text-zinc-400"></p>
+            <div id="spec-list" class="grid grid-cols-1 gap-1.5 max-h-[380px] overflow-y-auto pr-1"></div>
           </div>
         </section>
 
-        <!-- TAB 6: BASE-RATE CALIBRATION QUIZ -->
-        <section id="panel-quiz" class="tab-panel hidden space-y-4">
-          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-5 space-y-4">
-            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-zinc-200/70 dark:border-zinc-800/70">
+        <!-- ==================== TAB 2: PYRAMIDS & LIFESPAN ==================== -->
+        <section id="panel-pyramids" class="epi-panel hidden space-y-4">
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-3">
+            <div class="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <span id="quiz-cat" class="font-mono text-[10px] uppercase tracking-wider text-tealLight dark:text-tealDark">BFS Mortality</span>
-                <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">Swiss Clinical Base-Rate &amp; Meldepflicht Drill</h2>
+                <h2 id="pyr-title" class="text-sm font-semibold text-zinc-950 dark:text-white">Age × Sex Butterfly Pyramid</h2>
+                <p id="pyr-sub" class="text-xs text-zinc-500 mt-0.5"></p>
               </div>
-              <div class="flex items-center gap-3 font-mono text-xs tabular-nums">
-                <span id="quiz-progress" class="text-zinc-500">1 / 12</span>
-                <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">Score: <b id="quiz-score">0</b></span>
-                <span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400">Streak: <b id="quiz-streak">0</b></span>
+            </div>
+            <div id="pyr-selector" class="flex flex-wrap gap-1.5"></div>
+            <div id="pyr-canvas-wrap" class="relative w-full h-72 rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-950/60 overflow-hidden">
+              <canvas id="pyr-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-2">
+              <h3 class="text-xs font-semibold text-zinc-950 dark:text-white">Cause-of-Death Inversion Across Lifespan (BFS)</h3>
+              <p class="text-[11px] text-zinc-500">Click any age column to inspect exact % share.</p>
+              <div id="life-canvas-wrap" class="relative w-full h-56 rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-950/60 overflow-hidden">
+                <canvas id="life-canvas" class="absolute inset-0 w-full h-full block"></canvas>
               </div>
             </div>
 
-            <p id="quiz-q" class="text-[15px] font-medium leading-snug text-zinc-950 dark:text-white"></p>
-            <div id="quiz-options" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
-            <div id="quiz-feedback" class="hidden rounded-lg border p-3.5 text-xs leading-relaxed"></div>
-
-            <div class="flex items-center justify-between pt-2">
-              <button id="quiz-reset-btn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-950 dark:hover:text-white transition-colors">Restart Deck</button>
-              <button id="quiz-next-btn" type="button" class="hidden px-4 py-1.5 rounded-lg text-xs font-medium bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian hover:opacity-90 transition-opacity">Next Question &rarr;</button>
+            <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-2">
+              <h3 class="text-xs font-semibold text-zinc-950 dark:text-white">50-Year Mortality Shift (1970–2023, per 100k)</h3>
+              <p class="text-[11px] text-zinc-500">Click a legend pill to isolate a trajectory.</p>
+              <div id="trend-canvas-wrap" class="relative w-full h-44 rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-950/60 overflow-hidden">
+                <canvas id="trend-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+              </div>
+              <div id="trend-legend" class="flex flex-wrap gap-1 pt-1"></div>
             </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 3: SWISS CANTON MAP ==================== -->
+        <section id="panel-map" class="epi-panel hidden space-y-4">
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 id="map-title" class="text-sm font-semibold text-zinc-950 dark:text-white">Swiss Cantonal Epidemiology</h2>
+                <p id="map-sub" class="text-xs text-zinc-500 mt-0.5"></p>
+              </div>
+            </div>
+            <div id="map-layer-btns" class="flex flex-wrap gap-1.5"></div>
+            <div class="relative w-full rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/50 dark:bg-zinc-950/70 p-2 overflow-hidden">
+              <svg id="map-svg" viewBox="0 0 800 520" class="w-full h-auto max-h-[380px] block select-none" role="img" aria-label="Interactive 26-canton Swiss choropleth map"></svg>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500">
+              <span>Click any canton for local BAG, ANRESIS &amp; screening metrics.</span>
+              <div id="map-legend" class="flex items-center gap-2"></div>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-2.5">
+            <h3 class="text-xs font-semibold uppercase tracking-wider font-mono text-zinc-500">All 26 Cantons (Ranked by Active Layer)</h3>
+            <div id="map-rank-list" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5"></div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 4: WARD BURDEN & ONCOLOGY ==================== -->
+        <section id="panel-burden" class="epi-panel hidden space-y-4">
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-2.5">
+            <div>
+              <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">Swiss Hospital Ward Burden (BFS Medical Statistics)</h2>
+              <p class="text-xs text-zinc-500">Admissions × Length of Stay (log) × In-Hospital Mortality. Click bubbles to inspect bed-days.</p>
+            </div>
+            <div id="ward-canvas-wrap" class="relative w-full h-72 rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-950/60 overflow-hidden">
+              <canvas id="ward-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">NKRS Oncology Quadrant (Incidence × 5-Year Survival)</h2>
+                <p class="text-xs text-zinc-500">Bubble size = Annual deaths. Dashed line = 50% survival threshold.</p>
+              </div>
+              <div class="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-900 p-0.5 border border-zinc-200/80 dark:border-zinc-800">
+                <button type="button" data-sex="all" class="onco-sex-btn">All</button>
+                <button type="button" data-sex="m"   class="onco-sex-btn">Men</button>
+                <button type="button" data-sex="f"   class="onco-sex-btn">Women</button>
+              </div>
+            </div>
+            <div id="onco-canvas-wrap" class="relative w-full h-64 rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-950/60 overflow-hidden">
+              <canvas id="onco-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">Killers (YLL) vs. Disablers (YLD) — GBD Switzerland</h3>
+                <p class="text-xs text-zinc-500">Share of total DALYs: why musculoskeletal pain &amp; depression dominate clinics despite low mortality.</p>
+              </div>
+              <div class="flex items-center gap-3 font-mono text-[10px]">
+                <span class="text-rose-500">■ YLL (Mortality)</span>
+                <span class="text-amber-500">■ YLD (Disability)</span>
+              </div>
+            </div>
+            <div id="gbd-bars" class="space-y-0.5"></div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 5: BAG & ANRESIS ==================== -->
+        <section id="panel-infectious" class="epi-panel hidden space-y-4">
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-3">
+            <div>
+              <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">BAG Surveillance &amp; 12-Month Seasonality Heatmap</h2>
+              <p class="text-xs text-zinc-500">Notice Winter Flu/RSV, Summer Ticks/Legionella, and bimodal Campylobacter (BBQ + Dec Fondue Chinoise).</p>
+            </div>
+            <div id="inf-cat-btns" class="flex flex-wrap gap-1.5"></div>
+            <div id="inf-heatmap" class="overflow-x-auto"></div>
+          </div>
+
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">ANRESIS Swiss Antibiotic Resistance (% Invasive Isolates)</h2>
+                <p class="text-xs text-zinc-500">Toggle German CH vs. Romandie/Ticino to visualize the Swiss resistance Röstigraben.</p>
+              </div>
+              <div id="anresis-region-btns" class="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-900 p-0.5 border border-zinc-200/80 dark:border-zinc-800"></div>
+            </div>
+            <div id="anresis-table" class="overflow-x-auto"></div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 6: BAYESIAN LAB & QUIZ ==================== -->
+        <section id="panel-lab" class="epi-panel hidden space-y-4">
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-3.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">Bayesian PPV / NPV Playground</h2>
+                <p class="text-xs text-zinc-500">Load any of the 52 Swiss diseases or clinical scenarios to see how base rates control positive predictive value.</p>
+              </div>
+              <select id="bayes-disease-select" class="h-8 max-w-xs px-2.5 rounded-lg text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none"></select>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800 space-y-1.5">
+                <div class="flex justify-between text-xs"><span class="text-zinc-500">Prevalence (Log)</span><span id="bayes-prev-val" class="font-mono font-semibold text-tealLight dark:text-tealDark tabular-nums">1.0%</span></div>
+                <input id="bayes-prev-slider" type="range" class="epi-slider" min="0" max="1000" step="1" value="470" />
+              </div>
+              <div class="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800 space-y-1.5">
+                <div class="flex justify-between text-xs"><span class="text-zinc-500">Sensitivity</span><span id="bayes-sens-val" class="font-mono font-semibold tabular-nums">92.0%</span></div>
+                <input id="bayes-sens-slider" type="range" class="epi-slider" min="500" max="999" step="1" value="920" />
+              </div>
+              <div class="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800 space-y-1.5">
+                <div class="flex justify-between text-xs"><span class="text-zinc-500">Specificity</span><span id="bayes-spec-val" class="font-mono font-semibold tabular-nums">95.0%</span></div>
+                <input id="bayes-spec-slider" type="range" class="epi-slider" min="400" max="999" step="1" value="950" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+              <div class="rounded-lg border border-teal-500/30 bg-teal-500/10 p-2"><div class="font-mono text-[9.5px] uppercase text-tealLight dark:text-tealDark">PPV (Post-Test +)</div><div id="bayes-ppv" class="font-mono text-base font-semibold tabular-nums">—</div></div>
+              <div class="rounded-lg border border-zinc-200 dark:border-zinc-800 p-2"><div class="font-mono text-[9.5px] uppercase text-zinc-500">NPV (Post-Test −)</div><div id="bayes-npv" class="font-mono text-base font-semibold tabular-nums">—</div></div>
+              <div class="rounded-lg border border-zinc-200 dark:border-zinc-800 p-2"><div class="font-mono text-[9.5px] uppercase text-zinc-500">LR+</div><div id="bayes-lrp" class="font-mono text-base font-semibold tabular-nums">—</div></div>
+              <div class="rounded-lg border border-zinc-200 dark:border-zinc-800 p-2"><div class="font-mono text-[9.5px] uppercase text-zinc-500">LR−</div><div id="bayes-lrn" class="font-mono text-base font-semibold tabular-nums">—</div></div>
+            </div>
+
+            <div id="bayes-canvas-wrap" class="relative w-full h-52 rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-950/60 overflow-hidden">
+              <canvas id="bayes-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+            </div>
+            <div class="space-y-1">
+              <div class="font-mono text-[9.5px] uppercase tracking-wider text-zinc-400">Expected Counts per 10,000 Tested</div>
+              <div id="bayes-2x2" class="grid grid-cols-4 gap-2"></div>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200/70 dark:border-zinc-800/70 pb-2.5">
+              <div>
+                <h2 class="text-sm font-semibold text-zinc-950 dark:text-white">Swiss Base-Rate &amp; Meldepflicht Drill</h2>
+                <p class="text-xs text-zinc-500">15 high-yield questions across BFS, BAG, NKRS, ANRESIS &amp; Bayesian intuition.</p>
+              </div>
+              <div class="flex items-center gap-2 font-mono text-[11px] tabular-nums">
+                <span id="quiz-progress" class="text-zinc-500">1 / 15</span>
+                <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">Score <b id="quiz-score">0</b></span>
+                <span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300">Streak <b id="quiz-streak">0</b></span>
+                <button id="quiz-restart" type="button" class="px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-950 dark:hover:text-white">Reset</button>
+              </div>
+            </div>
+            <div id="quiz-card" class="space-y-3"></div>
           </div>
         </section>
 
       </div>
 
-      <!-- ==================== RIGHT: PERSISTENT CLINICAL INSPECTOR ==================== -->
-      <aside class="lg:col-span-4 lg:sticky lg:top-20 rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-4 space-y-3.5">
+      <!-- RIGHT COLUMN: PERSISTENT STICKY CLINICAL INSPECTOR -->
+      <aside class="lg:col-span-4 lg:sticky lg:top-20 rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-surfaceDark p-4 space-y-3.5">
         <div class="flex items-start justify-between gap-2 pb-3 border-b border-zinc-200/70 dark:border-zinc-800/70">
           <div class="min-w-0">
-            <span id="inspector-badge" class="inline-block font-mono text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-teal-500/10 text-tealLight dark:text-tealDark mb-1">Clinical Inspector</span>
-            <h3 id="inspector-title" class="text-base font-semibold tracking-tight text-zinc-950 dark:text-white leading-tight">Select an Entity</h3>
-            <p id="inspector-sub" class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Click any cause, pathogen, malignancy, or disease card to view Swiss data and clinical links.</p>
+            <div id="insp-badge" class="font-mono text-[10px] uppercase tracking-wider text-tealLight dark:text-tealDark">Clinical Inspector</div>
+            <h2 id="insp-title" class="text-base font-semibold tracking-tight text-zinc-950 dark:text-white leading-tight mt-0.5">Select any item</h2>
+            <p id="insp-sub" class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Click a disease, age band, canton, hospital bubble, or pathogen to view Swiss clinical context.</p>
           </div>
+          <button id="insp-anki-btn" type="button" class="hidden shrink-0 px-2.5 py-1 rounded-lg font-mono text-[10.5px] border border-teal-500/35 bg-teal-500/10 text-tealLight dark:text-tealDark hover:bg-teal-500/20 transition-colors">
+            Anki Cloze
+          </button>
         </div>
-        <div id="inspector-body" class="space-y-3 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300"></div>
-        <div id="inspector-links" class="pt-2 border-t border-zinc-200/70 dark:border-zinc-800/70 flex flex-wrap gap-1.5 empty:hidden"></div>
+
+        <div id="insp-sections" class="space-y-2.5 text-xs leading-relaxed"></div>
+
+        <div id="insp-actions" class="pt-2.5 border-t border-zinc-200/70 dark:border-zinc-800/70 flex flex-wrap gap-1.5 empty:hidden"></div>
       </aside>
 
     </div>
   </main>
 
-  <!-- ==================== FOOTER ==================== -->
   <footer class="w-full border-t border-zinc-200/80 dark:border-zinc-800/80 mt-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-zinc-500">
-      <span>Data references: BFS Cause of Death &amp; Hospital Stats (2023) · BAG IDD / VMüK · NKRS Cancer Report (2018–2022)</span>
-      <span class="font-mono">MedLab · Educational Reference Only</span>
+      <span>Sources: BFS · BAG IDD · NKRS · ANRESIS · GBD Switzerland (Curated 2022–2024 Snapshot)</span>
+      <span class="font-mono">MedLab · Educational use only</span>
     </div>
   </footer>
 
-  <!-- ==================== APPLICATION SCRIPT (PART 1: SWISS DATASETS) ==================== -->
+  <!-- ==================== MODULAR DATA & VIEW SCRIPTS ==================== -->
+  <script src="epi/data-core.js"></script>
+  <script src="epi/data-clinical.js"></script>
+  <script src="epi/ch-map.js"></script>
+  <script src="epi/views-part1.js"></script>
+  <script src="epi/views-part2.js"></script>
+  <script src="epi/views-part3.js"></script>
+
+  <!-- ==================== CORE ROUTER & INSPECTOR CONTROLLER ==================== -->
   <script>
   (() => {
     'use strict';
 
-    /* -------------------------------------------------------------------------
-       1. BFS CAUSE OF DEATH BY AGE & SEX (% share of deaths in stratum)
-       ------------------------------------------------------------------------- */
-    const BFS_MORTALITY = {
-      all: {
-        all: [
-          { name: 'Cardiovascular Diseases', pct: 28.4, n: 20376, col: '#14b8a6', note: '#1 overall cause in Switzerland; mean age at death 81 M / 87 F. Age-standardized rate continues declining.' },
-          { name: 'Malignant Neoplasms', pct: 23.8, n: 17067, col: '#f59e0b', note: '#1 cause from ages 45–84 in both sexes; mean age at death 75 y. Lung cancer is #1 killer in both sexes.' },
-          { name: 'Dementia & Neurodegenerative', pct: 9.0, n: 6447, col: '#a855f7', note: '#3 overall cause (mean age 85 M / 88 F); disproportionately affects women due to longer life expectancy.' },
-          { name: 'Respiratory Diseases', pct: 6.6, n: 4739, col: '#3b82f6', note: 'COPD, pneumonia, interstitial lung disease; mean age 80 M / 83 F.' },
-          { name: 'External Causes (Trauma/Suicide)', pct: 6.0, n: 4290, col: '#f43f5e', note: 'Falls in elderly, traffic/alpine accidents, and ~995 suicides/yr (excl. ~1,729 assisted suicides coded to underlying illness).' },
-          { name: 'Digestive & Metabolic', pct: 7.4, n: 5315, col: '#64748b', note: 'Cirrhosis, GI hemorrhage, diabetes complications, pancreatic/biliary disease.' },
-          { name: 'Other Causes (Infectious/Renal/Etc.)', pct: 18.8, n: 13588, col: '#52525b', note: 'Includes sepsis, CKD, COVID-19 (~2%), and ill-defined multimorbidity.' },
-        ],
-        m: [
-          { name: 'Malignant Neoplasms', pct: 26.9, n: 9438, col: '#f59e0b', note: 'Slightly ahead of CVD in Swiss men overall (9,438 vs 9,359 deaths).' },
-          { name: 'Cardiovascular Diseases', pct: 26.7, n: 9359, col: '#14b8a6', note: 'Ischemic heart disease & stroke; mean age 81 y.' },
-          { name: 'External Causes (Trauma/Suicide)', pct: 7.0, n: 2451, col: '#f43f5e', note: '2× higher age-standardized rate than women (39 vs 20 per 100k); 721 suicides/yr.' },
-          { name: 'Respiratory Diseases', pct: 6.9, n: 2434, col: '#3b82f6', note: 'COPD & lower respiratory infections; rate 31/100k.' },
-          { name: 'Dementia', pct: 5.9, n: 2077, col: '#a855f7', note: 'Mean age 85 y; lower share than women due to earlier competing CVD/cancer mortality.' },
-          { name: 'Digestive, Metabolic & Other', pct: 26.6, n: 9350, col: '#52525b', note: 'Hepatic, renal, endocrine, and infectious conditions.' },
-        ],
-        f: [
-          { name: 'Cardiovascular Diseases', pct: 30.0, n: 11017, col: '#14b8a6', note: 'Clear #1 cause in Swiss women; mean age 87 y.' },
-          { name: 'Malignant Neoplasms', pct: 20.8, n: 7629, col: '#f59e0b', note: 'Lung (17.4%) slightly exceeds Breast (16.8%) as top cancer killer.' },
-          { name: 'Dementia', pct: 11.9, n: 4370, col: '#a855f7', note: 'More than double the absolute count in men; mean age 88 y.' },
-          { name: 'Respiratory Diseases', pct: 6.3, n: 2305, col: '#3b82f6', note: 'Mean age 83 y.' },
-          { name: 'External Causes', pct: 5.0, n: 1839, col: '#f43f5e', note: 'Elderly falls dominate; 274 suicides/yr.' },
-          { name: 'Digestive, Metabolic & Other', pct: 26.0, n: 9553, col: '#52525b', note: 'Multimorbidity, endocrine, renal, and infectious causes.' },
-        ],
-      },
-      '0-14': {
-        all: [
-          { name: 'Perinatal Conditions', pct: 43.0, n: 165, col: '#14b8a6', note: 'Prematurity, perinatal asphyxia, neonatal sepsis (infant mortality ~3.5 per 1,000 live births).' },
-          { name: 'Congenital Malformations', pct: 24.5, n: 94, col: '#a855f7', note: 'Congenital heart defects, chromosomal anomalies, CNS malformations.' },
-          { name: 'External Causes (Accidents)', pct: 10.5, n: 40, col: '#f43f5e', note: 'Drowning, traffic, falls.' },
-          { name: 'Pediatric Cancers', pct: 8.5, n: 33, col: '#f59e0b', note: 'Leukemia & CNS tumors (>85% 5-year survival in CH).' },
-          { name: 'Neurologic, Infectious & Other', pct: 13.5, n: 52, col: '#52525b', note: 'Includes SIDS, meningitis, metabolic disorders.' },
-        ],
-        m: [
-          { name: 'Perinatal Conditions', pct: 44.0, n: 95, col: '#14b8a6', note: 'Slightly higher male neonatal vulnerability.' },
-          { name: 'Congenital Malformations', pct: 23.0, n: 50, col: '#a855f7', note: 'Cardiac and structural anomalies.' },
-          { name: 'External Causes', pct: 11.5, n: 25, col: '#f43f5e', note: 'Unintentional injuries.' },
-          { name: 'Pediatric Cancers', pct: 8.5, n: 18, col: '#f59e0b', note: 'ALL & brain tumors.' },
-          { name: 'Other', pct: 13.0, n: 28, col: '#52525b', note: 'Infectious, metabolic, SIDS.' },
-        ],
-        f: [
-          { name: 'Perinatal Conditions', pct: 41.8, n: 70, col: '#14b8a6', note: 'Extreme prematurity & neonatal complications.' },
-          { name: 'Congenital Malformations', pct: 26.2, n: 44, col: '#a855f7', note: 'Structural/genetic conditions.' },
-          { name: 'External Causes', pct: 9.0, n: 15, col: '#f43f5e', note: 'Accidents.' },
-          { name: 'Pediatric Cancers', pct: 8.5, n: 15, col: '#f59e0b', note: 'Leukemia & CNS tumors.' },
-          { name: 'Other', pct: 14.5, n: 24, col: '#52525b', note: 'Infectious & neurologic causes.' },
-        ],
-      },
-      '15-44': {
-        all: [
-          { name: 'External Causes (Suicide/Trauma)', pct: 44.2, n: 645, col: '#f43f5e', note: 'Overwhelming #1 killer in young Swiss adults (49.5% M, 34.2% F). Suicide & alpine/road trauma dominate.' },
-          { name: 'Malignant Neoplasms', pct: 19.6, n: 286, col: '#f59e0b', note: 'Breast, CNS tumors, melanoma, lymphomas, testicular/colorectal.' },
-          { name: 'Cardiovascular Diseases', pct: 10.4, n: 152, col: '#14b8a6', note: 'Channelopathies, myocarditis, premature CAD, PE.' },
-          { name: 'Neurologic & Mental/Substance', pct: 9.8, n: 143, col: '#a855f7', note: 'Epilepsy, overdose, alcohol-related complications.' },
-          { name: 'Digestive, Infectious & Other', pct: 16.0, n: 234, col: '#52525b', note: 'Autoimmune, rare genetic, obstetric, infectious.' },
-        ],
-        m: [
-          { name: 'External Causes (Suicide/Trauma)', pct: 49.5, n: 475, col: '#f43f5e', note: 'Nearly half of all young male deaths in Switzerland.' },
-          { name: 'Malignant Neoplasms', pct: 14.2, n: 136, col: '#f59e0b', note: 'CNS, hematologic, melanoma, GI.' },
-          { name: 'Cardiovascular Diseases', pct: 11.4, n: 109, col: '#14b8a6', note: 'Sudden cardiac death & premature MI.' },
-          { name: 'Neurologic & Substance', pct: 10.5, n: 101, col: '#a855f7', note: 'Substance toxicity, epilepsy.' },
-          { name: 'Other', pct: 14.4, n: 138, col: '#52525b', note: 'Infectious, GI, congenital.' },
-        ],
-        f: [
-          { name: 'External Causes (Suicide/Trauma)', pct: 34.2, n: 170, col: '#f43f5e', note: '#1 cause in young women, though lower absolute rate than men.' },
-          { name: 'Malignant Neoplasms', pct: 30.1, n: 150, col: '#f59e0b', note: 'Early breast cancer, cervical, CNS, melanoma.' },
-          { name: 'Cardiovascular Diseases', pct: 8.5, n: 43, col: '#14b8a6', note: 'PE, congenital/valvular, stroke.' },
-          { name: 'Neurologic & Mental', pct: 8.4, n: 42, col: '#a855f7', note: 'Neurologic & psychiatric mortality.' },
-          { name: 'Other', pct: 18.8, n: 94, col: '#52525b', note: 'Autoimmune, endocrine, obstetric.' },
-        ],
-      },
-      '45-64': {
-        all: [
-          { name: 'Malignant Neoplasms', pct: 40.4, n: 2645, col: '#f59e0b', note: 'Dominates midlife mortality (34.0% M, 50.3% F). Peak screening leverage window.' },
-          { name: 'Cardiovascular Diseases', pct: 19.2, n: 1255, col: '#14b8a6', note: 'Acute MI, aortic dissection, stroke; strong male excess.' },
-          { name: 'External Causes', pct: 11.6, n: 758, col: '#f43f5e', note: 'Peak suicide age bracket (mean age 52–56 y) plus accidents.' },
-          { name: 'Digestive (Cirrhosis/GI)', pct: 7.5, n: 490, col: '#64748b', note: 'Alcoholic/MASLD liver disease & GI bleeds.' },
-          { name: 'Respiratory & Other', pct: 21.3, n: 1392, col: '#52525b', note: 'Early COPD, endocrine, sepsis, neurologic.' },
-        ],
-        m: [
-          { name: 'Malignant Neoplasms', pct: 34.0, n: 1350, col: '#f59e0b', note: 'Lung, colorectal, pancreas, esophageal.' },
-          { name: 'Cardiovascular Diseases', pct: 23.8, n: 945, col: '#14b8a6', note: 'Acute coronary syndrome & sudden cardiac death.' },
-          { name: 'External Causes', pct: 13.4, n: 532, col: '#f43f5e', note: 'Suicide & occupational/recreational trauma.' },
-          { name: 'Digestive Diseases', pct: 8.4, n: 334, col: '#64748b', note: 'Cirrhosis & pancreatitis.' },
-          { name: 'Respiratory & Other', pct: 20.4, n: 810, col: '#52525b', note: 'COPD, diabetes, neurologic.' },
-        ],
-        f: [
-          { name: 'Malignant Neoplasms', pct: 50.3, n: 1295, col: '#f59e0b', note: 'Half of all midlife female deaths in Switzerland (breast, lung, colorectal, ovarian).' },
-          { name: 'Cardiovascular Diseases', pct: 12.0, n: 310, col: '#14b8a6', note: 'Much lower midlife share than men.' },
-          { name: 'External Causes', pct: 8.8, n: 226, col: '#f43f5e', note: 'Suicide & accidents.' },
-          { name: 'Digestive Diseases', pct: 6.1, n: 156, col: '#64748b', note: 'Hepatic & GI conditions.' },
-          { name: 'Respiratory & Other', pct: 22.8, n: 587, col: '#52525b', note: 'COPD, autoimmune, neurologic.' },
-        ],
-      },
-      '65-84': {
-        all: [
-          { name: 'Malignant Neoplasms', pct: 33.5, n: 10340, col: '#f59e0b', note: 'Still #1 in ages 65–84 (34.0% M, 32.8% F).' },
-          { name: 'Cardiovascular Diseases', pct: 24.4, n: 7530, col: '#14b8a6', note: 'Heart failure, CAD, AFib-related stroke, aortic stenosis.' },
-          { name: 'Respiratory Diseases', pct: 8.2, n: 2530, col: '#3b82f6', note: 'COPD exacerbations & severe pneumonia.' },
-          { name: 'Dementia', pct: 6.9, n: 2130, col: '#a855f7', note: 'Rising steeply after age 75.' },
-          { name: 'External Causes', pct: 4.9, n: 1510, col: '#f43f5e', note: 'Falls & fractures.' },
-          { name: 'Digestive, Renal & Other', pct: 22.1, n: 6820, col: '#52525b', note: 'CKD, sepsis, diabetes, multimorbidity.' },
-        ],
-        m: [
-          { name: 'Malignant Neoplasms', pct: 34.0, n: 5980, col: '#f59e0b', note: 'Lung, prostate, colorectal, pancreas.' },
-          { name: 'Cardiovascular Diseases', pct: 25.8, n: 4540, col: '#14b8a6', note: 'IHD, HF, stroke.' },
-          { name: 'Respiratory Diseases', pct: 8.4, n: 1480, col: '#3b82f6', note: 'COPD & pneumonia.' },
-          { name: 'Dementia', pct: 5.8, n: 1020, col: '#a855f7', note: 'Alzheimer & vascular dementia.' },
-          { name: 'External & Other', pct: 26.0, n: 4570, col: '#52525b', note: 'Falls, renal, GI, sepsis.' },
-        ],
-        f: [
-          { name: 'Malignant Neoplasms', pct: 32.8, n: 4360, col: '#f59e0b', note: 'Lung, breast, colorectal, pancreas.' },
-          { name: 'Cardiovascular Diseases', pct: 22.5, n: 2990, col: '#14b8a6', note: 'Stroke, HFpEF, IHD.' },
-          { name: 'Dementia', pct: 8.4, n: 1110, col: '#a855f7', note: 'Steep upward trajectory.' },
-          { name: 'Respiratory Diseases', pct: 7.9, n: 1050, col: '#3b82f6', note: 'COPD & lower respiratory infections.' },
-          { name: 'External & Other', pct: 28.4, n: 3770, col: '#52525b', note: 'Endocrine, renal, falls, sepsis.' },
-        ],
-      },
-      '85+': {
-        all: [
-          { name: 'Cardiovascular Diseases', pct: 37.5, n: 11430, col: '#14b8a6', note: 'Dominant cause in oldest-old (35.5% M, 38.7% F): HF, stroke, calcific AS.' },
-          { name: 'Dementia', pct: 13.8, n: 4210, col: '#a855f7', note: '#2 cause in 85+ women and overall oldest-old.' },
-          { name: 'Malignant Neoplasms', pct: 12.3, n: 3750, col: '#f59e0b', note: 'Relative share drops sharply as CVD & dementia overtake.' },
-          { name: 'Respiratory Diseases', pct: 6.4, n: 1950, col: '#3b82f6', note: 'Aspiration/bacterial pneumonia & chronic lung disease.' },
-          { name: 'External Causes (Falls)', pct: 4.4, n: 1340, col: '#f43f5e', note: 'Proximal femur fractures & subdural hematomas.' },
-          { name: 'Other (Renal/Sepsis/Frailty)', pct: 25.6, n: 7800, col: '#52525b', note: 'Multimorbidity, urosepsis, AKI/CKD.' },
-        ],
-        m: [
-          { name: 'Cardiovascular Diseases', pct: 35.5, n: 3760, col: '#14b8a6', note: 'Heart failure, IHD, valvular disease.' },
-          { name: 'Malignant Neoplasms', pct: 16.5, n: 1750, col: '#f59e0b', note: 'Prostate, lung, bladder, colorectal.' },
-          { name: 'Dementia', pct: 10.0, n: 1060, col: '#a855f7', note: 'Alzheimer & mixed vascular dementia.' },
-          { name: 'Respiratory Diseases', pct: 7.5, n: 795, col: '#3b82f6', note: 'Pneumonia & COPD.' },
-          { name: 'Falls & Other', pct: 30.5, n: 3230, col: '#52525b', note: 'Renal failure, sepsis, fractures.' },
-        ],
-        f: [
-          { name: 'Cardiovascular Diseases', pct: 38.7, n: 7670, col: '#14b8a6', note: 'HFpEF, AFib stroke, hypertensive heart disease.' },
-          { name: 'Dementia', pct: 15.9, n: 3150, col: '#a855f7', note: 'Nearly 1 in 6 deaths in women aged 85+.' },
-          { name: 'Malignant Neoplasms', pct: 10.1, n: 2000, col: '#f59e0b', note: 'Lower share than dementia in oldest-old women.' },
-          { name: 'Respiratory Diseases', pct: 5.8, n: 1155, col: '#3b82f6', note: 'Pneumonia & respiratory failure.' },
-          { name: 'Falls & Other', pct: 29.5, n: 5850, col: '#52525b', note: 'Hip fracture complications, urosepsis, frailty.' },
-        ],
-      },
-    };
-
-    const BFS_HOSP = [
-      { name: 'Musculoskeletal & Trauma/Injuries', pct: 22.8, n: 342000, col: '#f43f5e', note: 'Major contrast vs mortality: osteoarthritis, disc herniations, and sports/alpine/fall fractures drive ~1 in 4 Swiss inpatient stays.' },
-      { name: 'Cardiovascular Diseases', pct: 11.4, n: 171000, col: '#14b8a6', note: 'ACS, heart failure decompensation, atrial fibrillation, TAVI/PCI.' },
-      { name: 'Digestive System Diseases', pct: 9.8, n: 147000, col: '#f59e0b', note: 'Cholelithiasis, appendicitis, hernias, diverticulitis, GI bleeding.' },
-      { name: 'Neoplasms (Oncology Stays)', pct: 8.6, n: 129000, col: '#a855f7', note: 'Surgical resection, systemic therapy complications, palliative admissions.' },
-      { name: 'Pregnancy, Birth & Perinatal', pct: 8.2, n: 123000, col: '#ec4899', note: '~80,000 live births/yr plus obstetric monitoring.' },
-      { name: 'Mental & Behavioral Disorders', pct: 7.4, n: 111000, col: '#6366f1', note: 'Long average length of stay (~30+ days in inpatient psychiatry); depression, substance use, schizophrenia.' },
-      { name: 'Respiratory Diseases', pct: 6.5, n: 97500, col: '#3b82f6', note: 'Winter peaks: CAP, COPD, RSV/Influenza.' },
-      { name: 'Genitourinary & Other', pct: 25.3, n: 379500, col: '#52525b', note: 'Nephrolithiasis, UTI/pyelonephritis, cataract/ENT, neurology.' },
-    ];
-
-    const CH_RISK_FACTORS = [
-      { name: 'Overweight + Obesity (BMI ≥ 25)', pct: 43.0, n: 3100000, col: '#f59e0b', note: 'BMI ≥ 30 (Obesity) is ~12% in CH—lowest in Western Europe, yet climbing steadily in men.' },
-      { name: 'Tobacco / Nicotine Use (15+ y)', pct: 24.0, n: 1800000, col: '#f43f5e', note: 'Leading preventable cause of cancer & CVD in Switzerland (~9,500 tobacco-attributable deaths/yr).' },
-      { name: 'Arterial Hypertension (Diagnosed)', pct: 21.9, n: 1650000, col: '#14b8a6', note: 'True prevalence exceeds 30% in adults >50 y; major driver of stroke, HFpEF, and CKD.' },
-      { name: 'Hypercholesterolemia (Treated/Known)', pct: 16.5, n: 1240000, col: '#3b82f6', note: 'Major modifiable atherosclerotic risk factor (AGLA score used in Switzerland).' },
-      { name: 'Chronic Pain / Back Disorders', pct: 16.0, n: 1200000, col: '#a855f7', note: 'Leading cause of Years Lived with Disability (YLD) and work absenteeism.' },
-      { name: 'Moderate–Severe Depressive Symptoms', pct: 9.2, n: 690000, col: '#6366f1', note: 'Higher in ages 15–24 (~16% in young women per Swiss Health Survey 2022).' },
-      { name: 'Diabetes Mellitus (Known)', pct: 5.1, n: 460000, col: '#ec4899', note: '~90% Type 2; estimated +1–2% undiagnosed.' },
-    ];
-
-    /* -------------------------------------------------------------------------
-       2. BAG INFECTIOUS SURVEILLANCE (Curated CH Annual Snapshot + Seasonality)
-       season: 12 monthly weights (Jan..Dec, 0.1 = low, 1.0 = peak)
-       ------------------------------------------------------------------------- */
-    const BAG_INFECTIOUS = [
-      { id: 'flu', name: 'Seasonal Influenza (Lab / Sentinella)', cat: 'resp', cases: 34500, inc: 383.3, trend: 'Cyclical', melde: '1 wk (Lab)', urgency: 3, season: [1.0,0.95,0.55,0.2,0.08,0.05,0.05,0.05,0.08,0.15,0.35,0.85], pearl: 'Peaks Jan–Feb; Sentinella GP network tracks ILI consultations alongside mandatory lab reporting.', tx: 'Supportive; Oseltamivir within 48h for high-risk/hospitalized patients.' },
-      { id: 'lyme', name: 'Lyme Borreliosis (Sentinella est.)', cat: 'vector', cases: 13300, inc: 147.8, trend: '+12%', melde: 'Sentinella', urgency: 4, season: [0.05,0.05,0.12,0.35,0.75,1.0,0.95,0.75,0.55,0.35,0.15,0.06], pearl: 'Not individually notifiable; estimated via Sentinella. Erythema migrans is a clinical diagnosis—do NOT wait for serology.', tx: 'Doxycycline 100 mg BID (10–14d) for EM; Ceftriaxone IV for neuroborreliosis.' },
-      { id: 'chlam', name: 'Chlamydia trachomatis', cat: 'sti', cases: 12700, inc: 141.1, trend: 'Stable', melde: '1 wk (Lab)', urgency: 3, season: [0.85,0.8,0.85,0.82,0.85,0.88,0.9,0.92,0.95,0.92,0.88,0.82], pearl: '#1 notifiable bacterial STI in Switzerland; mostly asymptomatic in young adults (PID/infertility risk).', tx: 'Doxycycline 100 mg BID × 7d (preferred over single-dose Azithromycin).' },
-      { id: 'campy', name: 'Campylobacteriosis', cat: 'food', cases: 8700, inc: 96.7, trend: 'Stable', melde: '1 wk (Lab)', urgency: 3, season: [0.85,0.45,0.4,0.45,0.65,0.85,1.0,0.95,0.75,0.6,0.55,0.92], pearl: 'Classic Swiss bimodal peak: Summer BBQ poultry + Dec/Jan "Fondue Chinoise" peak! Risk of Guillain-Barré.', tx: 'Rehydration; Azithromycin only if severe, bloody, prolonged, or immunocompromised.' },
-      { id: 'gono', name: 'Gonorrhoea (N. gonorrhoeae)', cat: 'sti', cases: 6900, inc: 76.7, trend: '+45% (5y)', melde: '1 wk (Lab)', urgency: 3, season: [0.8,0.82,0.85,0.86,0.9,0.92,0.95,0.95,0.92,0.9,0.88,0.85], pearl: 'Sharp multi-year rise in CH; rising Azithromycin/fluoroquinolone resistance tracked by ANRESIS.', tx: 'Ceftriaxone 1 g IM/IV single dose (Swiss SSI guideline) + partner therapy.' },
-      { id: 'salm', name: 'Salmonellosis (Non-typhoidal)', cat: 'food', cases: 1850, inc: 20.6, trend: 'Stable', melde: '1 wk (Lab)', urgency: 3, season: [0.35,0.3,0.35,0.45,0.65,0.85,0.95,1.0,0.9,0.7,0.45,0.35], pearl: 'Summer peak; egg/poultry & travel exposure. Avoid antibiotics in uncomplicated gastroenteritis (prolongs shedding).', tx: 'Oral rehydration; Ceftriaxone/Ciprofloxacin if bacteremic, elderly, prosthetic graft, or sickle cell.' },
-      { id: 'syph', name: 'Syphilis (Treponema pallidum)', cat: 'sti', cases: 1170, inc: 13.0, trend: '+15% (5y)', melde: '1 wk (Lab+MD)', urgency: 3, season: [0.82,0.8,0.85,0.85,0.88,0.9,0.88,0.9,0.92,0.88,0.85,0.82], pearl: 'Strong male predominance (~85% MSM). Screen all pregnant women and HIV+ patients.', tx: 'Benzathine Penicillin G 2.4 Mio IU IM (1× early; 3× weekly if late latent).' },
-      { id: 'pneumo', name: 'Invasive Pneumococcal Disease', cat: 'vax', cases: 1120, inc: 12.4, trend: 'Stable', melde: '1 wk (Lab)', urgency: 3, season: [1.0,0.92,0.8,0.6,0.45,0.32,0.25,0.22,0.35,0.55,0.75,0.95], pearl: 'Bacteremia & meningitis; peaks in winter after viral URI/influenza. PCV15/20 recommended ≥65 y in CH.', tx: 'Ceftriaxone ± Vancomycin (if meningitis) + early Dexamethasone.' },
-      { id: 'ehec', name: 'EHEC / STEC', cat: 'food', cases: 980, inc: 10.9, trend: '+18%', melde: '1 wk (Lab)', urgency: 3, season: [0.35,0.35,0.45,0.55,0.7,0.85,1.0,0.95,0.8,0.65,0.5,0.4], pearl: 'Shiga-toxin E. coli; antibiotics are CONTRAINDICATED (increases HUS risk).', tx: 'Aggressive IV isotonic volume expansion & close Hb/Plt/Creatinine monitoring.' },
-      { id: 'legio', name: 'Legionellosis', cat: 'resp', cases: 560, inc: 6.2, trend: '+22% (5y)', melde: '1 wk (Lab+MD)', urgency: 3, season: [0.35,0.3,0.35,0.45,0.6,0.85,1.0,0.95,0.8,0.6,0.45,0.38], pearl: 'Highest incidence in Europe; summer warm-water aerosol peak. Hyponatremia + GI symptoms + normal/low procalcitonin? No—high CRP/CK.', tx: 'Levofloxacin or Azithromycin (beta-lactams ineffective); urinary antigen misses non-serogroup 1.' },
-      { id: 'tb', name: 'Tuberculosis (M. tuberculosis)', cat: 'resp', cases: 525, inc: 5.8, trend: '-12% (5y)', melde: '1 wk (Lab+MD)', urgency: 3, season: [0.85,0.85,0.9,0.9,0.92,0.88,0.85,0.82,0.85,0.88,0.85,0.82], pearl: '~75% of Swiss cases occur in foreign-born residents; airborne isolation required for smear-positive pulmonary TB.', tx: '2 mo RIPE (Rifampicin, Isoniazid, Pyrazinamide, Ethambutol) + 4 mo RI.' },
-      { id: 'tbe', name: 'TBE / FSME (Tick-Borne Encephalitis)', cat: 'vector', cases: 502, inc: 5.6, trend: '+35% (5y)', melde: '1 wk (Lab+MD)', urgency: 3, season: [0.02,0.02,0.08,0.3,0.75,1.0,0.95,0.7,0.55,0.35,0.1,0.03], pearl: 'Entire Switzerland (except Ticino) is a BAG vaccination risk area! Biphasic illness: flu-like -> meningitis/encephalitis.', tx: 'No specific antiviral; prevention via 3-dose TBE vaccine (booster every 10 y in CH).' },
-      { id: 'hiv', name: 'HIV (New Diagnoses)', cat: 'sti', cases: 387, inc: 4.3, trend: '-20% (5y)', melde: '1 wk (Lab+MD)', urgency: 3, season: [0.85,0.82,0.88,0.85,0.85,0.88,0.85,0.85,0.88,0.9,0.88,0.82], pearl: 'Declining due to TasP (U=U) and PrEP; ~30% still present late (CD4 <350). Remember acute HIV in mononucleosis-like illness.', tx: 'Immediate ART (e.g. BIC/FTC/TAF or DTG/3TC).' },
-      { id: 'malaria', name: 'Malaria (Imported)', cat: 'import', cases: 295, inc: 3.3, trend: 'Stable', melde: '1 wk (Lab+MD)', urgency: 3, season: [0.7,0.6,0.55,0.6,0.65,0.75,0.95,1.0,0.9,0.8,0.75,0.85], pearl: '>80% P. falciparum from Sub-Saharan Africa (VFR travelers). Emergency exclusion in every febrile returnee.', tx: 'Artemether-Lumefantrine (uncomplicated); IV Artesunate immediately if severe (>2% parasitemia, coma, acidosis).' },
-      { id: 'measles', name: 'Measles (Masern)', cat: 'vax', cases: 95, inc: 1.1, trend: 'Clusters', melde: '24h (MD+Lab)', urgency: 2, season: [0.6,0.8,1.0,0.95,0.8,0.55,0.3,0.2,0.2,0.3,0.4,0.5], pearl: 'R0 = 12–18; strict 24h reporting to Kantonsarzt for immediate contact tracing & post-exposure MMR (<72h).', tx: 'Supportive + Vitamin A; airborne isolation.' },
-      { id: 'hepa', name: 'Hepatitis A', cat: 'food', cases: 75, inc: 0.8, trend: 'Low/Clusters', melde: '24h (Lab+MD)', urgency: 2, season: [0.7,0.65,0.7,0.75,0.75,0.8,0.85,0.95,1.0,0.9,0.8,0.75], pearl: '24h reporting enables post-exposure vaccination/Ig within 14d to prevent secondary household/food-handler spread.', tx: 'Supportive; monitor INR/encephalopathy for rare fulminant failure.' },
-      { id: 'meningo', name: 'Invasive Meningococcal Disease', cat: 'vax', cases: 42, inc: 0.5, trend: 'Low', melde: '24h (MD+Lab)', urgency: 2, season: [1.0,0.95,0.85,0.65,0.5,0.35,0.3,0.28,0.4,0.55,0.75,0.9], pearl: 'Medical emergency (purpura fulminans, Waterhouse-Friderichsen). Report within 24h for immediate Rifampicin/Cipro PEP to close contacts.', tx: 'Immediate IV Ceftriaxone 2 g BID (do not delay for LP/CT) + droplet isolation.' },
-      { id: 'vhf', name: 'VHF / Botulism / Anthrax / Diphtheria', cat: 'import', cases: 4, inc: 0.04, trend: 'Rare', melde: '2h Phone (MD+Lab)', urgency: 1, season: [0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4], pearl: 'Highest Swiss VMüK tier: immediate 2-hour TELEPHONE report on clinical suspicion to Kantonsarzt & BAG (24/7 hotline +41 58 463 87 37).', tx: 'Immediate isolation, antitoxin (Botulism/Diphtheria), biosafety transport.' },
-    ];
-
-    /* -------------------------------------------------------------------------
-       3. NKRS SWISS ONCOLOGY MATRIX (2018–2022 Annual Averages)
-       ------------------------------------------------------------------------- */
-    const NKRS_ONCOLOGY = [
-      { id: 'prostate', name: 'Prostate', sex: 'm', incAll: 7400, incM: 7400, incF: 0, deathsAll: 1400, deathsM: 1400, deathsF: 0, surv5: 90, col: '#14b8a6', screen: 'Shared decision-making PSA (50–70 y; earlier if BRCA2/FH)', redFlags: 'Rising PSA, hard prostatic nodule on DRE, bone pain (osteoblastic mets), obstructive LUTS.' },
-      { id: 'breast', name: 'Breast', sex: 'f', incAll: 6600, incM: 50, incF: 6550, deathsAll: 1380, deathsM: 10, deathsF: 1370, surv5: 88, col: '#ec4899', screen: 'Mammography q2y ages 50–74 (cantonal programs in ~half of CH)', redFlags: 'Painless firm lump, skin dimpling/peau d\'orange, bloody nipple discharge, axillary lymphadenopathy.' },
-      { id: 'lung', name: 'Lung & Bronchus', sex: 'all', incAll: 5100, incM: 2900, incF: 2200, deathsAll: 3250, deathsM: 1850, deathsF: 1400, surv5: 22, col: '#f43f5e', screen: 'No national program yet; targeted LDCT pilots for heavy smokers', redFlags: '#1 cancer killer in both sexes. Hemoptysis, >3 wk cough, weight loss, hoarseness, SVC syndrome, SIADH/PTHrP.' },
-      { id: 'crc', name: 'Colorectal', sex: 'all', incAll: 4600, incM: 2500, incF: 2100, deathsAll: 1650, deathsM: 920, deathsF: 730, surv5: 67, col: '#f59e0b', screen: 'OKP-covered ages 50–69: FIT q2y or Colonoscopy q10y', redFlags: 'Iron-deficiency anemia (right-sided), hematochezia, change in bowel habits, weight loss.' },
-      { id: 'melanoma', name: 'Melanoma', sex: 'all', incAll: 3300, incM: 1800, incF: 1500, deathsAll: 300, deathsM: 180, deathsF: 120, surv5: 93, col: '#a855f7', screen: 'Opportunistic dermatology check in high-risk (fair skin, >50 nevi, FH)', redFlags: 'One of highest rates globally (high alpine UV). ABCDE criteria & "ugly duckling" sign.' },
-      { id: 'nhl', name: 'Non-Hodgkin Lymphoma', sex: 'all', incAll: 1750, incM: 980, incF: 770, deathsAll: 550, deathsM: 300, deathsF: 250, surv5: 73, col: '#6366f1', screen: 'None', redFlags: 'Painless rubbery lymphadenopathy, B-symptoms (fever, drenching night sweats, >10% wt loss), ↑LDH.' },
-      { id: 'pancreas', name: 'Pancreas', sex: 'all', incAll: 1650, incM: 840, incF: 810, deathsAll: 1480, deathsM: 750, deathsF: 730, surv5: 11, col: '#ef4444', screen: 'None (high-risk familial/BRCA2 MRI surveillance only)', redFlags: 'Painless obstructive jaundice (Courvoisier sign), new-onset diabetes >50 y, epigastric pain radiating to back.' },
-      { id: 'bladder', name: 'Urinary Bladder', sex: 'all', incAll: 1350, incM: 1020, incF: 330, deathsAll: 560, deathsM: 400, deathsF: 160, surv5: 57, col: '#3b82f6', screen: 'None', redFlags: 'Painless gross hematuria (always rule out urothelial CA in smokers >50 y).' },
-      { id: 'leukemia', name: 'Leukemias', sex: 'all', incAll: 1250, incM: 730, incF: 520, deathsAll: 560, deathsM: 330, deathsF: 230, surv5: 63, col: '#06b6d4', screen: 'None', redFlags: 'Fatigue, recurrent infections, petechiae/bleeding, blasts or marked lymphocytosis on smear.' },
-      { id: 'kidney', name: 'Kidney (RCC)', sex: 'all', incAll: 1150, incM: 760, incF: 390, deathsAll: 340, deathsM: 220, deathsF: 120, surv5: 78, col: '#10b981', screen: 'None (mostly incidental on US/CT)', redFlags: 'Hematuria, flank pain, paraneoplastic erythrocytosis/hypercalcemia.' },
-      { id: 'liver', name: 'Liver (HCC)', sex: 'all', incAll: 980, incM: 730, incF: 250, deathsAll: 760, deathsM: 540, deathsF: 220, surv5: 20, col: '#d97706', screen: 'Abdominal US q6mo in all cirrhosis & high-risk HBV patients', redFlags: 'Decompensation of known cirrhosis, rising AFP, arterial hyperenhancement + portal washout on CT/MRI.' },
-      { id: 'brain', name: 'CNS / Brain Tumors', sex: 'all', incAll: 780, incM: 450, incF: 330, deathsAll: 550, deathsM: 330, deathsF: 220, surv5: 26, col: '#8b5cf6', screen: 'None', redFlags: 'New adult-onset seizure, progressive focal deficit, morning headache + vomiting.' },
-    ];
-
-    /* -------------------------------------------------------------------------
-       4. DISEASE ATLAS (20 High-Yield Clinical Conditions + MedLab Links)
-       ------------------------------------------------------------------------- */
-    const DISEASE_ATLAS = [
-      { id: 'acs', name: 'Acute Coronary Syndrome (STEMI / NSTEMI)', sys: 'cardio', epi: '~15,000 MI hospitalizations/yr in CH; mortality halved over 20 y via rapid PCI.', patho: 'Plaque rupture/erosion -> coronary thrombosis -> transmural (STEMI) or subendocardial ischemia.', dx: '12-lead ECG (<10 min), 0h/1h hs-Troponin T, bedside Echo.', tx: 'Dual antiplatelet (ASA + Prasugrel/Ticagrelor), UFH, urgent PCI (<90 min STEMI), high-intensity statin.', links: [{ label: 'CardioSim', href: 'cardiosim.html' }, { label: 'BloodLab', href: 'bloodlab.html' }, { label: 'CoagSim', href: 'coagsim.html' }] },
-      { id: 'hf', name: 'Heart Failure (HFrEF / HFpEF)', sys: 'cardio', epi: 'Prevalence ~2% overall, >10% in age >70 y (~200k Swiss patients); #1 hospital readmission cause in elderly.', patho: 'Systolic pump failure (EF ≤40%) or impaired LV relaxation/stiffness (HFpEF) -> RAAS/SNS activation.', dx: 'NT-proBNP (<125 outpatient / <300 acute rule-out), TTE, iron panel.', tx: 'HFrEF 4 Pillars: ARNI/ACEi + Beta-blocker + MRA + SGLT2i; loop diuretics for congestion.', links: [{ label: 'CardioSim', href: 'cardiosim.html' }, { label: 'FluidSim', href: 'fluidsim.html' }, { label: 'NephroSim', href: 'nephrosim.html' }] },
-      { id: 'afib', name: 'Atrial Fibrillation', sys: 'cardio', epi: '~100,000+ patients in CH (>8% in age >80 y); causes ~20–25% of ischemic strokes.', patho: 'Pulmonary vein ectopic triggers + atrial structural remodeling -> irregular ventricular response & LAA stasis.', dx: '12-lead ECG (absent P waves, irregular RR), TSH, TTE, CHA2DS2-VASc.', tx: 'DOAC if CHA2DS2-VASc ≥2 M / ≥3 F (consider at 1 M / 2 F); rate vs early rhythm control.', links: [{ label: 'CardioSim', href: 'cardiosim.html' }, { label: 'CoagSim', href: 'coagsim.html' }, { label: 'Calculators', href: 'calculators.html#cha2ds2-vasc' }] },
-      { id: 'pe', name: 'Pulmonary Embolism (VTE)', sys: 'pulm', epi: 'Incidence ~100/100k/yr in CH; 3rd most common acute cardiovascular death.', patho: 'DVT embolization -> pulmonary vascular obstruction -> ↑RV afterload -> RV dilation/failure & V/Q mismatch.', dx: 'Wells score -> age-adjusted D-Dimer (if low/mod) or CTPA; hs-TnT + RV/LV ratio for risk stratification.', tx: 'Anticoagulation (DOAC/LMWH/UFH); systemic thrombolysis or catheter thrombectomy if high-risk (shock).', links: [{ label: 'CoagSim', href: 'coagsim.html' }, { label: 'CardioSim', href: 'cardiosim.html' }, { label: 'Calculators', href: 'calculators.html#wells' }] },
-      { id: 'copd', name: 'COPD & Acute Exacerbation', sys: 'pulm', epi: '~400,000 adults in CH (~5–7% prevalence); #4 leading cause of death alongside pneumonia.', patho: 'Chronic airway inflammation + emphysematous parenchymal destruction -> expiratory flow limitation & dynamic hyperinflation.', dx: 'Post-bronchodilator spirometry FEV1/FVC < 0.70; ABG in severe/exacerbation.', tx: 'Smoking cessation (only mortality reducer), LABA+LAMA (±ICS if Eos ≥300); NIV for hypercapnic respiratory failure.', links: [{ label: 'Calculators', href: 'calculators.html#aa-gradient' }] },
-      { id: 'cap', name: 'Community-Acquired Pneumonia', sys: 'pulm', epi: '~50,000–70,000 cases/yr in CH; winter surge; S. pneumoniae #1 bacterial pathogen.', patho: 'Alveolar pathogen proliferation -> exudative consolidation -> intrapulmonary shunt & hypoxemia.', dx: 'Chest X-ray/US, CRP/PCT, CURB-65, blood cultures + Legionella urinary Ag if hospitalized.', tx: 'Outpatient: Amoxicillin (±Clavulanate); Inpatient: Ceftriaxone + Macrolide (SSI guideline).', links: [{ label: 'Calculators', href: 'calculators.html#curb-65' }, { label: 'BloodLab', href: 'bloodlab.html' }] },
-      { id: 'ckd', name: 'Chronic Kidney Disease (CKD)', sys: 'renal', epi: '~10% of Swiss adults (~850k; mostly G1–G3); ~4,800 on chronic dialysis.', patho: 'Progressive nephron loss (diabetes, HTN, GN) -> glomerular hyperfiltration -> fibrosis, uremia, MBD, anemia.', dx: 'eGFR (CKD-EPI 2021) + Urine ACR persisted >3 months; renal US.', tx: 'BP control, ACEi/ARB + SGLT2i (+ Finerenone in DKD), statin, avoid NSAIDs/nephrotoxins.', links: [{ label: 'NephroSim', href: 'nephrosim.html' }, { label: 'BloodLab', href: 'bloodlab.html' }, { label: 'Calculators', href: 'calculators.html#egfr' }] },
-      { id: 'aki', name: 'Acute Kidney Injury (Prerenal / ATN)', sys: 'renal', epi: 'Occurs in ~10–15% of hospitalized patients & >40% of ICU stays.', patho: 'Renal hypoperfusion, ischemic/nephrotoxic tubular necrosis, or postrenal obstruction.', dx: 'KDIGO Crea/urine output, renal US (rule out obstruction), sediment (muddy brown casts), FENa.', tx: 'Replete true hypovolemia (balanced crystalloids), stop "Triple Whammy" (ACEi+NSAID+Diuretic), urgent RRT if AEIOU.', links: [{ label: 'NephroSim', href: 'nephrosim.html' }, { label: 'FluidSim', href: 'fluidsim.html' }, { label: 'Calculators', href: 'calculators.html#fena' }] },
-      { id: 'dka', name: 'Diabetic Ketoacidosis (DKA)', sys: 'endo', epi: '~2,500–3,000 Swiss hospital admissions/yr; watch for euglycemic DKA on SGLT2i.', patho: 'Absolute insulin deficiency + ↑counter-regulatory hormones -> lipolysis -> β-hydroxybutyrate high-AG acidosis.', dx: 'Glucose >11–14 mmol/L (or lower on SGLT2i), pH <7.3, HCO3 <18, ↑Anion Gap, blood ketones >3 mmol/L.', tx: '1) Isotonic fluid resuscitation, 2) K+ replacement BEFORE insulin if K+ <3.3, 3) Fixed-rate IV insulin 0.1 U/kg/h.', links: [{ label: 'NephroSim', href: 'nephrosim.html' }, { label: 'FluidSim', href: 'fluidsim.html' }, { label: 'BloodLab', href: 'bloodlab.html' }] },
-      { id: 'graves', name: 'Graves\' Disease (Morbus Basedow)', sys: 'endo', epi: 'Most common cause of hyperthyroidism in iodine-sufficient Switzerland (~70% of cases; F:M ~5:1).', patho: 'TSH-receptor stimulating IgG (TRAb/TSI) causes autonomous T4/T3 synthesis & orbital fibroblast activation.', dx: 'Suppressed TSH, ↑fT4/fT3, positive TRAb, hypervascular thyroid on Doppler US.', tx: 'Carbimazole/Methimazole (12–18 mo) + Propranolol for adrenergic symptoms; radioiodine or surgery if relapse.', links: [{ label: 'EndoSim', href: 'endosim.html' }, { label: 'BloodLab', href: 'bloodlab.html' }] },
-      { id: 'cushing', name: 'Cushing\'s Syndrome & Adrenal Insufficiency', sys: 'endo', epi: 'Exogenous steroids are #1 cause of both Cushingoid features & secondary AI (HPA suppression).', patho: 'Autonomous ACTH/cortisol excess vs. autoimmune (Addison) or pituitary-suppressed cortisol failure.', dx: 'Cushing: 1 mg overnight DST, late-night salivary cortisol. AI: 08:00 cortisol + 250 µg Synacthen test.', tx: 'Never stop chronic steroids abruptly; Adrenal Crisis = immediate IV Hydrocortisone 100 mg + 0.9% NaCl.', links: [{ label: 'EndoSim', href: 'endosim.html' }] },
-      { id: 'ida', name: 'Iron Deficiency Anemia (IDA)', sys: 'heme', epi: 'Most common anemia globally & in CH (~15–20% of premenopausal women). Always rule out GI malignancy in men & post-menopause.', patho: 'Depleted iron stores -> microcytic hypochromic erythropoiesis (↓Hb, ↓MCV, ↑RDW).', dx: 'Ferritin <30 µg/L (or <100 with TSAT <20% in inflammation/HF), sTfR elevated even in inflammation.', tx: 'Oral iron alternate-day (maximizes hepcidin-regulated absorption) or IV Ferric Carboxymaltose; treat bleeding source.', links: [{ label: 'BloodLab', href: 'bloodlab.html' }] },
-      { id: 'dic', name: 'Disseminated Intravascular Coagulation', sys: 'heme', epi: 'Occurs in ~30–40% of septic shock, major trauma, AML-M3, and obstetric emergencies.', patho: 'Systemic TF activation -> widespread microvascular fibrin thrombi + consumption of platelets & factors -> bleeding.', dx: '↓↓Platelets, ↑INR/aPTT, ↓↓Fibrinogen, ↑↑↑D-Dimer, schistocytes on smear (ISTH DIC score ≥5).', tx: 'Treat underlying trigger aggressively; replace fibrinogen/platelets/FFP only if active bleeding or high risk.', links: [{ label: 'CoagSim', href: 'coagsim.html' }, { label: 'BloodLab', href: 'bloodlab.html' }] },
-      { id: 'stroke', name: 'Acute Ischemic Stroke', sys: 'neuro', epi: '~16,000 strokes/yr in Switzerland (~85% ischemic); leading cause of adult disability.', patho: 'Cardioembolic (AFib) or atherothrombotic arterial occlusion -> ischemic core + salvageable penumbra.', dx: 'Immediate non-contrast CT (exclude bleed) + CT-Angio/Perfusion; NIHSS.', tx: 'IV Thrombolysis (Alteplase/Tenecteplase ≤4.5h) & Mechanical Thrombectomy (LVO up to 24h on perfusion).', links: [{ label: 'Neuro-Ophtho', href: 'neuroophtho.html' }, { label: 'CoagSim', href: 'coagsim.html' }] },
-      { id: 'glaucoma', name: 'Glaucoma (POAG & Acute Angle Closure)', sys: 'neuro', epi: '~2% prevalence >40 y in CH; leading cause of irreversible blindness worldwide.', patho: 'Impaired trabecular outflow -> ↑IOP -> progressive retinal ganglion cell / optic nerve cupping.', dx: 'Tonometry (IOP >21 mmHg), gonioscopy, OCT RNFL, Humphrey visual fields (nasal step -> arcuate scotoma).', tx: 'POAG: Latanoprost/Timolol. Acute Angle Closure: Acetazolamide IV + Timolol + Pilocarpine -> Laser PI.', links: [{ label: 'Neuro-Ophtho', href: 'neuroophtho.html' }] },
-      { id: 'sepsis', name: 'Sepsis & Septic Shock', sys: 'inf', epi: '~20,000 cases/yr in Switzerland (~3,500–4,000 deaths/yr; mortality ~15–20%, shock >35%).', patho: 'Dysregulated host response -> endothelial glycocalyx shedding -> vasoplegia, capillary leak, organ dysfunction.', dx: 'SOFA increase ≥2, lactate (>2 mmol/L; shock = vasopressors for MAP ≥65 + lactate >2), 2× blood cultures.', tx: '1-Hour Bundle: Cultures -> Broad-spectrum IV Abx -> Balanced crystalloids -> Norepinephrine early.', links: [{ label: 'FluidSim', href: 'fluidsim.html' }, { label: 'CardioSim', href: 'cardiosim.html' }, { label: 'BloodLab', href: 'bloodlab.html' }, { label: 'Calculators', href: 'calculators.html#sofa' }] },
-      { id: 'meningitis', name: 'Acute Bacterial Meningitis', sys: 'inf', epi: 'Rare (~100–150/yr in CH; S. pneumoniae #1 adult, N. meningitidis young adults) but catastrophic if delayed.', patho: 'Subarachnoid bacterial invasion -> intense neutrophilic inflammation -> cerebral edema & ↑ICP.', dx: 'Blood cultures + LP (↑↑PMN, ↓glucose <40% serum, ↑↑protein, Gram/PCR); CT first only if focal deficit/papilledema/GCS<10.', tx: 'Immediate IV Ceftriaxone + Amoxicillin (if >50 y/immunocompromised for Listeria) + Dexamethasone BEFORE 1st Abx.', links: [{ label: 'BloodLab', href: 'bloodlab.html' }] },
-      { id: 'cirrhosis', name: 'Decompensated Liver Cirrhosis', sys: 'gi', epi: '~1,000+ cirrhosis/CLD deaths/yr in CH; alcohol & MASLD lead etiologies.', patho: 'Progressive fibrosis -> portal hypertension (varices, ascites, splenomegaly) + synthetic failure (↓Albumin, ↑INR).', dx: 'Elastography (FibroScan), US, MELD-Na, diagnostic paracentesis (SAAG ≥11 g/L, rule out SBP >250 PMN/µL).', tx: 'Abstinence, NSBB (Carvedilol), Spironolactone + Furosemide, Lactulose/Rifaximin for HE, q6mo HCC US.', links: [{ label: 'CoagSim', href: 'coagsim.html' }, { label: 'FluidSim', href: 'fluidsim.html' }, { label: 'Calculators', href: 'calculators.html#meld-na' }] },
-      { id: 'pancreatitis', name: 'Acute Pancreatitis', sys: 'gi', epi: 'Incidence ~35–45/100k/yr in CH; gallstones (~45%) and alcohol (~35%) account for ~80%.', patho: 'Premature intra-acinar trypsinogen activation -> autodigestion, third-spacing, SIRS.', dx: '2 of 3 Atlanta criteria: epigastric pain radiating to back, Lipase >3× ULN, characteristic imaging.', tx: 'Moderate goal-directed Ringer\'s Lactate (WATERFALL trial), analgesia, early enteral nutrition; ERCP only if cholangitis.', links: [{ label: 'FluidSim', href: 'fluidsim.html' }, { label: 'BloodLab', href: 'bloodlab.html' }] },
-      { id: 'rhabdo', name: 'Rhabdomyolysis', sys: 'renal', epi: 'Common in elderly long-lie falls, alpine/endurance trauma, seizures, and statin/drug toxicity.', patho: 'Skeletal myocyte lysis -> release of myoglobin (tubular obstruction/oxidative AKI), K+, PO4, CK, AST.', dx: 'CK >5× ULN (often >10,000 U/L), urine dipstick heme+ with ZERO RBCs on microscopy, ↑AST with normal GGT.', tx: 'Aggressive isotonic crystalloid (target UOP 200–300 mL/h), monitor & treat hyperkalemia aggressively.', links: [{ label: 'BloodLab', href: 'bloodlab.html' }, { label: 'NephroSim', href: 'nephrosim.html' }] },
-    ];
-
-    /* -------------------------------------------------------------------------
-       5. BASE-RATE & MELDEPFLICHT QUIZ DECK (12 Swiss Calibration Questions)
-       ------------------------------------------------------------------------- */
-    const QUIZ_BANK = [
-      { cat: 'BFS Mortality', q: 'What is the #1 cause of death in Swiss adults aged 15–44 years?', opts: ['Malignant Neoplasms', 'External Causes (Suicide & Trauma)', 'Cardiovascular Diseases', 'Infectious Diseases'], ans: 1, exp: 'Per BFS 2023 data, external causes account for 49.5% of deaths in men and 34.2% in women aged 15–44, ahead of cancer and CVD.' },
-      { cat: 'BFS Mortality', q: 'In Swiss women aged 45–64, approximately what share of ALL deaths is caused by cancer?', opts: ['~18%', '~30%', '~50%', '~70%'], ans: 2, exp: 'Malignant neoplasms account for 50.3% of all deaths in Swiss women aged 45–64 (compared to 34.0% in men of the same age).' },
-      { cat: 'NKRS Oncology', q: 'Which malignancy causes the highest number of cancer deaths in Swiss WOMEN?', opts: ['Breast Cancer', 'Lung Cancer', 'Colorectal Cancer', 'Pancreatic Cancer'], ans: 1, exp: 'Lung cancer recently overtook breast cancer as the #1 cancer killer in Swiss women (17.4% vs 16.8% of cancer deaths), despite breast cancer having ~3× higher incidence.' },
-      { cat: 'BAG Surveillance', q: 'Approximately how many Tick-Borne Encephalitis (TBE / FSME) cases are reported annually in Switzerland?', opts: ['~40 cases', '~500 cases', '~5,000 cases', '~25,000 cases'], ans: 1, exp: 'Around 400–550 TBE cases/yr are notified to BAG (vs. ~13,000 estimated Lyme borreliosis consultations via Sentinella).' },
-      { cat: 'VMüK Meldepflicht', q: 'A patient presents with suspected Botulism or Viral Hemorrhagic Fever. What is the Swiss BAG reporting deadline?', opts: ['Within 2 hours by telephone', 'Within 24 hours by HIN form', 'Within 1 week by lab only', 'Not notifiable'], ans: 0, exp: 'Suspected Botulism, VHF, Anthrax, or exceptional public health threats require an immediate 2-hour TELEPHONE report to the Kantonsarzt & BAG.' },
-      { cat: 'BAG Surveillance', q: 'Why does Swiss Campylobacteriosis uniquely show a sharp second peak every December–January?', opts: ['Ski resort water contamination', 'Fondue Chinoise raw poultry cross-contamination', 'Indoor heating humidity', 'Imported citrus fruit'], ans: 1, exp: 'BFS/BAG surveillance famously documents a massive Dec/Jan "Fondue Chinoise" spike in Campylobacter from raw meat handling at holiday tables.' },
-      { cat: 'BFS Mortality', q: 'Which condition is the #3 leading cause of death overall in Switzerland (behind CVD and Cancer)?', opts: ['COPD / Respiratory', 'Dementia', 'Diabetes Mellitus', 'Traffic Accidents'], ans: 1, exp: 'Dementia accounts for ~9.0% of all Swiss deaths (~6,447/yr; 15.9% in women aged 85+), ranking #3 ahead of respiratory diseases (#4).' },
-      { cat: 'Bayesian Base Rate', q: 'You run a 95% sensitive, 95% specific screening test on a population where true disease prevalence is 0.5%. What is the approximate PPV?', opts: ['~95%', '~50%', '~9%', '~0.5%'], ans: 2, exp: 'In 10,000 people: 50 sick -> 47.5 TP; 9,950 healthy -> 497.5 FP. PPV = 47.5 / (47.5 + 497.5) ≈ 8.7%. Over 91% of positives are false positives!' },
-      { cat: 'NKRS Oncology', q: 'What is the overall 5-year relative survival rate across all cancers combined in Switzerland (NKRS 2018–2022)?', opts: ['~42%', '~55%', '~70%', '~88%'], ans: 2, exp: 'Overall 5-year relative survival in Switzerland reached 70% (69% men, 70% women), ranging from ~93% (melanoma) and ~90% (prostate) down to ~11% (pancreas).' },
-      { cat: 'VMüK Meldepflicht', q: 'You diagnose a young adult with invasive Meningococcal meningitis. When must you notify the Kantonsarzt?', opts: ['Within 24 hours', 'Within 1 week', 'Only after culture confirmation', 'Sentinella only'], ans: 0, exp: 'Invasive meningococcal disease requires 24-hour clinical & lab notification so close contacts immediately receive antibiotic chemoprophylaxis (Rifampicin/Cipro).' },
-      { cat: 'BFS Hospitalizations', q: 'What is the #1 diagnostic category driving inpatient HOSPITAL stays in Switzerland (contrasting with mortality)?', opts: ['Cardiovascular Diseases', 'Musculoskeletal & Trauma/Injuries', 'Malignant Neoplasms', 'Infectious Diseases'], ans: 1, exp: 'Musculoskeletal disorders and injuries/trauma account for >22% of all Swiss inpatient hospital cases—highlighting the gap between morbidity drivers and mortality drivers.' },
-      { cat: 'Swiss Prevention', q: 'Which Swiss canton is the ONLY canton currently NOT designated as a general TBE (FSME) vaccination risk region by BAG?', opts: ['Graubünden', 'Valais', 'Ticino', 'Geneva'], ans: 2, exp: 'All of Switzerland except the canton of Ticino is classified as a BAG TBE risk area where vaccination is recommended for anyone exposed to ticks.' },
-    ];
-
-    // ==================== END OF PART 1 — PASTE PART 2 DIRECTLY BELOW ====================
-/* -------------------------------------------------------------------------
-       6. BAYESIAN PRESETS & APPLICATION STATE
-       ------------------------------------------------------------------------- */
-    const BAYES_PRESETS = {
-      hiv_screen: { prev: 0.002, sens: 99.7, spec: 99.5, label: 'HIV 4th-Gen Screening (CH Pop · 0.2%)' },
-      crc_fit:    { prev: 0.005, sens: 79.0, spec: 94.0, label: 'Colorectal Cancer FIT (Age 50–69 · 0.5%)' },
-      pe_ed:      { prev: 0.04,  sens: 96.0, spec: 45.0, label: 'PE D-Dimer (Low-Risk ED · 4.0%)' },
-      lyme_elisa: { prev: 0.01,  sens: 88.0, spec: 93.0, label: 'Lyme ELISA (Nonspecific Fatigue · 1.0%)' },
-      tbe_csf:    { prev: 0.12,  sens: 97.0, spec: 96.0, label: 'TBE IgM (Summer Aseptic Meningitis · 12%)' },
-      htn_office: { prev: 0.22,  sens: 75.0, spec: 75.0, label: 'Office BP Reading (CH Adults · 22%)' },
-      panc_ca199: { prev: 0.0002, sens: 80.0, spec: 85.0, label: 'Pancreatic CA 19-9 (Asymptomatic · 0.02%)' },
-    };
-
-    const STATE = {
-      tab: 'mortality',
-      mortMode: 'death',
-      mortSex: 'all',
-      mortAge: 'all',
-      mortHover: -1,
-      infCat: 'all',
-      infSearch: '',
-      infSort: 'cases',
-      heatHover: null,
-      oncSex: 'all',
-      oncHover: -1,
-      atlasSys: 'all',
-      atlasSearch: '',
-      bayesPrev: 0.01,
-      bayesSens: 95.0,
-      bayesSpec: 95.0,
-      quizOrder: [],
-      quizIdx: 0,
-      quizScore: 0,
-      quizStreak: 0,
-      quizAnswered: false,
-    };
-
-    let mortHitRects = [];
-    let heatHitCells = [];
-    let oncHitCircles = [];
-
-    const $ = (id) => document.getElementById(id);
-    const isDark = () => document.documentElement.classList.contains('dark');
-    const fmtNum = (n) => Math.round(n).toLocaleString('en-US');
-
-    function esc(str) {
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+    const E = window.EPI_DATA;
+    const V = window.EPI_VIEWS;
+    if (!E || !E.DISEASE_SPECTRUM || !V || !V.spectrum || !V.map || !V.lab) {
+      document.getElementById('missing-banner').classList.remove('hidden');
+      return;
     }
 
-    /* -------------------------------------------------------------------------
-       7. LOCKED ZERO-STRETCH HIDPI CANVAS HELPER
-       ------------------------------------------------------------------------- */
-    function setupCanvas(wrapEl, canvasEl) {
-      if (!wrapEl || !canvasEl) return null;
-      const w = wrapEl.clientWidth;
-      const h = wrapEl.clientHeight;
-      if (w <= 10 || h <= 10 || w >= 4000 || h >= 2000) return null;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const tw = Math.round(w * dpr);
-      const th = Math.round(h * dpr);
-      if (canvasEl.width !== tw || canvasEl.height !== th) {
-        canvasEl.width = tw;
-        canvasEl.height = th;
-      }
-      const ctx = canvasEl.getContext('2d');
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, h);
-      return { ctx, w, h, dpr };
-    }
+    let currentAnki = '';
 
-    function palette() {
-      const d = isDark();
-      return {
-        dark: d,
-        text: d ? '#e4e4e7' : '#18181b',
-        muted: d ? '#a1a1aa' : '#52525b',
-        faint: d ? '#71717a' : '#71717a',
-        grid: d ? 'rgba(63,63,70,0.45)' : 'rgba(212,212,216,0.75)',
-        axis: d ? 'rgba(113,113,122,0.7)' : 'rgba(113,113,122,0.7)',
-        teal: d ? '#2dd4bf' : '#0f766e',
-        tealBg: d ? 'rgba(45,212,191,0.14)' : 'rgba(15,118,110,0.12)',
-        rose: d ? '#fb7185' : '#e11d48',
-        amber: d ? '#fbbf24' : '#d97706',
-        surface: d ? '#18181b' : '#ffffff',
-      };
-    }
+    const APP = {
+      state: { tab: 'spectrum' },
+      el: id => document.getElementById(id),
+      esc: s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'),
+      fmtNum: n => Number.isFinite(n) ? (n >= 1000 ? Math.round(n).toLocaleString('en-US') : String(Math.round(n * 10) / 10)) : '—',
+      palette() {
+        const dark = document.documentElement.classList.contains('dark');
+        return {
+          dark,
+          surface: dark ? '#0b0b0e' : '#ffffff',
+          text: dark ? '#fafafa' : '#09090b',
+          muted: dark ? '#a1a1aa' : '#52525b',
+          faint: dark ? '#71717a' : '#71717a',
+          grid: dark ? 'rgba(63,63,70,0.45)' : '#e4e4e7',
+          teal: dark ? '#2dd4bf' : '#0f766e',
+        };
+      },
+      setupCanvas(wrapId, canvasId) {
+        const wrap = document.getElementById(wrapId);
+        const canvas = document.getElementById(canvasId);
+        if (!wrap || !canvas) return null;
+        const w = wrap.clientWidth;
+        const h = wrap.clientHeight;
+        if (!(w > 10 && h > 10 && w < 4000 && h < 2000)) return null;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const tw = Math.round(w * dpr), th = Math.round(h * dpr);
+        if (canvas.width !== tw || canvas.height !== th) { canvas.width = tw; canvas.height = th; }
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        return { ctx, w, h, dpr };
+      },
+      updateKPI(label, val, sub) {
+        document.getElementById('kpi-dyn-label').textContent = label;
+        document.getElementById('kpi-dyn-val').textContent = val;
+        document.getElementById('kpi-dyn-sub').textContent = sub;
+      },
+      setInspector(cfg) {
+        document.getElementById('insp-badge').textContent = cfg.badge || 'Clinical Inspector';
+        document.getElementById('insp-title').textContent = cfg.title || '—';
+        document.getElementById('insp-sub').textContent = cfg.sub || '';
+        currentAnki = cfg.anki || '';
+        const ankiBtn = document.getElementById('insp-anki-btn');
+        ankiBtn.classList.toggle('hidden', !currentAnki);
+        ankiBtn.textContent = 'Anki Cloze';
 
-    /* -------------------------------------------------------------------------
-       8. PERSISTENT CLINICAL INSPECTOR
-       ------------------------------------------------------------------------- */
-    function setInspector({ badge, title, sub, sections = [], links = [] }) {
-      $('inspector-badge').textContent = badge || 'Clinical Inspector';
-      $('inspector-title').textContent = title || 'Select an Entity';
-      $('inspector-sub').textContent = sub || '';
-
-      const body = $('inspector-body');
-      body.innerHTML = sections
-        .map((s) => `
-          <div class="space-y-1">
-            <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500">${esc(s.label)}</div>
-            <div class="text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">${s.html || esc(s.text)}</div>
+        document.getElementById('insp-sections').innerHTML = (cfg.sections || []).map(s => `
+          <div class="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800 space-y-0.5">
+            <div class="font-mono text-[9.5px] uppercase tracking-wider text-zinc-400">${APP.esc(s.label)}</div>
+            <div class="text-zinc-700 dark:text-zinc-200">${APP.esc(s.text)}</div>
           </div>
-        `)
-        .join('');
+        `).join('');
 
-      const linkBox = $('inspector-links');
-      linkBox.innerHTML = links
-        .map((l) => `
-          <a href="${esc(l.href)}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[11px] font-medium bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/25 hover:bg-teal-500/20 transition-colors">
-            <span>${esc(l.label)}</span><span aria-hidden="true">&rarr;</span>
-          </a>
-        `)
-        .join('');
-    }
-
-    function updateKPI(label, val, sub) {
-      $('kpi-context-label').textContent = label;
-      $('kpi-context-val').textContent = val;
-      $('kpi-context-sub').textContent = sub;
-    }
-
-    /* -------------------------------------------------------------------------
-       9. TAB 1: BFS MORTALITY, HOSPITALIZATIONS & CHRONIC RISKS
-       ------------------------------------------------------------------------- */
-    function getMortDataset() {
-      if (STATE.mortMode === 'hosp') return BFS_HOSP;
-      if (STATE.mortMode === 'chronic') return CH_RISK_FACTORS;
-      return BFS_MORTALITY[STATE.mortAge][STATE.mortSex];
-    }
-
-    function renderMortality() {
-      // Button active states
-      document.querySelectorAll('.mort-mode-btn').forEach((b) => {
-        const active = b.dataset.mode === STATE.mortMode;
-        b.className = `mort-mode-btn px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-          active
-            ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white shadow-sm'
-            : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
-        }`;
-      });
-
-      const isDeath = STATE.mortMode === 'death';
-      $('mort-sex-wrap').classList.toggle('hidden', !isDeath);
-      $('mort-age-wrap').classList.toggle('hidden', !isDeath);
-
-      document.querySelectorAll('.mort-sex-btn').forEach((b) => {
-        const active = b.dataset.sex === STATE.mortSex;
-        b.className = `mort-sex-btn px-2.5 py-1 rounded-md text-xs font-mono transition-colors ${
-          active
-            ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm'
-            : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
-        }`;
-      });
-
-      document.querySelectorAll('.mort-age-btn').forEach((b) => {
-        const active = b.dataset.age === STATE.mortAge;
-        b.className = `mort-age-btn px-2.5 py-1 rounded-md font-mono text-[11px] border transition-colors ${
-          active
-            ? 'bg-teal-500/15 border-teal-500/40 text-tealLight dark:text-tealDark font-semibold'
-            : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
-        }`;
-      });
-
-      const data = getMortDataset();
-      const top = data[0];
-      const sexLabel = STATE.mortSex === 'all' ? 'Both sexes' : STATE.mortSex === 'm' ? 'Male' : 'Female';
-      const ageLabel = STATE.mortAge === 'all' ? 'All ages' : `Age ${STATE.mortAge} y`;
-
-      if (STATE.mortMode === 'death') {
-        updateKPI('Leading Cause of Death', `${top.pct.toFixed(1)}%`, `${top.name.split(' ')[0]} · ${ageLabel} · ${sexLabel}`);
-        $('mort-summary-text').textContent =
-          `BFS Cause of Death (${ageLabel}, ${sexLabel}): ${top.name} leads at ${top.pct.toFixed(1)}% (${fmtNum(top.n)} deaths/yr). Click any bar or card to inspect clinical breakdown.`;
-      } else if (STATE.mortMode === 'hosp') {
-        updateKPI('Top Inpatient Driver', `${top.pct.toFixed(1)}%`, 'Musculoskeletal & Trauma · ~1.5M stays/yr');
-        $('mort-summary-text').textContent =
-          'BFS Hospital Medical Statistics (~1.50M inpatient cases/yr): Morbidity diverges sharply from mortality—musculoskeletal conditions & trauma lead inpatient volume at 22.8%.';
-      } else {
-        updateKPI('Top Modifiable Risk', `${top.pct.toFixed(1)}%`, 'BMI ≥ 25 · Swiss Health Survey');
-        $('mort-summary-text').textContent =
-          'Swiss Health Survey (SGB 2022) adult prevalence estimates: Modifiable cardiometabolic and behavioral risk factors drive >85% of Swiss chronic disease burden.';
-      }
-
-      // Render cards
-      const cardsEl = $('mort-cards');
-      cardsEl.innerHTML = data
-        .map((d, i) => `
-          <button type="button" data-idx="${i}" class="mort-card text-left rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-3 hover:border-teal-500/45 transition-colors space-y-1">
-            <div class="flex items-center justify-between gap-2">
-              <span class="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                <span class="w-2 h-2 rounded-full shrink-0" style="background:${d.col}"></span>
-                <span class="truncate">${esc(d.name)}</span>
-              </span>
-              <span class="font-mono text-xs font-semibold tabular-nums shrink-0" style="color:${d.col}">${d.pct.toFixed(1)}%</span>
-            </div>
-            <p class="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2">${esc(d.note)}</p>
-          </button>
-        `)
-        .join('');
-
-      cardsEl.querySelectorAll('.mort-card').forEach((btn) => {
-        btn.addEventListener('click', () => inspectMortItem(data[Number(btn.dataset.idx)]));
-      });
-
-      drawMortCanvas();
-    }
-
-    function inspectMortItem(item) {
-      if (!item) return;
-      const modeTitle =
-        STATE.mortMode === 'death'
-          ? `BFS Mortality · ${STATE.mortAge === 'all' ? 'All Ages' : STATE.mortAge + ' y'}`
-          : STATE.mortMode === 'hosp'
-          ? 'BFS Inpatient Stays'
-          : 'Swiss Health Survey';
-      const unitLabel =
-        STATE.mortMode === 'death' ? 'deaths / year' : STATE.mortMode === 'hosp' ? 'inpatient stays / year' : 'estimated adults in CH';
-
-      const links = [];
-      const lower = item.name.toLowerCase();
-      if (lower.includes('cardio') || lower.includes('hypertension')) links.push({ label: 'CardioSim', href: 'cardiosim.html' });
-      if (lower.includes('digestive') || lower.includes('diabetes') || lower.includes('renal')) links.push({ label: 'BloodLab', href: 'bloodlab.html' }, { label: 'NephroSim', href: 'nephrosim.html' });
-      if (lower.includes('neoplasm') || lower.includes('cancer')) links.push({ label: 'Open Oncology Tab', href: '#oncology-jump' });
-
-      setInspector({
-        badge: modeTitle,
-        title: item.name,
-        sub: `${item.pct.toFixed(1)}% share · ~${fmtNum(item.n)} ${unitLabel}`,
-        sections: [
-          { label: 'Swiss Epidemiological Context', text: item.note },
-          {
-            label: 'Clinical Takeaway',
-            text:
-              STATE.mortMode === 'death'
-                ? 'Always anchor your differential diagnosis to age-stratified base rates: trauma/suicide dominates 15–44 y, cancer dominates 45–84 y, and CVD + dementia dominate 85+ y.'
-                : STATE.mortMode === 'hosp'
-                ? 'Hospital utilization tracks acute functional impairment and surgical volume more closely than mortality rates.'
-                : 'Primary prevention in Swiss general practice (BP, lipids, smoking cessation, AGLA cardiovascular score) targets these high-prevalence drivers.',
-          },
-        ],
-        links: links.filter((l) => l.href !== '#oncology-jump'),
-      });
-    }
-
-    function drawMortCanvas() {
-      const setup = setupCanvas($('mort-canvas-wrap'), $('mort-canvas'));
-      if (!setup) return;
-      const { ctx, w, h } = setup;
-      const pal = palette();
-      const data = getMortDataset();
-      mortHitRects = [];
-
-      const padL = Math.min(205, Math.max(120, Math.round(w * 0.34)));
-      const padR = 68;
-      const padT = 18;
-      const padB = 26;
-      const plotW = Math.max(40, w - padL - padR);
-      const plotH = Math.max(40, h - padT - padB);
-      const maxPct = Math.max(55, Math.ceil(Math.max(...data.map((d) => d.pct)) / 10) * 10 + 5);
-
-      // Vertical gridlines
-      ctx.font = '400 10px "JetBrains Mono", monospace';
-      ctx.textAlign = 'center';
-      for (let tick = 0; tick <= maxPct; tick += 10) {
-        const x = padL + (tick / maxPct) * plotW;
-        ctx.strokeStyle = pal.grid;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(Math.round(x) + 0.5, padT);
-        ctx.lineTo(Math.round(x) + 0.5, padT + plotH);
-        ctx.stroke();
-        ctx.fillStyle = pal.faint;
-        ctx.fillText(`${tick}%`, x, padT + plotH + 15);
-      }
-
-      const rowH = plotH / data.length;
-      const barH = Math.min(24, Math.max(12, rowH * 0.56));
-
-      data.forEach((d, i) => {
-        const cy = padT + i * rowH + rowH / 2;
-        const by = cy - barH / 2;
-        const bw = Math.max(3, (d.pct / maxPct) * plotW);
-        const hovered = i === STATE.mortHover;
-
-        mortHitRects.push({ x: 0, y: padT + i * rowH, w, h: rowH, item: d, idx: i });
-
-        if (hovered) {
-          ctx.fillStyle = pal.dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.035)';
-          ctx.fillRect(4, padT + i * rowH + 1, w - 8, rowH - 2);
+        const actBox = document.getElementById('insp-actions');
+        let actHTML = '';
+        if (typeof cfg.bayesRate === 'number') {
+          actHTML += `<button type="button" id="insp-bayes-btn" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[11px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition-colors">Test PPV in Bayes Lab &rarr;</button>`;
         }
+        (cfg.links || []).forEach(l => {
+          actHTML += `<a href="${l.href}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[11px] bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/25 hover:bg-teal-500/20 transition-colors">${APP.esc(l.label)} &nearr;</a>`;
+        });
+        actBox.innerHTML = actHTML;
 
-        // Category label (truncated cleanly)
-        ctx.font = `${hovered ? '600' : '500'} 11px "Inter", sans-serif`;
-        ctx.fillStyle = hovered ? pal.text : pal.muted;
-        ctx.textAlign = 'right';
-        let label = d.name;
-        while (ctx.measureText(label).width > padL - 16 && label.length > 6) {
-          label = label.slice(0, -2) + '…';
+        const bayesBtn = document.getElementById('insp-bayes-btn');
+        if (bayesBtn) {
+          bayesBtn.addEventListener('click', () => V.lab.loadPrevalence(APP, cfg.bayesRate, cfg.bayesLabel));
         }
-        ctx.fillText(label, padL - 10, cy + 4);
-
-        // Bar
-        ctx.fillStyle = d.col;
-        ctx.globalAlpha = hovered ? 1.0 : 0.86;
-        ctx.beginPath();
-        ctx.roundRect(padL, by, bw, barH, 4);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-
-        // Value annotation
-        ctx.font = '600 10.5px "JetBrains Mono", monospace';
-        ctx.fillStyle = pal.text;
-        ctx.textAlign = 'left';
-        ctx.fillText(`${d.pct.toFixed(1)}%`, padL + bw + 7, cy + 3.5);
-      });
-    }
-
-    /* -------------------------------------------------------------------------
-       10. TAB 2: BAG INFECTIOUS SURVEILLANCE & SEASONALITY HEATMAP
-       ------------------------------------------------------------------------- */
-    const HEAT_IDS = ['flu', 'pneumo', 'meningo', 'lyme', 'tbe', 'campy', 'salm', 'legio', 'measles'];
-    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    function meldeBadgeClass(urgency) {
-      if (urgency === 1) return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 font-semibold';
-      if (urgency === 2) return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 font-medium';
-      if (urgency === 3) return 'bg-teal-500/10 text-tealLight dark:text-tealDark border-teal-500/25';
-      return 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20';
-    }
-
-    function renderInfectious() {
-      document.querySelectorAll('.inf-cat-btn').forEach((b) => {
-        const active = b.dataset.cat === STATE.infCat;
-        b.className = `inf-cat-btn px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${
-          active
-            ? 'bg-teal-500/15 border-teal-500/40 text-tealLight dark:text-tealDark'
-            : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
-        }`;
-      });
-
-      const q = STATE.infSearch.trim().toLowerCase();
-      let list = BAG_INFECTIOUS.filter((p) => {
-        if (STATE.infCat !== 'all' && p.cat !== STATE.infCat) return false;
-        if (q && !p.name.toLowerCase().includes(q) && !p.pearl.toLowerCase().includes(q)) return false;
-        return true;
-      });
-
-      list = [...list].sort((a, b) => {
-        if (STATE.infSort === 'cases') return b.cases - a.cases;
-        if (STATE.infSort === 'inc') return b.inc - a.inc;
-        if (STATE.infSort === 'urgency') return a.urgency - b.urgency || b.cases - a.cases;
-        return a.name.localeCompare(b.name);
-      });
-
-      $('inf-count').textContent = `Showing ${list.length} of ${BAG_INFECTIOUS.length} Swiss surveillance pathogens`;
-      const tbody = $('inf-tbody');
-      tbody.innerHTML = list
-        .map((p) => `
-          <tr data-id="${p.id}" class="inf-row cursor-pointer hover:bg-zinc-100/70 dark:hover:bg-zinc-900/60 transition-colors">
-            <td class="py-2 pr-3 font-medium text-zinc-900 dark:text-zinc-100">${esc(p.name)}</td>
-            <td class="py-2 px-2 text-right font-mono tabular-nums text-zinc-700 dark:text-zinc-300">${fmtNum(p.cases)}</td>
-            <td class="py-2 px-2 text-right font-mono tabular-nums text-zinc-500">${p.inc.toFixed(1)}</td>
-            <td class="py-2 px-2 font-mono text-[11px] ${p.trend.startsWith('+') ? 'text-rose-500' : p.trend.startsWith('-') ? 'text-emerald-500' : 'text-zinc-500'}">${esc(p.trend)}</td>
-            <td class="py-2 pl-2 text-right">
-              <span class="inline-block px-1.5 py-0.5 rounded border font-mono text-[10px] whitespace-nowrap ${meldeBadgeClass(p.urgency)}">${esc(p.melde)}</span>
-            </td>
-          </tr>
-        `)
-        .join('');
-
-      tbody.querySelectorAll('.inf-row').forEach((tr) => {
-        tr.addEventListener('click', () => {
-          const item = BAG_INFECTIOUS.find((x) => x.id === tr.dataset.id);
-          if (item) inspectInfectious(item);
+      },
+      switchTab(tabId) {
+        APP.state.tab = tabId;
+        document.querySelectorAll('.epi-tab').forEach(b => {
+          const active = b.dataset.tab === tabId;
+          b.className = `epi-tab shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+            active ? 'bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian' : 'text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900'
+          }`;
         });
-      });
-
-      if (STATE.tab === 'infectious') {
-        updateKPI('Top BAG Pathogen', '34.5k / yr', 'Influenza · Chlamydia 12.7k · Lyme 13.3k');
-      }
-      drawHeatmapCanvas();
-    }
-
-    function inspectInfectious(p) {
-      const peakIdx = p.season.indexOf(Math.max(...p.season));
-      const peakMonth = MONTHS[peakIdx];
-      setInspector({
-        badge: `BAG Surveillance · ${p.melde}`,
-        title: p.name,
-        sub: `~${fmtNum(p.cases)} cases/yr (${p.inc.toFixed(1)} / 100k) · Trend: ${p.trend} · Peak: ${peakMonth}`,
-        sections: [
-          { label: 'Swiss Epidemiology & Clinical Pearl', text: p.pearl },
-          { label: 'First-Line Clinical Management (CH / SSI)', text: p.tx },
-          {
-            label: 'VMüK Reporting Tier',
-            text:
-              p.urgency === 1
-                ? 'URGENT 2-HOUR TELEPHONE REPORT to Kantonsarzt + BAG immediately upon clinical suspicion.'
-                : p.urgency === 2
-                ? '24-hour physician & laboratory report for rapid contact tracing / post-exposure prophylaxis.'
-                : p.urgency === 3
-                ? 'Standard 1-week mandatory surveillance notification.'
-                : 'Tracked via voluntary Sentinella primary care network (not individually notifiable).',
-          },
-        ],
-        links: [{ label: 'BloodLab', href: 'bloodlab.html' }],
-      });
-    }
-
-    function drawHeatmapCanvas() {
-      const setup = setupCanvas($('heat-canvas-wrap'), $('heat-canvas'));
-      if (!setup) return;
-      const { ctx, w, h } = setup;
-      const pal = palette();
-      heatHitCells = [];
-
-      const rows = HEAT_IDS.map((id) => BAG_INFECTIOUS.find((p) => p.id === id)).filter(Boolean);
-      const padL = Math.min(138, Math.max(96, Math.round(w * 0.22)));
-      const padR = 14;
-      const padT = 24;
-      const padB = 10;
-      const gridW = Math.max(60, w - padL - padR);
-      const gridH = Math.max(60, h - padT - padB);
-      const cellW = gridW / 12;
-      const cellH = gridH / rows.length;
-
-      // Month headers
-      ctx.font = '500 10px "JetBrains Mono", monospace';
-      ctx.fillStyle = pal.faint;
-      ctx.textAlign = 'center';
-      MONTHS.forEach((m, c) => {
-        ctx.fillText(m, padL + c * cellW + cellW / 2, 15);
-      });
-
-      rows.forEach((p, r) => {
-        const y = padT + r * cellH;
-        // Row name
-        ctx.font = '500 10.5px "Inter", sans-serif';
-        ctx.fillStyle = pal.muted;
-        ctx.textAlign = 'right';
-        let shortName = p.name.split('(')[0].trim();
-        while (ctx.measureText(shortName).width > padL - 12 && shortName.length > 5) {
-          shortName = shortName.slice(0, -2) + '…';
-        }
-        ctx.fillText(shortName, padL - 8, y + cellH / 2 + 3.5);
-
-        p.season.forEach((val, c) => {
-          const x = padL + c * cellW;
-          const isHov = STATE.heatHover && STATE.heatHover.r === r && STATE.heatHover.c === c;
-          heatHitCells.push({ x, y, w: cellW, h: cellH, r, c, item: p, val });
-
-          // Teal -> Amber -> Rose intensity ramp
-          let fill;
-          if (val >= 0.85) fill = pal.dark ? `rgba(244,63,94,${0.45 + val * 0.45})` : `rgba(225,29,72,${0.45 + val * 0.45})`;
-          else if (val >= 0.55) fill = pal.dark ? `rgba(245,158,11,${0.3 + val * 0.55})` : `rgba(217,119,6,${0.25 + val * 0.55})`;
-          else fill = pal.dark ? `rgba(45,212,191,${0.08 + val * 0.65})` : `rgba(15,118,110,${0.07 + val * 0.55})`;
-
-          ctx.fillStyle = fill;
-          ctx.beginPath();
-          ctx.roundRect(x + 1.5, y + 1.5, cellW - 3, cellH - 3, 3);
-          ctx.fill();
-
-          if (isHov) {
-            ctx.strokeStyle = pal.text;
-            ctx.lineWidth = 1.5;
-            ctx.strokeRect(x + 1.5, y + 1.5, cellW - 3, cellH - 3);
-          }
+        document.querySelectorAll('.epi-panel').forEach(p => p.classList.toggle('hidden', p.id !== `panel-${tabId}`));
+        requestAnimationFrame(() => {
+          if (V[tabId] && typeof V[tabId].render === 'function') V[tabId].render(APP, E);
         });
-      });
-    }
-
-    /* -------------------------------------------------------------------------
-       11. TAB 3: ONCOLOGY MATRIX (NKRS SCATTER + TABLE)
-       ------------------------------------------------------------------------- */
-    function getOncRows() {
-      return NKRS_ONCOLOGY.map((c) => {
-        const inc = STATE.oncSex === 'm' ? c.incM : STATE.oncSex === 'f' ? c.incF : c.incAll;
-        const deaths = STATE.oncSex === 'm' ? c.deathsM : STATE.oncSex === 'f' ? c.deathsF : c.deathsAll;
-        return { ...c, inc, deaths };
-      })
-        .filter((c) => c.inc > 0)
-        .sort((a, b) => b.inc - a.inc);
-    }
-
-    function renderOncology() {
-      document.querySelectorAll('.onc-sex-btn').forEach((b) => {
-        const active = b.dataset.sex === STATE.oncSex;
-        b.className = `onc-sex-btn px-2.5 py-1 rounded-md text-xs font-mono transition-colors ${
-          active
-            ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm'
-            : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
-        }`;
-      });
-
-      const rows = getOncRows();
-      const topKiller = [...rows].sort((a, b) => b.deaths - a.deaths)[0];
-      if (STATE.tab === 'oncology' && topKiller) {
-        updateKPI('#1 Cancer Killer', `${fmtNum(topKiller.deaths)}/yr`, `${topKiller.name} · 5y surv ${topKiller.surv5}%`);
-      }
-
-      const tbody = $('onc-tbody');
-      tbody.innerHTML = rows
-        .map((c) => `
-          <tr data-id="${c.id}" class="onc-row cursor-pointer hover:bg-zinc-100/70 dark:hover:bg-zinc-900/60 transition-colors">
-            <td class="py-2 pr-3 font-medium text-zinc-900 dark:text-zinc-100">
-              <span class="inline-block w-2 h-2 rounded-full mr-2" style="background:${c.col}"></span>${esc(c.name)}
-            </td>
-            <td class="py-2 px-2 text-right font-mono tabular-nums">${fmtNum(c.inc)}</td>
-            <td class="py-2 px-2 text-right font-mono tabular-nums text-rose-600 dark:text-rose-400">${fmtNum(c.deaths)}</td>
-            <td class="py-2 px-2 text-right font-mono tabular-nums font-semibold ${c.surv5 >= 75 ? 'text-emerald-600 dark:text-emerald-400' : c.surv5 <= 25 ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400'}">${c.surv5}%</td>
-            <td class="py-2 pl-2 text-[11px] text-zinc-500 dark:text-zinc-400">${esc(c.screen)}</td>
-          </tr>
-        `)
-        .join('');
-
-      tbody.querySelectorAll('.onc-row').forEach((tr) => {
-        tr.addEventListener('click', () => {
-          const item = rows.find((x) => x.id === tr.dataset.id);
-          if (item) inspectOncology(item);
-        });
-      });
-
-      drawOncCanvas();
-    }
-
-    function inspectOncology(c) {
-      const mToI = c.inc > 0 ? ((c.deaths / c.inc) * 100).toFixed(0) : '—';
-      setInspector({
-        badge: `NKRS Oncology · 5-Yr Survival ${c.surv5}%`,
-        title: c.name,
-        sub: `${fmtNum(c.inc)} new cases/yr · ${fmtNum(c.deaths)} deaths/yr · M:I ratio ${mToI}%`,
-        sections: [
-          { label: 'Swiss Screening Status (OKP / Cantonal)', text: c.screen },
-          { label: 'Clinical Red Flags & Presentation', text: c.redFlags },
-          {
-            label: 'Prognostic Interpretation',
-            text:
-              c.surv5 >= 80
-                ? 'High-survival malignancy: early detection and systemic control yield long-term survivorship; watch overdiagnosis vs. high-risk subgroups.'
-                : c.surv5 <= 25
-                ? 'High-lethality malignancy: late asymptomatic presentation drives poor survival; low threshold for imaging on red flags.'
-                : 'Intermediate survival strongly dependent on stage at diagnosis.',
-          },
-        ],
-        links: [{ label: 'BloodLab', href: 'bloodlab.html' }],
-      });
-    }
-
-    function drawOncCanvas() {
-      const setup = setupCanvas($('onc-canvas-wrap'), $('onc-canvas'));
-      if (!setup) return;
-      const { ctx, w, h } = setup;
-      const pal = palette();
-      const rows = getOncRows();
-      oncHitCircles = [];
-
-      const padL = 44;
-      const padR = 24;
-      const padT = 22;
-      const padB = 34;
-      const plotW = Math.max(60, w - padL - padR);
-      const plotH = Math.max(60, h - padT - padB);
-      const maxX = Math.max(3500, Math.ceil(Math.max(...rows.map((r) => r.inc)) / 1000) * 1000 + 500);
-
-      const xOf = (v) => padL + (v / maxX) * plotW;
-      const yOf = (s) => padT + plotH - (s / 100) * plotH;
-
-      // Grid
-      ctx.font = '400 10px "JetBrains Mono", monospace';
-      ctx.strokeStyle = pal.grid;
-      ctx.lineWidth = 1;
-      for (let s = 0; s <= 100; s += 20) {
-        const y = Math.round(yOf(s)) + 0.5;
-        ctx.beginPath();
-        ctx.moveTo(padL, y);
-        ctx.lineTo(padL + plotW, y);
-        ctx.stroke();
-        ctx.fillStyle = pal.faint;
-        ctx.textAlign = 'right';
-        ctx.fillText(`${s}%`, padL - 7, y + 3.5);
-      }
-
-      const stepX = maxX > 6000 ? 2000 : 1000;
-      ctx.textAlign = 'center';
-      for (let inc = 0; inc <= maxX; inc += stepX) {
-        const x = Math.round(xOf(inc)) + 0.5;
-        ctx.beginPath();
-        ctx.moveTo(x, padT);
-        ctx.lineTo(x, padT + plotH);
-        ctx.stroke();
-        ctx.fillStyle = pal.faint;
-        ctx.fillText(inc === 0 ? '0' : `${(inc / 1000).toFixed(0)}k`, x, padT + plotH + 15);
-      }
-
-      // Axis labels
-      ctx.fillStyle = pal.muted;
-      ctx.textAlign = 'center';
-      ctx.fillText('Annual New Cases in Switzerland (NKRS)', padL + plotW / 2, h - 4);
-      ctx.save();
-      ctx.translate(12, padT + plotH / 2);
-      ctx.rotate(-Math.PI / 2);
-      ctx.fillText('5-Year Survival (%)', 0, 0);
-      ctx.restore();
-
-      // 50% survival dashed benchmark
-      ctx.save();
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = pal.rose;
-      ctx.globalAlpha = 0.45;
-      ctx.beginPath();
-      ctx.moveTo(padL, yOf(50));
-      ctx.lineTo(padL + plotW, yOf(50));
-      ctx.stroke();
-      ctx.restore();
-
-      // Bubbles
-      rows.forEach((c, i) => {
-        const cx = xOf(c.inc);
-        const cy = yOf(c.surv5);
-        const r = Math.max(7, Math.min(26, Math.sqrt(c.deaths) * 0.44));
-        const hov = i === STATE.oncHover;
-        oncHitCircles.push({ cx, cy, r: r + 4, item: c, idx: i });
-
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fillStyle = c.col;
-        ctx.globalAlpha = hov ? 0.92 : 0.62;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.lineWidth = hov ? 2 : 1.25;
-        ctx.strokeStyle = hov ? pal.text : c.col;
-        ctx.stroke();
-
-        // Label
-        ctx.font = `${hov ? '600' : '500'} 10px "Inter", sans-serif`;
-        ctx.fillStyle = pal.text;
-        const alignRight = cx > padL + plotW * 0.78;
-        ctx.textAlign = alignRight ? 'right' : 'left';
-        ctx.fillText(c.name.split(' ')[0], alignRight ? cx - r - 5 : cx + r + 5, cy + 3.5);
-      });
-    }
-
-    /* -------------------------------------------------------------------------
-       12. TAB 4: DISEASE ATLAS
-       ------------------------------------------------------------------------- */
-    const SYS_NAMES = {
-      cardio: 'Cardio', pulm: 'Pulm', renal: 'Renal', endo: 'Endo',
-      heme: 'Heme/Coag', neuro: 'Neuro', inf: 'Infectious', gi: 'GI/Hepato',
+      },
     };
 
-    function renderAtlas() {
-      document.querySelectorAll('.atlas-sys-btn').forEach((b) => {
-        const active = b.dataset.sys === STATE.atlasSys;
-        b.className = `atlas-sys-btn px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${
-          active
-            ? 'bg-teal-500/15 border-teal-500/40 text-tealLight dark:text-tealDark'
-            : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
-        }`;
-      });
+    // Init all 6 views
+    document.getElementById('kpi-atlas-count').textContent = `${E.DISEASE_SPECTRUM.length} Conditions`;
+    Object.values(V).forEach(mod => { if (typeof mod.init === 'function') mod.init(APP, E); });
 
-      const q = STATE.atlasSearch.trim().toLowerCase();
-      const filtered = DISEASE_ATLAS.filter((d) => {
-        if (STATE.atlasSys !== 'all' && d.sys !== STATE.atlasSys) return false;
-        if (!q) return true;
-        return (
-          d.name.toLowerCase().includes(q) ||
-          d.epi.toLowerCase().includes(q) ||
-          d.patho.toLowerCase().includes(q) ||
-          d.dx.toLowerCase().includes(q) ||
-          d.tx.toLowerCase().includes(q)
-        );
-      });
+    // Tab clicks
+    document.querySelectorAll('.epi-tab').forEach(b => b.addEventListener('click', () => APP.switchTab(b.dataset.tab)));
 
-      $('atlas-count').textContent = `${filtered.length} / ${DISEASE_ATLAS.length} conditions`;
-      if (STATE.tab === 'atlas') {
-        updateKPI('Disease Atlas', `${filtered.length} Active`, 'Linked to MedLab simulators');
-      }
+    // Anki Cloze copy
+    document.getElementById('insp-anki-btn').addEventListener('click', () => {
+      if (!currentAnki) return;
+      navigator.clipboard?.writeText(currentAnki).then(() => {
+        const b = document.getElementById('insp-anki-btn');
+        b.textContent = 'Copied ✓';
+        setTimeout(() => { b.textContent = 'Anki Cloze'; }, 1300);
+      }).catch(() => {});
+    });
 
-      const grid = $('atlas-grid');
-      grid.innerHTML = filtered
-        .map((d) => `
-          <article data-id="${d.id}" class="atlas-card cursor-pointer rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-4 hover:border-teal-500/45 transition-colors flex flex-col justify-between gap-3">
-            <div class="space-y-1.5">
-              <div class="flex items-center justify-between gap-2">
-                <span class="font-mono text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-500">${esc(SYS_NAMES[d.sys] || d.sys)}</span>
-                <span class="font-mono text-[10px] text-tealLight dark:text-tealDark">Inspect &rarr;</span>
-              </div>
-              <h3 class="text-[14px] font-semibold text-zinc-950 dark:text-white leading-snug">${esc(d.name)}</h3>
-              <p class="text-[12px] text-zinc-500 dark:text-zinc-400 leading-relaxed">${esc(d.epi)}</p>
-            </div>
-            <div class="flex flex-wrap gap-1.5 pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
-              ${d.links
-                .map((l) => `<a href="${esc(l.href)}" onclick="event.stopPropagation()" class="px-2 py-0.5 rounded font-mono text-[10px] bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/20 hover:bg-teal-500/20 transition-colors">${esc(l.label)} &nearr;</a>`)
-                .join('')}
-            </div>
-          </article>
-        `)
-        .join('');
-
-      grid.querySelectorAll('.atlas-card').forEach((card) => {
-        card.addEventListener('click', () => {
-          const item = DISEASE_ATLAS.find((x) => x.id === card.dataset.id);
-          if (item) inspectAtlas(item);
-        });
-      });
-    }
-
-    function inspectAtlas(d) {
-      setInspector({
-        badge: `Disease Atlas · ${SYS_NAMES[d.sys] || d.sys}`,
-        title: d.name,
-        sub: 'Swiss Epidemiology -> Mechanism -> Bedside Action',
-        sections: [
-          { label: 'Swiss Epidemiology', text: d.epi },
-          { label: 'Pathophysiology', text: d.patho },
-          { label: 'Key Diagnostics', text: d.dx },
-          { label: 'First-Line Management', text: d.tx },
-        ],
-        links: d.links,
-      });
-    }
-
-    /* -------------------------------------------------------------------------
-       13. TAB 5: BAYESIAN PRE-TEST PROBABILITY & PPV LAB
-       ------------------------------------------------------------------------- */
-    const LOG_MIN = -4.0;          // 0.01% (1 in 10,000)
-    const LOG_MAX = Math.log10(0.8); // 80%
-
-    function sliderToPrev(v) {
-      return Math.pow(10, LOG_MIN + (v / 1000) * (LOG_MAX - LOG_MIN));
-    }
-    function prevToSlider(p) {
-      const clamped = Math.max(0.0001, Math.min(0.8, p));
-      return Math.round(((Math.log10(clamped) - LOG_MIN) / (LOG_MAX - LOG_MIN)) * 1000);
-    }
-
-    function calcBayes(prev, sensPct, specPct) {
-      const se = sensPct / 100;
-      const sp = specPct / 100;
-      const tp = 10000 * prev * se;
-      const fn = 10000 * prev * (1 - se);
-      const tn = 10000 * (1 - prev) * sp;
-      const fp = 10000 * (1 - prev) * (1 - sp);
-      const ppv = tp + fp > 0 ? tp / (tp + fp) : 0;
-      const npv = tn + fn > 0 ? tn / (tn + fn) : 0;
-      const lrp = 1 - sp > 1e-6 ? se / (1 - sp) : 999;
-      const lrn = sp > 1e-6 ? (1 - se) / sp : 0;
-      return { tp, fn, tn, fp, ppv, npv, lrp, lrn };
-    }
-
-    function renderBayesian() {
-      const res = calcBayes(STATE.bayesPrev, STATE.bayesSens, STATE.bayesSpec);
-      const prevPct = STATE.bayesPrev * 100;
-      $('bayes-prev-val').textContent = prevPct < 0.1 ? `${prevPct.toFixed(3)}%` : prevPct < 1 ? `${prevPct.toFixed(2)}%` : `${prevPct.toFixed(1)}%`;
-      $('bayes-sens-val').textContent = `${STATE.bayesSens.toFixed(1)}%`;
-      $('bayes-spec-val').textContent = `${STATE.bayesSpec.toFixed(1)}%`;
-
-      $('bayes-ppv').textContent = `${(res.ppv * 100).toFixed(1)}%`;
-      $('bayes-npv').textContent = `${(res.npv * 100).toFixed(2)}%`;
-      $('bayes-lrp').textContent = res.lrp >= 100 ? res.lrp.toFixed(0) : res.lrp.toFixed(1);
-      $('bayes-lrn').textContent = res.lrn.toFixed(3);
-
-      $('bayes-tp').textContent = res.tp < 10 ? res.tp.toFixed(1) : fmtNum(res.tp);
-      $('bayes-fp').textContent = res.fp < 10 ? res.fp.toFixed(1) : fmtNum(res.fp);
-      $('bayes-fn').textContent = res.fn < 10 ? res.fn.toFixed(1) : fmtNum(res.fn);
-      $('bayes-tn').textContent = fmtNum(res.tn);
-
-      const fpShare = ((1 - res.ppv) * 100).toFixed(1);
-      $('bayes-verdict').textContent =
-        res.ppv < 0.25
-          ? `Base-rate trap: Even with ${STATE.bayesSpec.toFixed(1)}% specificity, ${fpShare}% of all positive results are FALSE POSITIVES because prevalence is only ${$('bayes-prev-val').textContent}. Always confirm with a high-specificity orthogonal test or restrict testing to higher pre-test probability patients.`
-          : res.ppv < 0.7
-          ? `Moderate post-test certainty (${(res.ppv * 100).toFixed(1)}% PPV): a positive test shifts probability meaningfully (LR+ ${res.lrp.toFixed(1)}), but ${fpShare}% of positives remain false—clinical correlation or confirmatory workup is required.`
-          : `High diagnostic certainty (${(res.ppv * 100).toFixed(1)}% PPV, LR+ ${res.lrp.toFixed(1)}): positive result strongly rules in disease at this pre-test probability.`;
-
-      if (STATE.tab === 'bayesian') {
-        updateKPI('Bayesian PPV', `${(res.ppv * 100).toFixed(1)}%`, `Base rate ${$('bayes-prev-val').textContent} · LR+ ${res.lrp.toFixed(1)}`);
-      }
-      drawBayesCanvas(res);
-    }
-
-    function drawBayesCanvas(res) {
-      const setup = setupCanvas($('bayes-canvas-wrap'), $('bayes-canvas'));
-      if (!setup) return;
-      const { ctx, w, h } = setup;
-      const pal = palette();
-
-      const splitX = w >= 480 ? Math.round(w * 0.60) : w;
-      const padL = 42, padR = 16, padT = 24, padB = 34;
-      const plotW = Math.max(60, splitX - padL - padR);
-      const plotH = Math.max(60, h - padT - padB);
-
-      // Left: PPV Curve vs Log Pre-Test Probability (0.01% -> 80%)
-      const xOfPrev = (p) => padL + ((Math.log10(p) - LOG_MIN) / (LOG_MAX - LOG_MIN)) * plotW;
-      const yOfPpv = (v) => padT + plotH - v * plotH;
-
-      // Grid
-      ctx.font = '400 9.5px "JetBrains Mono", monospace';
-      ctx.strokeStyle = pal.grid;
-      ctx.lineWidth = 1;
-      for (let pct = 0; pct <= 100; pct += 25) {
-        const y = Math.round(yOfPpv(pct / 100)) + 0.5;
-        ctx.beginPath();
-        ctx.moveTo(padL, y);
-        ctx.lineTo(padL + plotW, y);
-        ctx.stroke();
-        ctx.fillStyle = pal.faint;
-        ctx.textAlign = 'right';
-        ctx.fillText(`${pct}%`, padL - 6, y + 3);
-      }
-
-      [0.0001, 0.001, 0.01, 0.1, 0.5].forEach((pTick) => {
-        const x = Math.round(xOfPrev(pTick)) + 0.5;
-        ctx.beginPath();
-        ctx.moveTo(x, padT);
-        ctx.lineTo(x, padT + plotH);
-        ctx.stroke();
-        ctx.fillStyle = pal.faint;
-        ctx.textAlign = 'center';
-        ctx.fillText(pTick < 0.01 ? `${(pTick * 100).toFixed(pTick < 0.001 ? 2 : 1)}%` : `${Math.round(pTick * 100)}%`, x, padT + plotH + 14);
-      });
-
-      ctx.fillStyle = pal.muted;
-      ctx.textAlign = 'center';
-      ctx.fillText('Pre-Test Probability (Log Scale)', padL + plotW / 2, h - 5);
-      ctx.textAlign = 'left';
-      ctx.fillText('PPV vs. Base Rate', padL, 14);
-
-      // Draw PPV Curve
-      ctx.beginPath();
-      for (let i = 0; i <= 140; i++) {
-        const p = sliderToPrev((i / 140) * 1000);
-        const r = calcBayes(p, STATE.bayesSens, STATE.bayesSpec);
-        const x = xOfPrev(p);
-        const y = yOfPpv(r.ppv);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.strokeStyle = pal.teal;
-      ctx.lineWidth = 2.2;
-      ctx.stroke();
-
-      // Current operating point crosshair + dot
-      const cx = xOfPrev(STATE.bayesPrev);
-      const cy = yOfPpv(res.ppv);
-      ctx.save();
-      ctx.setLineDash([3, 3]);
-      ctx.strokeStyle = pal.muted;
-      ctx.beginPath();
-      ctx.moveTo(cx, padT + plotH);
-      ctx.lineTo(cx, cy);
-      ctx.lineTo(padL, cy);
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.beginPath();
-      ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-      ctx.fillStyle = pal.teal;
-      ctx.fill();
-      ctx.strokeStyle = pal.surface;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Right Panel (desktop): Positive-Test Composition Bar (TP vs FP)
-      if (w >= 480) {
-        const rx = splitX + 14;
-        const rw = w - rx - 16;
-        ctx.strokeStyle = pal.grid;
-        ctx.beginPath();
-        ctx.moveTo(splitX + 0.5, 14);
-        ctx.lineTo(splitX + 0.5, h - 14);
-        ctx.stroke();
-
-        ctx.font = '500 10px "JetBrains Mono", monospace';
-        ctx.fillStyle = pal.muted;
-        ctx.textAlign = 'left';
-        ctx.fillText('IF TEST IS POSITIVE', rx, 18);
-
-        const barY = 34;
-        const barH = Math.max(80, h - 98);
-        const tpH = barH * res.ppv;
-        const fpH = barH * (1 - res.ppv);
-
-        // False Positive block (top)
-        ctx.fillStyle = pal.rose;
-        ctx.globalAlpha = 0.78;
-        ctx.beginPath();
-        ctx.roundRect(rx, barY, rw, Math.max(0, fpH), [6, 6, tpH > 1 ? 0 : 6, tpH > 1 ? 0 : 6]);
-        ctx.fill();
-
-        // True Positive block (bottom)
-        ctx.fillStyle = pal.teal;
-        ctx.globalAlpha = 0.9;
-        ctx.beginPath();
-        ctx.roundRect(rx, barY + fpH, rw, Math.max(0, tpH), [fpH > 1 ? 0 : 6, fpH > 1 ? 0 : 6, 6, 6]);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-
-        ctx.font = '600 11px "JetBrains Mono", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#ffffff';
-        if (fpH > 24) ctx.fillText(`FP ${((1 - res.ppv) * 100).toFixed(0)}%`, rx + rw / 2, barY + fpH / 2 + 4);
-        if (tpH > 24) ctx.fillText(`TP ${(res.ppv * 100).toFixed(0)}%`, rx + rw / 2, barY + fpH + tpH / 2 + 4);
-
-        ctx.font = '400 10px "Inter", sans-serif';
-        ctx.fillStyle = pal.muted;
-        ctx.textAlign = 'left';
-        ctx.fillText(`True Pos: ${res.tp < 10 ? res.tp.toFixed(1) : fmtNum(res.tp)} / 10k`, rx, barY + barH + 22);
-        ctx.fillText(`False Pos: ${res.fp < 10 ? res.fp.toFixed(1) : fmtNum(res.fp)} / 10k`, rx, barY + barH + 38);
-      }
-    }
-
-    /* -------------------------------------------------------------------------
-       14. TAB 6: BASE-RATE & MELDEPFLICHT QUIZ ENGINE
-       ------------------------------------------------------------------------- */
-    function initQuiz() {
-      STATE.quizOrder = QUIZ_BANK.map((_, i) => i).sort(() => Math.random() - 0.5);
-      STATE.quizIdx = 0;
-      STATE.quizScore = 0;
-      STATE.quizStreak = 0;
-      STATE.quizAnswered = false;
-      renderQuiz();
-    }
-
-    function renderQuiz() {
-      const total = STATE.quizOrder.length;
-      $('quiz-score').textContent = String(STATE.quizScore);
-      $('quiz-streak').textContent = String(STATE.quizStreak);
-
-      if (STATE.quizIdx >= total) {
-        $('quiz-cat').textContent = 'Deck Complete';
-        $('quiz-progress').textContent = `${total} / ${total}`;
-        const pct = Math.round((STATE.quizScore / total) * 100);
-        $('quiz-q').textContent = `Calibration Complete: ${STATE.quizScore} / ${total} (${pct}%)`;
-        $('quiz-options').innerHTML = '';
-        const fb = $('quiz-feedback');
-        fb.className = 'rounded-lg border border-teal-500/30 bg-teal-500/10 p-3.5 text-xs leading-relaxed text-zinc-800 dark:text-zinc-200';
-        fb.textContent =
-          pct >= 80
-            ? 'Strong Swiss clinical base-rate calibration. Your intuition aligns closely with BFS, BAG, and NKRS figures.'
-            : 'Review the BFS age-stratified mortality shifts, NKRS cancer survival matrix, and BAG VMüK reporting tiers, then run another pass.';
-        fb.classList.remove('hidden');
-        $('quiz-next-btn').classList.add('hidden');
-        return;
-      }
-
-      const item = QUIZ_BANK[STATE.quizOrder[STATE.quizIdx]];
-      $('quiz-cat').textContent = item.cat;
-      $('quiz-progress').textContent = `${STATE.quizIdx + 1} / ${total}`;
-      $('quiz-q').textContent = item.q;
-      $('quiz-feedback').classList.add('hidden');
-      $('quiz-next-btn').classList.add('hidden');
-
-      const optBox = $('quiz-options');
-      optBox.innerHTML = item.opts
-        .map((opt, idx) => `
-          <button type="button" data-idx="${idx}" class="quiz-opt text-left px-3.5 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/50 hover:border-teal-500/50 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition-colors">
-            <span class="font-mono text-[10px] text-zinc-400 mr-2">${String.fromCharCode(65 + idx)}</span>${esc(opt)}
-          </button>
-        `)
-        .join('');
-
-      optBox.querySelectorAll('.quiz-opt').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          if (STATE.quizAnswered) return;
-          STATE.quizAnswered = true;
-          const chosen = Number(btn.dataset.idx);
-          const correct = chosen === item.ans;
-
-          if (correct) {
-            STATE.quizScore++;
-            STATE.quizStreak++;
-          } else {
-            STATE.quizStreak = 0;
-          }
-          $('quiz-score').textContent = String(STATE.quizScore);
-          $('quiz-streak').textContent = String(STATE.quizStreak);
-
-          optBox.querySelectorAll('.quiz-opt').forEach((b) => {
-            const idx = Number(b.dataset.idx);
-            b.disabled = true;
-            if (idx === item.ans) {
-              b.className = 'quiz-opt text-left px-3.5 py-2.5 rounded-lg border border-emerald-500/50 bg-emerald-500/15 text-xs font-semibold text-emerald-800 dark:text-emerald-300';
-            } else if (idx === chosen) {
-              b.className = 'quiz-opt text-left px-3.5 py-2.5 rounded-lg border border-rose-500/50 bg-rose-500/15 text-xs font-medium text-rose-800 dark:text-rose-300';
-            } else {
-              b.classList.add('opacity-50');
-            }
-          });
-
-          const fb = $('quiz-feedback');
-          fb.className = `rounded-lg border p-3.5 text-xs leading-relaxed ${
-            correct
-              ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200'
-              : 'border-rose-500/35 bg-rose-500/10 text-rose-900 dark:text-rose-200'
-          }`;
-          fb.innerHTML = `<strong class="font-semibold">${correct ? 'Correct.' : 'Not quite.'}</strong> ${esc(item.exp)}`;
-          fb.classList.remove('hidden');
-          $('quiz-next-btn').classList.remove('hidden');
-        });
-      });
-
-      if (STATE.tab === 'quiz') {
-        updateKPI('Quiz Calibration', `${STATE.quizScore} / ${total}`, `Streak: ${STATE.quizStreak}`);
-      }
-    }
-
-    /* -------------------------------------------------------------------------
-       15. TAB ROUTING & EVENT WIRING
-       ------------------------------------------------------------------------- */
-    function switchTab(tab) {
-      STATE.tab = tab;
-      document.querySelectorAll('.tab-btn').forEach((b) => {
-        const active = b.dataset.tab === tab;
-        b.className = `tab-btn shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-          active
-            ? 'bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian'
-            : 'text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900'
-        }`;
-      });
-      document.querySelectorAll('.tab-panel').forEach((p) => {
-        p.classList.toggle('hidden', p.id !== `panel-${tab}`);
-      });
-
-      requestAnimationFrame(() => {
-        if (tab === 'mortality') renderMortality();
-        if (tab === 'infectious') renderInfectious();
-        if (tab === 'oncology') renderOncology();
-        if (tab === 'atlas') renderAtlas();
-        if (tab === 'bayesian') renderBayesian();
-        if (tab === 'quiz') {
-          updateKPI('Quiz Calibration', `${STATE.quizScore} / ${QUIZ_BANK.length}`, `Streak: ${STATE.quizStreak}`);
-        }
-      });
-    }
-
-    function redrawActiveCanvas() {
-      if (STATE.tab === 'mortality') drawMortCanvas();
-      else if (STATE.tab === 'infectious') drawHeatmapCanvas();
-      else if (STATE.tab === 'oncology') drawOncCanvas();
-      else if (STATE.tab === 'bayesian') drawBayesCanvas(calcBayes(STATE.bayesPrev, STATE.bayesSens, STATE.bayesSpec));
-    }
-
-    // Theme Toggle
-    $('theme-toggle').addEventListener('click', () => {
+    // Theme toggle + live canvas redraw
+    document.getElementById('theme-toggle').addEventListener('click', () => {
       const darkNow = document.documentElement.classList.toggle('dark');
-      try { localStorage.setItem('medlab-theme', darkNow ? 'dark' : 'light'); } catch (_) {}
-      redrawActiveCanvas();
+      const val = darkNow ? 'dark' : 'light';
+      try { localStorage.setItem('medlab-theme', val); localStorage.setItem('theme', val); } catch (_) {}
+      const activeMod = V[APP.state.tab];
+      if (activeMod && typeof activeMod.redraw === 'function') activeMod.redraw(APP, E);
     });
 
-    // Tab buttons
-    document.querySelectorAll('.tab-btn').forEach((b) => {
-      b.addEventListener('click', () => switchTab(b.dataset.tab));
+    // Responsive redraw on window resize
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const activeMod = V[APP.state.tab];
+        if (activeMod && typeof activeMod.redraw === 'function') activeMod.redraw(APP, E);
+      }, 60);
     });
 
-    // Mortality controls & canvas hit-testing
-    document.querySelectorAll('.mort-mode-btn').forEach((b) => {
-      b.addEventListener('click', () => { STATE.mortMode = b.dataset.mode; STATE.mortHover = -1; renderMortality(); });
-    });
-    document.querySelectorAll('.mort-sex-btn').forEach((b) => {
-      b.addEventListener('click', () => { STATE.mortSex = b.dataset.sex; renderMortality(); });
-    });
-    document.querySelectorAll('.mort-age-btn').forEach((b) => {
-      b.addEventListener('click', () => { STATE.mortAge = b.dataset.age; renderMortality(); });
-    });
-
-    $('mort-canvas').addEventListener('mousemove', (e) => {
-      const r = e.target.getBoundingClientRect();
-      const y = e.clientY - r.top;
-      const hit = mortHitRects.find((b) => y >= b.y && y <= b.y + b.h);
-      const next = hit ? hit.idx : -1;
-      if (next !== STATE.mortHover) {
-        STATE.mortHover = next;
-        e.target.style.cursor = hit ? 'pointer' : 'default';
-        drawMortCanvas();
-      }
-    });
-    $('mort-canvas').addEventListener('mouseleave', () => { STATE.mortHover = -1; drawMortCanvas(); });
-    $('mort-canvas').addEventListener('click', (e) => {
-      const r = e.target.getBoundingClientRect();
-      const y = e.clientY - r.top;
-      const hit = mortHitRects.find((b) => y >= b.y && y <= b.y + b.h);
-      if (hit) inspectMortItem(hit.item);
-    });
-
-    // Infectious controls & heatmap hit-testing
-    document.querySelectorAll('.inf-cat-btn').forEach((b) => {
-      b.addEventListener('click', () => { STATE.infCat = b.dataset.cat; renderInfectious(); });
-    });
-    $('inf-search').addEventListener('input', (e) => { STATE.infSearch = e.target.value; renderInfectious(); });
-    $('inf-sort').addEventListener('change', (e) => { STATE.infSort = e.target.value; renderInfectious(); });
-
-    $('heat-canvas').addEventListener('mousemove', (e) => {
-      const r = e.target.getBoundingClientRect();
-      const x = e.clientX - r.left, y = e.clientY - r.top;
-      const hit = heatHitCells.find((c) => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h);
-      const prev = STATE.heatHover;
-      if ((hit && (!prev || prev.r !== hit.r || prev.c !== hit.c)) || (!hit && prev)) {
-        STATE.heatHover = hit ? { r: hit.r, c: hit.c } : null;
-        e.target.style.cursor = hit ? 'pointer' : 'default';
-        drawHeatmapCanvas();
-      }
-    });
-    $('heat-canvas').addEventListener('mouseleave', () => { STATE.heatHover = null; drawHeatmapCanvas(); });
-    $('heat-canvas').addEventListener('click', (e) => {
-      const r = e.target.getBoundingClientRect();
-      const x = e.clientX - r.left, y = e.clientY - r.top;
-      const hit = heatHitCells.find((c) => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h);
-      if (hit) inspectInfectious(hit.item);
-    });
-
-    // Oncology controls & bubble hit-testing
-    document.querySelectorAll('.onc-sex-btn').forEach((b) => {
-      b.addEventListener('click', () => { STATE.oncSex = b.dataset.sex; STATE.oncHover = -1; renderOncology(); });
-    });
-    $('onc-canvas').addEventListener('mousemove', (e) => {
-      const r = e.target.getBoundingClientRect();
-      const x = e.clientX - r.left, y = e.clientY - r.top;
-      const hit = oncHitCircles.find((c) => Math.hypot(x - c.cx, y - c.cy) <= c.r);
-      const next = hit ? hit.idx : -1;
-      if (next !== STATE.oncHover) {
-        STATE.oncHover = next;
-        drawOncCanvas();
-      }
-    });
-    $('onc-canvas').addEventListener('mouseleave', () => { STATE.oncHover = -1; drawOncCanvas(); });
-    $('onc-canvas').addEventListener('click', (e) => {
-      const r = e.target.getBoundingClientRect();
-      const x = e.clientX - r.left, y = e.clientY - r.top;
-      const hit = oncHitCircles.find((c) => Math.hypot(x - c.cx, y - c.cy) <= c.r);
-      if (hit) inspectOncology(hit.item);
-    });
-
-    // Atlas controls
-    document.querySelectorAll('.atlas-sys-btn').forEach((b) => {
-      b.addEventListener('click', () => { STATE.atlasSys = b.dataset.sys; renderAtlas(); });
-    });
-    $('atlas-search').addEventListener('input', (e) => { STATE.atlasSearch = e.target.value; renderAtlas(); });
-
-    // Bayesian controls
-    $('bayes-prev-slider').value = prevToSlider(STATE.bayesPrev);
-    $('bayes-prev-slider').addEventListener('input', (e) => {
-      $('bayes-preset').value = 'custom';
-      STATE.bayesPrev = sliderToPrev(Number(e.target.value));
-      renderBayesian();
-    });
-    $('bayes-sens-slider').addEventListener('input', (e) => {
-      $('bayes-preset').value = 'custom';
-      STATE.bayesSens = Number(e.target.value);
-      renderBayesian();
-    });
-    $('bayes-spec-slider').addEventListener('input', (e) => {
-      $('bayes-preset').value = 'custom';
-      STATE.bayesSpec = Number(e.target.value);
-      renderBayesian();
-    });
-    $('bayes-preset').addEventListener('change', (e) => {
-      const p = BAYES_PRESETS[e.target.value];
-      if (!p) return;
-      STATE.bayesPrev = p.prev;
-      STATE.bayesSens = p.sens;
-      STATE.bayesSpec = p.spec;
-      $('bayes-prev-slider').value = prevToSlider(p.prev);
-      $('bayes-sens-slider').value = p.sens;
-      $('bayes-spec-slider').value = p.spec;
-      renderBayesian();
-      setInspector({
-        badge: 'Bayesian Preset',
-        title: p.label,
-        sub: `Pre-test ${(p.prev * 100).toFixed(p.prev < 0.001 ? 2 : 1)}% · Sens ${p.sens}% · Spec ${p.spec}%`,
-        sections: [{ label: 'Clinical Interpretation', text: $('bayes-verdict').textContent }],
-      });
-    });
-
-    // Quiz controls
-    $('quiz-next-btn').addEventListener('click', () => {
-      STATE.quizIdx++;
-      STATE.quizAnswered = false;
-      renderQuiz();
-    });
-    $('quiz-reset-btn').addEventListener('click', initQuiz);
-
-    // ResizeObserver strictly on wrapper divs (never on canvas elements)
-    if (typeof ResizeObserver !== 'undefined') {
-      const ro = new ResizeObserver(() => redrawActiveCanvas());
-      ['mort-canvas-wrap', 'heat-canvas-wrap', 'onc-canvas-wrap', 'bayes-canvas-wrap'].forEach((id) => {
-        const el = $(id);
-        if (el) ro.observe(el);
-      });
-    }
-
-    // Boot
-    initQuiz();
-    switchTab('mortality');
-    inspectMortItem(BFS_MORTALITY.all.all[0]);
+    // Boot on Tab 1
+    APP.switchTab('spectrum');
+    if (V.spectrum.inspectDefault) V.spectrum.inspectDefault(APP, E);
   })();
   </script>
 </body>
