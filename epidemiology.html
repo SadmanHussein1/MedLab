@@ -670,3 +670,1205 @@
     ];
 
     // ==================== END OF PART 1 — PASTE PART 2 DIRECTLY BELOW ====================
+/* -------------------------------------------------------------------------
+       6. BAYESIAN PRESETS & APPLICATION STATE
+       ------------------------------------------------------------------------- */
+    const BAYES_PRESETS = {
+      hiv_screen: { prev: 0.002, sens: 99.7, spec: 99.5, label: 'HIV 4th-Gen Screening (CH Pop · 0.2%)' },
+      crc_fit:    { prev: 0.005, sens: 79.0, spec: 94.0, label: 'Colorectal Cancer FIT (Age 50–69 · 0.5%)' },
+      pe_ed:      { prev: 0.04,  sens: 96.0, spec: 45.0, label: 'PE D-Dimer (Low-Risk ED · 4.0%)' },
+      lyme_elisa: { prev: 0.01,  sens: 88.0, spec: 93.0, label: 'Lyme ELISA (Nonspecific Fatigue · 1.0%)' },
+      tbe_csf:    { prev: 0.12,  sens: 97.0, spec: 96.0, label: 'TBE IgM (Summer Aseptic Meningitis · 12%)' },
+      htn_office: { prev: 0.22,  sens: 75.0, spec: 75.0, label: 'Office BP Reading (CH Adults · 22%)' },
+      panc_ca199: { prev: 0.0002, sens: 80.0, spec: 85.0, label: 'Pancreatic CA 19-9 (Asymptomatic · 0.02%)' },
+    };
+
+    const STATE = {
+      tab: 'mortality',
+      mortMode: 'death',
+      mortSex: 'all',
+      mortAge: 'all',
+      mortHover: -1,
+      infCat: 'all',
+      infSearch: '',
+      infSort: 'cases',
+      heatHover: null,
+      oncSex: 'all',
+      oncHover: -1,
+      atlasSys: 'all',
+      atlasSearch: '',
+      bayesPrev: 0.01,
+      bayesSens: 95.0,
+      bayesSpec: 95.0,
+      quizOrder: [],
+      quizIdx: 0,
+      quizScore: 0,
+      quizStreak: 0,
+      quizAnswered: false,
+    };
+
+    let mortHitRects = [];
+    let heatHitCells = [];
+    let oncHitCircles = [];
+
+    const $ = (id) => document.getElementById(id);
+    const isDark = () => document.documentElement.classList.contains('dark');
+    const fmtNum = (n) => Math.round(n).toLocaleString('en-US');
+
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /* -------------------------------------------------------------------------
+       7. LOCKED ZERO-STRETCH HIDPI CANVAS HELPER
+       ------------------------------------------------------------------------- */
+    function setupCanvas(wrapEl, canvasEl) {
+      if (!wrapEl || !canvasEl) return null;
+      const w = wrapEl.clientWidth;
+      const h = wrapEl.clientHeight;
+      if (w <= 10 || h <= 10 || w >= 4000 || h >= 2000) return null;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const tw = Math.round(w * dpr);
+      const th = Math.round(h * dpr);
+      if (canvasEl.width !== tw || canvasEl.height !== th) {
+        canvasEl.width = tw;
+        canvasEl.height = th;
+      }
+      const ctx = canvasEl.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      return { ctx, w, h, dpr };
+    }
+
+    function palette() {
+      const d = isDark();
+      return {
+        dark: d,
+        text: d ? '#e4e4e7' : '#18181b',
+        muted: d ? '#a1a1aa' : '#52525b',
+        faint: d ? '#71717a' : '#71717a',
+        grid: d ? 'rgba(63,63,70,0.45)' : 'rgba(212,212,216,0.75)',
+        axis: d ? 'rgba(113,113,122,0.7)' : 'rgba(113,113,122,0.7)',
+        teal: d ? '#2dd4bf' : '#0f766e',
+        tealBg: d ? 'rgba(45,212,191,0.14)' : 'rgba(15,118,110,0.12)',
+        rose: d ? '#fb7185' : '#e11d48',
+        amber: d ? '#fbbf24' : '#d97706',
+        surface: d ? '#18181b' : '#ffffff',
+      };
+    }
+
+    /* -------------------------------------------------------------------------
+       8. PERSISTENT CLINICAL INSPECTOR
+       ------------------------------------------------------------------------- */
+    function setInspector({ badge, title, sub, sections = [], links = [] }) {
+      $('inspector-badge').textContent = badge || 'Clinical Inspector';
+      $('inspector-title').textContent = title || 'Select an Entity';
+      $('inspector-sub').textContent = sub || '';
+
+      const body = $('inspector-body');
+      body.innerHTML = sections
+        .map((s) => `
+          <div class="space-y-1">
+            <div class="font-mono text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500">${esc(s.label)}</div>
+            <div class="text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">${s.html || esc(s.text)}</div>
+          </div>
+        `)
+        .join('');
+
+      const linkBox = $('inspector-links');
+      linkBox.innerHTML = links
+        .map((l) => `
+          <a href="${esc(l.href)}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[11px] font-medium bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/25 hover:bg-teal-500/20 transition-colors">
+            <span>${esc(l.label)}</span><span aria-hidden="true">&rarr;</span>
+          </a>
+        `)
+        .join('');
+    }
+
+    function updateKPI(label, val, sub) {
+      $('kpi-context-label').textContent = label;
+      $('kpi-context-val').textContent = val;
+      $('kpi-context-sub').textContent = sub;
+    }
+
+    /* -------------------------------------------------------------------------
+       9. TAB 1: BFS MORTALITY, HOSPITALIZATIONS & CHRONIC RISKS
+       ------------------------------------------------------------------------- */
+    function getMortDataset() {
+      if (STATE.mortMode === 'hosp') return BFS_HOSP;
+      if (STATE.mortMode === 'chronic') return CH_RISK_FACTORS;
+      return BFS_MORTALITY[STATE.mortAge][STATE.mortSex];
+    }
+
+    function renderMortality() {
+      // Button active states
+      document.querySelectorAll('.mort-mode-btn').forEach((b) => {
+        const active = b.dataset.mode === STATE.mortMode;
+        b.className = `mort-mode-btn px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+          active
+            ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white shadow-sm'
+            : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+        }`;
+      });
+
+      const isDeath = STATE.mortMode === 'death';
+      $('mort-sex-wrap').classList.toggle('hidden', !isDeath);
+      $('mort-age-wrap').classList.toggle('hidden', !isDeath);
+
+      document.querySelectorAll('.mort-sex-btn').forEach((b) => {
+        const active = b.dataset.sex === STATE.mortSex;
+        b.className = `mort-sex-btn px-2.5 py-1 rounded-md text-xs font-mono transition-colors ${
+          active
+            ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm'
+            : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+        }`;
+      });
+
+      document.querySelectorAll('.mort-age-btn').forEach((b) => {
+        const active = b.dataset.age === STATE.mortAge;
+        b.className = `mort-age-btn px-2.5 py-1 rounded-md font-mono text-[11px] border transition-colors ${
+          active
+            ? 'bg-teal-500/15 border-teal-500/40 text-tealLight dark:text-tealDark font-semibold'
+            : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+        }`;
+      });
+
+      const data = getMortDataset();
+      const top = data[0];
+      const sexLabel = STATE.mortSex === 'all' ? 'Both sexes' : STATE.mortSex === 'm' ? 'Male' : 'Female';
+      const ageLabel = STATE.mortAge === 'all' ? 'All ages' : `Age ${STATE.mortAge} y`;
+
+      if (STATE.mortMode === 'death') {
+        updateKPI('Leading Cause of Death', `${top.pct.toFixed(1)}%`, `${top.name.split(' ')[0]} · ${ageLabel} · ${sexLabel}`);
+        $('mort-summary-text').textContent =
+          `BFS Cause of Death (${ageLabel}, ${sexLabel}): ${top.name} leads at ${top.pct.toFixed(1)}% (${fmtNum(top.n)} deaths/yr). Click any bar or card to inspect clinical breakdown.`;
+      } else if (STATE.mortMode === 'hosp') {
+        updateKPI('Top Inpatient Driver', `${top.pct.toFixed(1)}%`, 'Musculoskeletal & Trauma · ~1.5M stays/yr');
+        $('mort-summary-text').textContent =
+          'BFS Hospital Medical Statistics (~1.50M inpatient cases/yr): Morbidity diverges sharply from mortality—musculoskeletal conditions & trauma lead inpatient volume at 22.8%.';
+      } else {
+        updateKPI('Top Modifiable Risk', `${top.pct.toFixed(1)}%`, 'BMI ≥ 25 · Swiss Health Survey');
+        $('mort-summary-text').textContent =
+          'Swiss Health Survey (SGB 2022) adult prevalence estimates: Modifiable cardiometabolic and behavioral risk factors drive >85% of Swiss chronic disease burden.';
+      }
+
+      // Render cards
+      const cardsEl = $('mort-cards');
+      cardsEl.innerHTML = data
+        .map((d, i) => `
+          <button type="button" data-idx="${i}" class="mort-card text-left rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-3 hover:border-teal-500/45 transition-colors space-y-1">
+            <div class="flex items-center justify-between gap-2">
+              <span class="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                <span class="w-2 h-2 rounded-full shrink-0" style="background:${d.col}"></span>
+                <span class="truncate">${esc(d.name)}</span>
+              </span>
+              <span class="font-mono text-xs font-semibold tabular-nums shrink-0" style="color:${d.col}">${d.pct.toFixed(1)}%</span>
+            </div>
+            <p class="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2">${esc(d.note)}</p>
+          </button>
+        `)
+        .join('');
+
+      cardsEl.querySelectorAll('.mort-card').forEach((btn) => {
+        btn.addEventListener('click', () => inspectMortItem(data[Number(btn.dataset.idx)]));
+      });
+
+      drawMortCanvas();
+    }
+
+    function inspectMortItem(item) {
+      if (!item) return;
+      const modeTitle =
+        STATE.mortMode === 'death'
+          ? `BFS Mortality · ${STATE.mortAge === 'all' ? 'All Ages' : STATE.mortAge + ' y'}`
+          : STATE.mortMode === 'hosp'
+          ? 'BFS Inpatient Stays'
+          : 'Swiss Health Survey';
+      const unitLabel =
+        STATE.mortMode === 'death' ? 'deaths / year' : STATE.mortMode === 'hosp' ? 'inpatient stays / year' : 'estimated adults in CH';
+
+      const links = [];
+      const lower = item.name.toLowerCase();
+      if (lower.includes('cardio') || lower.includes('hypertension')) links.push({ label: 'CardioSim', href: 'cardiosim.html' });
+      if (lower.includes('digestive') || lower.includes('diabetes') || lower.includes('renal')) links.push({ label: 'BloodLab', href: 'bloodlab.html' }, { label: 'NephroSim', href: 'nephrosim.html' });
+      if (lower.includes('neoplasm') || lower.includes('cancer')) links.push({ label: 'Open Oncology Tab', href: '#oncology-jump' });
+
+      setInspector({
+        badge: modeTitle,
+        title: item.name,
+        sub: `${item.pct.toFixed(1)}% share · ~${fmtNum(item.n)} ${unitLabel}`,
+        sections: [
+          { label: 'Swiss Epidemiological Context', text: item.note },
+          {
+            label: 'Clinical Takeaway',
+            text:
+              STATE.mortMode === 'death'
+                ? 'Always anchor your differential diagnosis to age-stratified base rates: trauma/suicide dominates 15–44 y, cancer dominates 45–84 y, and CVD + dementia dominate 85+ y.'
+                : STATE.mortMode === 'hosp'
+                ? 'Hospital utilization tracks acute functional impairment and surgical volume more closely than mortality rates.'
+                : 'Primary prevention in Swiss general practice (BP, lipids, smoking cessation, AGLA cardiovascular score) targets these high-prevalence drivers.',
+          },
+        ],
+        links: links.filter((l) => l.href !== '#oncology-jump'),
+      });
+    }
+
+    function drawMortCanvas() {
+      const setup = setupCanvas($('mort-canvas-wrap'), $('mort-canvas'));
+      if (!setup) return;
+      const { ctx, w, h } = setup;
+      const pal = palette();
+      const data = getMortDataset();
+      mortHitRects = [];
+
+      const padL = Math.min(205, Math.max(120, Math.round(w * 0.34)));
+      const padR = 68;
+      const padT = 18;
+      const padB = 26;
+      const plotW = Math.max(40, w - padL - padR);
+      const plotH = Math.max(40, h - padT - padB);
+      const maxPct = Math.max(55, Math.ceil(Math.max(...data.map((d) => d.pct)) / 10) * 10 + 5);
+
+      // Vertical gridlines
+      ctx.font = '400 10px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      for (let tick = 0; tick <= maxPct; tick += 10) {
+        const x = padL + (tick / maxPct) * plotW;
+        ctx.strokeStyle = pal.grid;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(Math.round(x) + 0.5, padT);
+        ctx.lineTo(Math.round(x) + 0.5, padT + plotH);
+        ctx.stroke();
+        ctx.fillStyle = pal.faint;
+        ctx.fillText(`${tick}%`, x, padT + plotH + 15);
+      }
+
+      const rowH = plotH / data.length;
+      const barH = Math.min(24, Math.max(12, rowH * 0.56));
+
+      data.forEach((d, i) => {
+        const cy = padT + i * rowH + rowH / 2;
+        const by = cy - barH / 2;
+        const bw = Math.max(3, (d.pct / maxPct) * plotW);
+        const hovered = i === STATE.mortHover;
+
+        mortHitRects.push({ x: 0, y: padT + i * rowH, w, h: rowH, item: d, idx: i });
+
+        if (hovered) {
+          ctx.fillStyle = pal.dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.035)';
+          ctx.fillRect(4, padT + i * rowH + 1, w - 8, rowH - 2);
+        }
+
+        // Category label (truncated cleanly)
+        ctx.font = `${hovered ? '600' : '500'} 11px "Inter", sans-serif`;
+        ctx.fillStyle = hovered ? pal.text : pal.muted;
+        ctx.textAlign = 'right';
+        let label = d.name;
+        while (ctx.measureText(label).width > padL - 16 && label.length > 6) {
+          label = label.slice(0, -2) + '…';
+        }
+        ctx.fillText(label, padL - 10, cy + 4);
+
+        // Bar
+        ctx.fillStyle = d.col;
+        ctx.globalAlpha = hovered ? 1.0 : 0.86;
+        ctx.beginPath();
+        ctx.roundRect(padL, by, bw, barH, 4);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // Value annotation
+        ctx.font = '600 10.5px "JetBrains Mono", monospace';
+        ctx.fillStyle = pal.text;
+        ctx.textAlign = 'left';
+        ctx.fillText(`${d.pct.toFixed(1)}%`, padL + bw + 7, cy + 3.5);
+      });
+    }
+
+    /* -------------------------------------------------------------------------
+       10. TAB 2: BAG INFECTIOUS SURVEILLANCE & SEASONALITY HEATMAP
+       ------------------------------------------------------------------------- */
+    const HEAT_IDS = ['flu', 'pneumo', 'meningo', 'lyme', 'tbe', 'campy', 'salm', 'legio', 'measles'];
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    function meldeBadgeClass(urgency) {
+      if (urgency === 1) return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 font-semibold';
+      if (urgency === 2) return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 font-medium';
+      if (urgency === 3) return 'bg-teal-500/10 text-tealLight dark:text-tealDark border-teal-500/25';
+      return 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20';
+    }
+
+    function renderInfectious() {
+      document.querySelectorAll('.inf-cat-btn').forEach((b) => {
+        const active = b.dataset.cat === STATE.infCat;
+        b.className = `inf-cat-btn px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${
+          active
+            ? 'bg-teal-500/15 border-teal-500/40 text-tealLight dark:text-tealDark'
+            : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+        }`;
+      });
+
+      const q = STATE.infSearch.trim().toLowerCase();
+      let list = BAG_INFECTIOUS.filter((p) => {
+        if (STATE.infCat !== 'all' && p.cat !== STATE.infCat) return false;
+        if (q && !p.name.toLowerCase().includes(q) && !p.pearl.toLowerCase().includes(q)) return false;
+        return true;
+      });
+
+      list = [...list].sort((a, b) => {
+        if (STATE.infSort === 'cases') return b.cases - a.cases;
+        if (STATE.infSort === 'inc') return b.inc - a.inc;
+        if (STATE.infSort === 'urgency') return a.urgency - b.urgency || b.cases - a.cases;
+        return a.name.localeCompare(b.name);
+      });
+
+      $('inf-count').textContent = `Showing ${list.length} of ${BAG_INFECTIOUS.length} Swiss surveillance pathogens`;
+      const tbody = $('inf-tbody');
+      tbody.innerHTML = list
+        .map((p) => `
+          <tr data-id="${p.id}" class="inf-row cursor-pointer hover:bg-zinc-100/70 dark:hover:bg-zinc-900/60 transition-colors">
+            <td class="py-2 pr-3 font-medium text-zinc-900 dark:text-zinc-100">${esc(p.name)}</td>
+            <td class="py-2 px-2 text-right font-mono tabular-nums text-zinc-700 dark:text-zinc-300">${fmtNum(p.cases)}</td>
+            <td class="py-2 px-2 text-right font-mono tabular-nums text-zinc-500">${p.inc.toFixed(1)}</td>
+            <td class="py-2 px-2 font-mono text-[11px] ${p.trend.startsWith('+') ? 'text-rose-500' : p.trend.startsWith('-') ? 'text-emerald-500' : 'text-zinc-500'}">${esc(p.trend)}</td>
+            <td class="py-2 pl-2 text-right">
+              <span class="inline-block px-1.5 py-0.5 rounded border font-mono text-[10px] whitespace-nowrap ${meldeBadgeClass(p.urgency)}">${esc(p.melde)}</span>
+            </td>
+          </tr>
+        `)
+        .join('');
+
+      tbody.querySelectorAll('.inf-row').forEach((tr) => {
+        tr.addEventListener('click', () => {
+          const item = BAG_INFECTIOUS.find((x) => x.id === tr.dataset.id);
+          if (item) inspectInfectious(item);
+        });
+      });
+
+      if (STATE.tab === 'infectious') {
+        updateKPI('Top BAG Pathogen', '34.5k / yr', 'Influenza · Chlamydia 12.7k · Lyme 13.3k');
+      }
+      drawHeatmapCanvas();
+    }
+
+    function inspectInfectious(p) {
+      const peakIdx = p.season.indexOf(Math.max(...p.season));
+      const peakMonth = MONTHS[peakIdx];
+      setInspector({
+        badge: `BAG Surveillance · ${p.melde}`,
+        title: p.name,
+        sub: `~${fmtNum(p.cases)} cases/yr (${p.inc.toFixed(1)} / 100k) · Trend: ${p.trend} · Peak: ${peakMonth}`,
+        sections: [
+          { label: 'Swiss Epidemiology & Clinical Pearl', text: p.pearl },
+          { label: 'First-Line Clinical Management (CH / SSI)', text: p.tx },
+          {
+            label: 'VMüK Reporting Tier',
+            text:
+              p.urgency === 1
+                ? 'URGENT 2-HOUR TELEPHONE REPORT to Kantonsarzt + BAG immediately upon clinical suspicion.'
+                : p.urgency === 2
+                ? '24-hour physician & laboratory report for rapid contact tracing / post-exposure prophylaxis.'
+                : p.urgency === 3
+                ? 'Standard 1-week mandatory surveillance notification.'
+                : 'Tracked via voluntary Sentinella primary care network (not individually notifiable).',
+          },
+        ],
+        links: [{ label: 'BloodLab', href: 'bloodlab.html' }],
+      });
+    }
+
+    function drawHeatmapCanvas() {
+      const setup = setupCanvas($('heat-canvas-wrap'), $('heat-canvas'));
+      if (!setup) return;
+      const { ctx, w, h } = setup;
+      const pal = palette();
+      heatHitCells = [];
+
+      const rows = HEAT_IDS.map((id) => BAG_INFECTIOUS.find((p) => p.id === id)).filter(Boolean);
+      const padL = Math.min(138, Math.max(96, Math.round(w * 0.22)));
+      const padR = 14;
+      const padT = 24;
+      const padB = 10;
+      const gridW = Math.max(60, w - padL - padR);
+      const gridH = Math.max(60, h - padT - padB);
+      const cellW = gridW / 12;
+      const cellH = gridH / rows.length;
+
+      // Month headers
+      ctx.font = '500 10px "JetBrains Mono", monospace';
+      ctx.fillStyle = pal.faint;
+      ctx.textAlign = 'center';
+      MONTHS.forEach((m, c) => {
+        ctx.fillText(m, padL + c * cellW + cellW / 2, 15);
+      });
+
+      rows.forEach((p, r) => {
+        const y = padT + r * cellH;
+        // Row name
+        ctx.font = '500 10.5px "Inter", sans-serif';
+        ctx.fillStyle = pal.muted;
+        ctx.textAlign = 'right';
+        let shortName = p.name.split('(')[0].trim();
+        while (ctx.measureText(shortName).width > padL - 12 && shortName.length > 5) {
+          shortName = shortName.slice(0, -2) + '…';
+        }
+        ctx.fillText(shortName, padL - 8, y + cellH / 2 + 3.5);
+
+        p.season.forEach((val, c) => {
+          const x = padL + c * cellW;
+          const isHov = STATE.heatHover && STATE.heatHover.r === r && STATE.heatHover.c === c;
+          heatHitCells.push({ x, y, w: cellW, h: cellH, r, c, item: p, val });
+
+          // Teal -> Amber -> Rose intensity ramp
+          let fill;
+          if (val >= 0.85) fill = pal.dark ? `rgba(244,63,94,${0.45 + val * 0.45})` : `rgba(225,29,72,${0.45 + val * 0.45})`;
+          else if (val >= 0.55) fill = pal.dark ? `rgba(245,158,11,${0.3 + val * 0.55})` : `rgba(217,119,6,${0.25 + val * 0.55})`;
+          else fill = pal.dark ? `rgba(45,212,191,${0.08 + val * 0.65})` : `rgba(15,118,110,${0.07 + val * 0.55})`;
+
+          ctx.fillStyle = fill;
+          ctx.beginPath();
+          ctx.roundRect(x + 1.5, y + 1.5, cellW - 3, cellH - 3, 3);
+          ctx.fill();
+
+          if (isHov) {
+            ctx.strokeStyle = pal.text;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(x + 1.5, y + 1.5, cellW - 3, cellH - 3);
+          }
+        });
+      });
+    }
+
+    /* -------------------------------------------------------------------------
+       11. TAB 3: ONCOLOGY MATRIX (NKRS SCATTER + TABLE)
+       ------------------------------------------------------------------------- */
+    function getOncRows() {
+      return NKRS_ONCOLOGY.map((c) => {
+        const inc = STATE.oncSex === 'm' ? c.incM : STATE.oncSex === 'f' ? c.incF : c.incAll;
+        const deaths = STATE.oncSex === 'm' ? c.deathsM : STATE.oncSex === 'f' ? c.deathsF : c.deathsAll;
+        return { ...c, inc, deaths };
+      })
+        .filter((c) => c.inc > 0)
+        .sort((a, b) => b.inc - a.inc);
+    }
+
+    function renderOncology() {
+      document.querySelectorAll('.onc-sex-btn').forEach((b) => {
+        const active = b.dataset.sex === STATE.oncSex;
+        b.className = `onc-sex-btn px-2.5 py-1 rounded-md text-xs font-mono transition-colors ${
+          active
+            ? 'bg-white dark:bg-zinc-800 text-tealLight dark:text-tealDark font-semibold shadow-sm'
+            : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+        }`;
+      });
+
+      const rows = getOncRows();
+      const topKiller = [...rows].sort((a, b) => b.deaths - a.deaths)[0];
+      if (STATE.tab === 'oncology' && topKiller) {
+        updateKPI('#1 Cancer Killer', `${fmtNum(topKiller.deaths)}/yr`, `${topKiller.name} · 5y surv ${topKiller.surv5}%`);
+      }
+
+      const tbody = $('onc-tbody');
+      tbody.innerHTML = rows
+        .map((c) => `
+          <tr data-id="${c.id}" class="onc-row cursor-pointer hover:bg-zinc-100/70 dark:hover:bg-zinc-900/60 transition-colors">
+            <td class="py-2 pr-3 font-medium text-zinc-900 dark:text-zinc-100">
+              <span class="inline-block w-2 h-2 rounded-full mr-2" style="background:${c.col}"></span>${esc(c.name)}
+            </td>
+            <td class="py-2 px-2 text-right font-mono tabular-nums">${fmtNum(c.inc)}</td>
+            <td class="py-2 px-2 text-right font-mono tabular-nums text-rose-600 dark:text-rose-400">${fmtNum(c.deaths)}</td>
+            <td class="py-2 px-2 text-right font-mono tabular-nums font-semibold ${c.surv5 >= 75 ? 'text-emerald-600 dark:text-emerald-400' : c.surv5 <= 25 ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400'}">${c.surv5}%</td>
+            <td class="py-2 pl-2 text-[11px] text-zinc-500 dark:text-zinc-400">${esc(c.screen)}</td>
+          </tr>
+        `)
+        .join('');
+
+      tbody.querySelectorAll('.onc-row').forEach((tr) => {
+        tr.addEventListener('click', () => {
+          const item = rows.find((x) => x.id === tr.dataset.id);
+          if (item) inspectOncology(item);
+        });
+      });
+
+      drawOncCanvas();
+    }
+
+    function inspectOncology(c) {
+      const mToI = c.inc > 0 ? ((c.deaths / c.inc) * 100).toFixed(0) : '—';
+      setInspector({
+        badge: `NKRS Oncology · 5-Yr Survival ${c.surv5}%`,
+        title: c.name,
+        sub: `${fmtNum(c.inc)} new cases/yr · ${fmtNum(c.deaths)} deaths/yr · M:I ratio ${mToI}%`,
+        sections: [
+          { label: 'Swiss Screening Status (OKP / Cantonal)', text: c.screen },
+          { label: 'Clinical Red Flags & Presentation', text: c.redFlags },
+          {
+            label: 'Prognostic Interpretation',
+            text:
+              c.surv5 >= 80
+                ? 'High-survival malignancy: early detection and systemic control yield long-term survivorship; watch overdiagnosis vs. high-risk subgroups.'
+                : c.surv5 <= 25
+                ? 'High-lethality malignancy: late asymptomatic presentation drives poor survival; low threshold for imaging on red flags.'
+                : 'Intermediate survival strongly dependent on stage at diagnosis.',
+          },
+        ],
+        links: [{ label: 'BloodLab', href: 'bloodlab.html' }],
+      });
+    }
+
+    function drawOncCanvas() {
+      const setup = setupCanvas($('onc-canvas-wrap'), $('onc-canvas'));
+      if (!setup) return;
+      const { ctx, w, h } = setup;
+      const pal = palette();
+      const rows = getOncRows();
+      oncHitCircles = [];
+
+      const padL = 44;
+      const padR = 24;
+      const padT = 22;
+      const padB = 34;
+      const plotW = Math.max(60, w - padL - padR);
+      const plotH = Math.max(60, h - padT - padB);
+      const maxX = Math.max(3500, Math.ceil(Math.max(...rows.map((r) => r.inc)) / 1000) * 1000 + 500);
+
+      const xOf = (v) => padL + (v / maxX) * plotW;
+      const yOf = (s) => padT + plotH - (s / 100) * plotH;
+
+      // Grid
+      ctx.font = '400 10px "JetBrains Mono", monospace';
+      ctx.strokeStyle = pal.grid;
+      ctx.lineWidth = 1;
+      for (let s = 0; s <= 100; s += 20) {
+        const y = Math.round(yOf(s)) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + plotW, y);
+        ctx.stroke();
+        ctx.fillStyle = pal.faint;
+        ctx.textAlign = 'right';
+        ctx.fillText(`${s}%`, padL - 7, y + 3.5);
+      }
+
+      const stepX = maxX > 6000 ? 2000 : 1000;
+      ctx.textAlign = 'center';
+      for (let inc = 0; inc <= maxX; inc += stepX) {
+        const x = Math.round(xOf(inc)) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, padT);
+        ctx.lineTo(x, padT + plotH);
+        ctx.stroke();
+        ctx.fillStyle = pal.faint;
+        ctx.fillText(inc === 0 ? '0' : `${(inc / 1000).toFixed(0)}k`, x, padT + plotH + 15);
+      }
+
+      // Axis labels
+      ctx.fillStyle = pal.muted;
+      ctx.textAlign = 'center';
+      ctx.fillText('Annual New Cases in Switzerland (NKRS)', padL + plotW / 2, h - 4);
+      ctx.save();
+      ctx.translate(12, padT + plotH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('5-Year Survival (%)', 0, 0);
+      ctx.restore();
+
+      // 50% survival dashed benchmark
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = pal.rose;
+      ctx.globalAlpha = 0.45;
+      ctx.beginPath();
+      ctx.moveTo(padL, yOf(50));
+      ctx.lineTo(padL + plotW, yOf(50));
+      ctx.stroke();
+      ctx.restore();
+
+      // Bubbles
+      rows.forEach((c, i) => {
+        const cx = xOf(c.inc);
+        const cy = yOf(c.surv5);
+        const r = Math.max(7, Math.min(26, Math.sqrt(c.deaths) * 0.44));
+        const hov = i === STATE.oncHover;
+        oncHitCircles.push({ cx, cy, r: r + 4, item: c, idx: i });
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = c.col;
+        ctx.globalAlpha = hov ? 0.92 : 0.62;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.lineWidth = hov ? 2 : 1.25;
+        ctx.strokeStyle = hov ? pal.text : c.col;
+        ctx.stroke();
+
+        // Label
+        ctx.font = `${hov ? '600' : '500'} 10px "Inter", sans-serif`;
+        ctx.fillStyle = pal.text;
+        const alignRight = cx > padL + plotW * 0.78;
+        ctx.textAlign = alignRight ? 'right' : 'left';
+        ctx.fillText(c.name.split(' ')[0], alignRight ? cx - r - 5 : cx + r + 5, cy + 3.5);
+      });
+    }
+
+    /* -------------------------------------------------------------------------
+       12. TAB 4: DISEASE ATLAS
+       ------------------------------------------------------------------------- */
+    const SYS_NAMES = {
+      cardio: 'Cardio', pulm: 'Pulm', renal: 'Renal', endo: 'Endo',
+      heme: 'Heme/Coag', neuro: 'Neuro', inf: 'Infectious', gi: 'GI/Hepato',
+    };
+
+    function renderAtlas() {
+      document.querySelectorAll('.atlas-sys-btn').forEach((b) => {
+        const active = b.dataset.sys === STATE.atlasSys;
+        b.className = `atlas-sys-btn px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${
+          active
+            ? 'bg-teal-500/15 border-teal-500/40 text-tealLight dark:text-tealDark'
+            : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+        }`;
+      });
+
+      const q = STATE.atlasSearch.trim().toLowerCase();
+      const filtered = DISEASE_ATLAS.filter((d) => {
+        if (STATE.atlasSys !== 'all' && d.sys !== STATE.atlasSys) return false;
+        if (!q) return true;
+        return (
+          d.name.toLowerCase().includes(q) ||
+          d.epi.toLowerCase().includes(q) ||
+          d.patho.toLowerCase().includes(q) ||
+          d.dx.toLowerCase().includes(q) ||
+          d.tx.toLowerCase().includes(q)
+        );
+      });
+
+      $('atlas-count').textContent = `${filtered.length} / ${DISEASE_ATLAS.length} conditions`;
+      if (STATE.tab === 'atlas') {
+        updateKPI('Disease Atlas', `${filtered.length} Active`, 'Linked to MedLab simulators');
+      }
+
+      const grid = $('atlas-grid');
+      grid.innerHTML = filtered
+        .map((d) => `
+          <article data-id="${d.id}" class="atlas-card cursor-pointer rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-4 hover:border-teal-500/45 transition-colors flex flex-col justify-between gap-3">
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-mono text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-500">${esc(SYS_NAMES[d.sys] || d.sys)}</span>
+                <span class="font-mono text-[10px] text-tealLight dark:text-tealDark">Inspect &rarr;</span>
+              </div>
+              <h3 class="text-[14px] font-semibold text-zinc-950 dark:text-white leading-snug">${esc(d.name)}</h3>
+              <p class="text-[12px] text-zinc-500 dark:text-zinc-400 leading-relaxed">${esc(d.epi)}</p>
+            </div>
+            <div class="flex flex-wrap gap-1.5 pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
+              ${d.links
+                .map((l) => `<a href="${esc(l.href)}" onclick="event.stopPropagation()" class="px-2 py-0.5 rounded font-mono text-[10px] bg-teal-500/10 text-tealLight dark:text-tealDark border border-teal-500/20 hover:bg-teal-500/20 transition-colors">${esc(l.label)} &nearr;</a>`)
+                .join('')}
+            </div>
+          </article>
+        `)
+        .join('');
+
+      grid.querySelectorAll('.atlas-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          const item = DISEASE_ATLAS.find((x) => x.id === card.dataset.id);
+          if (item) inspectAtlas(item);
+        });
+      });
+    }
+
+    function inspectAtlas(d) {
+      setInspector({
+        badge: `Disease Atlas · ${SYS_NAMES[d.sys] || d.sys}`,
+        title: d.name,
+        sub: 'Swiss Epidemiology -> Mechanism -> Bedside Action',
+        sections: [
+          { label: 'Swiss Epidemiology', text: d.epi },
+          { label: 'Pathophysiology', text: d.patho },
+          { label: 'Key Diagnostics', text: d.dx },
+          { label: 'First-Line Management', text: d.tx },
+        ],
+        links: d.links,
+      });
+    }
+
+    /* -------------------------------------------------------------------------
+       13. TAB 5: BAYESIAN PRE-TEST PROBABILITY & PPV LAB
+       ------------------------------------------------------------------------- */
+    const LOG_MIN = -4.0;          // 0.01% (1 in 10,000)
+    const LOG_MAX = Math.log10(0.8); // 80%
+
+    function sliderToPrev(v) {
+      return Math.pow(10, LOG_MIN + (v / 1000) * (LOG_MAX - LOG_MIN));
+    }
+    function prevToSlider(p) {
+      const clamped = Math.max(0.0001, Math.min(0.8, p));
+      return Math.round(((Math.log10(clamped) - LOG_MIN) / (LOG_MAX - LOG_MIN)) * 1000);
+    }
+
+    function calcBayes(prev, sensPct, specPct) {
+      const se = sensPct / 100;
+      const sp = specPct / 100;
+      const tp = 10000 * prev * se;
+      const fn = 10000 * prev * (1 - se);
+      const tn = 10000 * (1 - prev) * sp;
+      const fp = 10000 * (1 - prev) * (1 - sp);
+      const ppv = tp + fp > 0 ? tp / (tp + fp) : 0;
+      const npv = tn + fn > 0 ? tn / (tn + fn) : 0;
+      const lrp = 1 - sp > 1e-6 ? se / (1 - sp) : 999;
+      const lrn = sp > 1e-6 ? (1 - se) / sp : 0;
+      return { tp, fn, tn, fp, ppv, npv, lrp, lrn };
+    }
+
+    function renderBayesian() {
+      const res = calcBayes(STATE.bayesPrev, STATE.bayesSens, STATE.bayesSpec);
+      const prevPct = STATE.bayesPrev * 100;
+      $('bayes-prev-val').textContent = prevPct < 0.1 ? `${prevPct.toFixed(3)}%` : prevPct < 1 ? `${prevPct.toFixed(2)}%` : `${prevPct.toFixed(1)}%`;
+      $('bayes-sens-val').textContent = `${STATE.bayesSens.toFixed(1)}%`;
+      $('bayes-spec-val').textContent = `${STATE.bayesSpec.toFixed(1)}%`;
+
+      $('bayes-ppv').textContent = `${(res.ppv * 100).toFixed(1)}%`;
+      $('bayes-npv').textContent = `${(res.npv * 100).toFixed(2)}%`;
+      $('bayes-lrp').textContent = res.lrp >= 100 ? res.lrp.toFixed(0) : res.lrp.toFixed(1);
+      $('bayes-lrn').textContent = res.lrn.toFixed(3);
+
+      $('bayes-tp').textContent = res.tp < 10 ? res.tp.toFixed(1) : fmtNum(res.tp);
+      $('bayes-fp').textContent = res.fp < 10 ? res.fp.toFixed(1) : fmtNum(res.fp);
+      $('bayes-fn').textContent = res.fn < 10 ? res.fn.toFixed(1) : fmtNum(res.fn);
+      $('bayes-tn').textContent = fmtNum(res.tn);
+
+      const fpShare = ((1 - res.ppv) * 100).toFixed(1);
+      $('bayes-verdict').textContent =
+        res.ppv < 0.25
+          ? `Base-rate trap: Even with ${STATE.bayesSpec.toFixed(1)}% specificity, ${fpShare}% of all positive results are FALSE POSITIVES because prevalence is only ${$('bayes-prev-val').textContent}. Always confirm with a high-specificity orthogonal test or restrict testing to higher pre-test probability patients.`
+          : res.ppv < 0.7
+          ? `Moderate post-test certainty (${(res.ppv * 100).toFixed(1)}% PPV): a positive test shifts probability meaningfully (LR+ ${res.lrp.toFixed(1)}), but ${fpShare}% of positives remain false—clinical correlation or confirmatory workup is required.`
+          : `High diagnostic certainty (${(res.ppv * 100).toFixed(1)}% PPV, LR+ ${res.lrp.toFixed(1)}): positive result strongly rules in disease at this pre-test probability.`;
+
+      if (STATE.tab === 'bayesian') {
+        updateKPI('Bayesian PPV', `${(res.ppv * 100).toFixed(1)}%`, `Base rate ${$('bayes-prev-val').textContent} · LR+ ${res.lrp.toFixed(1)}`);
+      }
+      drawBayesCanvas(res);
+    }
+
+    function drawBayesCanvas(res) {
+      const setup = setupCanvas($('bayes-canvas-wrap'), $('bayes-canvas'));
+      if (!setup) return;
+      const { ctx, w, h } = setup;
+      const pal = palette();
+
+      const splitX = w >= 480 ? Math.round(w * 0.60) : w;
+      const padL = 42, padR = 16, padT = 24, padB = 34;
+      const plotW = Math.max(60, splitX - padL - padR);
+      const plotH = Math.max(60, h - padT - padB);
+
+      // Left: PPV Curve vs Log Pre-Test Probability (0.01% -> 80%)
+      const xOfPrev = (p) => padL + ((Math.log10(p) - LOG_MIN) / (LOG_MAX - LOG_MIN)) * plotW;
+      const yOfPpv = (v) => padT + plotH - v * plotH;
+
+      // Grid
+      ctx.font = '400 9.5px "JetBrains Mono", monospace';
+      ctx.strokeStyle = pal.grid;
+      ctx.lineWidth = 1;
+      for (let pct = 0; pct <= 100; pct += 25) {
+        const y = Math.round(yOfPpv(pct / 100)) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + plotW, y);
+        ctx.stroke();
+        ctx.fillStyle = pal.faint;
+        ctx.textAlign = 'right';
+        ctx.fillText(`${pct}%`, padL - 6, y + 3);
+      }
+
+      [0.0001, 0.001, 0.01, 0.1, 0.5].forEach((pTick) => {
+        const x = Math.round(xOfPrev(pTick)) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, padT);
+        ctx.lineTo(x, padT + plotH);
+        ctx.stroke();
+        ctx.fillStyle = pal.faint;
+        ctx.textAlign = 'center';
+        ctx.fillText(pTick < 0.01 ? `${(pTick * 100).toFixed(pTick < 0.001 ? 2 : 1)}%` : `${Math.round(pTick * 100)}%`, x, padT + plotH + 14);
+      });
+
+      ctx.fillStyle = pal.muted;
+      ctx.textAlign = 'center';
+      ctx.fillText('Pre-Test Probability (Log Scale)', padL + plotW / 2, h - 5);
+      ctx.textAlign = 'left';
+      ctx.fillText('PPV vs. Base Rate', padL, 14);
+
+      // Draw PPV Curve
+      ctx.beginPath();
+      for (let i = 0; i <= 140; i++) {
+        const p = sliderToPrev((i / 140) * 1000);
+        const r = calcBayes(p, STATE.bayesSens, STATE.bayesSpec);
+        const x = xOfPrev(p);
+        const y = yOfPpv(r.ppv);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = pal.teal;
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      // Current operating point crosshair + dot
+      const cx = xOfPrev(STATE.bayesPrev);
+      const cy = yOfPpv(res.ppv);
+      ctx.save();
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = pal.muted;
+      ctx.beginPath();
+      ctx.moveTo(cx, padT + plotH);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(padL, cy);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+      ctx.fillStyle = pal.teal;
+      ctx.fill();
+      ctx.strokeStyle = pal.surface;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Right Panel (desktop): Positive-Test Composition Bar (TP vs FP)
+      if (w >= 480) {
+        const rx = splitX + 14;
+        const rw = w - rx - 16;
+        ctx.strokeStyle = pal.grid;
+        ctx.beginPath();
+        ctx.moveTo(splitX + 0.5, 14);
+        ctx.lineTo(splitX + 0.5, h - 14);
+        ctx.stroke();
+
+        ctx.font = '500 10px "JetBrains Mono", monospace';
+        ctx.fillStyle = pal.muted;
+        ctx.textAlign = 'left';
+        ctx.fillText('IF TEST IS POSITIVE', rx, 18);
+
+        const barY = 34;
+        const barH = Math.max(80, h - 98);
+        const tpH = barH * res.ppv;
+        const fpH = barH * (1 - res.ppv);
+
+        // False Positive block (top)
+        ctx.fillStyle = pal.rose;
+        ctx.globalAlpha = 0.78;
+        ctx.beginPath();
+        ctx.roundRect(rx, barY, rw, Math.max(0, fpH), [6, 6, tpH > 1 ? 0 : 6, tpH > 1 ? 0 : 6]);
+        ctx.fill();
+
+        // True Positive block (bottom)
+        ctx.fillStyle = pal.teal;
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath();
+        ctx.roundRect(rx, barY + fpH, rw, Math.max(0, tpH), [fpH > 1 ? 0 : 6, fpH > 1 ? 0 : 6, 6, 6]);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        ctx.font = '600 11px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff';
+        if (fpH > 24) ctx.fillText(`FP ${((1 - res.ppv) * 100).toFixed(0)}%`, rx + rw / 2, barY + fpH / 2 + 4);
+        if (tpH > 24) ctx.fillText(`TP ${(res.ppv * 100).toFixed(0)}%`, rx + rw / 2, barY + fpH + tpH / 2 + 4);
+
+        ctx.font = '400 10px "Inter", sans-serif';
+        ctx.fillStyle = pal.muted;
+        ctx.textAlign = 'left';
+        ctx.fillText(`True Pos: ${res.tp < 10 ? res.tp.toFixed(1) : fmtNum(res.tp)} / 10k`, rx, barY + barH + 22);
+        ctx.fillText(`False Pos: ${res.fp < 10 ? res.fp.toFixed(1) : fmtNum(res.fp)} / 10k`, rx, barY + barH + 38);
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       14. TAB 6: BASE-RATE & MELDEPFLICHT QUIZ ENGINE
+       ------------------------------------------------------------------------- */
+    function initQuiz() {
+      STATE.quizOrder = QUIZ_BANK.map((_, i) => i).sort(() => Math.random() - 0.5);
+      STATE.quizIdx = 0;
+      STATE.quizScore = 0;
+      STATE.quizStreak = 0;
+      STATE.quizAnswered = false;
+      renderQuiz();
+    }
+
+    function renderQuiz() {
+      const total = STATE.quizOrder.length;
+      $('quiz-score').textContent = String(STATE.quizScore);
+      $('quiz-streak').textContent = String(STATE.quizStreak);
+
+      if (STATE.quizIdx >= total) {
+        $('quiz-cat').textContent = 'Deck Complete';
+        $('quiz-progress').textContent = `${total} / ${total}`;
+        const pct = Math.round((STATE.quizScore / total) * 100);
+        $('quiz-q').textContent = `Calibration Complete: ${STATE.quizScore} / ${total} (${pct}%)`;
+        $('quiz-options').innerHTML = '';
+        const fb = $('quiz-feedback');
+        fb.className = 'rounded-lg border border-teal-500/30 bg-teal-500/10 p-3.5 text-xs leading-relaxed text-zinc-800 dark:text-zinc-200';
+        fb.textContent =
+          pct >= 80
+            ? 'Strong Swiss clinical base-rate calibration. Your intuition aligns closely with BFS, BAG, and NKRS figures.'
+            : 'Review the BFS age-stratified mortality shifts, NKRS cancer survival matrix, and BAG VMüK reporting tiers, then run another pass.';
+        fb.classList.remove('hidden');
+        $('quiz-next-btn').classList.add('hidden');
+        return;
+      }
+
+      const item = QUIZ_BANK[STATE.quizOrder[STATE.quizIdx]];
+      $('quiz-cat').textContent = item.cat;
+      $('quiz-progress').textContent = `${STATE.quizIdx + 1} / ${total}`;
+      $('quiz-q').textContent = item.q;
+      $('quiz-feedback').classList.add('hidden');
+      $('quiz-next-btn').classList.add('hidden');
+
+      const optBox = $('quiz-options');
+      optBox.innerHTML = item.opts
+        .map((opt, idx) => `
+          <button type="button" data-idx="${idx}" class="quiz-opt text-left px-3.5 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/50 hover:border-teal-500/50 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition-colors">
+            <span class="font-mono text-[10px] text-zinc-400 mr-2">${String.fromCharCode(65 + idx)}</span>${esc(opt)}
+          </button>
+        `)
+        .join('');
+
+      optBox.querySelectorAll('.quiz-opt').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (STATE.quizAnswered) return;
+          STATE.quizAnswered = true;
+          const chosen = Number(btn.dataset.idx);
+          const correct = chosen === item.ans;
+
+          if (correct) {
+            STATE.quizScore++;
+            STATE.quizStreak++;
+          } else {
+            STATE.quizStreak = 0;
+          }
+          $('quiz-score').textContent = String(STATE.quizScore);
+          $('quiz-streak').textContent = String(STATE.quizStreak);
+
+          optBox.querySelectorAll('.quiz-opt').forEach((b) => {
+            const idx = Number(b.dataset.idx);
+            b.disabled = true;
+            if (idx === item.ans) {
+              b.className = 'quiz-opt text-left px-3.5 py-2.5 rounded-lg border border-emerald-500/50 bg-emerald-500/15 text-xs font-semibold text-emerald-800 dark:text-emerald-300';
+            } else if (idx === chosen) {
+              b.className = 'quiz-opt text-left px-3.5 py-2.5 rounded-lg border border-rose-500/50 bg-rose-500/15 text-xs font-medium text-rose-800 dark:text-rose-300';
+            } else {
+              b.classList.add('opacity-50');
+            }
+          });
+
+          const fb = $('quiz-feedback');
+          fb.className = `rounded-lg border p-3.5 text-xs leading-relaxed ${
+            correct
+              ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200'
+              : 'border-rose-500/35 bg-rose-500/10 text-rose-900 dark:text-rose-200'
+          }`;
+          fb.innerHTML = `<strong class="font-semibold">${correct ? 'Correct.' : 'Not quite.'}</strong> ${esc(item.exp)}`;
+          fb.classList.remove('hidden');
+          $('quiz-next-btn').classList.remove('hidden');
+        });
+      });
+
+      if (STATE.tab === 'quiz') {
+        updateKPI('Quiz Calibration', `${STATE.quizScore} / ${total}`, `Streak: ${STATE.quizStreak}`);
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       15. TAB ROUTING & EVENT WIRING
+       ------------------------------------------------------------------------- */
+    function switchTab(tab) {
+      STATE.tab = tab;
+      document.querySelectorAll('.tab-btn').forEach((b) => {
+        const active = b.dataset.tab === tab;
+        b.className = `tab-btn shrink-0 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+          active
+            ? 'bg-zinc-950 text-white dark:bg-zinc-100 dark:text-obsidian'
+            : 'text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900'
+        }`;
+      });
+      document.querySelectorAll('.tab-panel').forEach((p) => {
+        p.classList.toggle('hidden', p.id !== `panel-${tab}`);
+      });
+
+      requestAnimationFrame(() => {
+        if (tab === 'mortality') renderMortality();
+        if (tab === 'infectious') renderInfectious();
+        if (tab === 'oncology') renderOncology();
+        if (tab === 'atlas') renderAtlas();
+        if (tab === 'bayesian') renderBayesian();
+        if (tab === 'quiz') {
+          updateKPI('Quiz Calibration', `${STATE.quizScore} / ${QUIZ_BANK.length}`, `Streak: ${STATE.quizStreak}`);
+        }
+      });
+    }
+
+    function redrawActiveCanvas() {
+      if (STATE.tab === 'mortality') drawMortCanvas();
+      else if (STATE.tab === 'infectious') drawHeatmapCanvas();
+      else if (STATE.tab === 'oncology') drawOncCanvas();
+      else if (STATE.tab === 'bayesian') drawBayesCanvas(calcBayes(STATE.bayesPrev, STATE.bayesSens, STATE.bayesSpec));
+    }
+
+    // Theme Toggle
+    $('theme-toggle').addEventListener('click', () => {
+      const darkNow = document.documentElement.classList.toggle('dark');
+      try { localStorage.setItem('medlab-theme', darkNow ? 'dark' : 'light'); } catch (_) {}
+      redrawActiveCanvas();
+    });
+
+    // Tab buttons
+    document.querySelectorAll('.tab-btn').forEach((b) => {
+      b.addEventListener('click', () => switchTab(b.dataset.tab));
+    });
+
+    // Mortality controls & canvas hit-testing
+    document.querySelectorAll('.mort-mode-btn').forEach((b) => {
+      b.addEventListener('click', () => { STATE.mortMode = b.dataset.mode; STATE.mortHover = -1; renderMortality(); });
+    });
+    document.querySelectorAll('.mort-sex-btn').forEach((b) => {
+      b.addEventListener('click', () => { STATE.mortSex = b.dataset.sex; renderMortality(); });
+    });
+    document.querySelectorAll('.mort-age-btn').forEach((b) => {
+      b.addEventListener('click', () => { STATE.mortAge = b.dataset.age; renderMortality(); });
+    });
+
+    $('mort-canvas').addEventListener('mousemove', (e) => {
+      const r = e.target.getBoundingClientRect();
+      const y = e.clientY - r.top;
+      const hit = mortHitRects.find((b) => y >= b.y && y <= b.y + b.h);
+      const next = hit ? hit.idx : -1;
+      if (next !== STATE.mortHover) {
+        STATE.mortHover = next;
+        e.target.style.cursor = hit ? 'pointer' : 'default';
+        drawMortCanvas();
+      }
+    });
+    $('mort-canvas').addEventListener('mouseleave', () => { STATE.mortHover = -1; drawMortCanvas(); });
+    $('mort-canvas').addEventListener('click', (e) => {
+      const r = e.target.getBoundingClientRect();
+      const y = e.clientY - r.top;
+      const hit = mortHitRects.find((b) => y >= b.y && y <= b.y + b.h);
+      if (hit) inspectMortItem(hit.item);
+    });
+
+    // Infectious controls & heatmap hit-testing
+    document.querySelectorAll('.inf-cat-btn').forEach((b) => {
+      b.addEventListener('click', () => { STATE.infCat = b.dataset.cat; renderInfectious(); });
+    });
+    $('inf-search').addEventListener('input', (e) => { STATE.infSearch = e.target.value; renderInfectious(); });
+    $('inf-sort').addEventListener('change', (e) => { STATE.infSort = e.target.value; renderInfectious(); });
+
+    $('heat-canvas').addEventListener('mousemove', (e) => {
+      const r = e.target.getBoundingClientRect();
+      const x = e.clientX - r.left, y = e.clientY - r.top;
+      const hit = heatHitCells.find((c) => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h);
+      const prev = STATE.heatHover;
+      if ((hit && (!prev || prev.r !== hit.r || prev.c !== hit.c)) || (!hit && prev)) {
+        STATE.heatHover = hit ? { r: hit.r, c: hit.c } : null;
+        e.target.style.cursor = hit ? 'pointer' : 'default';
+        drawHeatmapCanvas();
+      }
+    });
+    $('heat-canvas').addEventListener('mouseleave', () => { STATE.heatHover = null; drawHeatmapCanvas(); });
+    $('heat-canvas').addEventListener('click', (e) => {
+      const r = e.target.getBoundingClientRect();
+      const x = e.clientX - r.left, y = e.clientY - r.top;
+      const hit = heatHitCells.find((c) => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h);
+      if (hit) inspectInfectious(hit.item);
+    });
+
+    // Oncology controls & bubble hit-testing
+    document.querySelectorAll('.onc-sex-btn').forEach((b) => {
+      b.addEventListener('click', () => { STATE.oncSex = b.dataset.sex; STATE.oncHover = -1; renderOncology(); });
+    });
+    $('onc-canvas').addEventListener('mousemove', (e) => {
+      const r = e.target.getBoundingClientRect();
+      const x = e.clientX - r.left, y = e.clientY - r.top;
+      const hit = oncHitCircles.find((c) => Math.hypot(x - c.cx, y - c.cy) <= c.r);
+      const next = hit ? hit.idx : -1;
+      if (next !== STATE.oncHover) {
+        STATE.oncHover = next;
+        drawOncCanvas();
+      }
+    });
+    $('onc-canvas').addEventListener('mouseleave', () => { STATE.oncHover = -1; drawOncCanvas(); });
+    $('onc-canvas').addEventListener('click', (e) => {
+      const r = e.target.getBoundingClientRect();
+      const x = e.clientX - r.left, y = e.clientY - r.top;
+      const hit = oncHitCircles.find((c) => Math.hypot(x - c.cx, y - c.cy) <= c.r);
+      if (hit) inspectOncology(hit.item);
+    });
+
+    // Atlas controls
+    document.querySelectorAll('.atlas-sys-btn').forEach((b) => {
+      b.addEventListener('click', () => { STATE.atlasSys = b.dataset.sys; renderAtlas(); });
+    });
+    $('atlas-search').addEventListener('input', (e) => { STATE.atlasSearch = e.target.value; renderAtlas(); });
+
+    // Bayesian controls
+    $('bayes-prev-slider').value = prevToSlider(STATE.bayesPrev);
+    $('bayes-prev-slider').addEventListener('input', (e) => {
+      $('bayes-preset').value = 'custom';
+      STATE.bayesPrev = sliderToPrev(Number(e.target.value));
+      renderBayesian();
+    });
+    $('bayes-sens-slider').addEventListener('input', (e) => {
+      $('bayes-preset').value = 'custom';
+      STATE.bayesSens = Number(e.target.value);
+      renderBayesian();
+    });
+    $('bayes-spec-slider').addEventListener('input', (e) => {
+      $('bayes-preset').value = 'custom';
+      STATE.bayesSpec = Number(e.target.value);
+      renderBayesian();
+    });
+    $('bayes-preset').addEventListener('change', (e) => {
+      const p = BAYES_PRESETS[e.target.value];
+      if (!p) return;
+      STATE.bayesPrev = p.prev;
+      STATE.bayesSens = p.sens;
+      STATE.bayesSpec = p.spec;
+      $('bayes-prev-slider').value = prevToSlider(p.prev);
+      $('bayes-sens-slider').value = p.sens;
+      $('bayes-spec-slider').value = p.spec;
+      renderBayesian();
+      setInspector({
+        badge: 'Bayesian Preset',
+        title: p.label,
+        sub: `Pre-test ${(p.prev * 100).toFixed(p.prev < 0.001 ? 2 : 1)}% · Sens ${p.sens}% · Spec ${p.spec}%`,
+        sections: [{ label: 'Clinical Interpretation', text: $('bayes-verdict').textContent }],
+      });
+    });
+
+    // Quiz controls
+    $('quiz-next-btn').addEventListener('click', () => {
+      STATE.quizIdx++;
+      STATE.quizAnswered = false;
+      renderQuiz();
+    });
+    $('quiz-reset-btn').addEventListener('click', initQuiz);
+
+    // ResizeObserver strictly on wrapper divs (never on canvas elements)
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => redrawActiveCanvas());
+      ['mort-canvas-wrap', 'heat-canvas-wrap', 'onc-canvas-wrap', 'bayes-canvas-wrap'].forEach((id) => {
+        const el = $(id);
+        if (el) ro.observe(el);
+      });
+    }
+
+    // Boot
+    initQuiz();
+    switchTab('mortality');
+    inspectMortItem(BFS_MORTALITY.all.all[0]);
+  })();
+  </script>
+</body>
+</html>
