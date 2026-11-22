@@ -9,7 +9,8 @@
   <script>
     (function () {
       try {
-        if (localStorage.getItem('medlab-theme') === 'light') {
+        var saved = localStorage.getItem('medlab-theme') || localStorage.getItem('theme');
+        if (saved === 'light') {
           document.documentElement.classList.remove('dark');
         } else {
           document.documentElement.classList.add('dark');
@@ -73,6 +74,160 @@
       animation: livePulse 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
 
+    /* ==================== ARCHITECTURAL BENTO DOMAIN CARD ANIMATIONS ==================== */
+    .domain-card {
+      position: relative;
+      isolation: isolate;
+      will-change: transform;
+      --mx: 50%;
+      --my: 50%;
+    }
+
+    /* Mouse-tracking radial spotlight surface & subtle border luminosity */
+    .domain-spotlight {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      opacity: 0;
+      transition: opacity 260ms ease;
+      background: radial-gradient(
+        420px circle at var(--mx) var(--my),
+        rgba(15, 118, 110, 0.08),
+        transparent 62%
+      );
+      z-index: 0;
+    }
+    .dark .domain-spotlight {
+      background: radial-gradient(
+        440px circle at var(--mx) var(--my),
+        rgba(45, 212, 191, 0.10),
+        transparent 62%
+      );
+    }
+    .domain-card:hover .domain-spotlight {
+      opacity: 1;
+    }
+
+    /* Top teal glowing accent sweep when expanded */
+    .domain-accent-bar {
+      pointer-events: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      transform-origin: left center;
+      transform: scaleX(0);
+      opacity: 0;
+      background: linear-gradient(90deg, #0f766e 0%, #14b8a6 48%, rgba(20, 184, 166, 0) 100%);
+      transition: transform 460ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms ease;
+      z-index: 2;
+    }
+    .dark .domain-accent-bar {
+      background: linear-gradient(90deg, #2dd4bf 0%, #5eead4 42%, rgba(45, 212, 191, 0) 100%);
+      box-shadow: 0 0 12px rgba(45, 212, 191, 0.45);
+    }
+    .domain-card[data-expanded="true"] .domain-accent-bar {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+
+    /* Smooth CSS grid-template-rows tray expansion (zero height jump) */
+    .domain-tray {
+      display: grid;
+      grid-template-rows: 0fr;
+      opacity: 0;
+      transition:
+        grid-template-rows 380ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 260ms ease;
+    }
+    .domain-card[data-expanded="true"] .domain-tray {
+      grid-template-rows: 1fr;
+      opacity: 1;
+    }
+    .domain-tray-inner {
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* Preview line collapses smoothly out of the way when expanded */
+    .domain-preview-wrap {
+      display: grid;
+      grid-template-rows: 1fr;
+      opacity: 1;
+      transition:
+        grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 200ms ease,
+        margin 260ms ease;
+    }
+    .domain-card[data-expanded="true"] .domain-preview-wrap {
+      grid-template-rows: 0fr;
+      opacity: 0;
+      margin-top: 0 !important;
+    }
+    .domain-preview-inner {
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* Staggered fade-up entrance for inner sub-module cards & calculator columns */
+    .stagger-item {
+      opacity: 0;
+      transform: translateY(10px);
+      transition:
+        opacity 180ms ease,
+        transform 180ms ease;
+      transition-delay: 0ms;
+    }
+    .domain-card[data-expanded="true"] .stagger-item {
+      opacity: 1;
+      transform: translateY(0);
+      transition:
+        opacity 340ms cubic-bezier(0.22, 1, 0.36, 1),
+        transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 150ms ease,
+        background-color 150ms ease;
+      transition-delay: calc(var(--stagger-i, 0) * 32ms + 65ms);
+    }
+
+    /* Rotating + to × toggle glyph */
+    .domain-plus {
+      transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms ease;
+    }
+    .domain-card[data-expanded="true"] .domain-plus {
+      transform: rotate(45deg);
+    }
+
+    /* Expanded border highlight */
+    .domain-card[data-expanded="true"] {
+      border-color: rgba(15, 118, 110, 0.48);
+      box-shadow: 0 12px 32px -16px rgba(9, 9, 11, 0.14);
+    }
+    .dark .domain-card[data-expanded="true"] {
+      border-color: rgba(45, 212, 191, 0.38);
+      box-shadow: 0 16px 38px -18px rgba(0, 0, 0, 0.65);
+    }
+
+    /* Respect OS reduced-motion preference */
+    @media (prefers-reduced-motion: reduce) {
+      .domain-tray,
+      .domain-preview-wrap,
+      .domain-accent-bar,
+      .domain-plus,
+      .stagger-item,
+      .domain-spotlight {
+        transition: none !important;
+        animation: none !important;
+      }
+      .domain-card[data-expanded="true"] .stagger-item {
+        transition-delay: 0ms !important;
+      }
+      .dot-pulse {
+        animation: none !important;
+      }
+    }
+
     /* Minimal thin scrollbar */
     ::-webkit-scrollbar {
       width: 6px;
@@ -107,12 +262,11 @@
         <span class="text-[15px] font-semibold tracking-tight text-zinc-950 dark:text-zinc-100">MedLab</span>
       </a>
 
-      <!-- Right: Section Anchors + Command Palette Trigger + Dark/Light Theme Toggle -->
+      <!-- Right: Minimal Navigation + Command Palette Trigger + Dark/Light Theme Toggle -->
       <div class="flex items-center gap-3 sm:gap-5">
         <nav aria-label="Primary sections" class="hidden sm:flex items-center gap-5 text-[13px] font-medium text-zinc-500 dark:text-zinc-400">
-          <a href="#diagnostics" class="hover:text-zinc-950 dark:hover:text-white transition-colors">Diagnostics</a>
-          <a href="#simulators" class="hover:text-zinc-950 dark:hover:text-white transition-colors">Simulators</a>
-          <a href="#calculators" class="hover:text-zinc-950 dark:hover:text-white transition-colors">Calculators</a>
+          <a href="#domains" class="hover:text-zinc-950 dark:hover:text-white transition-colors">Domains</a>
+          <a href="#quicklinks" class="hover:text-zinc-950 dark:hover:text-white transition-colors">Quicklinks</a>
         </nav>
 
         <!-- Minimal Command Palette Trigger (Cmd/Ctrl+K or /) -->
@@ -120,7 +274,7 @@
           id="cmd-trigger"
           type="button"
           aria-label="Open command palette"
-          title="Quick jump across modules, calculators & quicklinks (⌘K or /)"
+          title="Quick jump across domains, modules, calculators & quicklinks (⌘K or /)"
           class="h-8 px-2.5 rounded-lg flex items-center gap-2 border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors"
         >
           <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -156,12 +310,12 @@
   <!-- ==================== MAIN CONTENT ==================== -->
   <main class="flex-1 w-full">
 
-    <!-- ==================== 2. HERO SECTION (TIGHTER PADDING) ==================== -->
-    <section class="max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-10 sm:pt-12 sm:pb-14">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+    <!-- ==================== 2. HERO SECTION (TIGHT VERTICAL PADDING) ==================== -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 pt-9 pb-9 sm:pt-11 sm:pb-12">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 lg:gap-8 items-center">
 
         <!-- Left Column: Concise Editorial Copy & Dual CTAs -->
-        <div class="lg:col-span-5 space-y-5">
+        <div class="lg:col-span-5 space-y-4">
           <div class="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-tealLight dark:text-tealDark">
             Quantitative Physiology
           </div>
@@ -170,7 +324,7 @@
             Mechanistic Medicine, Simulated Live
           </h1>
 
-          <p class="text-[15px] text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-md">
+          <p class="text-[14.5px] text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-md">
             First-principles physiological models, clinical laboratory workbenches, and precision bedside calculators.
           </p>
 
@@ -191,12 +345,12 @@
           </div>
         </div>
 
-        <!-- Right Column: Zero-Flicker Synchronized Hemodynamic Monitor Canvas -->
+        <!-- Right Column: Locked Zero-Flicker Synchronized Hemodynamic Monitor Canvas -->
         <div class="lg:col-span-7">
           <div
             id="hemo-monitor-wrap"
             aria-label="Synchronized left ventricular pressure-volume loop, Lead II ECG, and aortic and left ventricular pressure traces"
-            class="relative w-full h-[350px] sm:h-[288px] lg:h-[304px] rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-950/60 overflow-hidden select-none"
+            class="relative w-full h-[340px] sm:h-[280px] lg:h-[296px] rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-950/60 overflow-hidden select-none"
           >
             <canvas id="hemo-canvas" class="absolute inset-0 block w-full h-full"></canvas>
           </div>
@@ -206,7 +360,7 @@
     </section>
 
     <!-- ==================== 3. QUICKLINKS BAR (#quicklinks) ==================== -->
-    <section id="quicklinks" class="max-w-6xl mx-auto px-4 sm:px-6 pb-10 scroll-mt-16">
+    <section id="quicklinks" class="max-w-6xl mx-auto px-4 sm:px-6 pb-9 scroll-mt-16">
       <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-950/60 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
         <!-- Left Mono Label + Count -->
         <div class="flex items-center gap-2 shrink-0 sm:pr-3 sm:border-r border-zinc-200/80 dark:border-zinc-800/80">
@@ -226,86 +380,43 @@
       <div class="h-px w-full bg-zinc-200/80 dark:bg-zinc-800/80"></div>
     </div>
 
-    <!-- ==================== 4. DIAGNOSTICS & CLINICAL ATLAS (#diagnostics) ==================== -->
-    <section id="diagnostics" class="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16 scroll-mt-14">
-      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-7">
-        <div class="flex items-baseline gap-3">
-          <h2 class="text-xl sm:text-2xl font-semibold tracking-[-0.02em] text-zinc-950 dark:text-white">
-            Diagnostics &amp; Atlas
-          </h2>
-          <span id="diagnostics-badge" class="font-mono text-[11px] tracking-wider text-zinc-400 dark:text-zinc-500">1 LIVE &middot; EXTENSIBLE</span>
+    <!-- ==================== 4. EXPANDABLE ARCHITECTURAL DOMAIN BENTO HUB (#domains) ==================== -->
+    <section id="domains" class="max-w-6xl mx-auto px-4 sm:px-6 py-11 sm:py-14 pb-20 scroll-mt-14">
+      <!-- Clean Header Row with Subtle Expand/Collapse All Control -->
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-7">
+        <div>
+          <div class="flex items-baseline gap-3">
+            <h2 class="text-xl sm:text-2xl font-semibold tracking-[-0.02em] text-zinc-950 dark:text-white">
+              Clinical Domains
+            </h2>
+            <span id="domains-summary-badge" class="font-mono text-[11px] tracking-wider text-zinc-400 dark:text-zinc-500 tabular-nums">06 DOMAINS &middot; 9 LIVE</span>
+          </div>
+          <p class="mt-1 text-[13px] text-zinc-500 dark:text-zinc-400">
+            Select a domain to expand its simulators, laboratory workbenches, and clinical tools.
+          </p>
         </div>
-        <p class="text-[13px] text-zinc-500 dark:text-zinc-400">
-          Laboratory interpretation, disease epidemiology &amp; clinical references.
-        </p>
-      </div>
 
-      <!-- 3-Column Responsive Grid (Populated from DIAGNOSTICS[] + automatic extensible slot) -->
-      <div id="diagnostics-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- Populated from DIAGNOSTICS[] -->
-      </div>
-    </section>
-
-    <!-- Hairline Section Divider -->
-    <div class="max-w-6xl mx-auto px-4 sm:px-6">
-      <div class="h-px w-full bg-zinc-200/80 dark:bg-zinc-800/80"></div>
-    </div>
-
-    <!-- ==================== 5. INTERACTIVE SIMULATORS (#simulators) ==================== -->
-    <section id="simulators" class="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16 scroll-mt-14">
-      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-7">
-        <div class="flex items-baseline gap-3">
-          <h2 class="text-xl sm:text-2xl font-semibold tracking-[-0.02em] text-zinc-950 dark:text-white">
-            Interactive Simulators
-          </h2>
-          <span id="simulators-badge" class="font-mono text-[11px] tracking-wider text-zinc-400 dark:text-zinc-500">7 / 9 LIVE</span>
+        <!-- Subtle Expand All / Collapse Toggle -->
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            id="toggle-all-domains"
+            type="button"
+            class="h-8 px-3 rounded-lg text-[12px] font-medium font-mono text-zinc-600 dark:text-zinc-400 border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/50 hover:text-zinc-950 dark:hover:text-white transition-colors"
+          >
+            Expand All
+          </button>
         </div>
-        <p class="text-[13px] text-zinc-500 dark:text-zinc-400">
-          Coupled ODE and compartmental organ-system engines.
-        </p>
       </div>
 
-      <!-- 3-Column Responsive Grid (Populated from SIMULATORS[]) -->
-      <div id="simulators-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- Populated from SIMULATORS[] -->
-      </div>
-    </section>
-
-    <!-- Hairline Section Divider -->
-    <div class="max-w-6xl mx-auto px-4 sm:px-6">
-      <div class="h-px w-full bg-zinc-200/80 dark:bg-zinc-800/80"></div>
-    </div>
-
-    <!-- ==================== 6. COMPACT CLINICAL CALCULATORS (#calculators) ==================== -->
-    <section id="calculators" class="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:pb-20 scroll-mt-14">
-      <!-- Header Row -->
-      <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-        <div class="flex items-baseline gap-3">
-          <h2 class="text-xl sm:text-2xl font-semibold tracking-[-0.02em] text-zinc-950 dark:text-white">
-            Clinical Calculators
-          </h2>
-          <span id="calculators-badge" class="font-mono text-[11px] tracking-wider text-zinc-400 dark:text-zinc-500">20 TOOLS</span>
-        </div>
-        <a
-          href="calculators.html"
-          class="group inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-tealLight dark:text-tealDark border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/50 transition-colors"
-        >
-          <span>Open Calculators</span>
-          <span class="inline-block transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true">&rarr;</span>
-        </a>
-      </div>
-
-      <!-- Compact 4-Column Hairline Panel (Populated from CALCULATOR_GROUPS[]) -->
-      <div class="rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 p-4 sm:p-5">
-        <div id="calculators-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-5">
-          <!-- Populated from CALCULATOR_GROUPS[] -->
-        </div>
+      <!-- 3-Column Expandable Bento Grid (Populated dynamically from DOMAINS[]) -->
+      <div id="domains-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+        <!-- Populated from DOMAINS[] -->
       </div>
     </section>
 
   </main>
 
-  <!-- ==================== 7. MINIMAL FOOTER ==================== -->
+  <!-- ==================== 5. MINIMAL FOOTER ==================== -->
   <footer class="w-full border-t border-zinc-200/80 dark:border-zinc-800/80">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
       <span class="font-medium text-zinc-900 dark:text-zinc-200">MedLab &middot; Quantitative Physiology</span>
@@ -313,13 +424,13 @@
     </div>
   </footer>
 
-  <!-- ==================== 8. KEYBOARD COMMAND PALETTE MODAL (⌘K / /) ==================== -->
+  <!-- ==================== 6. KEYBOARD COMMAND PALETTE MODAL (⌘K / Ctrl+K / /) ==================== -->
   <div
     id="cmd-modal"
     role="dialog"
     aria-modal="true"
     aria-labelledby="cmd-input"
-    class="hidden fixed inset-0 z-50 flex items-start justify-center pt-[12vh] px-4 bg-zinc-950/50 dark:bg-black/70 backdrop-blur-xs"
+    class="hidden fixed inset-0 z-50 flex items-start justify-center pt-[12vh] px-4 bg-zinc-950/50 dark:bg-black/70 backdrop-blur-sm"
   >
     <div id="cmd-dialog" class="w-full max-w-xl rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-2xl overflow-hidden">
       <!-- Search Input Bar -->
@@ -333,14 +444,14 @@
           type="text"
           autocomplete="off"
           spellcheck="false"
-          placeholder="Search simulators, diagnostics, calculators, or quicklinks..."
+          placeholder="Search simulators, labs, pharmacology, OSCE, calculators, or quicklinks..."
           class="flex-1 bg-transparent text-[13.5px] text-zinc-950 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none"
         />
         <kbd class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 shrink-0">ESC</kbd>
       </div>
 
       <!-- Dynamic Filtered Results List -->
-      <div id="cmd-results" class="max-h-[340px] overflow-y-auto p-1.5 space-y-0.5">
+      <div id="cmd-results" class="max-h-[360px] overflow-y-auto p-1.5 space-y-0.5">
         <!-- Populated dynamically -->
       </div>
 
@@ -356,14 +467,15 @@
     </div>
   </div>
 
-  <!-- ==================== PORTAL CONFIG, RENDERERS, COMMAND PALETTE & HEMODYNAMIC CANVAS ==================== -->
+  <!-- ==================== PORTAL CONFIG, BENTO FLIP ENGINE, COMMAND PALETTE & HEMODYNAMIC CANVAS ==================== -->
   <script>
   (() => {
     'use strict';
 
     /* =========================================================================
        1. EASY-EDIT PORTAL CONFIGURATION ARRAYS
-          Edit links, add modules, or flip 'planned' -> 'live' right here.
+          Update links, add new modules, or flip 'planned' -> 'live' right here.
+          All internal paths are relative (GitHub Pages /MedLab/ safe).
        ========================================================================= */
 
     // External clinical bookmarks shown in the Quicklinks strip below the Hero
@@ -377,141 +489,273 @@
       { name: 'DocCheck Flexikon', href: 'https://flexikon.doccheck.com',            tag: 'Ref' },
     ];
 
-    // Clinical laboratory workbenches, epidemiology, and reference atlases
-    const DIAGNOSTICS = [
-      {
-        code: 'D1',
-        name: 'BloodLab',
-        href: 'bloodlab.html',
-        status: 'live',
-        tags: ['54 Analytes', 'Blood Smear', 'Ward Quiz'],
-        desc: 'Comprehensive blood chemistry & CBC, pathology stacking, pre-analytical traps, procedural peripheral smear & diagnostic quiz.'
-      },
-      {
-        code: 'D2',
-        name: 'Epidemiology & Diseases',
-        href: 'epidemiology.html',
-        status: 'planned',
-        tags: ['Prevalence', 'Pathophysiology', 'Red Flags'],
-        desc: 'Structured disease epidemiology, incidence & prevalence profiles, diagnostic criteria, and clinical red flags.'
-      }
-    ];
+    // Minimalist Swiss-precision inline SVG icons for each domain (24x24 viewBox)
+    const DOMAIN_ICONS = {
+      simulators: '<path d="M2.5 13h4l2.1-6.2 3.5 11.2 2.3-5h7.1" />',
+      diagnostics: '<path d="M9 3h6M10 3v5.4l-4.8 8.3A2 2 0 0 0 6.9 20h10.2a2 2 0 0 0 1.7-3.3L14 8.4V3" /><path d="M8.5 14h7" />',
+      epidemiology: '<circle cx="12" cy="12" r="9" /><path d="M3.6 9h16.8M3.6 15h16.8M12 3a13 13 0 0 0 0 18M12 3a13 13 0 0 1 0 18" />',
+      pharmacology: '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" /><path d="m8.5 8.5 7 7" />',
+      osce: '<path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" /><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4" /><circle cx="20" cy="10" r="2" />',
+      calculators: '<rect x="4" y="3" width="16" height="18" rx="2.5" /><path d="M8 7.5h8M8 12h2M14 12h2M8 16h2M14 16h2" />',
+    };
 
-    // Organ-system physiological ODE & compartmental simulators
-    const SIMULATORS = [
+    // Single source of truth for all 6 Expandable Clinical Domains
+    const DOMAINS = [
       {
         code: '01',
-        name: 'CardioSim',
-        href: 'cardiosim.html',
-        status: 'live',
-        desc: 'Closed-loop LV PV loops, Wiggers diagram, valvular pathologies & vasoactive titration.'
+        id: 'simulators',
+        name: 'Physiology Simulators',
+        type: 'grid',
+        subtitle: 'Coupled ODE & compartmental organ-system engines',
+        preview: ['CardioSim', 'NephroSim', 'FluidSim'],
+        items: [
+          {
+            name: 'CardioSim',
+            href: 'cardiosim.html',
+            status: 'live',
+            desc: 'Closed-loop LV PV loops, Wiggers diagram, valvular pathologies & vasoactive titration.'
+          },
+          {
+            name: 'NephroSim',
+            href: 'nephrosim.html',
+            status: 'live',
+            desc: 'Segmental tubular transport, diuretic pharmacology & Davenport acid-base diagram.'
+          },
+          {
+            name: 'FluidSim',
+            href: 'fluidsim.html',
+            status: 'live',
+            desc: 'Darrow-Yannet fluid compartments, revised Starling filtration & resuscitation kinetics.'
+          },
+          {
+            name: 'CoagSim',
+            href: 'coagsim.html',
+            status: 'live',
+            desc: 'Cell-based hemostasis, thrombin generation, TEG/ROTEM waveforms & anticoagulation reversal.'
+          },
+          {
+            name: 'Neuro-Ophtho Lab',
+            href: 'neuroophtho.html',
+            status: 'live',
+            desc: 'Cranial nerve pathways, binocular motility, pupillary reflexes & ocular ray-tracing.'
+          },
+          {
+            name: 'EndoSim',
+            href: 'endosim.html',
+            status: 'live',
+            desc: 'Coupled HPA/HPT/HPG endocrine feedback axes, ovarian cycle & dynamic clinical testing.'
+          },
+          {
+            name: 'VentSim',
+            href: 'ventsim.html',
+            status: 'planned',
+            desc: 'VCV/PCV respiratory mechanics, compliance/resistance loops, PEEP & ABG gas exchange.'
+          },
+          {
+            name: 'ElectroSim',
+            href: 'electrosim.html',
+            status: 'planned',
+            desc: 'Cardiac action potentials, ion channel kinetics, antiarrhythmics & conduction re-entry.'
+          }
+        ]
       },
       {
         code: '02',
-        name: 'VentSim',
-        href: 'ventsim.html',
-        status: 'planned',
-        desc: 'VCV/PCV respiratory mechanics, compliance/resistance loops, PEEP & ABG gas exchange.'
+        id: 'diagnostics',
+        name: 'Diagnostics & BloodLab',
+        type: 'grid',
+        subtitle: 'Laboratory interpretation, morphology & bedside workups',
+        preview: ['BloodLab', '12-Lead ECG Lab', 'Urinalysis'],
+        items: [
+          {
+            name: 'BloodLab',
+            href: 'bloodlab.html',
+            status: 'live',
+            tags: ['54 Analytes', 'Smear', 'Quiz'],
+            desc: 'Complete blood chemistry & CBC, pathology stacking, pre-analytical traps, procedural peripheral smear & Ward Rounds quiz.'
+          },
+          {
+            name: '12-Lead ECG Lab',
+            href: 'ecglab.html',
+            status: 'planned',
+            tags: ['Calipers', 'STEMI', 'Arrhythmia'],
+            desc: 'Procedural 12-lead ECGs with interactive PR/QRS/QTc calipers, axis wheel & rapid-fire drill.'
+          },
+          {
+            name: 'Urinalysis & Body Fluids',
+            href: 'urinelab.html',
+            status: 'planned',
+            tags: ['Sediment', 'CSF', 'SAAG'],
+            desc: "Urine dipstick, procedural microscopy casts/crystals, Light's criteria, SAAG & CSF analyzer."
+          }
+        ]
       },
       {
         code: '03',
-        name: 'NephroSim',
-        href: 'nephrosim.html',
-        status: 'live',
-        desc: 'Segmental tubular transport, diuretic pharmacology & interactive Davenport acid-base diagram.'
+        id: 'epidemiology',
+        name: 'Epidemiology & Atlas',
+        type: 'grid',
+        subtitle: 'Swiss health data, disease burden & clinical reference',
+        preview: ['Swiss Epidemiology', 'Immunology', 'Microbiology'],
+        items: [
+          {
+            name: 'Swiss Epidemiology & Atlas',
+            href: 'epidemiology.html',
+            status: 'live',
+            tags: ['BFS · BAG · NKRS', 'Bayesian', 'Quiz'],
+            desc: 'Age-stratified mortality, BAG infectious seasonality & VMüK reporting, NKRS oncology matrix, disease atlas & PPV playground.'
+          },
+          {
+            name: 'Immunology & Autoantibodies',
+            href: 'immunolab.html',
+            status: 'planned',
+            tags: ['Cytokines', 'Biologics', 'ANA/ANCA'],
+            desc: 'Cytokine networks, Gell-Coombs reactions, autoantibody panels & targeted monoclonal antibody map.'
+          },
+          {
+            name: 'Microbiology & Pathogens',
+            href: 'microlab.html',
+            status: 'planned',
+            tags: ['Gram Map', 'Virulence', 'Diag'],
+            desc: 'Structured bacterial, viral, fungal & parasitic reference linked to diagnostics and syndromes.'
+          }
+        ]
       },
       {
         code: '04',
-        name: 'PK/PD Lab',
-        href: 'pkpd.html',
-        status: 'live',
-        desc: 'Multi-compartment pharmacokinetics, effect-site equilibration & context-sensitive half-time.'
+        id: 'pharmacology',
+        name: 'Pharmacology',
+        type: 'grid',
+        subtitle: 'PK/PD modeling, antimicrobial spectra & clinical dosing',
+        preview: ['PK/PD Lab', 'Antibiotic Matrix', 'ICU Infusions'],
+        items: [
+          {
+            name: 'PK/PD & Anesthesia Lab',
+            href: 'pkpd.html',
+            status: 'live',
+            tags: ['3-Comp ODE', 'CSHT', 'TCI'],
+            desc: 'Multi-compartment pharmacokinetics, effect-site equilibration, context-sensitive half-time & Hill pharmacodynamics.'
+          },
+          {
+            name: 'Antibiotic Spectrum Matrix',
+            href: 'abxlab.html',
+            status: 'planned',
+            tags: ['SSI Guidelines', 'PK/PD', 'Coverage'],
+            desc: 'Pathogen × antibiotic coverage heatmap, CNS/urine penetration, resistance & Swiss empiric therapy.'
+          },
+          {
+            name: 'ICU Infusions & Vasoactives',
+            href: 'icudrugs.html',
+            status: 'planned',
+            tags: ['Receptors', 'Titration', 'Drip Rates'],
+            desc: 'Catecholamines, inotropes, sedatives & antiarrhythmics with receptor profiles and weight-based dosing.'
+          },
+          {
+            name: 'Autonomics & CYP450 Atlas',
+            href: 'receptors.html',
+            status: 'planned',
+            tags: ['GPCRs', 'Interactions', 'Toxicology'],
+            desc: 'Receptor signaling cascades, drug-drug CYP450 inducers/inhibitors & clinical toxidromes.'
+          }
+        ]
       },
       {
         code: '05',
-        name: 'ElectroSim',
-        href: 'electrosim.html',
-        status: 'planned',
-        desc: 'Cardiac action potentials, ion channel kinetics, antiarrhythmics & conduction re-entry.'
+        id: 'osce',
+        name: 'OSCE & Clinical Skills',
+        type: 'grid',
+        subtitle: 'Structured history-taking, physical exams & station drills',
+        preview: ['Anamnesis', 'Physical Exam', 'Neuro Status'],
+        items: [
+          {
+            name: 'Anamnesis & History Trainer',
+            href: 'osce-anamnesis.html',
+            status: 'planned',
+            tags: ['OPQRST', 'Red Flags', 'Timer'],
+            desc: 'Structured chief-complaint history frameworks, review of systems & timed 10-minute station prompts.'
+          },
+          {
+            name: 'Bedside Physical Examination',
+            href: 'osce-exam.html',
+            status: 'planned',
+            tags: ['Cardio/Pulm', 'Abdomen', 'Checklist'],
+            desc: 'Step-by-step inspection, palpation, percussion & auscultation sequences with high-yield exam maneuvers.'
+          },
+          {
+            name: 'Neuro & Cranial Nerve Status',
+            href: 'osce-neuro.html',
+            status: 'planned',
+            tags: ['CN I–XII', 'Motor/Reflex', 'NIHSS'],
+            desc: 'Systematic neurological status workflow, dermatome/myotome localization & acute stroke exam.'
+          },
+          {
+            name: 'Clinical Red Flags & Triage',
+            href: 'osce-redflags.html',
+            status: 'planned',
+            tags: ['Emergency', 'Differentials', 'DDx'],
+            desc: 'Must-not-miss diagnoses across chest pain, dyspnea, headache, syncope & acute abdomen.'
+          }
+        ]
       },
       {
         code: '06',
-        name: 'FluidSim',
-        href: 'fluidsim.html',
-        status: 'live',
-        desc: 'Darrow-Yannet fluid compartments, revised Starling filtration & resuscitation kinetics.'
-      },
-      {
-        code: '07',
-        name: 'CoagSim',
-        href: 'coagsim.html',
-        status: 'live',
-        desc: 'Cell-based hemostasis, thrombin generation, TEG/ROTEM waveforms & anticoagulation reversal.'
-      },
-      {
-        code: '08',
-        name: 'Neuro-Ophtho Lab',
-        href: 'neuroophtho.html',
-        status: 'live',
-        desc: 'Cranial nerve pathways, binocular motility, pupillary reflexes & ocular ray-tracing.'
-      },
-      {
-        code: '09',
-        name: 'EndoSim',
-        href: 'endosim.html',
-        status: 'live',
-        desc: 'Coupled HPA/HPT/HPG endocrine feedback axes, ovarian cycle & dynamic clinical testing.'
+        id: 'calculators',
+        name: 'Clinical Calculators',
+        type: 'calculators',
+        subtitle: '20 precision bedside equations & validated risk scores',
+        primaryHref: 'calculators.html',
+        primaryLabel: 'Open All Calculators',
+        preview: ['Anion Gap', 'eGFR', 'QTc', 'Wells'],
+        groups: [
+          {
+            title: 'Acid-Base & Electrolytes',
+            items: [
+              { name: 'Anion Gap & Delta-Delta', slug: 'anion-gap' },
+              { name: "Winter's Formula",        slug: 'winters' },
+              { name: 'Corrected Sodium',        slug: 'corrected-na' },
+              { name: 'Osmolal Gap',             slug: 'osmolal-gap' },
+              { name: 'Free Water Deficit',      slug: 'free-water-deficit' }
+            ]
+          },
+          {
+            title: 'Cardiology & Hemodynamics',
+            items: [
+              { name: 'QTc Bazett / Fridericia', slug: 'qtc' },
+              { name: 'Mean Arterial Pressure',  slug: 'map' },
+              { name: 'CHA₂DS₂-VASc',           slug: 'cha2ds2-vasc' },
+              { name: 'HAS-BLED',                slug: 'has-bled' },
+              { name: 'Wells DVT / PE',          slug: 'wells' }
+            ]
+          },
+          {
+            title: 'Renal & Dosing',
+            items: [
+              { name: 'CKD-EPI 2021 eGFR',       slug: 'egfr' },
+              { name: 'Cockcroft-Gault CrCl',    slug: 'crcl' },
+              { name: 'FENa & FEUrea',           slug: 'fena' },
+              { name: 'Parkland Burn Formula',   slug: 'parkland' },
+              { name: 'Maintenance Fluids 4-2-1',slug: 'maintenance-fluids' }
+            ]
+          },
+          {
+            title: 'Critical Care & Risk',
+            items: [
+              { name: 'A-a Oxygen Gradient',     slug: 'aa-gradient' },
+              { name: 'PaO₂/FiO₂ Ratio',         slug: 'pf-ratio' },
+              { name: 'SOFA Score',              slug: 'sofa' },
+              { name: 'CURB-65',                 slug: 'curb-65' },
+              { name: 'MELD-Na',                 slug: 'meld-na' }
+            ]
+          }
+        ]
       }
     ];
 
-    // Compact 4-column bedside calculator directory (all route to calculators.html#<slug>)
-    const CALCULATOR_GROUPS = [
-      {
-        title: 'Acid-Base & Electrolytes',
-        items: [
-          { name: 'Anion Gap & Delta-Delta', slug: 'anion-gap' },
-          { name: "Winter's Formula",        slug: 'winters' },
-          { name: 'Corrected Sodium',        slug: 'corrected-na' },
-          { name: 'Osmolal Gap',             slug: 'osmolal-gap' },
-          { name: 'Free Water Deficit',      slug: 'free-water-deficit' }
-        ]
-      },
-      {
-        title: 'Cardiology & Hemodynamics',
-        items: [
-          { name: 'QTc Bazett / Fridericia', slug: 'qtc' },
-          { name: 'Mean Arterial Pressure',  slug: 'map' },
-          { name: 'CHA₂DS₂-VASc',           slug: 'cha2ds2-vasc' },
-          { name: 'HAS-BLED',                slug: 'has-bled' },
-          { name: 'Wells DVT / PE',          slug: 'wells' }
-        ]
-      },
-      {
-        title: 'Renal & Dosing',
-        items: [
-          { name: 'CKD-EPI 2021 eGFR',       slug: 'egfr' },
-          { name: 'Cockcroft-Gault CrCl',    slug: 'crcl' },
-          { name: 'FENa & FEUrea',           slug: 'fena' },
-          { name: 'Parkland Burn Formula',   slug: 'parkland' },
-          { name: 'Maintenance Fluids 4-2-1',slug: 'maintenance-fluids' }
-        ]
-      },
-      {
-        title: 'Critical Care & Risk',
-        items: [
-          { name: 'A-a Oxygen Gradient',     slug: 'aa-gradient' },
-          { name: 'PaO₂/FiO₂ Ratio',         slug: 'pf-ratio' },
-          { name: 'SOFA Score',              slug: 'sofa' },
-          { name: 'CURB-65',                 slug: 'curb-65' },
-          { name: 'MELD-Na',                 slug: 'meld-na' }
-        ]
-      }
-    ];
+    const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     /* =========================================================================
-       2. RENDER PORTAL SECTIONS FROM CONFIG ARRAYS
+       2. RENDER QUICKLINKS BAR
        ========================================================================= */
-
     function renderQuicklinks() {
       const row = document.getElementById('quicklinks-row');
       const countEl = document.getElementById('quicklinks-count');
@@ -534,161 +778,482 @@
         </a>
       `).join('');
     }
-
-    function renderDiagnostics() {
-      const grid = document.getElementById('diagnostics-grid');
-      const badge = document.getElementById('diagnostics-badge');
-      if (!grid) return;
-
-      const liveCount = DIAGNOSTICS.filter(d => d.status === 'live').length;
-      if (badge) {
-        badge.textContent = `${liveCount} LIVE · EXTENSIBLE`;
-      }
-
-      const cardsHTML = DIAGNOSTICS.map(item => {
-        const isLive = item.status === 'live';
-        const statusMarkup = isLive
-          ? `<span class="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 dot-pulse"></span>
-               Live
-             </span>`
-          : `<span class="font-mono text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500 border border-zinc-200/80 dark:border-zinc-800">Planned</span>`;
-
-        const tagsHTML = (item.tags || []).map(tag =>
-          `<span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-100/90 dark:bg-zinc-900/90 text-zinc-500 dark:text-zinc-400 border border-zinc-200/70 dark:border-zinc-800/80">${tag}</span>`
-        ).join('');
-
-        return `
-          <a
-            href="${item.href}"
-            class="group flex flex-col justify-between p-5 rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/45 transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${isLive ? '' : 'opacity-80 hover:opacity-100'}"
-          >
-            <div>
-              <div class="flex items-center justify-between gap-2 mb-3.5">
-                <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">${item.code}</span>
-                ${statusMarkup}
-              </div>
-
-              <div class="flex items-center justify-between gap-2">
-                <h3 class="text-[15.5px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">${item.name}</h3>
-                <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-tealLight dark:group-hover:text-tealDark transition-all duration-150 group-hover:translate-x-0.5 text-sm" aria-hidden="true">&rarr;</span>
-              </div>
-
-              <p class="mt-1.5 text-[13px] leading-snug text-zinc-500 dark:text-zinc-400">
-                ${item.desc}
-              </p>
-            </div>
-
-            <div class="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/60 flex flex-wrap items-center gap-1.5">
-              ${tagsHTML}
-            </div>
-          </a>
-        `;
-      }).join('');
-
-      // Render a clean dashed extensible slot card whenever the 3-col row has room
-      const nextCode = `D${DIAGNOSTICS.length + 1}`;
-      const reservedSlotHTML = DIAGNOSTICS.length % 3 !== 0
-        ? `
-          <div class="flex flex-col justify-between p-5 rounded-xl border border-dashed border-zinc-300/90 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/25 select-none">
-            <div>
-              <div class="flex items-center justify-between gap-2 mb-3.5">
-                <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-600">${nextCode} &middot; Reserved Slot</span>
-                <span class="font-mono text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-600">Extensible</span>
-              </div>
-              <h3 class="text-[14.5px] font-medium tracking-[-0.01em] text-zinc-500 dark:text-zinc-400">Upcoming Module</h3>
-              <p class="mt-1.5 text-[12.5px] leading-snug text-zinc-400 dark:text-zinc-500">
-                Future clinical atlas or diagnostic tool &mdash; add entries in <code class="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">DIAGNOSTICS[]</code> at the top of <code class="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">index.html</code>.
-              </p>
-            </div>
-            <div class="mt-4 pt-3 border-t border-dashed border-zinc-200/80 dark:border-zinc-800/60 flex items-center gap-1.5 font-mono text-[10px] text-zinc-400 dark:text-zinc-600">
-              <span>+ ECG Lab / Abx Matrix / Urinalysis</span>
-            </div>
-          </div>
-        `
-        : '';
-
-      grid.innerHTML = cardsHTML + reservedSlotHTML;
-    }
-
-    function renderSimulators() {
-      const grid = document.getElementById('simulators-grid');
-      const badge = document.getElementById('simulators-badge');
-      if (!grid) return;
-
-      const liveCount = SIMULATORS.filter(s => s.status === 'live').length;
-      if (badge) {
-        badge.textContent = `${liveCount} / ${SIMULATORS.length} LIVE`;
-      }
-
-      grid.innerHTML = SIMULATORS.map(sim => {
-        const isLive = sim.status === 'live';
-        const statusMarkup = isLive
-          ? `<span class="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 dot-pulse"></span>
-               Live
-             </span>`
-          : `<span class="font-mono text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500 border border-zinc-200/80 dark:border-zinc-800">Planned</span>`;
-
-        return `
-          <a
-            href="${sim.href}"
-            class="group flex flex-col justify-between p-5 rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/60 hover:border-tealLight/50 dark:hover:border-tealDark/45 transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${isLive ? '' : 'opacity-75 hover:opacity-100'}"
-          >
-            <div class="flex items-center justify-between gap-2 mb-4">
-              <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">${sim.code}</span>
-              ${statusMarkup}
-            </div>
-            <div>
-              <div class="flex items-center justify-between gap-2">
-                <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white">${sim.name}</h3>
-                <span class="text-zinc-400 dark:text-zinc-600 group-hover:text-tealLight dark:group-hover:text-tealDark transition-all duration-150 group-hover:translate-x-0.5 text-sm" aria-hidden="true">&rarr;</span>
-              </div>
-              <p class="mt-1.5 text-[13px] leading-snug text-zinc-500 dark:text-zinc-400">
-                ${sim.desc}
-              </p>
-            </div>
-          </a>
-        `;
-      }).join('');
-    }
-
-    function renderCalculators() {
-      const grid = document.getElementById('calculators-grid');
-      const badge = document.getElementById('calculators-badge');
-      if (!grid) return;
-
-      const totalCount = CALCULATOR_GROUPS.reduce((acc, g) => acc + g.items.length, 0);
-      if (badge) {
-        badge.textContent = `${totalCount} TOOLS`;
-      }
-
-      grid.innerHTML = CALCULATOR_GROUPS.map(group => `
-        <div>
-          <h3 class="px-2 pb-2 mb-1.5 border-b border-zinc-200/70 dark:border-zinc-800/70 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
-            ${group.title}
-          </h3>
-          <ul class="space-y-0.5">
-            ${group.items.map(calc => `
-              <li>
-                <a href="calculators.html#${calc.slug}" class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md text-[13px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 transition-colors">
-                  <span class="truncate">${calc.name}</span>
-                  <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
-                </a>
-              </li>
-            `).join('')}
-          </ul>
-        </div>
-      `).join('');
-    }
-
     renderQuicklinks();
-    renderDiagnostics();
-    renderSimulators();
-    renderCalculators();
 
     /* =========================================================================
-       3. ZERO-CLUTTER KEYBOARD COMMAND PALETTE (⌘K / Ctrl+K / /)
+       3. EXPANDABLE ARCHITECTURAL DOMAIN BENTO HUB + TRANSLATE-ONLY FLIP ENGINE
+       ========================================================================= */
+    const domainsGrid = document.getElementById('domains-grid');
+    const toggleAllBtn = document.getElementById('toggle-all-domains');
+    const summaryBadge = document.getElementById('domains-summary-badge');
+
+    // Track currently expanded domain IDs (supports single-open focus AND Expand All)
+    const expandedIds = new Set();
+    const flipCleanupTimers = new WeakMap();
+
+    function getDomainStats(domain) {
+      if (domain.type === 'calculators') {
+        const totalTools = domain.groups.reduce((acc, g) => acc + g.items.length, 0);
+        return {
+          total: totalTools,
+          live: 0,
+          badgeType: 'tools',
+          badgeText: `${totalTools} TOOLS`,
+          footerText: `${domain.groups.length} categories · ${totalTools} tools`
+        };
+      }
+      const total = domain.items.length;
+      const live = domain.items.filter(i => i.status === 'live').length;
+      if (live > 1) {
+        return {
+          total,
+          live,
+          badgeType: 'live',
+          badgeText: `${live} / ${total} LIVE`,
+          footerText: `${total} modules`
+        };
+      }
+      if (live === 1) {
+        return {
+          total,
+          live,
+          badgeType: 'live',
+          badgeText: '1 LIVE',
+          footerText: `${total} modules`
+        };
+      }
+      return {
+        total,
+        live: 0,
+        badgeType: 'planned',
+        badgeText: `${total} PLANNED`,
+        footerText: `${total} modules`
+      };
+    }
+
+    function buildPreviewLine(domain, stats) {
+      const names = domain.preview || [];
+      const rem = Math.max(0, stats.total - names.length);
+      const joined = names.join(' · ');
+      return rem > 0 ? `${joined} · +${rem}` : joined;
+    }
+
+    function buildStatusBadgeHTML(stats) {
+      if (stats.badgeType === 'live') {
+        return `
+          <span class="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 tabular-nums">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 dot-pulse"></span>
+            ${stats.badgeText}
+          </span>
+        `;
+      }
+      return `
+        <span class="inline-flex items-center font-mono text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 tabular-nums">
+          ${stats.badgeText}
+        </span>
+      `;
+    }
+
+    function buildExpandedContentHTML(domain) {
+      if (domain.type === 'calculators') {
+        return `
+          <div class="pt-5 mt-5 border-t border-zinc-200/80 dark:border-zinc-800/80">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              ${domain.groups.map((group, gi) => `
+                <div class="stagger-item rounded-lg border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/60 dark:bg-zinc-900/35 p-3" style="--stagger-i:${gi}">
+                  <h4 class="px-1.5 pb-2 mb-1.5 border-b border-zinc-200/70 dark:border-zinc-800/70 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+                    ${group.title}
+                  </h4>
+                  <ul class="space-y-0.5">
+                    ${group.items.map(calc => `
+                      <li>
+                        <a
+                          href="calculators.html#${calc.slug}"
+                          class="group/calc flex items-center justify-between gap-2 px-1.5 py-1 rounded-md text-[12.5px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800/80 transition-colors"
+                        >
+                          <span class="truncate">${calc.name}</span>
+                          <span class="text-[11px] text-tealLight dark:text-tealDark opacity-0 -translate-x-1 group-hover/calc:opacity-100 group-hover/calc:translate-x-0 transition-all shrink-0" aria-hidden="true">&rarr;</span>
+                        </a>
+                      </li>
+                    `).join('')}
+                  </ul>
+                </div>
+              `).join('')}
+            </div>
+
+            <div class="stagger-item mt-4 flex flex-wrap items-center justify-between gap-3 pt-1" style="--stagger-i:${domain.groups.length}">
+              <span class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">All 20 equations run locally in a unified single-page workbench.</span>
+              <a
+                href="${domain.primaryHref}"
+                class="group/cta inline-flex items-center gap-1.5 h-8 px-3.5 rounded-lg text-[12.5px] font-medium bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-obsidian dark:hover:bg-white transition-colors"
+              >
+                <span>${domain.primaryLabel}</span>
+                <span class="inline-block transition-transform duration-150 group-hover/cta:translate-x-0.5" aria-hidden="true">&rarr;</span>
+              </a>
+            </div>
+          </div>
+        `;
+      }
+
+      // Standard sub-module grid (3 columns on desktop for 3+ items, 2 columns on tablet)
+      const colsClass = domain.items.length === 4
+        ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2'
+        : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
+
+      return `
+        <div class="pt-5 mt-5 border-t border-zinc-200/80 dark:border-zinc-800/80">
+          <div class="grid ${colsClass} gap-3">
+            ${domain.items.map((mod, idx) => {
+              const isLive = mod.status === 'live';
+              const statusHTML = isLive
+                ? `<span class="inline-flex items-center gap-1.5 font-mono text-[9.5px] font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400 shrink-0">
+                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 dot-pulse"></span>
+                     Live
+                   </span>`
+                : `<span class="font-mono text-[9.5px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500 border border-zinc-200/80 dark:border-zinc-800 shrink-0">Planned</span>`;
+
+              const tagsHTML = mod.tags && mod.tags.length
+                ? `<div class="mt-3 pt-2.5 border-t border-zinc-200/60 dark:border-zinc-800/60 flex flex-wrap gap-1.5">
+                     ${mod.tags.map(t => `<span class="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-white dark:bg-zinc-950/80 text-zinc-500 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-800/80">${t}</span>`).join('')}
+                   </div>`
+                : '';
+
+              return `
+                <a
+                  href="${mod.href}"
+                  style="--stagger-i:${idx}"
+                  class="stagger-item group/mod flex flex-col justify-between p-4 rounded-xl border border-zinc-200/85 dark:border-zinc-800/80 bg-zinc-50/65 dark:bg-zinc-900/40 hover:bg-white dark:hover:bg-zinc-900/90 hover:border-tealLight/55 dark:hover:border-tealDark/45 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${isLive ? '' : 'opacity-75 hover:opacity-100'}"
+                >
+                  <div>
+                    <div class="flex items-start justify-between gap-2">
+                      <h4 class="text-[14px] font-semibold tracking-[-0.015em] text-zinc-950 dark:text-white group-hover/mod:text-tealLight dark:group-hover/mod:text-tealDark transition-colors">${mod.name}</h4>
+                      <div class="flex items-center gap-2 shrink-0">
+                        ${statusHTML}
+                        <span class="text-zinc-400 dark:text-zinc-600 group-hover/mod:text-tealLight dark:group-hover/mod:text-tealDark transition-transform duration-150 group-hover/mod:translate-x-0.5 text-xs" aria-hidden="true">&rarr;</span>
+                      </div>
+                    </div>
+                    <p class="mt-1.5 text-[12.5px] leading-snug text-zinc-500 dark:text-zinc-400">
+                      ${mod.desc}
+                    </p>
+                  </div>
+                  ${tagsHTML}
+                </a>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDomainHub() {
+      if (!domainsGrid) return;
+
+      // Update global summary count badge in section header
+      const totalLiveModules = DOMAINS.reduce((sum, d) => sum + getDomainStats(d).live, 0);
+      if (summaryBadge) {
+        summaryBadge.textContent = `${String(DOMAINS.length).padStart(2, '0')} DOMAINS · ${totalLiveModules} LIVE`;
+      }
+
+      domainsGrid.innerHTML = DOMAINS.map(domain => {
+        const stats = getDomainStats(domain);
+        const previewStr = buildPreviewLine(domain, stats);
+        const iconPath = DOMAIN_ICONS[domain.id] || DOMAIN_ICONS.simulators;
+
+        return `
+          <article
+            id="domain-${domain.id}"
+            data-domain-id="${domain.id}"
+            data-expanded="false"
+            class="domain-card col-span-1 rounded-xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/70 hover:border-zinc-300 dark:hover:border-zinc-700/90 overflow-hidden transition-colors"
+          >
+            <!-- Subtle Mouse-Tracking Radial Spotlight -->
+            <div class="domain-spotlight" aria-hidden="true"></div>
+            <!-- Subtle Teal Top-Border Accent Sweep (Expanded) -->
+            <div class="domain-accent-bar" aria-hidden="true"></div>
+
+            <div class="relative z-[1] p-5">
+              <!-- Clickable Architectural Card Header (Expands / Collapses Domain) -->
+              <div
+                role="button"
+                tabindex="0"
+                aria-expanded="false"
+                aria-controls="tray-${domain.id}"
+                data-domain-toggle="${domain.id}"
+                class="group/hdr cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 rounded-lg"
+              >
+                <!-- Top Row: Index + 32x32 Hairline Icon Frame + Status Badge -->
+                <div class="flex items-center justify-between gap-2 mb-4">
+                  <div class="flex items-center gap-2.5">
+                    <span class="font-mono text-[11px] font-medium text-zinc-400 dark:text-zinc-500 tabular-nums">${domain.code}</span>
+                    <span class="w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-200/90 dark:border-zinc-800/90 bg-zinc-50/80 dark:bg-zinc-900/70 text-tealLight dark:text-tealDark group-hover/hdr:border-tealLight/45 dark:group-hover/hdr:border-tealDark/45 transition-colors">
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        ${iconPath}
+                      </svg>
+                    </span>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    ${buildStatusBadgeHTML(stats)}
+                    <span class="domain-close-pill hidden items-center gap-1 font-mono text-[10px] font-medium px-2 py-0.5 rounded-md border border-zinc-200/90 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white transition-colors">
+                      Close
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Body: Crisp Domain Title + Concise 1-Line Subtitle -->
+                <div class="space-y-1">
+                  <h3 class="text-[17.5px] font-semibold tracking-[-0.02em] text-zinc-950 dark:text-white group-hover/hdr:text-tealLight dark:group-hover/hdr:text-tealDark transition-colors">
+                    ${domain.name}
+                  </h3>
+                  <p class="text-[13px] leading-snug text-zinc-500 dark:text-zinc-400">
+                    ${domain.subtitle}
+                  </p>
+                </div>
+
+                <!-- Collapsed Preview Line (Fades & Collapses Cleanly on Expansion) -->
+                <div class="domain-preview-wrap mt-3">
+                  <div class="domain-preview-inner">
+                    <div class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500 truncate">
+                      ${previewStr}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Footer Micro-Bar: Module Count + Animated + / × Indicator -->
+                <div class="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/70 flex items-center justify-between gap-2">
+                  <span class="font-mono text-[10.5px] text-zinc-400 dark:text-zinc-500 tabular-nums">${stats.footerText}</span>
+                  <span class="inline-flex items-center gap-1.5 text-[11px] font-mono text-zinc-400 dark:text-zinc-500 group-hover/hdr:text-tealLight dark:group-hover/hdr:text-tealDark transition-colors">
+                    <span class="domain-action-label">Explore</span>
+                    <svg class="domain-plus w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Smooth CSS Grid-Rows Expandable Inner Tray -->
+              <div id="tray-${domain.id}" class="domain-tray" aria-hidden="true">
+                <div class="domain-tray-inner">
+                  ${buildExpandedContentHTML(domain)}
+                </div>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      attachDomainCardListeners();
+    }
+
+    /**
+     * Applies translate-only FLIP animation across all domain cards when layout changes.
+     * Uses pure translate3d(dx, dy, 0) without scale() so typography remains razor-sharp.
+     */
+    function applyDomainsLayoutWithFLIP(mutateExpandedSet, scrollTargetId = null) {
+      if (!domainsGrid) return;
+      const cards = Array.from(domainsGrid.querySelectorAll('.domain-card'));
+
+      // 1. FIRST: Capture current visual positions (even if mid-flight)
+      const firstRects = new Map();
+      cards.forEach(card => {
+        firstRects.set(card, card.getBoundingClientRect());
+        // Clear any pending cleanup timers before starting a fresh transition
+        const prevTimer = flipCleanupTimers.get(card);
+        if (prevTimer) {
+          clearTimeout(prevTimer);
+          flipCleanupTimers.delete(card);
+        }
+        card.style.transition = '';
+        card.style.transform = '';
+      });
+
+      // 2. MUTATE: Update expanded state set and DOM span/data attributes
+      mutateExpandedSet();
+
+      cards.forEach(card => {
+        const id = card.dataset.domainId;
+        const isOpen = expandedIds.has(id);
+        card.dataset.expanded = isOpen ? 'true' : 'false';
+        card.classList.toggle('md:col-span-2', isOpen);
+        card.classList.toggle('lg:col-span-3', isOpen);
+
+        const toggleEl = card.querySelector('[data-domain-toggle]');
+        const trayEl = card.querySelector('.domain-tray');
+        const closePill = card.querySelector('.domain-close-pill');
+        const actionLbl = card.querySelector('.domain-action-label');
+
+        if (toggleEl) toggleEl.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        if (trayEl) trayEl.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+        if (closePill) {
+          closePill.classList.toggle('hidden', !isOpen);
+          closePill.classList.toggle('inline-flex', isOpen);
+        }
+        if (actionLbl) {
+          actionLbl.textContent = isOpen ? 'Collapse' : 'Explore';
+        }
+      });
+
+      syncExpandAllButton();
+
+      // 3. LAST: Measure final destination positions after grid reflow
+      const lastRects = new Map();
+      cards.forEach(card => lastRects.set(card, card.getBoundingClientRect()));
+
+      // 4. INVERT + PLAY (Translate-Only FLIP)
+      if (!reducedMotion) {
+        const movingCards = [];
+        cards.forEach(card => {
+          const first = firstRects.get(card);
+          const last = lastRects.get(card);
+          const dx = first.left - last.left;
+          const dy = first.top - last.top;
+          if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+            card.style.transition = 'none';
+            card.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0)`;
+            movingCards.push(card);
+          }
+        });
+
+        if (movingCards.length > 0) {
+          // Force synchronous reflow so the inverted transform commits cleanly
+          void domainsGrid.offsetHeight;
+
+          movingCards.forEach(card => {
+            card.style.transition = 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1)';
+            card.style.transform = 'translate3d(0, 0, 0)';
+
+            const cleanup = () => {
+              card.style.transition = '';
+              card.style.transform = '';
+              card.removeEventListener('transitionend', onEnd);
+              const t = flipCleanupTimers.get(card);
+              if (t) {
+                clearTimeout(t);
+                flipCleanupTimers.delete(card);
+              }
+            };
+            const onEnd = (e) => {
+              if (e.target === card && e.propertyName === 'transform') cleanup();
+            };
+            card.addEventListener('transitionend', onEnd);
+            flipCleanupTimers.set(card, setTimeout(cleanup, 480));
+          });
+        }
+      }
+
+      // Gently bring newly expanded card into comfortable view if its top is off-screen
+      if (scrollTargetId) {
+        const targetCard = document.getElementById(`domain-${scrollTargetId}`);
+        if (targetCard) {
+          const rect = lastRects.get(targetCard) || targetCard.getBoundingClientRect();
+          const headerOffset = 76;
+          if (rect.top < headerOffset || rect.top > window.innerHeight - 170) {
+            window.scrollTo({
+              top: Math.max(0, window.scrollY + rect.top - headerOffset),
+              behavior: reducedMotion ? 'auto' : 'smooth'
+            });
+          }
+        }
+      }
+    }
+
+    function toggleDomain(domainId) {
+      const wasOpen = expandedIds.has(domainId);
+      applyDomainsLayoutWithFLIP(() => {
+        if (wasOpen) {
+          expandedIds.delete(domainId);
+        } else {
+          // Single-focus expansion: smoothly close previously open domain and open this one
+          expandedIds.clear();
+          expandedIds.add(domainId);
+        }
+      }, wasOpen ? null : domainId);
+    }
+
+    function openDomainById(domainId) {
+      if (!DOMAINS.some(d => d.id === domainId)) return;
+      applyDomainsLayoutWithFLIP(() => {
+        expandedIds.clear();
+        expandedIds.add(domainId);
+      }, domainId);
+    }
+
+    function collapseAllDomains() {
+      if (expandedIds.size === 0) return;
+      applyDomainsLayoutWithFLIP(() => {
+        expandedIds.clear();
+      }, null);
+    }
+
+    function syncExpandAllButton() {
+      if (!toggleAllBtn) return;
+      const allOpen = expandedIds.size === DOMAINS.length;
+      const anyOpen = expandedIds.size > 0;
+      if (allOpen) {
+        toggleAllBtn.textContent = 'Collapse All';
+      } else if (anyOpen) {
+        toggleAllBtn.textContent = 'Expand All';
+      } else {
+        toggleAllBtn.textContent = 'Expand All';
+      }
+    }
+
+    function attachDomainCardListeners() {
+      if (!domainsGrid) return;
+
+      // Toggle expand/collapse on header click or Enter/Space keyboard activation
+      domainsGrid.querySelectorAll('[data-domain-toggle]').forEach(toggleEl => {
+        const domainId = toggleEl.dataset.domainToggle;
+        toggleEl.addEventListener('click', () => toggleDomain(domainId));
+        toggleEl.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleDomain(domainId);
+          }
+        });
+      });
+
+      // Mouse-tracking radial spotlight on each Domain Card
+      if (!reducedMotion) {
+        domainsGrid.querySelectorAll('.domain-card').forEach(card => {
+          card.addEventListener('pointermove', e => {
+            const rect = card.getBoundingClientRect();
+            card.style.setProperty('--mx', `${(e.clientX - rect.left).toFixed(1)}px`);
+            card.style.setProperty('--my', `${(e.clientY - rect.top).toFixed(1)}px`);
+          }, { passive: true });
+        });
+      }
+    }
+
+    if (toggleAllBtn) {
+      toggleAllBtn.addEventListener('click', () => {
+        const allCurrentlyOpen = expandedIds.size === DOMAINS.length;
+        applyDomainsLayoutWithFLIP(() => {
+          expandedIds.clear();
+          if (!allCurrentlyOpen) {
+            DOMAINS.forEach(d => expandedIds.add(d.id));
+          }
+        }, null);
+      });
+    }
+
+    renderDomainHub();
+
+    // URL Hash Deep-Opening (e.g., #simulators, #pharmacology, #calculators)
+    function handleHashDeepOpen() {
+      const hash = (window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
+      if (!hash) return;
+      const matched = DOMAINS.find(d => d.id === hash);
+      if (matched) {
+        openDomainById(matched.id);
+      }
+    }
+    window.addEventListener('hashchange', handleHashDeepOpen);
+    requestAnimationFrame(handleHashDeepOpen);
+
+    /* =========================================================================
+       4. KEYBOARD COMMAND PALETTE (⌘K / Ctrl+K / /)
+          Automatically indexes all 6 Domains' sub-modules, 20 Calculators & Quicklinks
        ========================================================================= */
     const cmdModal = document.getElementById('cmd-modal');
     const cmdInput = document.getElementById('cmd-input');
@@ -697,7 +1262,6 @@
     const cmdTrigger = document.getElementById('cmd-trigger');
     const cmdShortcutKbd = document.getElementById('cmd-shortcut-kbd');
 
-    // Display Ctrl K on Windows/Linux and ⌘K on macOS
     try {
       const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
       if (cmdShortcutKbd && !isMac) {
@@ -705,38 +1269,40 @@
       }
     } catch (_) {}
 
-    // Flatten all portal items into one searchable index
-    const SEARCH_INDEX = [
-      ...DIAGNOSTICS.map(d => ({
-        title: d.name,
-        category: 'Diagnostics',
-        sub: d.desc,
-        href: d.href,
-        external: false,
-        status: d.status,
-        searchBlob: `${d.name} ${d.code} diagnostics atlas ${(d.tags || []).join(' ')} ${d.desc}`.toLowerCase()
-      })),
-      ...SIMULATORS.map(s => ({
-        title: s.name,
-        category: 'Simulator',
-        sub: s.desc,
-        href: s.href,
-        external: false,
-        status: s.status,
-        searchBlob: `${s.name} ${s.code} simulator ${s.desc}`.toLowerCase()
-      })),
-      ...CALCULATOR_GROUPS.flatMap(g =>
-        g.items.map(c => ({
-          title: c.name,
-          category: 'Calculator',
-          sub: g.title,
-          href: `calculators.html#${c.slug}`,
-          external: false,
-          status: 'tool',
-          searchBlob: `${c.name} ${c.slug} calculator ${g.title}`.toLowerCase()
-        }))
-      ),
-      ...QUICKLINKS.map(q => ({
+    // Build flat searchable index from DOMAINS[] + QUICKLINKS[]
+    const SEARCH_INDEX = [];
+    DOMAINS.forEach(domain => {
+      if (domain.type === 'calculators') {
+        domain.groups.forEach(group => {
+          group.items.forEach(calc => {
+            SEARCH_INDEX.push({
+              title: calc.name,
+              category: domain.name,
+              sub: group.title,
+              href: `calculators.html#${calc.slug}`,
+              external: false,
+              status: 'tool',
+              searchBlob: `${calc.name} ${calc.slug} calculator ${group.title} ${domain.name}`.toLowerCase()
+            });
+          });
+        });
+      } else {
+        domain.items.forEach(mod => {
+          SEARCH_INDEX.push({
+            title: mod.name,
+            category: domain.name,
+            sub: mod.desc,
+            href: mod.href,
+            external: false,
+            status: mod.status,
+            searchBlob: `${mod.name} ${domain.name} ${domain.id} ${(mod.tags || []).join(' ')} ${mod.desc}`.toLowerCase()
+          });
+        });
+      }
+    });
+
+    QUICKLINKS.forEach(q => {
+      SEARCH_INDEX.push({
         title: q.name,
         category: 'Quicklink',
         sub: `${q.tag} · ${q.href.replace(/^https?:\/\//, '')}`,
@@ -744,8 +1310,8 @@
         external: true,
         status: 'external',
         searchBlob: `${q.name} ${q.tag} quicklink bookmark ${q.href}`.toLowerCase()
-      }))
-    ];
+      });
+    });
 
     let cmdOpen = false;
     let cmdFiltered = SEARCH_INDEX;
@@ -797,7 +1363,7 @@
       if (cmdFiltered.length === 0) {
         cmdResults.innerHTML = `
           <div class="px-4 py-8 text-center text-xs text-zinc-500 dark:text-zinc-400">
-            No matching simulators, labs, calculators, or quicklinks.
+            No matching simulators, labs, pharmacology, OSCE modules, calculators, or quicklinks.
           </div>
         `;
         return;
@@ -859,15 +1425,11 @@
         btn.classList.toggle('dark:bg-zinc-900', active);
         btn.classList.toggle('text-zinc-950', active);
         btn.classList.toggle('dark:text-white', active);
-        if (active) {
-          btn.scrollIntoView({ block: 'nearest' });
-        }
+        if (active) btn.scrollIntoView({ block: 'nearest' });
       });
     }
 
-    if (cmdTrigger) {
-      cmdTrigger.addEventListener('click', openCommandPalette);
-    }
+    if (cmdTrigger) cmdTrigger.addEventListener('click', openCommandPalette);
     if (cmdModal) {
       cmdModal.addEventListener('click', e => {
         if (e.target === cmdModal) closeCommandPalette();
@@ -881,7 +1443,7 @@
       const tag = document.activeElement ? document.activeElement.tagName : '';
       const inEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (document.activeElement && document.activeElement.isContentEditable);
 
-      // Open with Cmd+K / Ctrl+K
+      // Open/Toggle Command Palette with Cmd+K / Ctrl+K
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         if (cmdOpen) closeCommandPalette();
@@ -889,19 +1451,28 @@
         return;
       }
 
-      // Open with '/' when not typing in an input
+      // Open Command Palette with '/' when not typing in an input
       if (!cmdOpen && !inEditable && e.key === '/') {
         e.preventDefault();
         openCommandPalette();
         return;
       }
 
+      // Escape: close Command Palette if open; otherwise collapse expanded Domain Card(s)
+      if (e.key === 'Escape') {
+        if (cmdOpen) {
+          e.preventDefault();
+          closeCommandPalette();
+        } else if (expandedIds.size > 0) {
+          e.preventDefault();
+          collapseAllDomains();
+        }
+        return;
+      }
+
       if (!cmdOpen) return;
 
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closeCommandPalette();
-      } else if (e.key === 'ArrowDown') {
+      if (e.key === 'ArrowDown') {
         e.preventDefault();
         if (cmdFiltered.length > 0) {
           cmdActiveIdx = (cmdActiveIdx + 1) % cmdFiltered.length;
@@ -922,7 +1493,7 @@
     });
 
     /* =========================================================================
-       4. DARK / LIGHT THEME TOGGLE (Persisted to localStorage)
+       5. DARK / LIGHT THEME TOGGLE (Persisted to localStorage)
        ========================================================================= */
     let redrawMonitor = null;
     const themeToggle = document.getElementById('theme-toggle');
@@ -939,7 +1510,7 @@
     }
 
     /* =========================================================================
-       5. UNIFIED ZERO-FLICKER SYNCHRONIZED HEMODYNAMIC HERO RENDERER
+       6. UNIFIED ZERO-FLICKER SYNCHRONIZED HEMODYNAMIC HERO RENDERER
           - Left Panel (42%): LV PV Loop + ESPVR + EDPVR + 14-Band Comet Trail
           - Right Panel (58%): Lead II ECG (44%) + AoP & LVP Sweeps (56%)
           - 2400-sample fixed-rate ring buffer (750 Hz, 3.2 s sweep)
@@ -979,8 +1550,6 @@
     let width = 1;
     let height = 1;
     let dpr = 1;
-
-    const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     function smoothstep(e0, e1, x) {
       const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
@@ -1087,10 +1656,7 @@
     let writeIdx = 0;
 
     function prefillBuffers() {
-      sampleClock = 0;
-      for (let i = 0; i < SAMPLES; i++) {
-        sampleClock += DT_SAMPLE;
-      }
+      sampleClock = SAMPLES * DT_SAMPLE;
       writeIdx = Math.floor(SAMPLES * 0.76);
       sampleClock = sampleClock - (SAMPLES - 1 - writeIdx) * DT_SAMPLE;
       for (let step = 0; step < SAMPLES; step++) {
@@ -1455,8 +2021,11 @@
       if (!reducedMotion) requestAnimationFrame(animate);
     }
 
-    if (reducedMotion) drawFrame();
-    else requestAnimationFrame(animate);
+    window.addEventListener('load', () => {
+      syncMonitorCanvas();
+      if (reducedMotion) drawFrame();
+      else requestAnimationFrame(animate);
+    });
   })();
   </script>
 </body>
