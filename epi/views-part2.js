@@ -1,5 +1,5 @@
 /* ============================================================================
-   MedLab Epidemiology — Step 5: Tab 3 (Swiss Canton Map) & Tab 4 (Burden/Onco)
+   MedLab Epidemiology — Step 5 (Hi-Res Map): Tab 3 (Swiss Map) & Tab 4 (Burden)
    File: epi/views-part2.js
    ============================================================================ */
 window.EPI_VIEWS = window.EPI_VIEWS || {};
@@ -8,12 +8,146 @@ window.EPI_VIEWS = window.EPI_VIEWS || {};
   'use strict';
 
   /* ==========================================================================
-     TAB 3: INTERACTIVE 26-CANTON SWISS CHOROPLETH MAP
+     TAB 3: INTERACTIVE 26-CANTON SWISS CHOROPLETH MAP (OFFICIAL SWISSTOPO)
      ========================================================================== */
   const MAP = {
     layer: 'tbe',
     selectedId: 'BE',
+    hiResLoaded: false,
+    hiResLoading: false,
   };
+
+  // Official BFS Canton ID (1–26) -> 2-letter code
+  const BFS_TO_CODE = {
+    1:'ZH', 2:'BE', 3:'LU', 4:'UR', 5:'SZ', 6:'OW', 7:'NW', 8:'GL', 9:'ZG',
+    10:'FR', 11:'SO', 12:'BS', 13:'BL', 14:'SH', 15:'AR', 16:'AI', 17:'SG',
+    18:'GR', 19:'AG', 20:'TG', 21:'TI', 22:'VD', 23:'VS', 24:'NE', 25:'GE', 26:'JU',
+  };
+
+  function decodeTopoArcs(topo) {
+    const t = topo.transform;
+    return topo.arcs.map(arc => {
+      let x = 0, y = 0;
+      return arc.map(pt => {
+        x += pt[0]; y += pt[1];
+        return t ? [x * t.scale[0] + t.translate[0], y * t.scale[1] + t.translate[1]] : [x, y];
+      });
+    });
+  }
+
+  function extractRings(geom, decodedArcs) {
+    const toRing = idxs => {
+      const pts = [];
+      for (const idx of idxs) {
+        const raw = idx >= 0 ? decodedArcs[idx] : [...decodedArcs[~idx]].reverse();
+        for (let i = pts.length ? 1 : 0; i < raw.length; i++) pts.push(raw[i]);
+      }
+      return pts;
+    };
+    const rings = [];
+    if (geom.type === 'Polygon') {
+      geom.arcs.forEach(r => rings.push(toRing(r)));
+    } else if (geom.type === 'MultiPolygon') {
+      geom.arcs.forEach(poly => poly.forEach(r => rings.push(toRing(r))));
+    }
+    return rings;
+  }
+
+  function ringCentroid(pts) {
+    let area = 0, cx = 0, cy = 0;
+    for (let i = 0, n = pts.length; i < n; i++) {
+      const [x0, y0] = pts[i];
+      const [x1, y1] = pts[(i + 1) % n];
+      const f = x0 * y1 - x1 * y0;
+      area += f;
+      cx += (x0 + x1) * f;
+      cy += (y0 + y1) * f;
+    }
+    if (Math.abs(area) < 1e-6) {
+      const mx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+      const my = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+      return { x: mx, y: my, area: 0 };
+    }
+    return { x: cx / (3 * area), y: cy / (3 * area), area: Math.abs(area) * 0.5 };
+  }
+
+  async function loadHiResSwissMap(APP, E) {
+    if (MAP.hiResLoaded || MAP.hiResLoading) return;
+    MAP.hiResLoading = true;
+    const urls = [
+      'https://cdn.jsdelivr.net/npm/swiss-maps@4/2021/ch-combined.json',
+      'https://unpkg.com/swiss-maps@4/2021/ch-combined.json',
+    ];
+    let topo = null;
+    for (const url of urls) {
+      try {
+        const res = await fetch(url);
+        if (res.ok) { topo = await res.json(); break; }
+      } catch (_) {}
+    }
+    MAP.hiResLoading = false;
+    if (!topo || !topo.objects || !topo.objects.cantons) return;
+
+    const arcs = decodeTopoArcs(topo);
+    const cantonRings = {};
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
+    for (const geom of topo.objects.cantons.geometries) {
+      const code = BFS_TO_CODE[Number(geom.id)];
+      if (!code) continue;
+      const rings = extractRings(geom, arcs);
+      cantonRings[code] = rings;
+      for (const r of rings) {
+        for (const [x, y] of r) {
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    // Auto-detect Y orientation (Schaffhausen must be north / smaller Y than Geneva)
+    const shC = cantonRings.SH ? ringCentroid(cantonRings.SH[0]) : { y: 0 };
+    const geC = cantonRings.GE ? ringCentroid(cantonRings.GE[0]) : { y: 1 };
+    const flipY = shC.y > geC.y;
+
+    const pad = 16;
+    const spanX = Math.max(1, maxX - minX);
+    const spanY = Math.max(1, maxY - minY);
+    const scale = Math.min((800 - pad * 2) / spanX, (520 - pad * 2) / spanY);
+    const offX = (800 - spanX * scale) / 2;
+    const offY = (520 - spanY * scale) / 2;
+
+    const proj = ([x, y]) => [
+      offX + (x - minX) * scale,
+      flipY ? offY + (maxY - y) * scale : offY + (y - minY) * scale,
+    ];
+    const ringsToPath = rings => rings.map(r =>
+      'M' + r.map(pt => { const [px, py] = proj(pt); return px.toFixed(1) + ',' + py.toFixed(1); }).join('L') + 'Z'
+    ).join('');
+
+    for (const c of E.CANTONS) {
+      const rings = cantonRings[c.id];
+      if (!rings || !rings.length) continue;
+      c.d = ringsToPath(rings);
+      let best = { x: c.lx, y: c.ly, area: -1 };
+      for (const r of rings) {
+        const cent = ringCentroid(r.map(proj));
+        if (cent.area > best.area) best = cent;
+      }
+      c.lx = Math.round(best.x);
+      c.ly = Math.round(best.y);
+      // Slight label nudges for ring-shaped cantons (SG around AR/AI, BL around BS)
+      if (c.id === 'SG') { c.lx -= 14; c.ly += 18; }
+      if (c.id === 'BL') { c.lx += 6; c.ly += 6; }
+    }
+
+    if (topo.objects.lakes && topo.objects.lakes.geometries) {
+      E.CH_MAP.lakes = topo.objects.lakes.geometries.map(g => ringsToPath(extractRings(g, arcs)));
+    }
+
+    MAP.hiResLoaded = true;
+    if (APP.state.tab === 'map') renderMapSVG(APP, E);
+  }
 
   function lerpHex(c1, c2, t) {
     const u = Math.max(0, Math.min(1, t));
@@ -43,7 +177,6 @@ window.EPI_VIEWS = window.EPI_VIEWS || {};
         ? lerpHex(isDark ? '#134e4a' : '#ccfbf1', '#f59e0b', t * 2)
         : lerpHex('#f59e0b', '#e11d48', (t - 0.5) * 2);
     }
-    // emerald (life expectancy)
     return t < 0.5
       ? lerpHex(isDark ? '#3f3f46' : '#e4e4e7', '#14b8a6', t * 2)
       : lerpHex('#14b8a6', '#10b981', (t - 0.5) * 2);
@@ -133,27 +266,36 @@ window.EPI_VIEWS = window.EPI_VIEWS || {};
     const pal = APP.palette();
     const layer = E.MAP_LAYERS[MAP.layer];
     const strokeCol = pal.dark ? '#09090b' : '#ffffff';
-    const lakeFill = pal.dark ? 'rgba(56,189,248,0.22)' : 'rgba(14,165,233,0.24)';
+    const lakeFill = pal.dark ? 'rgba(56,189,248,0.30)' : 'rgba(14,165,233,0.32)';
 
-    const paths = E.CANTONS.map(c => {
+    const shapes = E.CANTONS.map(c => {
       const fill = cantonFill(c[MAP.layer], layer, pal.dark);
       const isSel = c.id === MAP.selectedId;
       return `
-        <g class="canton-node cursor-pointer" data-cid="${c.id}">
-          <path d="${c.d}" fill="${fill}" stroke="${isSel ? pal.text : strokeCol}" stroke-width="${isSel ? 2.6 : 1.35}" stroke-linejoin="round" style="transition:opacity 120ms ease" opacity="${isSel ? 1 : 0.90}">
-            <title>${c.name} (${c.id}) — ${layer.label}: ${layer.fmt(c[MAP.layer])}</title>
-          </path>
-          <text x="${c.lx}" y="${c.ly}" text-anchor="middle" dominant-baseline="central" pointer-events="none"
-            font-family="JetBrains Mono, monospace" font-size="${c.pop < 60 ? 8.5 : 10}" font-weight="${isSel ? 700 : 600}"
-            fill="${pal.dark ? '#fafafa' : '#09090b'}" stroke="${pal.dark ? 'rgba(9,9,11,0.75)' : 'rgba(255,255,255,0.85)'}" stroke-width="2.4" paint-order="stroke">
-            ${c.id}
-          </text>
-        </g>
+        <path class="canton-node cursor-pointer" data-cid="${c.id}" d="${c.d}" fill="${fill}" fill-rule="evenodd"
+          stroke="${isSel ? pal.text : strokeCol}" stroke-width="${isSel ? 2.2 : 1.0}" stroke-linejoin="round"
+          opacity="${isSel ? 1 : 0.90}">
+          <title>${c.name} (${c.id}) — ${layer.label}: ${layer.fmt(c[MAP.layer])}</title>
+        </path>
       `;
     }).join('');
 
-    const lakes = (E.CH_MAP.lakes || []).map(d => `<path d="${d}" fill="${lakeFill}" pointer-events="none" />`).join('');
-    svg.innerHTML = paths + lakes;
+    const lakes = (E.CH_MAP.lakes || []).map(d =>
+      `<path d="${d}" fill="${lakeFill}" stroke="${pal.dark ? 'rgba(56,189,248,0.45)' : 'rgba(2,132,199,0.4)'}" stroke-width="0.6" pointer-events="none" />`
+    ).join('');
+
+    const labels = E.CANTONS.map(c => {
+      const isSel = c.id === MAP.selectedId;
+      return `
+        <text x="${c.lx}" y="${c.ly}" text-anchor="middle" dominant-baseline="central" pointer-events="none"
+          font-family="JetBrains Mono, monospace" font-size="${c.pop < 60 ? 8.5 : 10}" font-weight="${isSel ? 700 : 600}"
+          fill="${pal.dark ? '#fafafa' : '#09090b'}" stroke="${pal.dark ? 'rgba(9,9,11,0.82)' : 'rgba(255,255,255,0.88)'}" stroke-width="2.6" paint-order="stroke">
+          ${c.id}
+        </text>
+      `;
+    }).join('');
+
+    svg.innerHTML = shapes + lakes + labels;
 
     svg.querySelectorAll('.canton-node').forEach(node => {
       node.addEventListener('click', () => {
@@ -196,8 +338,11 @@ window.EPI_VIEWS = window.EPI_VIEWS || {};
   }
 
   V.map = {
-    init() {},
+    init(APP, E) {
+      loadHiResSwissMap(APP, E);
+    },
     render(APP, E) {
+      loadHiResSwissMap(APP, E);
       renderMapControls(APP, E);
       renderMapSVG(APP, E);
       renderMapRankList(APP, E);
@@ -235,12 +380,10 @@ window.EPI_VIEWS = window.EPI_VIEWS || {};
     const plotH = Math.max(80, h - padT - padB);
 
     const xOf = adm => padL + (Math.min(86, adm) / 86) * plotW;
-    // Log Y-axis (3 to 40 days) separates acute 4–12d stays while cleanly showing 33.5d Psychiatry
     const yLogMin = Math.log10(2.8), yLogMax = Math.log10(42);
     const yOf = los => padT + plotH - ((Math.log10(Math.max(2.8, los)) - yLogMin) / (yLogMax - yLogMin)) * plotH;
     const rOf = mort => 5 + Math.sqrt(Math.max(0.05, mort)) * 3.8;
 
-    // Grid
     ctx.strokeStyle = pal.grid;
     ctx.lineWidth = 1;
     ctx.font = '400 9px "JetBrains Mono", monospace';
@@ -259,7 +402,6 @@ window.EPI_VIEWS = window.EPI_VIEWS || {};
       ctx.fillText(k + 'k', x, padT + plotH + 14);
     });
 
-    // Axis titles
     ctx.fillStyle = pal.muted;
     ctx.font = '500 9.5px "Inter", sans-serif';
     ctx.textAlign = 'center';
@@ -270,7 +412,6 @@ window.EPI_VIEWS = window.EPI_VIEWS || {};
     ctx.fillText('Mean Stay (log days)', 0, 0);
     ctx.restore();
 
-    // Bubbles (largest first so smaller ones remain clickable)
     const sorted = [...E.WARD_BURDEN].sort((a, b) => b.mort - a.mort);
     sorted.forEach(item => {
       const cx = xOf(item.admK);
@@ -289,7 +430,6 @@ window.EPI_VIEWS = window.EPI_VIEWS || {};
       ctx.strokeStyle = active ? pal.text : item.col;
       ctx.stroke();
 
-      // Label key landmarks
       if (active || item.mort >= 6.5 || item.los >= 15 || item.admK >= 55) {
         ctx.font = `${active ? '600' : '500'} 9.5px "Inter", sans-serif`;
         ctx.fillStyle = active ? pal.text : pal.muted;
@@ -299,7 +439,6 @@ window.EPI_VIEWS = window.EPI_VIEWS || {};
       }
     });
 
-    // Bubble size legend
     ctx.font = '400 9px "JetBrains Mono", monospace';
     ctx.fillStyle = pal.faint;
     ctx.textAlign = 'right';
@@ -328,7 +467,6 @@ window.EPI_VIEWS = window.EPI_VIEWS || {};
     const yOf = surv => padT + plotH - (surv / 100) * plotH;
     const rOf = deaths => 5 + Math.sqrt(Math.max(10, deaths)) * 0.34;
 
-    // 50% survival reference line
     ctx.save();
     ctx.setLineDash([4, 4]);
     ctx.strokeStyle = pal.dark ? 'rgba(244,63,94,0.35)' : 'rgba(225,29,72,0.30)';
