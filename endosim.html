@@ -267,11 +267,11 @@
   <footer class="w-full border-t border-[#e4e4e7]/80 dark:border-borderDark/80 bg-white/70 dark:bg-obsidian/90 shrink-0">
     <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
       <span class="font-medium text-[#09090b] dark:text-[#fafafa]">MedLab &middot; EndoSim</span>
-      <span>Mechanistic RK4 neuroendocrine simulator for educational study only. Not for clinical decision-making.</span>
+      <span>Mechanistic RK4 neuroendocrine teaching simulator for educational study only. Not for clinical decision-making.</span>
     </div>
   </footer>
 
-  <!-- ==================== SIMULATION ENGINE (PART 1: AXES & ODE KERNELS) ==================== -->
+  <!-- ==================== SIMULATION ENGINE (STEP 1: AXES & ODE KERNELS) ==================== -->
   <script>
   (() => {
     'use strict';
@@ -385,7 +385,7 @@
           { key: 'tbg', organ: 'binding', label: 'TBG (Binding Globulin)', unit: '×', min: 0.4, max: 2.4, step: 0.05, dec: 2 },
         ],
         drugDefs: [
-          { key: 'lt4Dose', label: 'Levothyroxine (LT4)', unit: 'µg/d', min: 0, max: 350, step: 12.5, dec: 0, desc: 'Exogenous T4 replacement (~7d half-life). Use +14d to view steady-state equilibration.' },
+          { key: 'lt4Dose', label: 'Levothyroxine (LT4)', unit: 'µg/d', min: 0, max: 350, step: 12.5, dec: 0, desc: 'Exogenous T4 (~7d half-life). +14d shows partial equilibration (~75%); full steady-state takes 4–6 weeks.' },
           { key: 'methimazole', label: 'Methimazole (TPO Inhibitor)', unit: 'mg/d', min: 0, max: 40, step: 2.5, dec: 1, desc: 'Blocks thyroid peroxidase iodination & coupling; reduces endogenous T4/T3 synthesis.' },
         ],
         presets: [
@@ -401,7 +401,7 @@
         ],
         tests: [
           { id: 'trh_stim', label: 'TRH Stimulation Test', tag: 'Pituitary Probe', desc: 'Exaggerated TSH surge in primary hypothyroidism; blunted/flat in hyperthyroidism & central disease.' },
-          { id: 'start_lt4', label: 'Start LT4 100 µg/d', tag: 'Replacement', desc: 'Initiates physiological Levothyroxine replacement. Click +14d to observe slow T4/TSH equilibration.' },
+          { id: 'start_lt4', label: 'Start LT4 100 µg/d', tag: 'Replacement', desc: 'Initiates physiological Levothyroxine replacement. Click +14d for partial (~75%) equilibration.' },
           { id: 'start_mmi', label: 'Start Methimazole 20 mg/d', tag: 'Antithyroid', desc: 'Inhibits TPO synthesis in Graves’ disease; fT4 falls over 2–4 weeks.' },
           { id: 'thyroidectomy', label: 'Simulate Thyroidectomy', tag: 'Total Ablation', desc: 'Drops endogenous thyroid capacity to 0%; watch T4 decay with ~7-day half-life.' },
         ],
@@ -500,7 +500,7 @@
           hypo: { title: 'Hypothalamus', sub: 'GnRH Pulse Freq' },
           pit: { title: 'Ant. Pituitary', sub: 'Biphasic LH / FSH' },
           gland: { title: 'Ovary', sub: 'Follicle / Corpus Luteum' },
-          target: { title: 'Endometrium / FB', sub: 'E2 (−/+) & P4 (−)' },
+          target: { title: 'Endometrium / FB', sub: 'E2 (−/+) · Inhibin · P4 (−)' },
         },
         defaultParams: {
           gnrhDrive: 1.0, gnrhFreq: 1.0, ovarianReserve: 1.0,
@@ -514,43 +514,43 @@
         ],
         drugDefs: [
           { key: 'ocpDose', label: 'Combined OCP (E2 + Progestin)', unit: '×', min: 0, max: 1.5, step: 0.05, dec: 2, desc: 'Suppresses LH/FSH and blocks E2 positive-feedback ovulatory surge.' },
-          { key: 'exoProgestin', label: 'Exogenous Progestin', unit: '×', min: 0, max: 1.5, step: 0.05, dec: 2, desc: 'Suppresses GnRH pulse frequency and LH surge (e.g. luteal phase mimic / POP).' },
+          { key: 'exoProgestin', label: 'Exogenous Progestin', unit: '×', min: 0, max: 1.5, step: 0.05, dec: 2, desc: 'Suppresses GnRH pulse frequency and LH surge (e.g. luteal mimic / POP).' },
         ],
         presets: [
-          { id: 'normal', name: 'Normal 28-Day Cycle', tag: 'Ovulatory', desc: 'Self-sustaining 28d cycle: Follicular E2 → +FB Day 14 LH surge → Ovulation → Luteal P4 → Luteolysis.', params: {} },
-          { id: 'pcos', name: 'PCOS (Anovulatory)', tag: 'LH:FSH > 2', desc: 'Rapid GnRH frequency drives high LH:FSH, tonic moderate E2, arrested follicles & flat low P4.', params: { gnrhFreq: 1.9, ovarianReserve: 0.85 } },
+          { id: 'normal', name: 'Normal ~28-Day Cycle', tag: 'Ovulatory', desc: 'Flat early follicular E2 → late exponential E2 surge → +FB LH/FSH surge → Luteal P4 dome → Luteolysis.', params: {} },
+          { id: 'pcos', name: 'PCOS (Simplified Model)', tag: 'Anovulatory', desc: 'Rapid GnRH pulse frequency favors LH over FSH with follicular arrest, tonic E2 & flat P4 (teaching model; not Rotterdam criteria).', params: { gnrhFreq: 1.9, ovarianReserve: 0.85 } },
           { id: 'ocp', name: 'Combined Oral Contraceptive', tag: 'No Surge', desc: 'Exogenous E2 + progestin suppresses LH/FSH, prevents ovulation, flattens endogenous E2/P4.', params: { ocpDose: 1.0 } },
-          { id: 'menopause', name: 'Menopause / POI', tag: '↑↑ FSH > 40', desc: 'Depleted ovarian follicles -> very low E2 & P4, loss of feedback -> high FSH & LH.', params: { ovarianReserve: 0.04 } },
-          { id: 'fha', name: 'Functional Hypothalamic Amen.', tag: '↓↓ GnRH', desc: 'Stress/energy deficit suppresses GnRH -> hypogonadotropic hypogonadism (low LH/FSH/E2/P4).', params: { gnrhDrive: 0.15 } },
+          { id: 'menopause', name: 'Menopause / POI', tag: '↑↑ FSH > 40', desc: 'Depleted ovarian follicles -> low E2/Inhibin/P4, loss of feedback -> high FSH & LH.', params: { ovarianReserve: 0.04 } },
+          { id: 'fha', name: 'Functional Hypothalamic Amen.', tag: '↓↓ GnRH', desc: 'Stress/energy deficit suppresses GnRH -> hypogonadotropic anovulation (low LH/FSH/E2/P4).', params: { gnrhDrive: 0.15 } },
           { id: 'hyperprolactin_f', name: 'Hyperprolactinemia', tag: 'Prolactinoma', desc: 'Elevated PRL suppresses GnRH pulses -> anovulation with low E2 & P4.', params: { prolactin: 170 } },
         ],
         tests: [
-          { id: 'prog_challenge', label: 'Progesterone Challenge', tag: '5d Progestin', desc: 'Tests endometrial estrogenization: withdrawal bleed if E2 > 180 pmol/L (PCOS), negative in FHA/POI.' },
+          { id: 'prog_challenge', label: 'Progestin Course', tag: 'Challenge', desc: 'Administers transient progestin exposure; clinical withdrawal bleeding is assessed after stopping and depends on endometrial priming & outflow.' },
           { id: 'start_ocp', label: 'Start Combined OCP', tag: 'Contraception', desc: 'Initiates continuous E2 + progestin suppression of ovulation.' },
-          { id: 'advance_7d', label: 'Advance +7 Days', tag: 'Phase Step', desc: 'Step forward one week to jump cleanly between Follicular, Ovulatory, and Luteal phases.' },
+          { id: 'advance_7d', label: 'Advance +7 Days', tag: 'Phase Step', desc: 'Step forward one week between Follicular, Ovulatory, and Luteal phases.' },
           { id: 'reset_day1', label: 'Reset to Cycle Day 1', tag: 'Early Follicular', desc: 'Re-initializes the cycle cleanly at early follicular recruitment (Day 1).' },
         ],
         channels: [
-          { key: 'e2', label: 'Estradiol (E2)', unit: 'pmol/L', max: 1450, refLo: 120, refHi: 1100, dec: 0 },
+          { key: 'e2', label: 'Estradiol (E2)', unit: 'pmol/L', max: 1350, refLo: 110, refHi: 1200, dec: 0 },
           { key: 'lh', label: 'LH', unit: 'IU/L', max: 65, refLo: 2.0, refHi: 12.0, dec: 1 },
-          { key: 'fsh', label: 'FSH', unit: 'IU/L', max: 65, refLo: 3.0, refHi: 12.0, dec: 1 },
+          { key: 'fsh', label: 'FSH', unit: 'IU/L', max: 35, refLo: 2.5, refHi: 10.0, dec: 1 },
           { key: 'p4', label: 'Progesterone (P4)', unit: 'nmol/L', max: 60, refLo: 1.0, refHi: 50.0, dec: 1 },
         ],
         labs: [
-          { key: 'e2', label: 'Estradiol (E2)', unit: 'pmol/L', ref: '120–1100', lo: 100, hi: 1350, dec: 0 },
-          { key: 'p4', label: 'Progesterone', unit: 'nmol/L', ref: 'Fol<3 · Lut>15', lo: -1, hi: 65, dec: 1 },
-          { key: 'lh', label: 'LH', unit: 'IU/L', ref: '2–12 (Surge>30)', lo: 1.5, hi: 20, dec: 1 },
-          { key: 'fsh', label: 'FSH', unit: 'IU/L', ref: '3.0–12.0', lo: 2.2, hi: 15, dec: 1 },
-          { key: 'lhFshRatio', label: 'LH : FSH', unit: 'ratio', ref: '< 2.0 (Fol)', lo: 0, hi: 2.1, dec: 2 },
-          { key: 'cyclePhaseNum', label: 'Cycle Day', unit: 'd', ref: '1–28', lo: 0, hi: 29, dec: 0 },
+          { key: 'e2', label: 'Estradiol (E2)', unit: 'pmol/L', ref: 'Phase-dependent', phaseDep: true, lo: 0, hi: 9999, dec: 0 },
+          { key: 'p4', label: 'Progesterone', unit: 'nmol/L', ref: 'Phase-dependent', phaseDep: true, lo: 0, hi: 9999, dec: 1 },
+          { key: 'lh', label: 'LH', unit: 'IU/L', ref: 'Phase-dependent', phaseDep: true, lo: 0, hi: 9999, dec: 1 },
+          { key: 'fsh', label: 'FSH', unit: 'IU/L', ref: 'Phase-dependent', phaseDep: true, lo: 0, hi: 9999, dec: 1 },
+          { key: 'lhFshRatio', label: 'LH : FSH', unit: 'ratio', ref: 'Context-dependent', phaseDep: true, lo: 0, hi: 9999, dec: 2 },
+          { key: 'cyclePhaseNum', label: 'Cycle Day', unit: 'd', ref: 'Since cycle start', lo: 0, hi: 9999, dec: 0 },
         ],
       },
     };
 
     /* =========================================================================
-       COUPLED NONLINEAR RK4 ODE KERNELS (FIXED & CALIBRATED)
+       COUPLED NONLINEAR RK4 ODE KERNELS
        ========================================================================= */
-       function createInitialState(axisId) {
+    function createInitialState(axisId) {
       if (axisId === 'hpa') {
         return {
           t: 7.0, crh: 1.1, acth: 6.5, cortF: 18.0, adrenalMass: 1.0,
@@ -567,15 +567,16 @@
         };
       }
       return {
-        t: 0.0, F: 0.06, CL1: 0.0, CL2: 0.0, CL3: 0.0, CL4: 0.0,
-        e2Mem: 85.0, lh: 6.5, fsh: 10.5, e2: 85.0, p4: 1.2,
+        t: 0.0, F: 0.04, CL1: 0.0, CL2: 0.0, CL3: 0.0, CL4: 0.0,
+        e2Mem: 135.0, lh: 6.2, fsh: 8.2, e2: 135.0, p4: 1.3,
         progestinPulse: 0.0, cycleDay: 1.0, wasLuteal: 0.0,
       };
     }
 
     function evalClActivity(s) {
-      const clRaw = 0.20 * s.CL2 + 2.0 * s.CL3 + 1.7 * s.CL4;
-      return Math.pow(clRaw, 2.4) / (Math.pow(clRaw, 2.4) + Math.pow(0.34, 2.4));
+      const clRaw = 0.15 * s.CL2 + 1.40 * s.CL3 + 2.20 * s.CL4;
+      if (clRaw <= 1e-6) return 0.0;
+      return Math.pow(clRaw, 3.2) / (Math.pow(clRaw, 3.2) + Math.pow(0.50, 3.2));
     }
 
     function derivatives(axisId, s, p) {
@@ -691,21 +692,27 @@
         };
       }
 
-      // AXIS 4: HPG · OVARIAN (4-Stage Transit CL Limit Cycle — Guaranteed ~28d Period)
+      // AXIS 4: HPG · OVARIAN (Basal Antral E2/Inhibin + Zero-Leakage Ovulation + 4-Stage CL)
       const prlBlock = 1 / (1 + Math.pow(Math.max(0, p.prolactin - 12) / 38.0, 2.0));
-      const gnrhEff = Math.pow(p.gnrhDrive, 1.35) * prlBlock;
+      const gnrhEff = Math.pow(p.gnrhDrive, 1.30) * prlBlock;
       const p4Exog = p.ocpDose * 36.0 + p.exoProgestin * 34.0 + s.progestinPulse;
-      const p4Eff = Math.max(0, s.p4 - 1.2) + p4Exog;
+      const p4Eff = Math.max(0, s.p4 - 1.3) + p4Exog;
       const e2Eff = s.e2 + p.ocpDose * 480.0;
 
-      // Central negative feedback
-      const p4Supp = (0.30 + 0.70 / (1 + Math.pow(p4Eff / 8.5, 1.8))) / (1 + 1.25 * p.ocpDose);
-      const negFB_LH = (0.14 + 0.86 / (1 + Math.pow(e2Eff / 32.0, 1.75))) * p4Supp;
-      const negFB_FSH = (0.045 + 0.955 / (1 + Math.pow(e2Eff / 32.0, 1.55) + 1.6 * s.F)) * p4Supp;
+      // Tonic gonadotropin support for small antral cohort (prevents false menopausal spike at menses)
+      const tonicSum = s.fsh + 0.5 * s.lh;
+      const basalTonic = (tonicSum * tonicSum) / (tonicSum * tonicSum + 25.0);
+      const clAct = evalClActivity(s);
+      const inhB = p.ovarianReserve * (0.45 * basalTonic + 1.80 * s.F + 0.55 * clAct);
 
-      // Biphasic Positive Feedback: sustained E2 > 700 pmol/L with low P4 triggers LH/FSH surge
+      // Central negative feedback (P4 + E2 + Inhibin)
+      const p4Supp = (0.48 + 0.52 / (1 + Math.pow(p4Eff / 7.5, 1.8))) / (1 + 1.30 * p.ocpDose);
+      const negFB_LH = (0.095 + 0.905 / (1 + Math.pow(e2Eff / 52.0, 2.8))) * p4Supp;
+      const negFB_FSH = (0.048 + 0.952 / (1 + Math.pow(e2Eff / 52.0, 2.5) + Math.pow(inhB / 0.42, 2.0))) * p4Supp;
+
+      // Biphasic Positive Feedback: sustained E2 > 700 pmol/L with low P4 triggers mid-cycle LH & FSH surge
       const e2Excess = Math.max(0, s.e2Mem - 700.0);
-      const posE2 = Math.pow(e2Excess / 140.0, 3.0) / (1 + Math.pow(e2Excess / 140.0, 3.0));
+      const posE2 = Math.pow(e2Excess / 145.0, 3.0) / (1 + Math.pow(e2Excess / 145.0, 3.0));
       const p4Permit = 1 / (1 + Math.pow(p4Eff / 5.5, 3.0));
       const ocpPermit = 1 / (1 + Math.pow(p.ocpDose / 0.22, 2.5));
       const posFB = posE2 * p4Permit * ocpPermit;
@@ -713,38 +720,38 @@
       const freqLH = Math.pow(p.gnrhFreq, 1.22);
       const freqFSH = 1 / Math.pow(p.gnrhFreq, 0.76);
 
-      const lhTarget = gnrhEff * freqLH * (36.0 * negFB_LH + 82.0 * posFB);
-      const fshTarget = gnrhEff * freqFSH * (82.0 * negFB_FSH + 20.0 * posFB);
+      const lhTarget = gnrhEff * freqLH * (44.0 * negFB_LH + 78.0 * posFB);
+      const fshTarget = gnrhEff * freqFSH * (68.0 * negFB_FSH + 22.0 * posFB);
 
       const d_lh = 1.75 * (lhTarget - s.lh);
       const d_fsh = 1.45 * (fshTarget - s.fsh);
 
-      // Ovulation: sharp LH surge (>24 IU/L) ruptures dominant follicle completely
-      const ovulLH = 1 / (1 + safeExp(-(s.lh - 24.0) / 2.0));
-      const ovulF = 1 / (1 + safeExp(-(s.F - 0.28) / 0.06));
+      // Strict zero-leakage ovulation trigger (identically 0 when LH <= 18 or F <= 0.15)
+      const ovulLH = s.lh > 18.0 ? Math.min(1.0, Math.pow((s.lh - 18.0) / 14.0, 2)) : 0.0;
+      const ovulF = s.F > 0.15 ? Math.min(1.0, (s.F - 0.15) / 0.25) : 0.0;
       const ovul = ovulLH * ovulF;
 
-      // Follicular recruitment (FSH window) + late-follicular LH-dependent maturation
-      const pcosCap = p.gnrhFreq > 1.35 ? Math.max(0.34, 1.05 - 1.15 * (p.gnrhFreq - 1.35)) : 1.22;
-      const fshDrive = Math.pow(s.fsh, 3.2) / (Math.pow(s.fsh, 3.2) + Math.pow(5.0, 3.2));
-      const lhDrive = Math.pow(s.lh, 2.5) / (Math.pow(s.lh, 2.5) + Math.pow(3.8, 2.5));
+      // Dominant follicle recruitment (FSH window) + late-follicular LH-dependent maturation
+      const pcosCap = p.gnrhFreq > 1.35 ? Math.max(0.34, 1.05 - 1.15 * (p.gnrhFreq - 1.35)) : 1.35;
+      const fshDrive = Math.pow(s.fsh, 3.0) / (Math.pow(s.fsh, 3.0) + Math.pow(5.2, 3.0));
+      const lhDrive = Math.pow(s.lh, 2.5) / (Math.pow(s.lh, 2.5) + Math.pow(3.2, 2.5));
       const p4InhibF = 1 / (1 + Math.pow(p4Eff / 5.0, 2.5));
 
-      const fGrowth = p.ovarianReserve * (0.052 * fshDrive + 0.34 * s.F * lhDrive) * Math.max(0, 1 - s.F / pcosCap) * p4InhibF;
-      const ovulFlux = 2.6 * ovul * s.F;
-      const fDecay = (0.075 + 0.65 * (p4Eff / (p4Eff + 6.0))) * s.F + ovulFlux;
+      const fGrowth = p.ovarianReserve * (0.036 * fshDrive + 0.45 * s.F * lhDrive) * Math.max(0, 1 - s.F / pcosCap) * p4InhibF;
+      const ovulFlux = 2.8 * ovul * s.F;
+      const fDecay = (0.05 + 0.75 * (p4Eff / (p4Eff + 5.0))) * s.F + ovulFlux;
       const d_F = fGrowth - fDecay;
 
-      // 4-Stage Linear Corpus Luteum Transit Chain (kL = 0.48/d -> ~14d programmed luteolysis)
-      const kL = 0.48;
-      const d_CL1 = 1.45 * ovulFlux - kL * s.CL1;
+      // 4-Stage Linear Corpus Luteum Transit Chain (kL = 0.50/d -> ~14d luteal lifespan)
+      const kL = 0.50;
+      const d_CL1 = 1.80 * ovulFlux - kL * s.CL1;
       const d_CL2 = kL * (s.CL1 - s.CL2);
       const d_CL3 = kL * (s.CL2 - s.CL3);
       const d_CL4 = kL * (s.CL3 - s.CL4);
 
-      const clAct = evalClActivity(s);
-      const e2Prod = p.ovarianReserve * (1450.0 * Math.pow(s.F, 1.55) + 460.0 * clAct) + 22.0;
-      const p4Prod = 1.2 + 52.0 * p.ovarianReserve * clAct;
+      // Ovarian E2 (basal antral cohort + exponential dominant follicle + luteal dome) & P4
+      const e2Prod = 20.0 + p.ovarianReserve * (145.0 * basalTonic + 1250.0 * Math.pow(s.F, 2.2) + 460.0 * clAct);
+      const p4Prod = 1.3 + 52.0 * p.ovarianReserve * clAct;
 
       return {
         t: 1, F: d_F, CL1: d_CL1, CL2: d_CL2, CL3: d_CL3, CL4: d_CL4,
@@ -798,22 +805,21 @@
         next.testisMass = clamp(next.testisMass, 0.22, 1.6);
       } else if (axisId === 'hpg_ovarian') {
         next.F = clamp(next.F, 0.01, 1.35);
-        next.CL1 = clamp(next.CL1, 0.0, 2.0);
-        next.CL2 = clamp(next.CL2, 0.0, 2.0);
-        next.CL3 = clamp(next.CL3, 0.0, 2.0);
-        next.CL4 = clamp(next.CL4, 0.0, 2.0);
+        next.CL1 = clamp(next.CL1, 0.0, 2.5);
+        next.CL2 = clamp(next.CL2, 0.0, 2.5);
+        next.CL3 = clamp(next.CL3, 0.0, 2.5);
+        next.CL4 = clamp(next.CL4, 0.0, 2.5);
         next.lh = clamp(next.lh, 0.1, 95);
         next.fsh = clamp(next.fsh, 0.1, 110);
         next.e2 = clamp(next.e2, 10, 2200);
         next.p4 = clamp(next.p4, 0.3, 85);
 
-        const clAct = evalClActivity(next);
-        if (clAct > 0.55) next.wasLuteal = 1.0;
-        if (next.wasLuteal > 0.5 && clAct < 0.08 && next.CL1 < 0.05) {
+        const prevCl = evalClActivity(s);
+        const nextCl = evalClActivity(next);
+        if (nextCl > 0.55) next.wasLuteal = 1.0;
+        if (s.wasLuteal > 0.5 && prevCl >= 0.09 && nextCl < 0.09) {
           next.cycleDay = 1.0;
           next.wasLuteal = 0.0;
-        } else if (next.cycleDay >= 29.5) {
-          next.cycleDay = 1.0;
         }
       }
       return next;
@@ -842,17 +848,16 @@
         };
       }
       const clAct = evalClActivity(s);
-      const p4Eff = Math.max(0, s.p4 - 1.2) + p.ocpDose * 36.0 + p.exoProgestin * 34.0 + s.progestinPulse;
+      const p4Eff = Math.max(0, s.p4 - 1.3) + p.ocpDose * 36.0 + p.exoProgestin * 34.0 + s.progestinPulse;
       const posActive = s.e2Mem > 700 && p4Eff < 7.5 && p.ocpDose < 0.25 && s.lh > 16 ? 1 : 0;
-      const cyclePhaseNum = Math.min(28, Math.max(1, Math.floor(s.cycleDay)));
+      const cyclePhaseNum = Math.max(1, Math.floor(s.cycleDay));
       return {
         t: s.t, F: s.F, CL: clAct, lh: s.lh, fsh: s.fsh, e2: s.e2, p4: s.p4,
         lhFshRatio: s.lh / Math.max(0.2, s.fsh), cyclePhaseNum, posFB: posActive,
       };
     }
 
-    
-       // ==================== END OF STEP 1 — PASTE STEP 2 DIRECTLY BELOW ====================
+    // ==================== END OF STEP 1 — PASTE STEP 2 DIRECTLY BELOW ====================
     /* =========================================================================
        APPLICATION STATE & HISTORY MANAGEMENT
        ========================================================================= */
@@ -979,7 +984,7 @@
         else if (testId === 'start_clomid') { app.params.clomiphene = 1.2; app.presetId = 'custom'; label = 'Clomiphene'; }
         else if (testId === 'toggle_leuprolide') { app.params.gnrhContinuous = 1; app.presetId = 'custom'; label = 'Cont. GnRH'; }
       } else if (app.axisId === 'hpg_ovarian') {
-        if (testId === 'prog_challenge') { s.progestinPulse += 28.0; label = 'P4 Challenge'; }
+        if (testId === 'prog_challenge') { s.progestinPulse += 28.0; label = 'Progestin'; }
         else if (testId === 'start_ocp') { app.params.ocpDose = 1.0; app.presetId = 'custom'; label = 'Start OCP'; }
         else if (testId === 'advance_7d') {
           app.events.push({ t: tNow, label: '+7d Step' });
@@ -1039,7 +1044,7 @@
             </div>
             <span id="lab-delta-${lab.key}" class="font-mono text-[10px] tabular-nums shrink-0"></span>
           </div>
-          <div class="text-[9.5px] font-mono text-zinc-400 dark:text-zinc-500 mt-0.5 truncate">Ref ${lab.ref}</div>
+          <div class="text-[9.5px] font-mono text-zinc-400 dark:text-zinc-500 mt-0.5 truncate">${lab.phaseDep ? lab.ref : 'Ref ' + lab.ref}</div>
         </div>
       `).join('');
     }
@@ -1060,7 +1065,10 @@
 
         let stateStr = 'NORMAL';
         let pillCls = 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400';
-        if (val < lab.lo) {
+        if (lab.phaseDep) {
+          stateStr = 'PHASE';
+          pillCls = 'border-zinc-300/80 dark:border-zinc-700 bg-zinc-100/80 dark:bg-zinc-800/70 text-zinc-600 dark:text-zinc-300';
+        } else if (val < lab.lo) {
           stateStr = 'LOW';
           pillCls = 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300';
         } else if (val > lab.hi) {
@@ -1069,10 +1077,13 @@
         }
 
         if (lab.key === 'cyclePhaseNum') {
-          stateStr = o.CL > 0.22 ? 'LUTEAL' : (o.lh > 20 ? 'SURGE' : 'FOLLIC.');
-          pillCls = o.lh > 20
-            ? 'border-amber-500/35 bg-amber-500/15 text-amber-700 dark:text-amber-300'
-            : 'border-teal-500/30 bg-teal-500/10 text-tealLight dark:text-tealDark';
+          const anov = o.cyclePhaseNum > 35 && o.CL < 0.15;
+          stateStr = anov ? 'ANOVUL.' : (o.CL > 0.20 ? 'LUTEAL' : (o.lh > 18 ? 'SURGE' : 'FOLLIC.'));
+          pillCls = anov
+            ? 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+            : (o.lh > 18
+                ? 'border-amber-500/35 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                : 'border-teal-500/30 bg-teal-500/10 text-tealLight dark:text-tealDark');
         }
 
         stEl.textContent = stateStr;
@@ -1103,8 +1114,9 @@
           const mn = Math.floor(((((o.t % 24) + 24) % 24) - hr) * 60);
           clockEl.textContent = `Day ${day} · ${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
         } else if (axis.id === 'hpg_ovarian') {
-          const phaseLbl = o.lh > 20 ? 'Ovulatory Surge' : (o.CL > 0.22 ? 'Luteal' : 'Follicular');
-          clockEl.textContent = `Cycle Day ${o.cyclePhaseNum} · ${phaseLbl}`;
+          const anov = o.cyclePhaseNum > 35 && o.CL < 0.15;
+          const phaseLbl = anov ? 'Anovulatory' : (o.lh > 18 ? 'Ovulatory Surge' : (o.CL > 0.20 ? 'Luteal' : 'Follicular'));
+          clockEl.textContent = `Day ${o.cyclePhaseNum} · ${phaseLbl}`;
         } else {
           clockEl.textContent = `Day ${o.t.toFixed(1)}`;
         }
@@ -1196,7 +1208,7 @@
         fbStrength = clamp(o.e2 / 420 + o.p4 / 18, 0.25, 2.4);
         isPosFB = o.posFB > 0.5;
 
-        if (o.CL > 0.22) { trophicText = 'Corpus Luteum'; trophicCol = amber; }
+        if (o.CL > 0.20) { trophicText = 'Corpus Luteum'; trophicCol = amber; }
         else if (o.F > 0.50) { trophicText = 'Dom. Follicle'; trophicCol = teal; }
         else if (p.ovarianReserve < 0.15) { trophicText = 'Depleted'; trophicCol = sky; }
         else { trophicText = 'Recruiting'; }
@@ -1338,13 +1350,13 @@
             : `Exogenous LT4 (${Math.round(p.lt4Dose)} µg/d) elevates fT4 (${o.ft4.toFixed(1)}), suppressing TSH (${o.tsh.toFixed(2)}) and causing endogenous thyroid atrophy.`;
           testNote = 'Dynamic Tests: Flat TRH response. Methimazole blocks TPO in Graves’ (ineffective in factitious LT4).';
         } else if (o.ft4 > 22.5 && o.tsh >= 1.5) {
-          title = 'Central Hyperthyroidism (TSHoma)'; level = 'warn';
-          summary = `Non-suppressed TSH (${o.tsh.toFixed(2)} mIU/L) despite elevated fT4 (${o.ft4.toFixed(1)}) & fT3 (${o.ft3.toFixed(1)}) confirms autonomous pituitary secretion.`;
-          testNote = 'Dynamic Tests: Blunted TRH response; elevated α-subunit/TSH ratio; pituitary MRI indicated.';
+          title = 'Central Hyperthyroidism Pattern'; level = 'warn';
+          summary = `Non-suppressed TSH (${o.tsh.toFixed(2)} mIU/L) despite elevated fT4 (${o.ft4.toFixed(1)}) & fT3 (${o.ft3.toFixed(1)}) suggests central hyperthyroidism (differentiate TSHoma from thyroid hormone resistance and assay interference).`;
+          testNote = 'Workup: Verify assay interference, check α-subunit/TSH molar ratio, consider TRH test & pituitary MRI.';
         } else if (o.ft4 < 12.0 && o.tsh > 4.5) {
           title = 'Primary Hypothyroidism'; level = 'critical';
           summary = `Impaired thyroid synthesis (fT4 ${o.ft4.toFixed(1)} pmol/L, fT3 ${o.ft3.toFixed(1)}) relieves negative feedback, driving an exponential TSH rise (${o.tsh.toFixed(1)} mIU/L).`;
-          testNote = 'Dynamic Tests: Exaggerated TRH surge. Start LT4 100 µg/d and click +14d to observe slow T4/TSH recovery.';
+          testNote = 'Dynamic Tests: Exaggerated TRH surge. Start LT4 100 µg/d and click +14d for partial (~75%) equilibration (full steady-state takes 4–6 weeks).';
         } else if (o.ft4 >= 11.8 && o.ft4 <= 15.0 && o.tsh > 4.2) {
           title = 'Subclinical Hypothyroidism'; level = 'info';
           summary = `Reduced thyroid reserve is compensated by elevated TSH (${o.tsh.toFixed(1)} mIU/L), maintaining low-normal fT4 (${o.ft4.toFixed(1)} pmol/L).`;
@@ -1381,7 +1393,7 @@
         } else if (o.totalT < 10.0 && o.lh > 9.0) {
           title = 'Primary Hypogonadism (Hypergonadotropic)'; level = 'critical';
           summary = `Testicular failure lowers T (${o.totalT.toFixed(1)} nmol/L) and Inhibin B (${Math.round(o.inhibinB)}), driving high compensatory LH (${o.lh.toFixed(1)}) and FSH (${o.fsh.toFixed(1)}).`;
-          testNote = 'Dynamic Tests: Blunted/flat T rise after hCG stimulation confirms primary Leydig failure.';
+          testNote = 'Dynamic Tests: Blunted/flat T rise after hCG stimulation supports primary Leydig failure.';
         } else if (o.totalT < 10.0 && o.lh < 2.2) {
           title = p.prolactin > 35 ? 'Hyperprolactinemic Hypogonadism' : 'Secondary Hypogonadism (Hypogonadotropic)'; level = 'warn';
           summary = p.prolactin > 35
@@ -1399,36 +1411,36 @@
         }
       } else {
         const progTestNote = app.lastTestId === 'prog_challenge'
-          ? (o.e2 > 180 ? ' · Progesterone Challenge POSITIVE (E2 > 180 -> withdrawal bleed).' : ' · Progesterone Challenge NEGATIVE (E2 < 180 -> hypoestrogenic).')
+          ? ' · Progestin challenge started. Withdrawal bleeding depends on completing a course, stopping, endometrial priming, and outflow patency—not predicted by this model.'
           : '';
         if (p.ocpDose > 0.3) {
           title = 'Combined OCP Ovulatory Suppression'; level = 'info';
           summary = `Exogenous Estrogen + Progestin suppresses basal LH (${o.lh.toFixed(1)}) & FSH (${o.fsh.toFixed(1)}) and abolishes the positive-feedback surge, preventing ovulation.`;
-          testNote = 'Mechanism: Continuous progestin negative feedback blocks hypothalamic GnRH surge.' + progTestNote;
+          testNote = 'Mechanism: Continuous progestin negative feedback blocks the hypothalamic GnRH surge.' + progTestNote;
         } else if (p.ovarianReserve < 0.15 && o.fsh > 35) {
           title = 'Menopause / Premature Ovarian Insufficiency'; level = 'warn';
           summary = `Depleted ovarian reserve produces low E2 (${Math.round(o.e2)} pmol/L) & P4 (${o.p4.toFixed(1)} nmol/L) with markedly elevated FSH (${o.fsh.toFixed(1)} IU/L) & LH (${o.lh.toFixed(1)}).`;
-          testNote = 'Dynamic Tests: Progesterone challenge NEGATIVE (unprimed endometrium).' + progTestNote;
-        } else if (p.gnrhFreq > 1.45 && o.lhFshRatio > 2.0) {
-          title = 'PCOS · Chronic Anovulation'; level = 'warn';
-          summary = `Rapid GnRH pulse frequency (${p.gnrhFreq.toFixed(2)}×) drives LH:FSH ${o.lhFshRatio.toFixed(2)} (LH ${o.lh.toFixed(1)}, FSH ${o.fsh.toFixed(1)}). Arrested follicles yield tonic E2 (${Math.round(o.e2)}) & flat low P4 (${o.p4.toFixed(1)}).`;
-          testNote = 'Dynamic Tests: Progesterone challenge POSITIVE (tonic unopposed estrogenization).' + progTestNote;
-        } else if ((p.gnrhDrive < 0.35 || p.prolactin > 45) && o.e2 < 140) {
+          testNote = 'Cycle Counter: Continues climbing without artificial reset because ovulation/luteolysis does not occur.' + progTestNote;
+        } else if (p.gnrhFreq > 1.45 && o.CL < 0.05 && o.e2 > 140) {
+          title = 'Simplified Anovulatory PCOS Model'; level = 'warn';
+          summary = `Rapid GnRH pulse frequency (${p.gnrhFreq.toFixed(2)}×) favors LH (${o.lh.toFixed(1)}) over FSH (${o.fsh.toFixed(1)}, ratio ${o.lhFshRatio.toFixed(2)}). Follicles arrest before the E2 surge threshold -> tonic E2 (${Math.round(o.e2)}) & flat P4 (${o.p4.toFixed(1)}).`;
+          testNote = 'Clinical Note: LH:FSH ratio is neither required nor sufficient for PCOS diagnosis (Rotterdam criteria).' + progTestNote;
+        } else if ((p.gnrhDrive < 0.35 || p.prolactin > 45) && o.e2 < 120) {
           title = p.prolactin > 45 ? 'Hyperprolactinemic Anovulation' : 'Functional Hypothalamic Amenorrhea'; level = 'warn';
           summary = `Suppressed GnRH drive produces hypogonadotropic anovulation (LH ${o.lh.toFixed(1)}, FSH ${o.fsh.toFixed(1)}, E2 ${Math.round(o.e2)} pmol/L, P4 ${o.p4.toFixed(1)} nmol/L).`;
-          testNote = 'Dynamic Tests: Progesterone challenge NEGATIVE due to hypoestrogenemia.' + progTestNote;
+          testNote = 'Cycle Counter: Climbs continuously reflecting anovulatory amenorrhea.' + progTestNote;
         } else if (o.posFB > 0.5) {
-          title = 'Ovulatory Positive-Feedback LH Surge!'; level = 'info';
-          summary = `Sustained high E2 (${Math.round(o.e2)} pmol/L) with low P4 flipped pituitary feedback POSITIVE, firing the mid-cycle LH surge (${o.lh.toFixed(1)} IU/L) and triggering follicular rupture!`;
+          title = 'Ovulatory Positive-Feedback LH Surge'; level = 'info';
+          summary = `Sustained high E2 (${Math.round(o.e2)} pmol/L) with low P4 flipped pituitary feedback POSITIVE, firing the mid-cycle LH (${o.lh.toFixed(1)}) & FSH (${o.fsh.toFixed(1)}) surge and triggering follicular rupture.`;
           testNote = 'Cycle Dynamics: Immediate transition to Corpus Luteum luteinization and luteal P4 dominance.' + progTestNote;
-        } else if (o.CL > 0.22) {
+        } else if (o.CL > 0.20) {
           title = `Ovulatory Cycle · Luteal Phase (Day ${o.cyclePhaseNum})`; level = 'ok';
-          summary = `Corpus Luteum secretes dominant Progesterone (${o.p4.toFixed(1)} nmol/L) and secondary E2 (${Math.round(o.e2)} pmol/L), suppressing LH/FSH until programmed luteolysis around Day 27–28.`;
-          testNote = 'Clinical Note: Mid-luteal P4 > 15 nmol/L confirms ovulation.' + progTestNote;
+          summary = `Corpus Luteum secretes dominant Progesterone (${o.p4.toFixed(1)} nmol/L) and secondary E2 (${Math.round(o.e2)} pmol/L), suppressing LH/FSH until programmed luteolysis.`;
+          testNote = 'Clinical Note: Interpret serum P4 relative to ovulation timing (~7d pre-menses) and assay-specific cutoffs.' + progTestNote;
         } else {
           title = `Ovulatory Cycle · Follicular Phase (Day ${o.cyclePhaseNum})`; level = 'ok';
-          summary = `FSH (${o.fsh.toFixed(1)} IU/L) recruits the dominant follicle, driving rising E2 (${Math.round(o.e2)} pmol/L). Sustained E2 > 700 pmol/L flips feedback positive to fire the Day ~14 LH surge.`;
-          testNote = 'Dynamic Tests: Use 5× speed or "+7d Step" to trace the full repeating 28-day cycle.' + progTestNote;
+          summary = `Early follicular FSH (${o.fsh.toFixed(1)} IU/L) recruits the dominant follicle; E2 (${Math.round(o.e2)} pmol/L) stays low early then accelerates exponentially past 700 pmol/L to trigger the LH surge.`;
+          testNote = 'Controls: Use 5× speed or "+7d Step" to trace the repeating ~28-day limit cycle.' + progTestNote;
         }
       }
 
@@ -1589,7 +1601,7 @@
         drawZone(2, 5.0, 12, 95, zCrit, 'Primary Hypo', lblMuted);
         drawZone(12, 4.2, 20, 20, zSky, 'Subclin.', lblMuted);
         drawZone(2, 0.05, 12, 4.0, zSky, 'Central Hypo', lblMuted);
-        drawZone(22, 2.0, 44, 40, zWarn, 'TSHoma', lblMuted);
+        drawZone(22, 2.0, 44, 40, zWarn, 'Central Hyper', lblMuted);
 
         ctx.save();
         ctx.setLineDash([4, 3]);
@@ -1792,7 +1804,8 @@
           ctx.fillStyle = C.isDark ? 'rgba(45, 212, 191, 0.55)' : 'rgba(15, 118, 110, 0.65)';
           ctx.font = '500 8.5px "JetBrains Mono", monospace';
           ctx.textAlign = 'right';
-          ctx.fillText(`${ch.label} Ref (${ch.refLo}–${ch.refHi})`, pad.l + pw - 6, Math.max(pad.t + 11, yHi + 10));
+          const bandTag = axis.id === 'hpg_ovarian' ? 'Typical Cycle Span' : 'Ref';
+          ctx.fillText(`${ch.label} ${bandTag} (${ch.refLo}–${ch.refHi})`, pad.l + pw - 6, Math.max(pad.t + 11, yHi + 10));
         }
       }
 
