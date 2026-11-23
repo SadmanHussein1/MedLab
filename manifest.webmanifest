@@ -1,0 +1,11 @@
+{
+  "name": "MedLab",
+  "short_name": "MedLab",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "iOS_Google_Health_8GYT2010J1-7729b92682.png", "sizes": "1024x1024", "type": "image/png" }
+  ]
+}
